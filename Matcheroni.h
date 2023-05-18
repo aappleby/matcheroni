@@ -4,6 +4,14 @@
 namespace matcheroni {
 
 //------------------------------------------------------------------------------
+// Matcheroni is based on building trees of "matcher" functions. A matcher takes
+// a raw C string as input and returns either the endpoint of the match if
+// found, or nullptr if a match was not found.
+// Matchers must also handle null pointers and empty strings.
+
+typedef const char*(*matcher)(const char*);
+
+//------------------------------------------------------------------------------
 // The most fundamental unit of matching is a single character. For convenience,
 // we implement the Char matcher so that it can handle small sets of characters
 // and allows Char<> to match any nonzero character.
@@ -20,8 +28,11 @@ struct Char;
 template <char C1, char... rest>
 struct Char<C1, rest...> {
   static const char* match(const char* cursor) {
-    if (!cursor) return nullptr;
-    if (cursor[0] == C1) return cursor + 1;
+    // We should never explicitly match the null terminator, as we can't
+    // advance past it.
+    static_assert(C1 != 0);
+    if (!cursor || !cursor[0]) return nullptr;
+    if (cursor && cursor[0] == C1) return cursor + 1;
     return Char<rest...>::match(cursor);
   }
 };
@@ -29,8 +40,11 @@ struct Char<C1, rest...> {
 template <char C1>
 struct Char<C1> {
   static const char* match(const char* cursor) {
-    if (!cursor) return nullptr;
-    if (cursor[0] == C1) return cursor + 1;
+    // We should never explicitly match the null terminator, as we can't
+    // advance past it.
+    static_assert(C1 != 0);
+    if (!cursor || !cursor[0]) return nullptr;
+    if (cursor && cursor[0] == C1) return cursor + 1;
     return nullptr;
   }
 };
@@ -38,8 +52,68 @@ struct Char<C1> {
 template <>
 struct Char<> {
   static const char* match(const char* cursor) {
+    if (!cursor || !cursor[0]) return nullptr;
     if (!cursor) return nullptr;
     if (!cursor[0]) return nullptr;
+    return cursor + 1;
+  }
+};
+
+//------------------------------------------------------------------------------
+
+struct NUL {
+  static const char* match(const char* cursor) {
+    if (!cursor) return nullptr;
+    return cursor[0] == 0 ? cursor : nullptr;
+  }
+};
+
+//------------------------------------------------------------------------------
+// Matches LF and NUL, but does not advance past it.
+
+struct EOL {
+  static const char* match(const char* cursor) {
+    if (!cursor) return nullptr;
+    if (cursor[0] == 0) return cursor;
+    if (cursor[0] == '\n') return cursor;
+    return nullptr;
+  }
+};
+
+//------------------------------------------------------------------------------
+// Matches backslash+LF, which is used as the line-continuation marker in C
+
+/*
+struct CONT {
+  static const char* match(const char* cursor) {
+    if (!cursor) return nullptr;
+    if (cursor[0] != '\\') return nullptr;
+    if (cursor[1] != '\n') return nullptr;
+    return cursor + 2;
+  }
+};
+*/
+
+//------------------------------------------------------------------------------
+// Consumes any character that is not LF or NUL
+
+struct NotEOL {
+  static const char* match(const char* cursor) {
+    if (!cursor) return nullptr;
+
+    // A CONT is _not_ EOL
+
+    if ((cursor[0] == '\\') && (cursor[1] == '\r') && (cursor[2] == '\n')) {
+      return cursor + 3;
+    }
+
+
+    if ((cursor[0] == '\\') && (cursor[1] == '\n')) {
+      return cursor + 2;
+    }
+
+    if (cursor[0] == 0) return nullptr;
+    if (cursor[0] == '\n') return nullptr;
     return cursor + 1;
   }
 };
@@ -53,6 +127,7 @@ struct Char<> {
 template<typename M1, typename... rest>
 struct Seq {
   static const char* match(const char* cursor) {
+    if (!cursor || !cursor[0]) return nullptr;
     cursor = M1::match(cursor);
     if (!cursor) return nullptr;
     return Seq<rest...>::match(cursor);
@@ -132,6 +207,7 @@ struct Some {
 template<typename M>
 struct Opt {
   static const char* match(const char* cursor) {
+    if (!cursor || !cursor[0]) return nullptr;
     if (auto end = M::match(cursor)) return end;
     return cursor;
   }
@@ -171,7 +247,7 @@ struct Not {
 template <char C1, char... rest>
 struct NotChar {
   static const char* match(const char* cursor) {
-    if (!cursor) return nullptr;
+    if (!cursor || !cursor[0]) return nullptr;
     if (cursor[0] == C1) return nullptr;
     return NotChar<rest...>::match(cursor);
   }
@@ -180,7 +256,7 @@ struct NotChar {
 template <char C1>
 struct NotChar<C1> {
   static const char* match(const char* cursor) {
-    if (!cursor) return nullptr;
+    if (!cursor || !cursor[0]) return nullptr;
     if (cursor[0] == C1) return nullptr;
     return cursor + 1;
   }
@@ -189,11 +265,14 @@ struct NotChar<C1> {
 //------------------------------------------------------------------------------
 // Ranges of characters, equivalent to [a-z] in regex.
 
-template<char A, char B>
+template<int A, int B>
 struct Range {
   static const char* match(const char* cursor) {
     if(!cursor) return nullptr;
-    if (cursor[0] >= A && cursor[0] <= B) return cursor + 1;
+    if ((unsigned char)cursor[0] >= A &&
+        (unsigned char)cursor[0] <= B) {
+      return cursor + 1;
+    }
     return nullptr;
   }
 };
@@ -245,6 +324,24 @@ struct Lit {
     return cursor + sizeof(lit.value);
   }
 };
+
+//------------------------------------------------------------------------------
+// Matches any non-NUL characters followed by the given pattern. The pattern is
+// not consumed.
+
+// Equivalent to Any<Seq<Not<M>,Char<>>>
+
+template<typename M>
+struct Until {
+  static const char* match(const char* cursor) {
+    while(cursor && *cursor) {
+      if (M::match(cursor)) return cursor;
+      cursor++;
+    }
+    return nullptr;
+  }
+};
+
 
 //------------------------------------------------------------------------------
 // Matches larger sets of chars, digraphs, and trigraphs packed into a string

@@ -1,6 +1,29 @@
+#include "examples.h"
 #include "Matcheroni.h"
 
 using namespace matcheroni;
+
+//------------------------------------------------------------------------------
+// Lines ending in a backslash and a newline get spliced together with the following line
+
+const char* match_splice(const char* text) {
+  return Lit<"\\\n">::match(text);
+}
+
+//------------------------------------------------------------------------------
+
+const char* match_utf8(const char* text) {
+  using ext       = Range<0x80, 0xBF>;
+  using onebyte   = Range<0x00, 0x7F>;
+  using twobyte   = Seq<Range<0xC0, 0xDF>, ext>;
+  using threebyte = Seq<Range<0xE0, 0xEF>, ext, ext>;
+  using fourbyte  = Seq<Range<0xF0, 0xF7>, ext, ext, ext>;
+
+  //using match = Oneof<onebyte, twobyte, threebyte, fourbyte>;
+  using match = Oneof<twobyte, threebyte, fourbyte>;
+
+  return match::match(text);
+}
 
 //------------------------------------------------------------------------------
 
@@ -25,12 +48,15 @@ const char* match_indentation(const char* text) {
 }
 
 //------------------------------------------------------------------------------
+// Multi-character character literals are allowed by spec? But
+// implementation-defined...
+
+const char* match_escape(const char* text);
 
 const char* match_char_literal(const char* text) {
   using tick = Char<'\''>;
   using escaped = Ref<match_escape>;
-  using unescaped = Char<>;
-  using match = Seq<tick, Oneof<escaped, unescaped>, tick>;
+  using match = Seq<tick, Some<Oneof<escaped, NotChar<'\''>>>, tick>;
   return match::match(text);
 }
 
@@ -48,10 +74,7 @@ const char* match_punct(const char* text) {
 // Single-line comments
 
 const char* match_oneline_comment(const char* text) {
-  using ldelim = Lit<"//">;
-  using rdelim = Oneof<Char<'\n'>, Char<0>>;
-  using item   = Seq<Not<rdelim>, Char<>>;
-  using match  = Seq<ldelim, Any<item>, And<rdelim>>;
+  using match  = Seq<Lit<"//">, Any<NotEOL>, And<EOL>>;
   return match::match(text);
 }
 
@@ -69,6 +92,7 @@ const char* match_multiline_comment(const char* text) {
 
 //------------------------------------------------------------------------------
 // Multi-line nested comments
+// FIXME this can be singly-recursive
 
 const char* match_nested_comment_body(const char* text);
 
@@ -100,34 +124,64 @@ const char* match_ws(const char* text) {
 //------------------------------------------------------------------------------
 
 const char* match_string(const char* text) {
-  using quote = Char<'"'>;
-  using item  = Oneof< Lit<"\\\"">, NotChar<'"'> >;
-  using match = Seq<quote, Any<item>, quote>;
+  using prefix  = Oneof<Lit<"u8">, Char<'u'>, Char<'U'>, Char<'L'>>;
+  using quote   = Char<'"'>;
+  using escaped = Seq<Char<'\\'>, Char<>>;
+  using item    = Oneof<escaped, NotChar<'"'>>;
+  using match   = Seq<Opt<prefix>, quote, Any<item>, quote>;
   return match::match(text);
 }
 
 //------------------------------------------------------------------------------
+
+const char* match_raw_end(const char* text, const char* delim_a, const char* delim_b) {
+  if (*text++ != ')') return nullptr;
+
+  for(auto c = delim_a; c < delim_b; c++) {
+    if (*text++ != *c) return nullptr;
+  }
+
+  if (*text++ != '"') return nullptr;
+
+  return text;
+}
 
 const char* match_raw_string(const char* text) {
-  using raw_a = Lit<"R\"(">;
-  using raw_b = Lit<")\"">;
-  using match = Seq<raw_a, Any<Seq<Not<raw_b>, Char<>>>, raw_b>;
-  return match::match(text);
+  using prefix = Oneof<Lit<"u8">, Char<'u'>, Char<'U'>, Char<'L'>>;
+  using raw_prefix = Seq<Opt<prefix>, Lit<"R\"">>;
+
+  text = raw_prefix::match(text);
+  if (!text) return nullptr;
+
+  auto delim_a = text;
+  auto delim_b = Until<Char<'('>>::match(delim_a);
+  if (!delim_b) return nullptr;
+
+  for(text = delim_b + 1; text[0]; text++) {
+    if (auto end = match_raw_end(text, delim_a, delim_b)) {
+      return end;
+    }
+  }
+  return nullptr;
 }
 
 //------------------------------------------------------------------------------
+  // GCC allows dollar signs in identifiers?
 
 const char* match_identifier(const char* text) {
-  using first = Oneof<Range<'a','z'>, Range<'A','Z'>, Char<'_'>>;
-  using rest  = Oneof<Range<'a','z'>, Range<'A','Z'>, Char<'_'>, Range<'0','9'>>;
-  using match = Seq<first, Any<rest>>;
+  using lower = Range<'a', 'z'>;
+  using upper = Range<'A', 'Z'>;
+  using digit = Range<'0', '9'>;
+  using item  = Oneof<lower, upper, digit, Char<'_'>, Char<'$'>>;
+  using match = Seq<Not<digit>, Some<item>>;
   return match::match(text);
 }
 
 //------------------------------------------------------------------------------
 // Matches C #include paths such as "foo/bar/file.txt" or <foo/bar/file.txt>
+// FIXME
 
-const char* match_include_path(const char* text) {
+const char* match_angle_path(const char* text) {
   // Quoted paths
   using quote     = Char<'"'>;
   using notquote  = NotChar<'"'>;
@@ -140,16 +194,19 @@ const char* match_include_path(const char* text) {
   using path2 = Seq<lbrack, Some<notbrack>, rbrack>;
 
   using match = Oneof<path1, path2>;
-  return match::match(text);
+  return path2::match(text);
+  //return match::match(text);
 }
 
 //------------------------------------------------------------------------------
-// Matches all C #<word> preprocessor identifiers. Must be followed by
-// whitespace.
+// Matches all lines starting with '#'
 
 const char* match_preproc(const char* text) {
-  using item  = Range<'a','z'>;
-  using match = Seq< Char<'#'>, Some<item>, And<Char<' ','\t'>> >;
+
+  // Raw strings in preprocs can make a preproc span multiple lines...?
+  using item = Oneof<Ref<match_raw_string>, NotEOL>;
+
+  using match = Seq<Char<'#'>, Any<item>, And<EOL>>;
   return match::match(text);
 }
 
@@ -226,7 +283,11 @@ const char* match_escape(const char* text) {
   using octal_digit   = Range<'0','7'>;
   using escaped_octal = Seq<Char<'\\'>, octal_digit, octal_digit, octal_digit>;
   using escaped_char  = Seq<Char<'\\'>, Chars<"0?abfnrvt\\\'">>;
-  using match = Oneof<escaped_octal, escaped_char>;
+
+  using hex_digit   = Oneof<Range<'0','9'>, Range<'a','f'>, Range<'A','F'>>;
+  using escaped_uni = Seq<Char<'\\'>, Char<'u'>, Rep<4, hex_digit>>;
+
+  using match = Oneof<escaped_uni, escaped_octal, escaped_char>;
   return match::match(text);
 }
 
@@ -286,6 +347,35 @@ std::optional<cspan> Parser::take_escape_seq() {
 
   return drop_span();
 }
+#endif
+
+/* multiline comment */
+
+float blah = 1.02345e10f;
+
+// spliced line
+float blee = 12345678 + \
+   912045;
+
+const char* raw_stuff = R"(This is a raw string)";
+
+char asdf = '\1';
+
+/*
+keywords:
+  auto  break  case  char  const  continue  default  do  double  else  enum
+  extern  float  for  goto  if  inline  int  long  register  restrict  return
+  short  signed  sizeof  static  struct  switch  typedef  union  unsigned  void
+  volatile  while  _Alignas  _Alignof  _Atomic  _Bool  _Complex  _Generic
+  _Imaginary  _Noreturn  _Static_assert  _Thread_local
+*/
+
+#if 0
+// This should be ifd out
+
+int blah() {
+}
+
 #endif
 
 //------------------------------------------------------------------------------
