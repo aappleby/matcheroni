@@ -9,24 +9,17 @@ using namespace matcheroni;
 
 //------------------------------------------------------------------------------
 // 6.4.2 Identifiers - GCC allows dollar signs in identifiers?
-// 6.4.2.1 General
 
-using digit = Range<'0', '9'>;
-using nondigit = Oneof<Range<'a', 'z'>, Range<'A', 'Z'>, Char<'_'>, Char<'$'>>;
+using digit      = Range<'0', '9'>;
+using nondigit   = Oneof<Range<'a', 'z'>, Range<'A', 'Z'>, Char<'_'>, Char<'$'>>;
 using identifier = Seq<nondigit, Any<Oneof<digit, nondigit>>>;
 
 const char* match_identifier(const char* text, void* ctx) {
-  using lower = Range<'a', 'z'>;
-  using upper = Range<'A', 'Z'>;
-  using item  = Oneof<lower, upper, digit, Char<'_'>, Char<'$'>>;
-  using match = Seq<Not<digit>, Some<item>>;
-  return match::match(text, ctx);
+  return identifier::match(text, ctx);
 }
 
-//------------------------------------------------------------------------------
+//------------------------------------------------------------------------------ 
 // Misc
-
-using nonzero_digit = Range<'1', '9'>;
 
 const char* match_byte_order_mark(const char* text, void* ctx) {
   using bom = Seq<Char<0xEF>, Char<0xBB>, Char<0xBF>>;
@@ -136,13 +129,30 @@ const char* match_keyword(const char* text, void* ctx) {
 //------------------------------------------------------------------------------
 // 6.4.4.1 Integer constants
 
-using nonzero_digit = Range<'1', '9'>;
-using octal_digit   = Range<'0', '7'>;
-using binary_digit  = Char<'0','1'>;
 
+using optional_tick = Opt<Char<'\''>>;
+
+using hexadecimal_prefix         = Oneof<Lit<"0x">, Lit<"0X">>;
 using hexadecimal_digit          = Oneof<digit, Range<'a', 'f'>, Range<'A', 'F'>>;
-using ticked_hexadecimal_digit   = Seq<Opt<Char<'\''>>, hexadecimal_digit>;
-using hexadecimal_digit_sequence = Seq<hexadecimal_digit, Any<ticked_hexadecimal_digit>>;
+using hexadecimal_ticked_digit   = Seq<optional_tick, hexadecimal_digit>;
+using hexadecimal_digit_sequence = Seq<hexadecimal_digit, Any<hexadecimal_ticked_digit>>;
+using hexadecimal_constant       = Seq<hexadecimal_prefix, hexadecimal_digit_sequence>;
+
+using binary_prefix         = Oneof<Lit<"0b">, Lit<"0B">>;
+using binary_digit          = Char<'0','1'>;
+using binary_ticked_digit   = Seq<optional_tick, binary_digit>;
+using binary_digit_sequence = Seq<binary_digit, Any<binary_ticked_digit>>;
+using binary_constant       = Seq<binary_prefix, binary_digit_sequence>;
+
+using octal_digit        = Range<'0', '7'>;
+using octal_ticked_digit = Seq<optional_tick, octal_digit>;
+using octal_constant     = Seq<Char<'0'>, Any<octal_ticked_digit>>;
+
+using nonzero_digit        = Range<'1', '9'>;
+using decimal_ticked_digit = Seq<optional_tick, digit>;
+using decimal_constant     = Seq<nonzero_digit, Any<decimal_ticked_digit>>;
+
+
 
 /*
 integer-constant:
@@ -151,14 +161,6 @@ integer-constant:
   hexadecimal-constant integer-suffixopt
   binary-constant integer-suffixopt
 
-decimal-constant:
-  nonzero-digit
-  decimal-constant ’opt digit
-
-octal-constant:
-  0
-  octal-constant ’opt octal-digit
-
 hexadecimal-constant:
   hexadecimal-prefix hexadecimal-digit-sequence
 
@@ -166,8 +168,6 @@ binary-constant:
   binary-prefix binary-digit
   binary-constant Opt<Char<'\'’> binary-digit
 
-using hexadecimal_prefix = Oneof<Lit<"0x">, Lit<"0X>>;
-using binary_prefix = Oneof<Lit<"0b">, Lit<"0B">>;
 
 
 integer-suffix:
@@ -240,9 +240,8 @@ const char* match_int(const char* text, void* ctx) {
 
 //------------------------------------------------------------------------------
 // 6.4.3 Universal character names
-// FIXME check grammar
 
-using hex_quad      = Rep<4, hexadecimal_digit>;
+using hex_quad = Rep<4, hexadecimal_digit>;
 
 using universal_character_name = Oneof<
   Seq< Lit<"\\u">, hex_quad >,
@@ -281,8 +280,6 @@ using decimal_floating_constant = Oneof<
   Seq< digit_sequence, exponent_part, Opt<floating_suffix> >
 >;
 
-using hexadecimal_prefix = Oneof<Lit<"0x">, Lit<"0X">>;
-
 using hexadecimal_floating_constant = Seq<
   hexadecimal_prefix,
   Oneof<hexadecimal_fractional_constant, hexadecimal_digit_sequence>,
@@ -296,18 +293,7 @@ using floating_constant = Oneof<
 >;
 
 const char* match_float(const char* text, void* ctx) {
-  using digit  = Range<'0','9'>;
-  using point  = Char<'.'>;
-  using sign   = Char<'+','-'>;
-  using exp    = Seq<Char<'e','E'>, Opt<sign>, Some<digit>>;
-  using suffix = Char<'f','l','F','L'>;
-
-  using with_dot = Seq<Any<digit>, point, Some<digit>, Opt<exp>, Opt<suffix>>;
-  using no_dot   = Seq<Some<digit>, exp, Opt<suffix>>;
-
-  using match = Oneof<with_dot, no_dot>;
-
-  return match::match(text, ctx);
+  return floating_constant::match(text, ctx);
 }
 
 //------------------------------------------------------------------------------
