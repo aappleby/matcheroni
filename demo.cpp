@@ -7,6 +7,7 @@
 #include <vector>
 #include <memory.h>
 #include <chrono>
+#include <set>
 
 using namespace matcheroni;
 
@@ -44,140 +45,111 @@ struct MatchTableEntry {
   uint32_t color = 0;
   const char* matcher_name = nullptr;
   int match_count = 0;
+  int fail_count = 0;
 };
 
-const char* match_ifd_out(const char* text) {
+const char* match_ifd_out(const char* text, void* ctx) {
   using prefix = Lit<"#if 0">;
   using suffix = Lit<"#endif">;
   using match = Seq<prefix, Any<Seq<Not<suffix>, Char<>>>, suffix>;
 
-  return match::match(text);
+  return match::match(text, ctx);
 }
 
-const char* match_bom(const char* text) {
-  if (!text) return nullptr;
-
-  if (uint8_t(text[0]) == 0xFE &&
-      uint8_t(text[1]) == 0xFF) {
-    return text + 2;
-  }
-
-  if (uint8_t(text[0]) == 0xEF &&
-      uint8_t(text[1]) == 0xBB &&
-      uint8_t(text[2]) == 0xBF) {
-    return text + 3;
-  }
-
-  return nullptr;
-}
-
-const char* match_formfeed(const char* text) {
+const char* match_formfeed(const char* text, void* ctx) {
   if(uint8_t(text[0]) == 0x0C) return text + 1;
   return nullptr;
 }
 
+const char* match_cr(const char* text, void* ctx) {
+  return Char<'\r'>::match(text, ctx);
+}
+
+/*
+Conflict between multiline_comment, punct - multiline_comment wins
+Conflict between preproc, punct           - preproc wins
+Conflict between int, punct               - int wins
+Conflict between oneline_comment, punct   - comment wins
+Conflict between identifier, string       - string wins
+Conflict between float, int               - float wins
+Conflict between float, punct             - float wins
+Conflict between byte order mark, utf8    - bom wins
+Conflict between raw_string, identifier   - raw string wins
+*/
+
 MatchTableEntry matcher_table[] = {
-  { match_bom,               0xFF00FF, "byte order mark" },
-  { match_formfeed,          0xFF00FF, "formfeed" },
-  { match_ifd_out,           0x202020, "#if 0" },
-  { match_splice,            0x00CCFF, "splice" },
-  { match_preproc,           0xCC88CC, "preproc" },
-  { match_raw_string,        0x88AAAA, "raw_string" },
-  { match_float,             0xFF88AA, "float" },
   { match_space,             0x804040, "space" },
   { match_newline,           0x404080, "newline" },
-  //{ match_include_path,      0x88AACC, "include_path" },
-  { match_string,            0x4488AA, "string" },
-  { match_char_literal,      0x44DDDD, "char_literal" },
-  { match_oneline_comment,   0x008800, "oneline_comment" },
-  { match_multiline_comment, 0x66AA66, "multiline_comment" },
+  { match_string,            0x4488AA, "string" },            // must be before identifier
+  { match_raw_string,        0x88AAAA, "raw_string" },        // must be before identifier, should be 270 on gcc/gcc
+
   { match_identifier,        0xCCCC40, "identifier" },
-  { match_int,               0xFF8888, "int" },
+  { match_multiline_comment, 0x66AA66, "multiline_comment" }, // must be before punct
+  { match_oneline_comment,   0x008800, "oneline_comment" },   // must be before punct
+  { match_preproc,           0xCC88CC, "preproc" },           // must be before punct
+  { match_float,             0xFF88AA, "float" },             // must be before int
+  { match_int,               0xFF8888, "int" },               // must be before punct
   { match_punct,             0x808080, "punct" },
-  { match_utf8,              0x000000, "utf8" },
+  { match_char_literal,      0x44DDDD, "char_literal" },
+  { match_splice,            0x00CCFF, "splice" },
+
+  { match_formfeed,          0xFF00FF, "formfeed" },
+  { match_bom,               0xFF00FF, "byte order mark" },   // must be before utf8
+  { match_utf8,              0x000000, "utf8" },              // what is even hitting this?
+  { match_cr,                0x000000, "cr" },                // only in mac-eol-at-eof.c
 };
+
+// This erroneously matches stuff if it's at top level
+//{ match_angle_path,        0x88AACC, "angle_path" },
 
 //------------------------------------------------------------------------------
 
 std::vector<std::string> bad_files;
 std::vector<std::string> skipped_files;
 
-void test_scan(const std::string path, size_t size, bool echo) {
+std::set<std::pair<int, int>> conflicts;
+double lex_time = 0;
 
-  std::string text;
-  text.resize(size + 1);
-  memset(text.data(), 0, size + 1);
-  FILE* f = fopen(path.c_str(), "rb");
-  if (!f) {
-    printf("Could not open %s!\n", path.c_str());
-  }
-  auto r = fread(text.data(), 1, size, f);
-  text[size] = 0;
-  fclose(f);
+//------------------------------------------------------------------------------
 
-  // We're not gonna support UCNs in IDs quite yet
-  if (path.find("/ucnid") != std::string::npos) {
-    skipped_files.push_back(path);
-    return;
-  }
-
-  // Same thing
-  if (path.find("/named-universal-char-escape") != std::string::npos) {
-    skipped_files.push_back(path);
-    return;
-  }
-
-  if (path.find("/delimited-escape") != std::string::npos) {
-    skipped_files.push_back(path);
-    return;
-  }
-
-  // We're not gonna support bidirectional characters quite yet
-  if (path.find("/Wbidi") != std::string::npos) {
-    skipped_files.push_back(path);
-    return;
-  }
-
-  std::vector<std::string> invalid_files = {
-    "warn-normalized-1.c",  // Not lexable without preproc
-    "warn-normalized-2.c",  // Not lexable without preproc
-    "normalize-1.c",        // Not lexable without preproc
-    "normalize-2.c",        // Not lexable without preproc
-    "normalize-3.c",        // Not lexable without preproc
-    "normalize-4.c",        // Not lexable without preproc
-    "trigraphs.c",    // We're missing some trigraph support?
-    "warning-zero-in-literals-1.c", // Nulls inside literals
-    "raw-string-12.c", // Nulls inside raw strings
-  };
-
-  for (const auto& f : invalid_files) {
-    if (path.find(f) != std::string::npos) {
-      skipped_files.push_back(path);
-      return;
-    }
-  }
-
-  ///home/aappleby/projects/gcc/gcc/testsuite/gcc.dg/cpp/ucnid-10.c
-
-  if (text.find("dg-error") != std::string::npos ||
-      text.find("dg-bogus") != std::string::npos ||
-      text.find("@") != std::string::npos) // gcc has some "stringizing literals with @ in them" test cases
-      {
-    //printf("Skipping %s as it is intended to cause an error\n", path.c_str());
-    skipped_files.push_back(path);
-    return;
-  }
-
+bool test_lex(const std::string& path, const std::string& text, bool echo) {
   const char* cursor = text.data();
-  const char* text_end = cursor + size;
+  const char* text_end = cursor + text.size() - 1;
 
   const int matcher_count = sizeof(matcher_table) / sizeof(matcher_table[0]);
 
+  bool lex_ok = true;
+  auto time_a = timestamp_ms();
   while(*cursor) {
     bool matched = false;
+
+#if 0
+   const char* ends[matcher_count];
     for (int i = 0; i < matcher_count; i++) {
       auto& t = matcher_table[i];
-      if (auto end = t.matcher_cb(cursor)) {
+      ends[i] = t.matcher_cb(cursor, nullptr);
+    }
+
+    int hit = -1;
+    for (int i = 0; i < matcher_count; i++) {
+      if (ends[i]) {
+        if (hit == -1) {
+          hit = i;
+        }
+        else {
+          if (!conflicts.contains(std::pair<int, int>(hit, i))) {
+            printf("Conflict between %s, %s\n", matcher_table[hit].matcher_name, matcher_table[i].matcher_name);
+            conflicts.insert(std::pair<int, int>(hit, i));
+          }
+          hit = i;
+        }
+      }
+    }
+#endif
+
+    for (int i = 0; i < matcher_count; i++) {
+      auto& t = matcher_table[i];
+      if (auto end = t.matcher_cb(cursor, nullptr)) {
 
         if (echo) {
           set_color(t.color);
@@ -216,9 +188,13 @@ void test_scan(const std::string path, size_t size, bool echo) {
         cursor = end;
         break;
       }
+      else {
+        t.fail_count++;
+      }
     }
 
     if (!matched) {
+      lex_ok = false;
       printf("\n");
       printf("File %s:\n", path.c_str());
       //printf("Could not match {%.40s}\n", cursor);
@@ -239,9 +215,83 @@ void test_scan(const std::string path, size_t size, bool echo) {
       }
       printf("\n");
       bad_files.push_back(path);
-      return;
+      break;
     }
   }
+  auto time_b = timestamp_ms();
+  if (lex_ok) lex_time += time_b - time_a;
+  return lex_ok;
+}
+
+//------------------------------------------------------------------------------
+
+bool test_lex(const std::string path, size_t size, bool echo) {
+
+  std::string text;
+  text.resize(size + 1);
+  memset(text.data(), 0, size + 1);
+  FILE* f = fopen(path.c_str(), "rb");
+  if (!f) {
+    printf("Could not open %s!\n", path.c_str());
+  }
+  auto r = fread(text.data(), 1, size, f);
+  text[size] = 0;
+  fclose(f);
+
+  // We're not gonna support UCNs in IDs quite yet
+  if (path.find("/ucnid") != std::string::npos) {
+    skipped_files.push_back(path);
+    return false;
+  }
+
+  // Same thing
+  if (path.find("/named-universal-char-escape") != std::string::npos) {
+    skipped_files.push_back(path);
+    return false;
+  }
+
+  if (path.find("/delimited-escape") != std::string::npos) {
+    skipped_files.push_back(path);
+    return false;
+  }
+
+  // We're not gonna support bidirectional characters quite yet
+  if (path.find("/Wbidi") != std::string::npos) {
+    skipped_files.push_back(path);
+    return false;
+  }
+
+  std::vector<std::string> invalid_files = {
+    "warn-normalized-1.c",          // Not lexable without preproc
+    "warn-normalized-2.c",          // Not lexable without preproc
+    "normalize-1.c",                // Not lexable without preproc
+    "normalize-2.c",                // Not lexable without preproc
+    "normalize-3.c",                // Not lexable without preproc
+    "normalize-4.c",                // Not lexable without preproc
+    //"trigraphs.c",                  // We're missing some trigraph support?
+    "warning-zero-in-literals-1.c", // Nulls inside literals
+    "raw-string-12.c",              // Nulls inside raw strings
+  };
+
+  for (const auto& f : invalid_files) {
+    if (path.find(f) != std::string::npos) {
+      skipped_files.push_back(path);
+      return false;
+    }
+  }
+
+#if 1
+  if (text.find("dg-error") != std::string::npos ||
+      text.find("dg-bogus") != std::string::npos ||
+      text.find("@") != std::string::npos) // gcc has some "stringizing literals with @ in them" test cases
+      {
+    //printf("Skipping %s as it is intended to cause an error\n", path.c_str());
+    skipped_files.push_back(path);
+    return false;
+  }
+#endif
+
+  return test_lex(path, text, echo);
 }
 
 //------------------------------------------------------------------------------
@@ -257,7 +307,6 @@ abc
 
 int main(int argc, char** argv) {
   printf("Matcheroni Demo\n");
-  printf("\n");
 
   /*
   {
@@ -280,7 +329,7 @@ int main(int argc, char** argv) {
 
   bool echo = false;
 
-  printf("Lexing source files\n");
+  printf("Lexing source files in %s\n", base_path);
   auto time_a = timestamp_ms();
   for (const auto& f : rdit(base_path)) {
     if (f.is_regular_file()) {
@@ -299,15 +348,18 @@ int main(int argc, char** argv) {
         //printf("path %s\n", path.c_str());
         //printf(".");
         source_files++;
-        test_scan(path, size, echo);
+        test_lex(path, size, echo);
         total_bytes += size;
         set_color(0);
       }
     }
   }
   auto time_b = timestamp_ms();
+  auto total_time = time_b - time_a;
+
   printf("\n");
-  printf("Lexing took %f msec\n", time_b - time_a);
+  printf("Total time %f msec\n", total_time);
+  printf("Lex time   %f msec\n", lex_time);
   printf("Total files %d\n", total_files);
   printf("Total source files %d\n", source_files);
   printf("Total bytes %d\n", total_bytes);
@@ -317,7 +369,11 @@ int main(int argc, char** argv) {
 
   const int matcher_count = sizeof(matcher_table) / sizeof(matcher_table[0]);
   for (int i = 0; i < matcher_count; i++) {
-    printf("%-20s %d\n", matcher_table[i].matcher_name, matcher_table[i].match_count);
+    printf("%-20s match %8d fail %8d\n",
+      matcher_table[i].matcher_name,
+      matcher_table[i].match_count,
+      matcher_table[i].fail_count
+    );
   }
 
   /*

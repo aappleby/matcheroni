@@ -1,8 +1,8 @@
 set -x
 mkdir -p bin
 
-MODE="-g -O0"
-#MODE="-O3"
+#MODE="-g -O0"
+MODE="-O3 -flto"
 
 echo "Building examples"
 g++ $MODE -std=c++20 -c examples.cpp -o bin/examples.o

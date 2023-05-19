@@ -9,7 +9,7 @@ namespace matcheroni {
 // found, or nullptr if a match was not found.
 // Matchers must also handle null pointers and empty strings.
 
-typedef const char*(*matcher)(const char*);
+typedef const char*(*matcher)(const char*, void* ctx);
 
 //------------------------------------------------------------------------------
 // The most fundamental unit of matching is a single character. For convenience,
@@ -27,19 +27,19 @@ struct Char;
 
 template <char C1, char... rest>
 struct Char<C1, rest...> {
-  static const char* match(const char* cursor) {
+  static const char* match(const char* cursor, void* ctx) {
     // We should never explicitly match the null terminator, as we can't
     // advance past it.
     static_assert(C1 != 0);
     if (!cursor || !cursor[0]) return nullptr;
     if (cursor && cursor[0] == C1) return cursor + 1;
-    return Char<rest...>::match(cursor);
+    return Char<rest...>::match(cursor, ctx);
   }
 };
 
 template <char C1>
 struct Char<C1> {
-  static const char* match(const char* cursor) {
+  static const char* match(const char* cursor, void* ctx) {
     // We should never explicitly match the null terminator, as we can't
     // advance past it.
     static_assert(C1 != 0);
@@ -51,7 +51,7 @@ struct Char<C1> {
 
 template <>
 struct Char<> {
-  static const char* match(const char* cursor) {
+  static const char* match(const char* cursor, void* ctx) {
     if (!cursor || !cursor[0]) return nullptr;
     if (!cursor) return nullptr;
     if (!cursor[0]) return nullptr;
@@ -62,7 +62,7 @@ struct Char<> {
 //------------------------------------------------------------------------------
 
 struct NUL {
-  static const char* match(const char* cursor) {
+  static const char* match(const char* cursor, void* ctx) {
     if (!cursor) return nullptr;
     return cursor[0] == 0 ? cursor : nullptr;
   }
@@ -72,7 +72,7 @@ struct NUL {
 // Matches LF and NUL, but does not advance past it.
 
 struct EOL {
-  static const char* match(const char* cursor) {
+  static const char* match(const char* cursor, void* ctx) {
     if (!cursor) return nullptr;
     if (cursor[0] == 0) return cursor;
     if (cursor[0] == '\n') return cursor;
@@ -98,7 +98,7 @@ struct CONT {
 // Consumes any character that is not LF or NUL
 
 struct NotEOL {
-  static const char* match(const char* cursor) {
+  static const char* match(const char* cursor, void* ctx) {
     if (!cursor) return nullptr;
 
     // A CONT is _not_ EOL
@@ -126,18 +126,18 @@ struct NotEOL {
 
 template<typename M1, typename... rest>
 struct Seq {
-  static const char* match(const char* cursor) {
+  static const char* match(const char* cursor, void* ctx) {
     if (!cursor || !cursor[0]) return nullptr;
-    cursor = M1::match(cursor);
+    cursor = M1::match(cursor, ctx);
     if (!cursor) return nullptr;
-    return Seq<rest...>::match(cursor);
+    return Seq<rest...>::match(cursor, ctx);
   }
 };
 
 template<typename M1>
 struct Seq<M1> {
-  static const char* match(const char* cursor) {
-    return M1::match(cursor);
+  static const char* match(const char* cursor, void* ctx) {
+    return M1::match(cursor, ctx);
   }
 };
 
@@ -151,16 +151,16 @@ struct Seq<M1> {
 
 template <typename M1, typename... rest>
 struct Oneof {
-  static const char* match(const char* cursor) {
-    if (auto end = M1::match(cursor)) return end;
-    return Oneof<rest...>::match(cursor);
+  static const char* match(const char* cursor, void* ctx) {
+    if (auto end = M1::match(cursor, ctx)) return end;
+    return Oneof<rest...>::match(cursor, ctx);
   }
 };
 
 template <typename M1>
 struct Oneof<M1> {
-  static const char* match(const char* cursor) {
-    return M1::match(cursor);
+  static const char* match(const char* cursor, void* ctx) {
+    return M1::match(cursor, ctx);
   }
 };
 
@@ -173,9 +173,9 @@ struct Oneof<M1> {
 
 template<typename M>
 struct Any {
-  static const char* match(const char* cursor) {
+  static const char* match(const char* cursor, void* ctx) {
     while(1) {
-      auto end = M::match(cursor);
+      auto end = M::match(cursor, ctx);
       if (!end) break;
       cursor = end;
     }
@@ -192,9 +192,9 @@ struct Any {
 
 template<typename M>
 struct Some {
-  static const char* match(const char* cursor) {
-    cursor = M::match(cursor);
-    return cursor ? Any<M>::match(cursor) : nullptr;
+  static const char* match(const char* cursor, void* ctx) {
+    cursor = M::match(cursor, ctx);
+    return cursor ? Any<M>::match(cursor, ctx) : nullptr;
   }
 };
 
@@ -206,9 +206,9 @@ struct Some {
 
 template<typename M>
 struct Opt {
-  static const char* match(const char* cursor) {
+  static const char* match(const char* cursor, void* ctx) {
     if (!cursor || !cursor[0]) return nullptr;
-    if (auto end = M::match(cursor)) return end;
+    if (auto end = M::match(cursor, ctx)) return end;
     return cursor;
   }
 };
@@ -222,8 +222,8 @@ struct Opt {
 
 template<typename M>
 struct And {
-  static const char* match(const char* cursor) {
-    return M::match(cursor) ? cursor : nullptr;
+  static const char* match(const char* cursor, void* ctx) {
+    return M::match(cursor, ctx) ? cursor : nullptr;
   }
 };
 
@@ -235,8 +235,8 @@ struct And {
 
 template<typename M>
 struct Not {
-  static const char* match(const char* cursor) {
-    return M::match(cursor) ? nullptr : cursor;
+  static const char* match(const char* cursor, void* ctx) {
+    return M::match(cursor, ctx) ? nullptr : cursor;
   }
 };
 
@@ -246,16 +246,16 @@ struct Not {
 
 template <char C1, char... rest>
 struct NotChar {
-  static const char* match(const char* cursor) {
+  static const char* match(const char* cursor, void* ctx) {
     if (!cursor || !cursor[0]) return nullptr;
     if (cursor[0] == C1) return nullptr;
-    return NotChar<rest...>::match(cursor);
+    return NotChar<rest...>::match(cursor, ctx);
   }
 };
 
 template <char C1>
 struct NotChar<C1> {
-  static const char* match(const char* cursor) {
+  static const char* match(const char* cursor, void* ctx) {
     if (!cursor || !cursor[0]) return nullptr;
     if (cursor[0] == C1) return nullptr;
     return cursor + 1;
@@ -267,7 +267,7 @@ struct NotChar<C1> {
 
 template<int A, int B>
 struct Range {
-  static const char* match(const char* cursor) {
+  static const char* match(const char* cursor, void* ctx) {
     if(!cursor) return nullptr;
     if ((unsigned char)cursor[0] >= A &&
         (unsigned char)cursor[0] <= B) {
@@ -282,9 +282,9 @@ struct Range {
 
 template<int N, typename M>
 struct Rep {
-  static const char* match(const char* cursor) {
+  static const char* match(const char* cursor, void* ctx) {
     for(auto i = 0; i < N; i++) {
-      cursor = M::match(cursor);
+      cursor = M::match(cursor, ctx);
       if (!cursor) return nullptr;
     }
     return cursor;
@@ -314,7 +314,7 @@ struct StringParam {
 
 template<StringParam lit>
 struct Lit {
-  static const char* match(const char* cursor) {
+  static const char* match(const char* cursor, void* ctx) {
     if(!cursor) return nullptr;
     if(!cursor[0]) return nullptr;
     for (auto i = 0; i < sizeof(lit.value); i++) {
@@ -333,9 +333,9 @@ struct Lit {
 
 template<typename M>
 struct Until {
-  static const char* match(const char* cursor) {
+  static const char* match(const char* cursor, void* ctx) {
     while(cursor && *cursor) {
-      if (M::match(cursor)) return cursor;
+      if (M::match(cursor, ctx)) return cursor;
       cursor++;
     }
     return nullptr;
@@ -353,7 +353,7 @@ struct Until {
 
 template<StringParam chars>
 struct Chars {
-  static const char* match(const char* cursor) {
+  static const char* match(const char* cursor, void* ctx) {
     if(!cursor) return nullptr;
     for (auto i = 0; i < sizeof(chars.value); i++) {
       if (cursor[0] == chars.value[i]) {
@@ -366,7 +366,7 @@ struct Chars {
 
 template<StringParam chars>
 struct Digraphs {
-  static const char* match(const char* cursor) {
+  static const char* match(const char* cursor, void* ctx) {
     if(!cursor) return nullptr;
     for (auto i = 0; i < sizeof(chars.value); i += 2) {
       if (cursor[0] == chars.value[i+0] &&
@@ -380,7 +380,7 @@ struct Digraphs {
 
 template<StringParam chars>
 struct Trigraphs {
-  static const char* match(const char* cursor) {
+  static const char* match(const char* cursor, void* ctx) {
     if(!cursor) return nullptr;
     for (auto i = 0; i < sizeof(chars.value); i += 3) {
       if (cursor[0] == chars.value[i+0] &&
@@ -398,8 +398,8 @@ struct Trigraphs {
 
 template<auto& F>
 struct Ref {
-  static const char* match(const char* cursor) {
-    return F(cursor);
+  static const char* match(const char* cursor, void* ctx) {
+    return F(cursor, ctx);
   }
 };
 
