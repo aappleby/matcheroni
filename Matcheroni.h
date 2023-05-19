@@ -22,29 +22,29 @@ typedef const char*(*matcher)(const char*, void* ctx);
 // Char<>::match("z123") == "123"
 // Char<>::match("") == nullptr
 
-template <char... rest>
+template <int... rest>
 struct Char;
 
-template <char C1, char... rest>
+template <int C1, int... rest>
 struct Char<C1, rest...> {
   static const char* match(const char* cursor, void* ctx) {
     // We should never explicitly match the null terminator, as we can't
     // advance past it.
     static_assert(C1 != 0);
     if (!cursor || !cursor[0]) return nullptr;
-    if (cursor && cursor[0] == C1) return cursor + 1;
+    if (cursor && cursor[0] == char(C1)) return cursor + 1;
     return Char<rest...>::match(cursor, ctx);
   }
 };
 
-template <char C1>
+template <int C1>
 struct Char<C1> {
   static const char* match(const char* cursor, void* ctx) {
     // We should never explicitly match the null terminator, as we can't
     // advance past it.
     static_assert(C1 != 0);
     if (!cursor || !cursor[0]) return nullptr;
-    if (cursor && cursor[0] == C1) return cursor + 1;
+    if (cursor && cursor[0] == char(C1)) return cursor + 1;
     return nullptr;
   }
 };
@@ -97,26 +97,23 @@ struct CONT {
 //------------------------------------------------------------------------------
 // Consumes any character that is not LF or NUL
 
+/*
 struct NotEOL {
   static const char* match(const char* cursor, void* ctx) {
     if (!cursor) return nullptr;
-
     // A CONT is _not_ EOL
-
     if ((cursor[0] == '\\') && (cursor[1] == '\r') && (cursor[2] == '\n')) {
       return cursor + 3;
     }
-
-
     if ((cursor[0] == '\\') && (cursor[1] == '\n')) {
       return cursor + 2;
     }
-
     if (cursor[0] == 0) return nullptr;
     if (cursor[0] == '\n') return nullptr;
     return cursor + 1;
   }
 };
+*/
 
 //------------------------------------------------------------------------------
 // The 'Seq' matcher succeeds if all of its sub-matchers succeed in order.
@@ -352,7 +349,7 @@ struct Until {
 // Trigraphs<"abc123xyz">::match("123456") == "456"
 
 template<StringParam chars>
-struct Chars {
+struct Charset {
   static const char* match(const char* cursor, void* ctx) {
     if(!cursor) return nullptr;
     for (auto i = 0; i < sizeof(chars.value); i++) {
