@@ -12,6 +12,7 @@
       "program": "${workspaceFolder}/bin/matcheroni_demo",
       "cwd": "${workspaceFolder}",
       "args" : ["~/projects/gcc/gcc"],
+      //"args" : ["testcases"],
       "setupCommands": [
         {
           // Display content in STL containers pretty

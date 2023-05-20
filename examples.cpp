@@ -5,20 +5,9 @@
 
 using namespace matcheroni;
 
-// FIXME bit-precise suffixes
+extern const char* current_filename;
 
 //------------------------------------------------------------------------------
-// 6.4.2 Identifiers - GCC allows dollar signs in identifiers?
-
-using digit      = Range<'0', '9'>;
-using nondigit   = Oneof<Range<'a', 'z'>, Range<'A', 'Z'>, Char<'_'>, Char<'$'>>;
-using identifier = Seq<nondigit, Any<Oneof<digit, nondigit>>>;
-
-const char* match_identifier(const char* text, void* ctx) {
-  return identifier::match(text, ctx);
-}
-
-//------------------------------------------------------------------------------ 
 // Misc
 
 const char* match_byte_order_mark(const char* text, void* ctx) {
@@ -34,7 +23,22 @@ const char* match_utf8(const char* text, void* ctx) {
   using fourbyte  = Seq<Range<0xF0, 0xF7>, ext, ext, ext>;
 
   using match = Oneof<onebyte, twobyte, threebyte, fourbyte>;
-  return match::match(text, ctx);
+  auto end = match::match(text, ctx);
+
+#if 1
+  if (end) {
+    printf("\n");
+    printf("%s\n", current_filename);
+    printf("{##########################{%.20s}##########################}\n", text);
+    for (auto c = text; c < end; c++) {
+      printf("{%c} 0x%02x ", *c, (unsigned char)(*c));
+    }
+    putc('\n', stdout);
+    printf("\n");
+  }
+#endif
+
+  return end;
 }
 
 const char* match_space(const char* text, void* ctx) {
@@ -51,11 +55,6 @@ const char* match_newline(const char* text, void* ctx) {
 const char* match_indentation(const char* text, void* ctx) {
   using match = Seq<Char<'\n'>, Any<Char<' ', '\t'>>>;
   return match::match(text, ctx);
-}
-
-const char* match_ws(const char* text, void* ctx) {
-  using ws = Char<' ','\t','\r','\n'>;
-  return ws::match(text, ctx);
 }
 
 //------------------------------------------------------------------------------
@@ -129,8 +128,12 @@ const char* match_keyword(const char* text, void* ctx) {
 //------------------------------------------------------------------------------
 // 6.4.4.1 Integer constants
 
-
 using optional_tick = Opt<Char<'\''>>;
+
+using digit                = Range<'0', '9'>;
+using nonzero_digit        = Range<'1', '9'>;
+using decimal_ticked_digit = Seq<optional_tick, digit>;
+using decimal_constant     = Seq<nonzero_digit, Any<decimal_ticked_digit>>;
 
 using hexadecimal_prefix         = Oneof<Lit<"0x">, Lit<"0X">>;
 using hexadecimal_digit          = Oneof<digit, Range<'a', 'f'>, Range<'A', 'F'>>;
@@ -148,94 +151,30 @@ using octal_digit        = Range<'0', '7'>;
 using octal_ticked_digit = Seq<optional_tick, octal_digit>;
 using octal_constant     = Seq<Char<'0'>, Any<octal_ticked_digit>>;
 
-using nonzero_digit        = Range<'1', '9'>;
-using decimal_ticked_digit = Seq<optional_tick, digit>;
-using decimal_constant     = Seq<nonzero_digit, Any<decimal_ticked_digit>>;
+using unsigned_suffix        = Char<'u', 'U'>;
+using long_suffix            = Char<'l', 'L'>;
+using long_long_suffix       = Oneof<Lit<"ll">, Lit<"LL">>;
+using bit_precise_int_suffix = Oneof<Lit<"wb">, Lit<"WB">>;
 
+using integer_suffix = Oneof<
+  Seq<unsigned_suffix, Opt<long_suffix>>,
+  Seq<unsigned_suffix, long_long_suffix>,
+  Seq<unsigned_suffix, bit_precise_int_suffix>,
+  Seq<long_suffix, Opt<unsigned_suffix>>,
+  Seq<long_long_suffix, Opt<unsigned_suffix>>,
+  Seq<bit_precise_int_suffix, Opt<unsigned_suffix>>
+>;
 
-
-/*
-integer-constant:
-  decimal-constant integer-suffixopt
-  octal-constant integer-suffixopt
-  hexadecimal-constant integer-suffixopt
-  binary-constant integer-suffixopt
-
-hexadecimal-constant:
-  hexadecimal-prefix hexadecimal-digit-sequence
-
-binary-constant:
-  binary-prefix binary-digit
-  binary-constant Opt<Char<'\'’> binary-digit
-
-
-
-integer-suffix:
-  unsigned-suffix Opt<long-suffix>
-  unsigned-suffix long-long-suffix
-  unsigned-suffix bit-precise-int-suffix
-  long-suffix Opt<unsigned-suffix>
-  long-long-suffix Opt<unsigned-suffix>
-  bit-precise-int-suffix Opt<unsigned-suffix>
-
-bit-precise-int-suffix: one of
-  wb WB
-
-unsigned-suffix: one of
-  u U
-
-long-suffix: one of
-  l L
-
-long-long-suffix: one of
-  ll LL
-*/
-
-// FIXME check grammar
-
+// Octal has to be _after_ bin/hex so we don't prematurely match the prefix
+using integer_constant = Oneof<
+  Seq<decimal_constant,     Opt<integer_suffix>>,
+  Seq<hexadecimal_constant, Opt<integer_suffix>>,
+  Seq<binary_constant,      Opt<integer_suffix>>,
+  Seq<octal_constant,       Opt<integer_suffix>>
+>;
 
 const char* match_int(const char* text, void* ctx) {
-  using tick       = Char<'\''>;
-
-  using bin_prefix = Oneof<Lit<"0b">, Lit<"0B">>;
-  using oct_prefix = Char<'0'>;
-  using dec_prefix = Range<'1','9'>;
-  using hex_prefix = Oneof<Lit<"0x">, Lit<"0X">>;
-
-  using bin_digit  = Range<'0','1'>;
-  using oct_digit  = Range<'0','7'>;
-  using dec_digit  = Range<'0','9'>;
-  using hex_digit  = Oneof<Range<'0','9'>, Range<'a','f'>, Range<'A','F'>>;
-
-  // All digits after the first one can be prefixed by an optional '.
-  using bin_digit2 = Seq<Opt<tick>, bin_digit>;
-  using oct_digit2 = Seq<Opt<tick>, oct_digit>;
-  using dec_digit2 = Seq<Opt<tick>, dec_digit>;
-  using hex_digit2 = Seq<Opt<tick>, hex_digit>;
-
-  using match_bin  = Seq<bin_prefix, bin_digit, Any<bin_digit2>>;
-  using match_oct  = Seq<oct_prefix, oct_digit, Any<oct_digit2>>;
-  using match_dec  = Seq<dec_prefix,            Any<dec_digit2>>;
-  using match_hex  = Seq<hex_prefix, hex_digit, Any<hex_digit2>>;
-
-  using suffix     = Oneof< Lit<"ul">, Lit<"lu">, Lit<"u">, Lit<"l"> >;
-
-  // Octal has to be _after_ bin/hex so we don't prematurely match the prefix
-  // Bare 0 has to be last for similar reasons.
-
-  using match = Seq<
-    Opt<Char<'-'>>,
-    Oneof<
-      match_bin,
-      match_hex,
-      match_oct,
-      match_dec,
-      Char<'0'>
-    >,
-    Opt<suffix>
-  >;
-
-  return match::match(text, ctx);
+  return integer_constant::match(text, ctx);
 }
 
 //------------------------------------------------------------------------------
@@ -247,6 +186,16 @@ using universal_character_name = Oneof<
   Seq< Lit<"\\u">, hex_quad >,
   Seq< Lit<"\\U">, hex_quad, hex_quad >
 >;
+
+//------------------------------------------------------------------------------
+// 6.4.2 Identifiers - GCC allows dollar signs in identifiers?
+
+using nondigit   = Oneof<Range<'a', 'z'>, Range<'A', 'Z'>, Char<'_'>, Char<'$'>, universal_character_name>;
+using identifier = Seq<nondigit, Any<Oneof<digit, nondigit>>>;
+
+const char* match_identifier(const char* text, void* ctx) {
+  return identifier::match(text, ctx);
+}
 
 //------------------------------------------------------------------------------
 // 6.4.4.2 Floating constants
@@ -304,44 +253,15 @@ using enumeration_constant = identifier;
 //------------------------------------------------------------------------------
 // 6.4.4.4 Character constants
 
-/*
-character-constant:
-  encoding-prefixopt ’ c-char-sequence ’
 
-encoding-prefix: one of
-  u8 u U L
-
-c-char-sequence:
-  c-char
-  c-char-sequence c-char
-
-c-char:
-  any member of the source character set except the single-quote ’, backslash \, or new-line character
-  escape-sequence
-
-escape-sequence:
-  simple-escape-sequence
-  octal-escape-sequence
-  hexadecimal-escape-sequence
-  universal-character-name
-
-using simple_escape_sequence = Seq<Char<'\\'>, Charset<"’\"?\\abfnrtv">>
-
-using octal_escape_sequence = Seq<Char<'\\'>, octal_digit, Opt<octal_digit>, Opt<octal_digit>>
-
-using hexadecimal_escape_sequence = Seq<Lit<"\x">, Some<hexadecimal_digit>>
-
-
-*/
-
-using simple_escape = Seq<Char<'\\'>, Charset<"'\"?\\abfnrtv">>;
-using hex_escape    = Seq< Lit<"\\x">, Some<hexadecimal_digit> >;
-using octal_escape  = Seq< Char<'\\'>, octal_digit, Opt<octal_digit>, Opt<octal_digit> >;
+using simple_escape_sequence      = Seq<Char<'\\'>, Charset<"'\"?\\abfnrtv">>;
+using octal_escape_sequence       = Seq<Char<'\\'>, octal_digit, Opt<octal_digit>, Opt<octal_digit>>;
+using hexadecimal_escape_sequence = Seq<Lit<"\\x">, Some<hexadecimal_digit>>;
 
 using escape_sequence = Oneof<
-  simple_escape,
-  octal_escape,
-  hex_escape,
+  simple_escape_sequence,
+  octal_escape_sequence,
+  hexadecimal_escape_sequence,
   universal_character_name
 >;
 
@@ -349,15 +269,16 @@ const char* match_escape_sequence(const char* text, void* ctx) {
   return escape_sequence::match(text, ctx);
 }
 
-// Multi-character character literals are allowed by spec? But
+// Multi-character character literals are allowed by spec, but their meaning is
 // implementation-defined...
 
-// FIXME grammar
+using encoding_prefix    = Oneof<Lit<"u8">, Char<'u', 'U', 'L'>>; // u8 must go first
+using c_char             = Oneof<escape_sequence, NotChar<'\'', '\\', '\n'>>;
+using c_char_sequence    = Some<c_char>;
+using character_constant = Seq< Opt<encoding_prefix>, Char<'\''>, c_char_sequence, Char<'\''> >;
 
-const char* match_char_literal(const char* text, void* ctx) {
-  using tick = Char<'\''>;
-  using match = Seq<tick, Some<Oneof<escape_sequence, NotChar<'\''>>>, tick>;
-  return match::match(text, ctx);
+const char* match_character_constant(const char* text, void* ctx) {
+  return character_constant::match(text, ctx);
 }
 
 //------------------------------------------------------------------------------
@@ -368,51 +289,42 @@ using predefined_constant = Oneof<Lit<"false">, Lit<"true">, Lit<"nullptr">>;
 //------------------------------------------------------------------------------
 // 6.4.5 String literals
 
-using encoding_prefix  = Oneof<Lit<"u8">, Char<'u'>, Char<'U'>, Char<'L'>>;
-using s_char = Oneof<escape_sequence, NotChar<'"', '\\', '\n'>>;
+// Note, we add splices here since we're matching before preproc
+using s_char          = Oneof<splice, escape_sequence, NotChar<'"', '\\', '\n'>>;
 using s_char_sequence = Some<s_char>;
-using string_literal = Seq<Opt<encoding_prefix>, Char<'"'>, Opt<s_char_sequence>, Char<'"'>>;
+using string_literal  = Seq<Opt<encoding_prefix>, Char<'"'>, Opt<s_char_sequence>, Char<'"'>>;
 
-const char* match_string(const char* text, void* ctx) {
-  using quote   = Char<'"'>;
-  using escaped = Seq<Char<'\\'>, Char<>>;
-  using item    = Oneof<splice, escaped, NotChar<'"'>>;
-  using match   = Seq<Opt<encoding_prefix>, quote, Any<item>, quote>;
-  return match::match(text, ctx);
+// Raw string literals from the C++ spec
+// We ignore backslash in d_char for similar splice-related reasons
+//using d_char          = NotChar<' ', '(', ')', '\\', '\t', '\v', '\f', '\n'>;
+using d_char          = NotChar<' ', '(', ')', '\t', '\v', '\f', '\n'>;
+using d_char_sequence = Some<d_char>;
+
+using r_terminator    = Seq<Char<')'>, MatchBackref, Char<'"'>>;
+using r_char          = Seq<Not<r_terminator>, Char<>>;
+using r_char_sequence = Some<r_char>;
+
+using raw_string_literal = Seq<
+  Opt<encoding_prefix>,
+  Char<'R'>,
+  Char<'"'>,
+  StoreBackref<Opt<d_char_sequence>>,
+  Char<'('>,
+  Opt<r_char_sequence>,
+  Char<')'>,
+  MatchBackref,
+  Char<'"'>
+>;
+
+const char* match_string_literal(const char* text, void* ctx) {
+  return string_literal::match(text, ctx);
 }
 
-//------------------------------------------------------------------------------
-// Raw string literals - not in the spec, but useful
-
-const char* match_raw_end(const char* text, const char* delim_a, const char* delim_b, void* ctx) {
-  if (*text++ != ')') return nullptr;
-
-  for(auto c = delim_a; c < delim_b; c++) {
-    if (*text++ != *c) return nullptr;
-  }
-
-  if (*text++ != '"') return nullptr;
-
-  return text;
-}
-
-const char* match_raw_string(const char* text, void* ctx) {
-  using prefix = Oneof<Lit<"u8">, Char<'u'>, Char<'U'>, Char<'L'>>;
-  using raw_prefix = Seq<Opt<prefix>, Lit<"R\"">>;
-
-  text = raw_prefix::match(text, ctx);
-  if (!text) return nullptr;
-
-  auto delim_a = text;
-  auto delim_b = Until<Char<'('>>::match(delim_a, ctx);
-  if (!delim_b) return nullptr;
-
-  for(text = delim_b + 1; text[0]; text++) {
-    if (auto end = match_raw_end(text, delim_a, delim_b, ctx)) {
-      return end;
-    }
-  }
-  return nullptr;
+const char* match_raw_string_literal(const char* text, void* ctx) {
+  // Raw strings require matching backreferences, so we squish that into the
+  // grammar by passing the backreference in the context pointer.
+  Backref backref;
+  return raw_string_literal::match(text, &backref);
 }
 
 //------------------------------------------------------------------------------
@@ -614,7 +526,7 @@ const char* match_angle_path(const char* text, void* ctx) {
 const char* match_preproc(const char* text, void* ctx) {
 
   // Raw strings in preprocs can make a preproc span multiple lines...?
-  using item = Oneof<Ref<match_raw_string>, splice, NotChar<'\n'>>;
+  using item = Oneof<Ref<match_raw_string_literal>, splice, NotChar<'\n'>>;
 
   using match = Seq<Char<'#'>, Any<item>, And<EOL>>;
   return match::match(text, ctx);

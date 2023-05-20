@@ -80,31 +80,28 @@ predefined constants and identifiers are gonna conflict - predef wins
 */
 
 MatchTableEntry matcher_table[] = {
-  { match_space,             0x804040, "space" },
-  { match_newline,           0x404080, "newline" },
-  { match_string,            0x4488AA, "string" },            // must be before identifier
-  { match_raw_string,        0x88AAAA, "raw_string" },        // must be before identifier, should be 270 on gcc/gcc
-
-  { match_identifier,        0xCCCC40, "identifier" },
-  { match_multiline_comment, 0x66AA66, "multiline_comment" }, // must be before punct
-  { match_oneline_comment,   0x008800, "oneline_comment" },   // must be before punct
-  { match_preproc,           0xCC88CC, "preproc" },           // must be before punct
-  { match_float,             0xFF88AA, "float" },             // must be before int
-  { match_int,               0xFF8888, "int" },               // must be before punct
-  { match_punct,             0x808080, "punct" },
-  { match_char_literal,      0x44DDDD, "char_literal" },
-  { match_splice,            0x00CCFF, "splice" },
-
-  { match_formfeed,          0xFF00FF, "formfeed" },
-  { match_byte_order_mark,   0xFF00FF, "byte order mark" },   // must be before utf8
-  { match_utf8,              0x000000, "utf8" },              // what is even hitting this?
-  { match_cr,                0x000000, "cr" },                // only in mac-eol-at-eof.c
+  { match_space,              0x804040, "space" },
+  { match_newline,            0x404080, "newline" },
+  { match_string_literal,     0x4488AA, "string" },            // must be before identifier
+  { match_raw_string_literal, 0x88AAAA, "raw_string" },        // must be before identifier, should be 270 on gcc/gcc
+  { match_identifier,         0xCCCC40, "identifier" },
+  { match_multiline_comment,  0x66AA66, "multiline_comment" }, // must be before punct
+  { match_oneline_comment,    0x008800, "oneline_comment" },   // must be before punct
+  { match_preproc,            0xCC88CC, "preproc" },           // must be before punct
+  { match_float,              0xFF88AA, "float" },             // must be before int
+  { match_int,                0xFF8888, "int" },               // must be before punct
+  { match_punct,              0x808080, "punct" },
+  { match_character_constant, 0x44DDDD, "char_literal" },
+  { match_splice,             0x00CCFF, "splice" },
+  { match_formfeed,           0xFF00FF, "formfeed" },
+  { match_byte_order_mark,    0xFF00FF, "byte order mark" },   // must be before utf8
 };
 
-// This erroneously matches stuff if it's at top level
-//{ match_angle_path,        0x88AACC, "angle_path" },
-
 //------------------------------------------------------------------------------
+
+int total_files = 0;
+int total_bytes = 0;
+int source_files = 0;
 
 std::vector<std::string> bad_files;
 std::vector<std::string> skipped_files;
@@ -112,9 +109,37 @@ std::vector<std::string> skipped_files;
 std::set<std::pair<int, int>> conflicts;
 double lex_time = 0;
 
+const char* current_filename = nullptr;
+
+std::vector<std::string> invalid_files = {
+  "-utf8.c",                          // Not dealing with utf8 yet
+  "ucnid-7.c",                        // Intentionally invalid universal char code
+  "/named-universal-char-escape",     // Named universal escapes not supported yet
+  "/delimited-escape",                // Delimited escapes are C++23 only
+  "/Wbidi",                           // We're not gonna support bidirectional characters quite yet
+  "/dir-only",                        // The "directives only" tests intentionally have broken code
+  "warn-normalized-1.c",              // Not lexable without preproc
+  "warn-normalized-2.c",              // Not lexable without preproc
+  "normalize-1.c",                    // Not lexable without preproc
+  "normalize-2.c",                    // Not lexable without preproc
+  "normalize-3.c",                    // Not lexable without preproc
+  "normalize-4.c",                    // Not lexable without preproc
+  "raw-string-10.c",                  // Not lexable without preproc
+  "trigraphs.c",                      // We're missing some trigraph support? Removed in latest C draft...
+  "warning-zero-in-literals-1.c",     // Nulls inside literals
+  "raw-string-12.c",                  // Nulls inside raw strings
+  "diagnostic-format-sarif-file-4.c", // Kanji identifier
+  "lexstrng.c",                       // Trigraphs :P
+  "multiline.c",                      // Not valid C
+  "pr100646-2.c",                     // Backslash at end of file
+  "mac-eol-at-eof.c",                 // Text with only \r and not \n?
+};
+
 //------------------------------------------------------------------------------
 
 bool test_lex(const std::string& path, const std::string& text, bool echo) {
+  current_filename = path.c_str();
+
   const char* cursor = text.data();
   const char* text_end = cursor + text.size() - 1;
 
@@ -124,30 +149,6 @@ bool test_lex(const std::string& path, const std::string& text, bool echo) {
   auto time_a = timestamp_ms();
   while(*cursor) {
     bool matched = false;
-
-#if 0
-   const char* ends[matcher_count];
-    for (int i = 0; i < matcher_count; i++) {
-      auto& t = matcher_table[i];
-      ends[i] = t.matcher_cb(cursor, nullptr);
-    }
-
-    int hit = -1;
-    for (int i = 0; i < matcher_count; i++) {
-      if (ends[i]) {
-        if (hit == -1) {
-          hit = i;
-        }
-        else {
-          if (!conflicts.contains(std::pair<int, int>(hit, i))) {
-            printf("Conflict between %s, %s\n", matcher_table[hit].matcher_name, matcher_table[i].matcher_name);
-            conflicts.insert(std::pair<int, int>(hit, i));
-          }
-          hit = i;
-        }
-      }
-    }
-#endif
 
     for (int i = 0; i < matcher_count; i++) {
       auto& t = matcher_table[i];
@@ -174,16 +175,6 @@ bool test_lex(const std::string& path, const std::string& text, bool echo) {
           printf("#### READ OFF THE END DURING %s\n", t.matcher_name);
           printf("File %s:\n", path.c_str());
           printf("Cursor {%.40s}\n", cursor);
-
-          for (const char* c = cursor; c <= text_end; c++) {
-            printf("%02x ", uint8_t(*c));
-          }
-          printf("\n");
-
-          printf("%p\n", cursor);
-          printf("%p\n", text_end);
-          printf("%p\n", end);
-
           exit(1);
         }
 
@@ -222,12 +213,17 @@ bool test_lex(const std::string& path, const std::string& text, bool echo) {
   }
   auto time_b = timestamp_ms();
   if (lex_ok) lex_time += time_b - time_a;
+
+  if (echo) {
+    set_color(0);
+  }
+
   return lex_ok;
 }
 
 //------------------------------------------------------------------------------
 
-bool test_lex(const std::string path, size_t size, bool echo) {
+bool test_lex(const std::string& path, size_t size, bool echo) {
 
   std::string text;
   text.resize(size + 1);
@@ -237,97 +233,40 @@ bool test_lex(const std::string path, size_t size, bool echo) {
     printf("Could not open %s!\n", path.c_str());
   }
   auto r = fread(text.data(), 1, size, f);
+  total_bytes += size;
   text[size] = 0;
   fclose(f);
 
-  // We're not gonna support UCNs in IDs quite yet
-  if (path.find("/ucnid") != std::string::npos) {
-    skipped_files.push_back(path);
-    return false;
-  }
-
-  // Same thing
-  if (path.find("/named-universal-char-escape") != std::string::npos) {
-    skipped_files.push_back(path);
-    return false;
-  }
-
-  if (path.find("/delimited-escape") != std::string::npos) {
-    skipped_files.push_back(path);
-    return false;
-  }
-
-  // We're not gonna support bidirectional characters quite yet
-  if (path.find("/Wbidi") != std::string::npos) {
-    skipped_files.push_back(path);
-    return false;
-  }
-
-  std::vector<std::string> invalid_files = {
-    "warn-normalized-1.c",          // Not lexable without preproc
-    "warn-normalized-2.c",          // Not lexable without preproc
-    "normalize-1.c",                // Not lexable without preproc
-    "normalize-2.c",                // Not lexable without preproc
-    "normalize-3.c",                // Not lexable without preproc
-    "normalize-4.c",                // Not lexable without preproc
-    "trigraphs.c",                  // We're missing some trigraph support? Removed in latest C draft...
-    "warning-zero-in-literals-1.c", // Nulls inside literals
-    "raw-string-12.c",              // Nulls inside raw strings
-  };
-
-  for (const auto& f : invalid_files) {
-    if (path.find(f) != std::string::npos) {
-      skipped_files.push_back(path);
-      return false;
-    }
-  }
-
-#if 1
   if (text.find("dg-error") != std::string::npos ||
       text.find("dg-bogus") != std::string::npos ||
-      text.find("@") != std::string::npos) // gcc has some "stringizing literals with @ in them" test cases
-      {
+      text.find("@") != std::string::npos) { // gcc has some "stringizing literals with @ in them" test cases
     //printf("Skipping %s as it is intended to cause an error\n", path.c_str());
     skipped_files.push_back(path);
     return false;
   }
-#endif
 
   return test_lex(path, text, echo);
 }
 
 //------------------------------------------------------------------------------
 
-// Raw strings in a preprocessor macro break right now
-/*
-#pragma omp parallel num_threads(sizeof R"(
-abc
-)")
-*/
-
-//------------------------------------------------------------------------------
-
 int main(int argc, char** argv) {
   printf("Matcheroni Demo\n");
 
-  /*
-  {
-    const char* text = R"qqq(R"/^&|~!=,"'(a)/^&|~!=,"'"suffix)qqq";
-    const char* end = match_raw_string2(text);
+  if (0) {
+    //const char* text = R"('\'')";
+    //printf("{%s}\n", text);
+    //printf("{%s}\n", character_constant::match(text));
 
-    printf("text {%s}\n", text);
-    printf("end  {%s}\n", end);
+    //auto path = "testcases/test.c";
+    //auto size = std::filesystem::file_size(path);
+    //test_lex(path, size, true);
     return 0;
   }
-  */
 
 
   using rdit = std::filesystem::recursive_directory_iterator;
   const char* base_path = argc > 1 ? argv[1] : ".";
-
-  int total_files = 0;
-  int total_bytes = 0;
-  int source_files = 0;
 
   bool echo = false;
 
@@ -339,21 +278,25 @@ int main(int argc, char** argv) {
       auto& path = f.path().native();
       auto size = f.file_size();
 
-      //if (path != "/home/aappleby/projects/gcc/gcc/testsuite/c-c++-common/raw-string-2.c") continue;
+      bool is_source =
+        path.ends_with(".c") ||
+        path.ends_with(".cpp") ||
+        path.ends_with(".h") ||
+        path.ends_with(".hpp");
+      if (!is_source) continue;
 
-      if (path.find("objc") != std::string::npos) continue;
-
-      if (path.ends_with(".c") ||
-          path.ends_with(".cpp") ||
-          path.ends_with(".h") ||
-          path.ends_with(".hpp")) {
-        //printf("path %s\n", path.c_str());
-        //printf(".");
-        source_files++;
-        test_lex(path, size, echo);
-        total_bytes += size;
-        set_color(0);
+      bool skip = false;
+      for (const auto& f : invalid_files) {
+        if (path.find(f) != std::string::npos) {
+          skipped_files.push_back(path);
+          skip = true;
+          break;
+        }
       }
+      if (skip) continue;
+
+      source_files++;
+      test_lex(path, size, echo);
     }
   }
   auto time_b = timestamp_ms();
@@ -377,6 +320,14 @@ int main(int argc, char** argv) {
       matcher_table[i].fail_count
     );
   }
+
+  /*
+  for (auto& f : skipped_files) {
+    if (f.find("dir-only") != std::string::npos) {
+      printf("%s\n", f.c_str());
+    }
+  }
+  */
 
   /*
   if (bad_files.size()) {

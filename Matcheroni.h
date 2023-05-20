@@ -401,6 +401,44 @@ struct Ref {
 };
 
 //------------------------------------------------------------------------------
+// To use backreferences, a matcher above these ones must pass a pointer to a
+// Backref object in the ctx parameter.
+
+struct Backref {
+  const char* start;
+  int size;
+};
+
+template<typename M>
+struct StoreBackref {
+  static const char* match(const char* text, void* ctx) {
+    if (auto b = (Backref*)ctx) {
+      auto end = M::match(text, ctx);
+      b->start = text;
+      b->size = end ? int(end - text) : 0;
+      return end ? end : text;
+    }
+    else {
+      return nullptr;
+    }
+  }
+};
+
+struct MatchBackref {
+  static const char* match(const char* text, void* ctx) {
+    if (auto b = (Backref*)ctx) {
+      for (int i = 0; i < b->size; i++) {
+        if(text[i] != b->start[i]) return nullptr;
+      }
+      return text + b->size;
+    }
+    else {
+      return nullptr;
+    }
+  }
+};
+
+//------------------------------------------------------------------------------
 
 }; // namespace Matcheroni
 
