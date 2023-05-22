@@ -1,4 +1,4 @@
-#include "examples.h"
+#include "c_lexer.h"
 #include "Matcheroni.h"
 #include <stdint.h>
 #include <stdio.h>
@@ -157,11 +157,12 @@ using long_long_suffix       = Oneof<Lit<"ll">, Lit<"LL">>;
 using bit_precise_int_suffix = Oneof<Lit<"wb">, Lit<"WB">>;
 
 using integer_suffix = Oneof<
-  Seq<unsigned_suffix, Opt<long_suffix>>,
-  Seq<unsigned_suffix, long_long_suffix>,
-  Seq<unsigned_suffix, bit_precise_int_suffix>,
-  Seq<long_suffix, Opt<unsigned_suffix>>,
+  Seq<unsigned_suffix,  Opt<long_suffix>>,
+  Seq<unsigned_suffix,  Opt<long_long_suffix>>,
+  Seq<long_suffix,      Opt<unsigned_suffix>>,
   Seq<long_long_suffix, Opt<unsigned_suffix>>,
+
+  Seq<unsigned_suffix, bit_precise_int_suffix>,
   Seq<bit_precise_int_suffix, Opt<unsigned_suffix>>
 >;
 
@@ -184,7 +185,8 @@ using hex_quad = Rep<4, hexadecimal_digit>;
 
 using universal_character_name = Oneof<
   Seq< Lit<"\\u">, hex_quad >,
-  Seq< Lit<"\\U">, hex_quad, hex_quad >
+  Seq< Lit<"\\U">, hex_quad, hex_quad >,
+  Seq< Lit<"\\u{">, Some<hexadecimal_digit>, Lit<"}">>
 >;
 
 //------------------------------------------------------------------------------
@@ -255,14 +257,26 @@ using enumeration_constant = identifier;
 
 
 using simple_escape_sequence      = Seq<Char<'\\'>, Charset<"'\"?\\abfnrtv">>;
-using octal_escape_sequence       = Seq<Char<'\\'>, octal_digit, Opt<octal_digit>, Opt<octal_digit>>;
-using hexadecimal_escape_sequence = Seq<Lit<"\\x">, Some<hexadecimal_digit>>;
+
+using octal_escape_sequence = Oneof<
+  Seq<Char<'\\'>, octal_digit, Opt<octal_digit>, Opt<octal_digit>>,
+  Seq<Lit<'\\o{'>, Some<octal_digit>, Lit<"}">>,
+>;
+
+using hexadecimal_escape_sequence = Oneof<
+  Seq<Lit<"\\x">, Some<hexadecimal_digit>>,
+  Seq<Lit<"\\x{">, Some<hexadecimal_digit>, Lit<"}">>
+>;
+
+using n_char = NotChar<'}', '\n'>;
+using named_escape_sequence = Seq<Lit<"\\N{">, Some<n_char>, Lit<"}">>;
 
 using escape_sequence = Oneof<
   simple_escape_sequence,
   octal_escape_sequence,
   hexadecimal_escape_sequence,
-  universal_character_name
+  universal_character_name,
+  named_escape_sequence
 >;
 
 const char* match_escape_sequence(const char* text, void* ctx) {
