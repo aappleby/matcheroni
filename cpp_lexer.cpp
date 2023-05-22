@@ -3,92 +3,65 @@
 // from the N4950 C++23 draft spec
 
 /*
-typedef-name:
+using typedef_name = Oneof<identifier, simple_template_id>;
+
+using namespace_name = Oneof<identifier, namespace_alias>;
+using namespace_alias = identifier;
+
+using class_name = Oneof<identifier, simple_template_id>;
+
+using enum_name = identifier;
+
+using template_name = identifier;
+
+using n_char = NotChar<'}','\n'>;
+
+using n_char_sequence = Some<n_char>;
+
+using named_universal_character = Seq<Lit<"\N{">, n_char_sequence, Lit<"}">>;
+
+using hex_quad = Rep<4, hexadecimal_digit>;
+
+using simple_hexadecimal_digit_sequence = Some<hexadecimal_digit>;
+
+using universal_character_name = Oneof<
+  Seq<Lit<"\u">, hex_quad>,
+  Seq<Lit<"\U">, hex_quad, hex_quad>,
+  Seq<Lit<"\u{">, simple_hexadecimal_digit_sequence, Lit<"}">>,
+  named_universal_character
+>;
+
+preprocessing_token:
+  header_name
+  import_keyword
+  module_keyword
+  export_keyword
   identifier
-  simple-template-id
-
-namespace-name:
-  identifier
-  namespace-alias
-
-namespace-alias:
-  identifier
-
-class-name:
-  identifier
-  simple-template-id
-
-enum-name:
-  identifier
-
-template-name:
-  identifier
-
-n-char: one of
-  any member of the translation character set except the u+007d right curly bracket or new-line character
-
-n-char-sequence :
-  n-char
-  n-char-sequence n-char
-
-named-universal-character:
-  \N{ n-char-sequence }
-
-hex-quad:
-  hexadecimal-digit hexadecimal-digit hexadecimal-digit hexadecimal-digit
-
-simple-hexadecimal-digit-sequence :
-  hexadecimal-digit
-  simple-hexadecimal-digit-sequence hexadecimal-digit
-
-universal-character-name :
-  \u hex-quad
-  \U hex-quad hex-quad
-  \u{ simple-hexadecimal-digit-sequence }
-  named-universal-character
-
-preprocessing-token:
-  header-name
-  import-keyword
-  module-keyword
-  export-keyword
-  identifier
-  pp-number
-  character-literal
-  user-defined-character-literal
-  string-literal
-  user-defined-string-literal
-  preprocessing-op-or-punc
+  pp_number
+  character_literal
+  user_defined_character_literal
+  string_literal
+  user_defined_string_literal
+  preprocessing_op_or_punc
   each non-whitespace character that cannot be one of the above
 
-token:
-  identifier
-  keyword
-  literal
-  operator-or-punctuator
+using token = Oneof<identifier, keyword, literal, operator_or_punctuator>;
 
-header-name:
-  < h-char-sequence >
-  " q-char-sequence "
+using h_char = NotChar<'\n','>'>;
+using h_char_sequence = Some<h_char>;
 
-h-char-sequence :
-  h-char
-  h-char-sequence h-char
+using q_char = NotChar<'\n','"'>;
+using q_char_sequence = Some<q_char>;
 
-h-char:
-  any member of the translation character set except new-line and u+003e greater-than sign
-
-q-char-sequence :
-  q-char
-  q-char-sequence q-char
-
-q-char:
-  any member of the translation character set except new-line and u+0022 quotation mark
+using header_name = Oneof<
+  Seq<Char<'<'>, h-char-sequence, Char<'>'>>,
+  Seq<Char<'"'>, q-char-sequence, Char<'"'>>
+>;
 
 pp-number:
   digit
   . digit
-  pp-number identifier-continue
+  pp-number identifier_continue
   pp-number ’ digit
   pp-number ’ nondigit
   pp-number e sign
@@ -97,40 +70,48 @@ pp-number:
   pp-number P sign
   pp-number .
 
-identifier:
-  identifier-start
-  identifier identifier-continue
+using identifier = Seq<identifier_start, Any<identifier_continue>>;
 
-identifier-start:
-  nondigit
-  an element of the translation character set with the Unicode property XID_Start
+// FIXME not using XID_Start
+using identifier_start = nondigit;
 
-identifier-continue :
-  digit
-  nondigit
-  an element of the translation character set with the Unicode property XID_Continue
+// FIXME not using XID_Continue
+using identifier_continue = Oneof<digit, nondigit>;
 
-nondigit: one of
-  a b c d e f g h i j k l m
-  n o p q r s t u v w x y z
-  A B C D E F G H I J K L M
-  N O P Q R S T U V W X Y Z _
+using nondigit = Oneof<Range<'a','z'>, Range<'A','Z'>, Char<'_'>>;
 
-digit: one of
-  0 1 2 3 4 5 6 7 8 9
+using digit = Range<'0','9'>;
 
-keyword:
-  any identifier listed in Table 5
-  import-keyword
-  module-keyword
-  export-keyword
+using keyword = Oneof<
+  OneofLit<keywords>,
+  import_keyword,
+  module_keyword,
+  export_keyword,
+>;
 
-preprocessing-op-or-punc :
-  preprocessing-operator
-  operator-or-punctuator
+const char* keywords[] = {
+  "alignas", "alignof", "asm", "auto", "bool", "break", "case", "catch", "char",
+  "char8_t", "char16_t", "char32_t", "class", "concept", "const", "consteval",
+  "constexpr", "constinit", "const_cast", "continue", "co_await", "co_return",
+  "co_yield", "decltype", "default", "delete", "do", "double", "dynamic_cast",
+  "else", "enum", "explicit", "export", "extern", "false", "float", "for",
+  "friend", "goto", "if", "inline", "int", "long", "mutable", "namespace",
+  "new", "noexcept", "nullptr", "operator", "private", "protected", "public",
+  "register", "reinterpret_cast", "requires", "return", "short", "signed",
+  "sizeof", "static", "static_assert", "static_cast", "struct", "switch",
+  "template", "this", "thread_local", "throw", "true", "try", "typedef",
+  "typeid", "typename", "union", "unsigned", "using", "virtual", "void",
+  "volatile", "wchar_t", "while", nullptr
+};
 
-preprocessing-operator: one of
-  # ## %: %:%:
+using preprocessing_op_or_punc = Oneof<preprocessing_operator, operator_or_punctuator>;
+
+using preprocessing_operator = Oneof<
+  Lit<"#">,
+  Lit<"##">,
+  Lit<"%:">,
+  Lit<"%:%:">,
+>;
 
 operator-or-punctuator: one of
   { } [ ] ( )
@@ -143,187 +124,155 @@ operator-or-punctuator: one of
   and or xor not bitand bitor compl
   and_eq or_eq xor_eq not_eq
 
-literal:
-  integer-literal
-  character-literal
-  floating-point-literal
-  string-literal
-  boolean-literal
-  pointer-literal
-  user-defined-literal
+using literal = Oneof<
+  integer_literal,
+  character_literal,
+  floating_point_literal,
+  string_literal,
+  boolean_literal,
+  pointer_literal,
+  user_defined_literal,
+>;
 
-integer-literal:
-  binary-literal integer-suffixopt
-  octal-literal integer-suffixopt
-  decimal-literal integer-suffixopt
-  hexadecimal-literal integer-suffixopt
+using integer_literal = Oneof<
+  Seq<binary_literal, Opt<integer_suffix>>,
+  Seq<octal_literal, Opt<integer_suffix>>,
+  Seq<decimal_literal, Opt<integer_suffix>>,
+  Seq<hexadecimal_literal, Opt<integer_suffix>>,
+>;
 
-binary-literal:
-  0b binary-digit
-  0B binary-digit
-  binary-literal ’opt binary-digit
+template<typename M>
+struct Ticked {
+  static const char* match(const char* text, void* ctx) {
+    if (*text == '\'') text++;
+    return M::match(text, ctx);
+  }
+};
 
-octal-literal:
-  0
-  octal-literal ’opt octal-digit
+using binary_literal = Seq<Oneof<Lit<"0b">, Lit<"0B">>, binary_digit, Any<ticked_binary_digit>>;
 
-decimal-literal:
-  nonzero-digit
-  decimal-literal ’opt digit
+using octal_literal = Seq<Char<'0'>, Any<ticked_octal_digit>>;
 
-hexadecimal-literal:
-  hexadecimal-prefix hexadecimal-digit-sequence
+using decimal_literal = Seq<nonzero_digit, Any<ticked_decimal_digit>>;
 
-binary-digit: one of
-  0 1
+using hexadecimal_literal = Seq<hexadecimal_prefix, hexadecimal_digit_sequence>;
 
-octal-digit: one of
-  0 1 2 3 4 5 6 7
+using hexadecimal_digit_sequence = Seq<hexadecimal_digit, Any<ticked_hexadecimal_digit>>;
 
-nonzero-digit: one of
-  1 2 3 4 5 6 7 8 9
+using hexadecimal_digit = Oneof<Range<'0','9'>, Range<'a','f'>, Range<'A','F'>>;
 
-hexadecimal-prefix: one of
-  0x 0X
+using integer_suffix = Oneof<
+  Seq<unsigned_suffix, Opt<long_suffix>>
+  Seq<unsigned_suffix, Opt<long_long-suffix>>
+  Seq<unsigned_suffix, Opt<size_suffix>>
+  Seq<long_suffix, Opt<unsigned_suffix>>
+  Seq<long_long_suffix, Opt<unsigned_suffix>>
+  Seq<size_suffix, Opt<unsigned_suffix>>
+>;
 
-hexadecimal-digit-sequence :
-  hexadecimal-digit
-  hexadecimal-digit-sequence ’opt hexadecimal-digit
+using unsigned_suffix = Oneof<Lit<"u">, Lit<"U">>
 
-hexadecimal-digit: one of
-  0 1 2 3 4 5 6 7 8 9
-  a b c d e f
-  A B C D E F
+using long_suffix = Oneof<Lit<"l">, Lit<"L">>;
 
-integer-suffix:
-  unsigned-suffix long-suffixopt
-  unsigned-suffix long-long-suffixopt
-  unsigned-suffix size-suffixopt
-  long-suffix unsigned-suffixopt
-  long-long-suffix unsigned-suffixopt
-  size-suffix unsigned-suffixopt
+using long_long_suffix = oneof<Lit<"ll", Lit<"LL">>;
 
-unsigned-suffix: one of
-  u U
+using size_suffix = Oneof<Lit<"z">, Lit<"Z">>;
 
-long-suffix: one of
-  l L
+using character_literal = Seq<Opt<encoding_prefix>, Lit<"'">, c_char_sequence, Lit<"'">>;
 
-long-long-suffix: one of
-  ll LL
+using encoding_prefix = Oneof<Lit<"u8">, Lit<"u">, Lit<"U">, Lit<"L">>
 
-size-suffix: one of
-  z Z
+using c_char_sequence = Some<c_char>;
 
-character-literal:
-  encoding-prefixopt ’ c-char-sequence ’
+using c_char = Oneof<universal_character_name, escape_sequence, basic_c_char>;
 
-encoding-prefix: one of
-  u8 u U L
+using basic_c_char =  NotChar<'\'', '\\'', '\n'>;
 
-c-char-sequence :
-  c-char
-  c-char-sequence c-char
+using escape_sequence = Oneof<
+  simple_escape_sequence,
+  numeric_escape_sequence,
+  conditional_escape_sequence
+>;
 
-c-char:
-  basic-c-char
-  escape-sequence
-  universal-character-name
+using simple_escape_sequence_char = Chars<'\’', '"', '?', '\\', 'a', 'b', 'f', 'n', 'r', 't', 'v'>;
+using simple_escape_sequence = Seq<Char<'\\'>, simple_escape_sequence_char>;
 
-basic-c-char:
-  any member of the translation character set except the u+0027 apostrophe,
-  u+005c reverse solidus, or new-line character
+using numeric_escape_sequence = Oneof<octal_escape_sequence, hexadecimal_escape_sequence>;
 
-escape-sequence :
-  simple-escape-sequence
-  numeric-escape-sequence
-  conditional-escape-sequence
+using simple_octal_digit_sequence = Some<octal_digit>;
 
-simple-escape-sequence :
-  \ simple-escape-sequence-char
+using octal_escape_sequence = Oneof<
+  Seq<Char<'\\'>, octal_digit, Opt<octal_digit>, Opt<octal_digit>>,
+  Seq<Lit<"\o{">, simple_octal_digit_sequence, Lit<"}">>,
+>;
 
-simple-escape-sequence-char: one of
-  ’ " ? \ a b f n r t v
+using hexadecimal_escape_sequence = Oneof<
+  Seq<Lit<"\x">,  simple_hexadecimal_digit_sequence>,
+  Seq<Lit<"\x{">, simple_hexadecimal_digit_sequence, Lit<"}">>,
+>;
 
-numeric-escape-sequence :
-  octal-escape-sequence
-  hexadecimal-escape-sequence
+using conditional_escape_sequence = Seq<Char<'\\'>, conditional_escape_sequence_char>;
 
-simple-octal-digit-sequence :
-  octal-digit
-  simple-octal-digit-sequence octal-digit
+using conditional_escape_sequence_char = Seq<
+  Not<
+    octal_digit,
+    simple_escape_sequence_char,
+    Chars<'N','o','u','U','x'>,
+  >,
+  Char<>
+>;
 
-octal-escape-sequence :
-  \ octal-digit
-  \ octal-digit octal-digit
-  \ octal-digit octal-digit octal-digit
-  \o{ simple-octal-digit-sequence }
+using floating_point_literal = Oneof<
+  decimal_floating_point_literal,
+  hexadecimal_floating_point_literal,
+>;
 
-hexadecimal-escape-sequence :
-  \x simple-hexadecimal-digit-sequence
-  \x{ simple-hexadecimal-digit-sequence }
+using decimal_floating_point_literal = Oneof<
+  Seq<fractional_constant, Opt<exponent_part>, Opt<floating_point_suffix>>,
+  Seq<digit_sequence, exponent_part, Opt<floating_point_suffix>>,
+>;
 
-conditional-escape-sequence :
-  \ conditional-escape-sequence-char
+using hexadecimal_floating_point_literal = Oneof<
+  Seq<hexadecimal_prefix, hexadecimal_fractional_constant, binary_exponent_part, Opt<floating_point_suffix>>,
+  Seq<hexadecimal_prefix, hexadecimal_digit_sequence, binary_exponent_part, Opt<floating_point_suffix>>,
+>;
 
-conditional-escape-sequence-char:
-  any member of the basic character set that is not an octal-digit, a simple-escape-sequence-char, or the
-  characters N, o, u, U, or x
+using fractional_constant = Oneof<
+  Seq<Opt<digit_sequence>, Char<'.'>, digit_sequence>,
+  Seq<digit_sequence, Char<'.'>>,
+>;
 
-floating-point-literal:
-  decimal-floating-point-literal
-  hexadecimal-floating-point-literal
+using hexadecimal_fractional_constant = Oneof<
+  Seq<Opt<hexadecimal_digit_sequence>, Char<'.'>, hexadecimal_digit_sequence>,
+  Seq<hexadecimal_digit_sequence, Char<'.'>>,
+>;
 
-decimal-floating-point-literal:
-  fractional-constant exponent-partopt floating-point-suffixopt
-  digit-sequence exponent-part floating-point-suffixopt
+using exponent_part = Oneof<
+  Seq<Char<'e'>, Opt<sign>, digit_sequence>,
+  Seq<Char<'E'>, Opt<sign>, digit_sequence>,
+>;
 
-hexadecimal-floating-point-literal:
-  hexadecimal-prefix hexadecimal-fractional-constant binary-exponent-part floating-point-suffixopt
-  hexadecimal-prefix hexadecimal-digit-sequence binary-exponent-part floating-point-suffixopt
+using binary_exponent_part = Oneof<
+  Seq<Char<'p'>, Opt<sign>, digit_sequence>,
+  Seq<Char<'P'>, Opt<sign>, digit_sequence>,
+>;
 
-fractional-constant:
-  digit-sequenceopt . digit-sequence
-  digit-sequence .
+using floating_point_suffix = Oneof<
+  Lit<"f">, Lit<"l">, Lit<"F">, Lit<"L">,
+  Lit<"f16">, Lit<"f32">, Lit<"f64">, Lit<"f128">,
+  Lit<"F16">, Lit<"F32">, Lit<"F64">, Lit<"F128">,
+  Lit<"bf16">, Lit<"BF16">>;
 
-hexadecimal-fractional-constant:
-  hexadecimal-digit-sequenceopt . hexadecimal-digit-sequence
-  hexadecimal-digit-sequence .
+using string_literal = Oneof<
+  Opt<encoding-prefix>, Char<'"'>, Opt<s_char_sequence>, Char<'"'>>.
+  Opt<encoding-prefix>, Char<'R'>, raw_string>,
+>;
 
-exponent-part:
-  e signopt digit-sequence
-  E signopt digit-sequence
+using s_char_sequence = Some<s_char>;
 
-binary-exponent-part:
-  p signopt digit-sequence
-  P signopt digit-sequence
+using s_char = Oneof<universal_character_name, escape_sequence, basic_s_char>
 
-sign: one of
-  + -
-
-digit-sequence:
-  digit
-  digit-sequence ’opt digit
-
-floating-point-suffix: one of
-  f l f16 f32 f64 f128 bf16 F L F16 F32 F64 F128 BF16
-
-string-literal:
-  encoding-prefixopt " s-char-sequenceopt "
-  encoding-prefixopt R raw-string
-
-s-char-sequence:
-  s-char
-  s-char-sequence s-char
-
-s-char:
-  basic-s-char
-  escape-sequence
-  universal-character-name
-
-basic-s-char:
-  any member of the translation character set except the u+0022 quotation mark,
-  u+005c reverse solidus, or new-line character
+using basic_s_char = NotChar<'"', '\\', '\n'>;
 
 raw-string:
   " d-char-sequenceopt ( r-char-sequenceopt ) d-char-sequenceopt "
@@ -336,47 +285,41 @@ r-char:
   any member of the translation character set, except a u+0029 right parenthesis followed by
   the initial d-char-sequence (which may be empty) followed by a u+0022 quotation mark
 
-d-char-sequence :
-  d-char
-  d-char-sequence d-char
 
-d-char:
-  any member of the basic character set except:
-  u+0020 space, u+0028 left parenthesis, u+0029 right parenthesis, u+005c reverse solidus,
-  u+0009 character tabulation, u+000b line tabulation, u+000c form feed, and new-line
+using d_char = NotChar<' ', '(', ')', '\\', '\t', '\v', '\f', '\n'>;
+using d_char_sequence = Some<d_char>;
 
-boolean-literal:
-  false
-  true
+using boolean_literal = Oneof<Lit<"false">, Lit<"true">>;
 
-pointer-literal:
-  nullptr
+using pointer_literal = Lit<"nullptr">;
 
-user-defined-literal:
-  user-defined-integer-literal
-  user-defined-floating-point-literal
-  user-defined-string-literal
-  user-defined-character-literal
 
-user-defined-integer-literal:
-  decimal-literal ud-suffix
-  octal-literal ud-suffix
-  hexadecimal-literal ud-suffix
-  binary-literal ud-suffix
+using ud_suffix = identifier;
 
-user-defined-floating-point-literal:
-  fractional-constant exponent-partopt ud-suffix
-  digit-sequence exponent-part ud-suffix
-  hexadecimal-prefix hexadecimal-fractional-constant binary-exponent-part ud-suffix
-  hexadecimal-prefix hexadecimal-digit-sequence binary-exponent-part ud-suffix
+using user-defined-integer-literal = Oneof<
+  Seq<decimal_literal,     ud_suffix>,
+  Seq<octal_literal,       ud_suffix>,
+  Seq<hexadecimal_literal, ud_suffix>,
+  Seq<binary_literal,      ud_suffix>,
+>;
 
-user-defined-string-literal:
-  string-literal ud-suffix
+using user_defined_floating_point_literal = Oneof<
+  Seq<fractional_constant, Opt<exponent-part>, ud-suffix>,
+  Seq<digit-sequence, exponent-part, ud-suffix>,
+  Seq<hexadecimal_prefix, hexadecimal_fractional_constant, binary_exponent_part, ud-suffix>,
+  Seq<hexadecimal_prefix, hexadecimal_digit_sequence, binary_exponent_part, ud-suffix>,
+>;
 
-user-defined-character-literal:
-  character-literal ud-suffix
+using user_defined_string_literal    = Seq<string_literal, ud_suffix>;
 
-ud-suffix:
-  identifier
+using user_defined_character_literal = Seq<character_literal, ud_suffix>;
+
+using user_defined_literal = Oneof<
+  user_defined_integer_literal,
+  user_defined_floating_point_literal,
+  user_defined_string_literal,
+  user_defined_character_literal,
+>;
+
 
 */

@@ -7,23 +7,44 @@ using namespace matcheroni;
 
 extern const char* current_filename;
 
+// "s\{\n}t\{\n}\{\n}r??/{\n}  1";
+
+//------------------------------------------------------------------------------
+
+using utf8_ext       = Range<0x80, 0xBF>;
+using utf8_onebyte   = Range<0x00, 0x7F>;
+using utf8_twobyte   = Seq<Range<0xC0, 0xDF>, utf8_ext>;
+using utf8_threebyte = Seq<Range<0xE0, 0xEF>, utf8_ext, utf8_ext>;
+using utf8_fourbyte  = Seq<Range<0xF0, 0xF7>, utf8_ext, utf8_ext, utf8_ext>;
+
+using utf8_char = Oneof<utf8_onebyte, utf8_twobyte, utf8_threebyte, utf8_fourbyte>;
+using utf8_multi = Oneof<utf8_twobyte, utf8_threebyte, utf8_fourbyte>;
+using utf8_bom = Seq<Char<0xEF>, Char<0xBB>, Char<0xBF>>;
+
+// Not sure if this should be in here
+using latin1_ext = Range<128,255>;
+
+using trigraphs = OneofLit<
+  R"(??=)",
+  R"(??()",
+  R"(??/)",
+  R"(??))",
+  R"(??')",
+  R"(??<)",
+  R"(??!)",
+  R"(??>)",
+  R"(??-)"
+>;
+
 //------------------------------------------------------------------------------
 // Misc
 
 const char* match_byte_order_mark(const char* text, void* ctx) {
-  using bom = Seq<Char<0xEF>, Char<0xBB>, Char<0xBF>>;
-  return bom::match(text, ctx);
+  return utf8_bom::match(text, ctx);
 }
 
 const char* match_utf8(const char* text, void* ctx) {
-  using ext       = Range<0x80, 0xBF>;
-  using onebyte   = Range<0x00, 0x7F>;
-  using twobyte   = Seq<Range<0xC0, 0xDF>, ext>;
-  using threebyte = Seq<Range<0xE0, 0xEF>, ext, ext>;
-  using fourbyte  = Seq<Range<0xF0, 0xF7>, ext, ext, ext>;
-
-  using match = Oneof<onebyte, twobyte, threebyte, fourbyte>;
-  auto end = match::match(text, ctx);
+  auto end = utf8_char::match(text, ctx);
 
 #if 1
   if (end) {
@@ -128,28 +149,25 @@ const char* match_keyword(const char* text, void* ctx) {
 //------------------------------------------------------------------------------
 // 6.4.4.1 Integer constants
 
-using optional_tick = Opt<Char<'\''>>;
+template<typename M>
+using ticked = Seq<Opt<Char<'\''>>, M>;
 
 using digit                = Range<'0', '9'>;
 using nonzero_digit        = Range<'1', '9'>;
-using decimal_ticked_digit = Seq<optional_tick, digit>;
-using decimal_constant     = Seq<nonzero_digit, Any<decimal_ticked_digit>>;
+using decimal_constant     = Seq<nonzero_digit, Any<ticked<digit>>>;
 
 using hexadecimal_prefix         = Oneof<Lit<"0x">, Lit<"0X">>;
 using hexadecimal_digit          = Oneof<digit, Range<'a', 'f'>, Range<'A', 'F'>>;
-using hexadecimal_ticked_digit   = Seq<optional_tick, hexadecimal_digit>;
-using hexadecimal_digit_sequence = Seq<hexadecimal_digit, Any<hexadecimal_ticked_digit>>;
+using hexadecimal_digit_sequence = Seq<hexadecimal_digit, Any<ticked<hexadecimal_digit>>>;
 using hexadecimal_constant       = Seq<hexadecimal_prefix, hexadecimal_digit_sequence>;
 
 using binary_prefix         = Oneof<Lit<"0b">, Lit<"0B">>;
 using binary_digit          = Char<'0','1'>;
-using binary_ticked_digit   = Seq<optional_tick, binary_digit>;
-using binary_digit_sequence = Seq<binary_digit, Any<binary_ticked_digit>>;
+using binary_digit_sequence = Seq<binary_digit, Any<ticked<binary_digit>>>;
 using binary_constant       = Seq<binary_prefix, binary_digit_sequence>;
 
 using octal_digit        = Range<'0', '7'>;
-using octal_ticked_digit = Seq<optional_tick, octal_digit>;
-using octal_constant     = Seq<Char<'0'>, Any<octal_ticked_digit>>;
+using octal_constant     = Seq<Char<'0'>, Any<ticked<octal_digit>>>;
 
 using unsigned_suffix        = Char<'u', 'U'>;
 using long_suffix            = Char<'l', 'L'>;
@@ -181,18 +199,25 @@ const char* match_int(const char* text, void* ctx) {
 //------------------------------------------------------------------------------
 // 6.4.3 Universal character names
 
+using n_char = NotChar<'}','\n'>;
+using n_char_sequence = Some<n_char>;
+using named_universal_character = Seq<Lit<"\\N{">, n_char_sequence, Lit<"}">>;
+
 using hex_quad = Rep<4, hexadecimal_digit>;
 
 using universal_character_name = Oneof<
   Seq< Lit<"\\u">, hex_quad >,
   Seq< Lit<"\\U">, hex_quad, hex_quad >,
-  Seq< Lit<"\\u{">, Some<hexadecimal_digit>, Lit<"}">>
+  Seq< Lit<"\\u{">, Any<hexadecimal_digit>, Lit<"}">>,
+  named_universal_character
 >;
 
 //------------------------------------------------------------------------------
 // 6.4.2 Identifiers - GCC allows dollar signs in identifiers?
 
-using nondigit   = Oneof<Range<'a', 'z'>, Range<'A', 'Z'>, Char<'_'>, Char<'$'>, universal_character_name>;
+// FIXME do we want utf8_multi tacked on here? Do we care about utf8 right now?
+using nondigit   = Oneof<Range<'a', 'z'>, Range<'A', 'Z'>, Char<'_'>, Char<'$'>, universal_character_name, latin1_ext, utf8_multi>;
+
 using identifier = Seq<nondigit, Any<Oneof<digit, nondigit>>>;
 
 const char* match_identifier(const char* text, void* ctx) {
@@ -260,23 +285,19 @@ using simple_escape_sequence      = Seq<Char<'\\'>, Charset<"'\"?\\abfnrtv">>;
 
 using octal_escape_sequence = Oneof<
   Seq<Char<'\\'>, octal_digit, Opt<octal_digit>, Opt<octal_digit>>,
-  Seq<Lit<'\\o{'>, Some<octal_digit>, Lit<"}">>,
+  Seq<Lit<"\\o{">, Any<octal_digit>, Lit<"}">>
 >;
 
 using hexadecimal_escape_sequence = Oneof<
   Seq<Lit<"\\x">, Some<hexadecimal_digit>>,
-  Seq<Lit<"\\x{">, Some<hexadecimal_digit>, Lit<"}">>
+  Seq<Lit<"\\x{">, Any<hexadecimal_digit>, Lit<"}">>
 >;
-
-using n_char = NotChar<'}', '\n'>;
-using named_escape_sequence = Seq<Lit<"\\N{">, Some<n_char>, Lit<"}">>;
 
 using escape_sequence = Oneof<
   simple_escape_sequence,
   octal_escape_sequence,
   hexadecimal_escape_sequence,
-  universal_character_name,
-  named_escape_sequence
+  universal_character_name
 >;
 
 const char* match_escape_sequence(const char* text, void* ctx) {
@@ -354,6 +375,7 @@ const char* match_raw_string_literal(const char* text, void* ctx) {
 */
 
 const char* match_punct(const char* text, void* ctx) {
+  // We're just gonna match these one punct at a time
 #if 0
   using trigraphs = Trigraphs<"...<<=>>=">;
   using digraphs  = Digraphs<"---=->!=*=/=&&&=##%=^=+++=<<<===>=>>|=||">;

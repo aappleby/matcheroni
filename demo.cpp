@@ -111,28 +111,54 @@ double lex_time = 0;
 
 const char* current_filename = nullptr;
 
-std::vector<std::string> invalid_files = {
-  "-utf8.c",                          // Not dealing with utf8 yet
-  "ucnid-7.c",                        // Intentionally invalid universal char code
-  "/named-universal-char-escape",     // Named universal escapes not supported yet
-  "/delimited-escape",                // Delimited escapes are C++23 only
-  "/Wbidi",                           // We're not gonna support bidirectional characters quite yet
-  "/dir-only",                        // The "directives only" tests intentionally have broken code
-  "warn-normalized-1.c",              // Not lexable without preproc
-  "warn-normalized-2.c",              // Not lexable without preproc
+std::vector<std::string> negative_test_cases = {
+  "/objc/",                           // Objective C
+  "/objc.dg/",                        // Objective C
+  "/objc-obj-c++-shared/",            // Objective C
+
+  "19990407-1.c",                     // requires preproc
+  "c2x-digit-separators-2.c",         // dg-error
+  "c2x-utf8char-3.c",                 // dg-error
+  "charconst.c",                      // dg-error
+  "delimited-escape-seq-3.c",         // Empty delimited escape
+  "delimited-escape-seq-4.c",         // Intentionally broken
+  "delimited-escape-seq-5.c",         // Intentionally broken
+  "delimited-escape-seq-6.c",         // Unterminated escape sequence
+  "delimited-escape-seq-7.c",         // Unterminated escape sequence
+  "dir-only-1.c",                     // -fdirectives-only
+  "dir-only-8.c",                     // -fdirectives-only
+  "escape-1.c",                       // dg-error
+  "escape-2.c",                       // bad escape sequence
+  "lexstrng.c",                       // trigraphs
+  "mac-eol-at-eof.c",                 // Text with only \r and not \n?
+  "macroargs.c",                      // preproc
+  "missing-header-fixit-1.c",         // preproc
+  "missing-header-fixit-2.c",         // preproc
+  "multiline-2.c",                    // dg-error
+  "multiline.c",                      // Not valid C
+  "named-universal-char-escape-3.c",  // Empty named escape
+  "named-universal-char-escape-5.c",  // Intentionally broken
+  "named-universal-char-escape-6.c",  // Empty named escape
+  "named-universal-char-escape-7.c",  // Empty named escape
   "normalize-1.c",                    // Not lexable without preproc
   "normalize-2.c",                    // Not lexable without preproc
   "normalize-3.c",                    // Not lexable without preproc
   "normalize-4.c",                    // Not lexable without preproc
-  "raw-string-10.c",                  // Not lexable without preproc
-  "trigraphs.c",                      // We're missing some trigraph support? Removed in latest C draft...
-  "warning-zero-in-literals-1.c",     // Nulls inside literals
-  "raw-string-12.c",                  // Nulls inside raw strings
-  "diagnostic-format-sarif-file-4.c", // Kanji identifier
-  "lexstrng.c",                       // Trigraphs :P
-  "multiline.c",                      // Not valid C
   "pr100646-2.c",                     // Backslash at end of file
-  "mac-eol-at-eof.c",                 // Text with only \r and not \n?
+  "pr25993.c",                        // preproc
+  "quote.c",                          // unterminated strings
+  "raw-string-10.c",                  // Not lexable without preproc
+  "raw-string-12.c",                  // Nulls inside raw strings
+  "raw-string-14.c",                  // trigraphs
+  "strify2.c",                        // preproc
+  "trigraphs.c",                      // trigraphs
+  "ucnid-7.c",                        // Intentionally invalid universal char code
+  "ucs.c",                            // bad universal char name
+  "utf16-4.c",                        // dg-error
+  "utf32-4.c",                        // dg-error
+  "warn-normalized-1.c",              // Not lexable without preproc
+  "warn-normalized-2.c",              // Not lexable without preproc
+  "warning-zero-in-literals-1.c",     // Nulls inside literals
 };
 
 //------------------------------------------------------------------------------
@@ -237,6 +263,7 @@ bool test_lex(const std::string& path, size_t size, bool echo) {
   text[size] = 0;
   fclose(f);
 
+  /*
   if (text.find("dg-error") != std::string::npos ||
       text.find("dg-bogus") != std::string::npos ||
       text.find("@") != std::string::npos) { // gcc has some "stringizing literals with @ in them" test cases
@@ -244,6 +271,7 @@ bool test_lex(const std::string& path, size_t size, bool echo) {
     skipped_files.push_back(path);
     return false;
   }
+  */
 
   return test_lex(path, text, echo);
 }
@@ -286,7 +314,7 @@ int main(int argc, char** argv) {
       if (!is_source) continue;
 
       bool skip = false;
-      for (const auto& f : invalid_files) {
+      for (const auto& f : negative_test_cases) {
         if (path.find(f) != std::string::npos) {
           skipped_files.push_back(path);
           skip = true;

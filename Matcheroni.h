@@ -323,6 +323,24 @@ struct Lit {
 };
 
 //------------------------------------------------------------------------------
+// 'OneofLit' returns the first match in an array of literals.
+
+template <StringParam M1, StringParam... rest>
+struct OneofLit {
+  static const char* match(const char* cursor, void* ctx) {
+    if (auto end = Lit<M1>::match(cursor, ctx)) return end;
+    return OneofLit<rest...>::match(cursor, ctx);
+  }
+};
+
+template <StringParam M1>
+struct OneofLit<M1> {
+  static const char* match(const char* cursor, void* ctx) {
+    return Lit<M1>::match(cursor, ctx);
+  }
+};
+
+//------------------------------------------------------------------------------
 // Matches any non-NUL characters followed by the given pattern. The pattern is
 // not consumed.
 
