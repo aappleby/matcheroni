@@ -312,7 +312,6 @@ template<typename P>
 struct StoreBackref {
   using atom = P::atom;
 
-  template<typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
     auto c = P::match(a, b, ctx);
     auto ref = (Backref<atom>*)ctx;
