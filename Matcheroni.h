@@ -38,28 +38,34 @@ matcher* metamatch(matcher* cursor, void* ctx) {
 // Atom<>::match("z123") == "123"
 // Atom<>::match("") == nullptr
 
-template <int... rest>
+template <auto... rest>
 struct Atom;
 
-template <int C1, int... rest>
+template <auto C1, auto... rest>
 struct Atom<C1, rest...> {
-  static const char* match(const char* a, const char* b, void* ctx) {
+
+  template<typename atom>
+  static atom* match(atom* a, atom* b, void* ctx) {
     if (!a || a == b) return nullptr;
-    return (*a == char(C1)) ? a + 1 : Atom<rest...>::match(a, b, ctx);
+    return (*a == atom(C1)) ? a + 1 : Atom<rest...>::match(a, b, ctx);
   }
 };
 
-template <int C1>
+template <auto C1>
 struct Atom<C1> {
-  static const char* match(const char* a, const char* b, void* ctx) {
+
+  template<typename atom>
+  static atom* match(atom* a, atom* b, void* ctx) {
     if (!a || a == b) return nullptr;
-    return (*a == char(C1)) ? a + 1 : nullptr;
+    return (*a == atom(C1)) ? a + 1 : nullptr;
   }
 };
 
 template <>
 struct Atom<> {
-  static const char* match(const char* a, const char* b, void* ctx) {
+
+  template<typename atom>
+  static atom* match(atom* a, atom* b, void* ctx) {
     if (!a || a == b) return nullptr;
     return a + 1;
   }
