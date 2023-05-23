@@ -22,7 +22,7 @@ const char* rmatch_newline(const char* a, const char* b, void* ctx) {
 }
 
 /*
-const char* match_indentation(const char* text, void* ctx) {
+char* match_indentation(char* text, void* ctx) {
   using match = Seq<Atom<'\n'>, Any<Atom<' ', '\t'>>>;
   return match::match(text, ctx);
 }
@@ -81,7 +81,7 @@ using utf8_fourbyte  = Seq<Range<uint8_t(0xF0), uint8_t(0xF7)>, utf8_ext, utf8_e
 
 using utf8_char = Oneof<utf8_onebyte, utf8_twobyte, utf8_threebyte, utf8_fourbyte>;
 using utf8_multi = Oneof<utf8_twobyte, utf8_threebyte, utf8_fourbyte>;
-using utf8_bom = Seq<Atom<uint8_t(0xEF)>, Atom<uint8_t(0xBB)>, Atom<uint8_t(0xBF)>>;
+using utf8_bom = Seq<Atom<char(0xEF)>, Atom<char(0xBB)>, Atom<char(0xBF)>>;
 
 const char* rmatch_utf8(const char* a, const char* b, void* ctx) {
   auto end = utf8_char::match(a, b, ctx);
@@ -392,7 +392,7 @@ using dipunct   = Digraphs<"---=->!=*=/=&&&=##%=^=+++=<<<===>=>>|=||">;
 using unipunct  = Charset<"-,;:!?.()[]{}*/&#%^+<=>|~">;
 using all_punct = Oneof<tripunct, dipunct, unipunct>;
 
-const char* match_punct(const char* text, void* ctx) {
+char* match_punct(char* text, void* ctx) {
   return all_punct::match(text, ctx);
 }
 #endif

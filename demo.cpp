@@ -41,7 +41,7 @@ void set_color(uint32_t c) {
 //------------------------------------------------------------------------------
 
 struct RMatchTableEntry {
-  matcher<const char> rmatcher_cb = nullptr;
+  matcher<char> rmatcher_cb = nullptr;
   uint32_t color = 0;
   const char* rmatcher_name = nullptr;
   int match_count = 0;
