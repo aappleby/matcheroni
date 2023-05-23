@@ -5,14 +5,14 @@ using namespace matcheroni;
 void* match_type_name(const char* text, void* ctx);
 
 // FIXME fake
-using identifier = Char<>;
+using identifier = Atom<>;
 
 // (6.7.2.4)
 using atomic_type_specifier = Seq<
   Lit<"_Atomic">,
-  Char<'('>,
+  Atom<'('>,
   Ref<match_type_name>,
-  Char<')'>
+  Atom<')'>
 >;
 
 // (6.7.2)
@@ -26,7 +26,7 @@ using type_specifier = Oneof<
   Lit<"double">,
   Lit<"signed">,
   Lit<"unsigned">,
-  //Seq<Lit<"_BitInt">, Char<'('>, exp_const, Char<')'>>,
+  //Seq<Lit<"_BitInt">, Atom<'('>, exp_const, Atom<')'>>,
   Lit<"bool">,
   Lit<"_Complex">,
   Lit<"_Decimal32">,
@@ -112,14 +112,14 @@ exp_postfix:
   exp_primary
   exp_postfix [ expression ]
   exp_postfix ( Opt<argument-expression-list> )
-  exp_postfix Char<'.'> identifier
+  exp_postfix Atom<'.'> identifier
   exp_postfix Lit<"->"> identifier
   exp_postfix Lit<"++">
   exp_postfix Lit<"--">
   lit_compound
 
 // (6.5.2)
-argument-expression-list: Seq<exp_assign, Opt<Seq<Char<','>, exp_assign>>>
+argument-expression-list: Seq<exp_assign, Opt<Seq<Atom<','>, exp_assign>>>
 
 // (6.5.2.5)
 lit_compound:

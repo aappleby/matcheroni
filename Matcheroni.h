@@ -9,7 +9,9 @@ namespace matcheroni {
 // found, or nullptr if a match was not found.
 // Matchers must also handle null pointers and empty strings.
 
-typedef const char*(*matcher)(const char*, void* ctx);
+typedef const char*(*matcher)(const char* text, void* ctx);
+
+typedef const char*(*rmatcher)(const char* a, const char* b, void* ctx);
 
 template<typename T, typename M>
 T* metamatch(T* cursor, void* ctx);
@@ -27,32 +29,37 @@ matcher* metamatch(matcher* cursor, void* ctx) {
 
 //------------------------------------------------------------------------------
 // The most fundamental unit of matching is a single character. For convenience,
-// we implement the Char matcher so that it can handle small sets of characters
-// and allows Char<> to match any nonzero character.
+// we implement the Atom matcher so that it can handle small sets of characters
+// and allows Atom<> to match any nonzero character.
 
 // Examples:
-// Char<'a'>::match("abcd") == "bcd"
-// Char<'a','c'>::match("cdef") == "def"
-// Char<>::match("z123") == "123"
-// Char<>::match("") == nullptr
+// Atom<'a'>::match("abcd") == "bcd"
+// Atom<'a','c'>::match("cdef") == "def"
+// Atom<>::match("z123") == "123"
+// Atom<>::match("") == nullptr
 
 template <int... rest>
-struct Char;
+struct Atom;
 
 template <int C1, int... rest>
-struct Char<C1, rest...> {
+struct Atom<C1, rest...> {
   static const char* match(const char* cursor, void* ctx) {
     // We should never explicitly match the null terminator, as we can't
     // advance past it.
     static_assert(C1 != 0);
     if (!cursor || !cursor[0]) return nullptr;
-    if (cursor && cursor[0] == char(C1)) return cursor + 1;
-    return Char<rest...>::match(cursor, ctx);
+    if (cursor[0] == char(C1)) return cursor + 1;
+    return Atom<rest...>::match(cursor, ctx);
+  }
+
+  static const char* match(const char* a, const char* b, void* ctx) {
+    if (!a || a == b) return nullptr;
+    return (*a == char(C1)) ? a + 1 : Atom<rest...>::match(a, b, ctx);
   }
 };
 
 template <int C1>
-struct Char<C1> {
+struct Atom<C1> {
   static const char* match(const char* cursor, void* ctx) {
     // We should never explicitly match the null terminator, as we can't
     // advance past it.
@@ -62,28 +69,30 @@ struct Char<C1> {
     return nullptr;
   }
 
-  static int _dummy;
-  static constexpr void* _typeid = &_dummy;
+  static const char* match(const char* a, const char* b, void* ctx) {
+    if (!a || a == b) return nullptr;
+    return (*a == char(C1)) ? a + 1 : nullptr;
+  }
 };
 
 template <>
-struct Char<> {
+struct Atom<> {
   static const char* match(const char* cursor, void* ctx) {
     if (!cursor || !cursor[0]) return nullptr;
-    if (!cursor) return nullptr;
-    if (!cursor[0]) return nullptr;
     return cursor + 1;
   }
 
-  static int _dummy;
-  static constexpr void* _typeid = &_dummy;
+  static const char* match(const char* a, const char* b, void* ctx) {
+    if (!a || a == b) return nullptr;
+    return a + 1;
+  }
 };
 
 //------------------------------------------------------------------------------
 // The 'Seq' matcher succeeds if all of its sub-matchers succeed in order.
 
 // Examples:
-// Seq<Char<'a'>, Char<'b'>::match("abcd") == "cd"
+// Seq<Atom<'a'>, Atom<'b'>::match("abcd") == "cd"
 
 template<typename M1, typename... rest>
 struct Seq {
@@ -94,9 +103,10 @@ struct Seq {
     return Seq<rest...>::match(cursor, ctx);
   }
 
-  static matcher match(matcher* cursor, void* ctx) {
-    if (!cursor) return nullptr;
-    return cursor[0] == M1::match ? Seq<rest...>::match(cursor + 1, ctx) : nullptr;
+  static const char* match(const char* a, const char* b, void* ctx) {
+    if (!a || a == b) return nullptr;
+    auto c = M1::match(a, b, ctx);
+    return c ? Seq<rest...>::match(c, b, ctx) : nullptr;
   }
 };
 
@@ -106,9 +116,8 @@ struct Seq<M1> {
     return M1::match(cursor, ctx);
   }
 
-  static matcher* match(matcher* cursor, void* ctx) {
-    if (!cursor) return nullptr;
-    return cursor[0] == M1::match ? cursor + 1 : nullptr;
+  static const char* match(const char* a, const char* b, void* ctx) {
+    return M1::match(a, b, ctx);
   }
 };
 
@@ -117,8 +126,8 @@ struct Seq<M1> {
 // in regex.
 
 // Examples:
-// Oneof<Char<'a'>, Char<'b'>>::match("abcd") == "bcd"
-// Oneof<Char<'a'>, Char<'b'>>::match("bcde") == "cde"
+// Oneof<Atom<'a'>, Atom<'b'>>::match("abcd") == "bcd"
+// Oneof<Atom<'a'>, Atom<'b'>>::match("bcde") == "cde"
 
 template <typename M1, typename... rest>
 struct Oneof {
@@ -127,9 +136,9 @@ struct Oneof {
     return Oneof<rest...>::match(cursor, ctx);
   }
 
-  static matcher* match(matcher* cursor, void* ctx) {
-    if (cursor == nullptr) return nullptr;
-    return (cursor[0] == M1::match) ? cursor + 1 : Oneof<rest...>::match(cursor, ctx);
+  static const char* match(const char* a, const char* b, void* ctx) {
+    auto c = M1::match(a, b, ctx);
+    return c ? c : Oneof<rest...>::match(a, b, ctx);
   }
 };
 
@@ -138,50 +147,53 @@ template <typename M1>
 struct Oneof<M1> {
   static const char* match(const char* cursor, void* ctx) {
     if (cursor == nullptr) return nullptr;
-    //return M1::match(cursor, ctx);
-    return metamatch<M1>(cursor, ctx);
+    return M1::match(cursor, ctx);
   }
 
-  static matcher* match(matcher* cursor, void* ctx) {
-    if (cursor == nullptr) return nullptr;
-    return (cursor[0] == M1::match) ? cursor + 1 : nullptr;
+  static const char* match(const char* a, const char* b, void* ctx) {
+    return M1::match(a, b, ctx);
   }
 };
 
 //------------------------------------------------------------------------------
 // Zero-or-more patterns, roughly equivalent to M* in regex.
-// HOWEVER - Seq<Any<Char<'a'>>, Char<'a'>> (unlike "a*a" in regex) will
+// HOWEVER - Seq<Any<Atom<'a'>>, Atom<'a'>> (unlike "a*a" in regex) will
 // _never_ match anything, as the first Any<> is greedy and consumes all 'a's
 // without doing any backtracking.
 
 // Examples:
-// Any<Char<'a'>>::match("aaaab") == "b"
-// Any<Char<'a'>>::match("bbbbc") == "bbbbc"
+// Any<Atom<'a'>>::match("aaaab") == "b"
+// Any<Atom<'a'>>::match("bbbbc") == "bbbbc"
 
 template<typename M>
 struct Any {
   static const char* match(const char* cursor, void* ctx) {
-    while(1) {
-      auto end = M::match(cursor, ctx);
-      if (!end) break;
-      cursor = end;
-    }
+    while(auto end = M::match(cursor, ctx)) cursor = end;
     return cursor;
+  }
+
+  static const char* match(const char* a, const char* b, void* ctx) {
+    while(auto c = M::match(a, b, ctx)) a = c;
+    return a;
   }
 };
 
 //------------------------------------------------------------------------------
 // Zero-or-one 'optional' patterns, equivalent to M? in regex.
 
-// Opt<Char<'a'>>::match("abcd") == "bcd"
-// Opt<Char<'a'>>::match("bcde") == "bcde"
+// Opt<Atom<'a'>>::match("abcd") == "bcd"
+// Opt<Atom<'a'>>::match("bcde") == "bcde"
 
 template<typename M>
 struct Opt {
   static const char* match(const char* cursor, void* ctx) {
-    if (!cursor || !cursor[0]) return nullptr;
     if (auto end = M::match(cursor, ctx)) return end;
     return cursor;
+  }
+
+  static const char* match(const char* a, const char* b, void* ctx) {
+    if (auto c = M::match(a, b, ctx)) return c;
+    return a;
   }
 };
 
@@ -189,14 +201,19 @@ struct Opt {
 // One-or-more patterns, equivalent to M+ in regex.
 
 // Examples:
-// Some<Char<'a'>>::match("aaaab") == "b"
-// Some<Char<'a'>>::match("bbbbc") == nullptr
+// Some<Atom<'a'>>::match("aaaab") == "b"
+// Some<Atom<'a'>>::match("bbbbc") == nullptr
 
 template<typename M>
 struct Some {
   static const char* match(const char* cursor, void* ctx) {
-    cursor = M::match(cursor, ctx);
-    return cursor ? Any<M>::match(cursor, ctx) : nullptr;
+    auto end = M::match(cursor, ctx);
+    return end ? Any<M>::match(end, ctx) : nullptr;
+  }
+
+  static const char* match(const char* a, const char* b, void* ctx) {
+    auto c = M::match(a, b, ctx);
+    return c ? Any<M>::match(c, b, ctx) : nullptr;
   }
 };
 
@@ -207,10 +224,20 @@ template<int N, typename M>
 struct Rep {
   static const char* match(const char* cursor, void* ctx) {
     for(auto i = 0; i < N; i++) {
-      cursor = M::match(cursor, ctx);
+      auto end = M::match(cursor, ctx);
       if (!cursor) return nullptr;
+      cursor = end;
     }
     return cursor;
+  }
+
+  static const char* match(const char* a, const char* b, void* ctx) {
+    for(auto i = 0; i < N; i++) {
+      auto c = M::match(a, b, ctx);
+      if (!c) return nullptr;
+      a = c;
+    }
+    return a;
   }
 };
 
@@ -218,26 +245,34 @@ struct Rep {
 // The 'and' predicate, which matches but does _not_ advance the cursor. Used
 // for lookahead.
 
-// And<Char<'a'>>::match("abcd") == "abcd"
-// And<Char<'a'>>::match("bcde") == nullptr
+// And<Atom<'a'>>::match("abcd") == "abcd"
+// And<Atom<'a'>>::match("bcde") == nullptr
 
 template<typename M>
 struct And {
   static const char* match(const char* cursor, void* ctx) {
     return M::match(cursor, ctx) ? cursor : nullptr;
   }
+
+  static const char* match(const char* a, const char* b, void* ctx) {
+    return M::match(a, b, ctx) ? a : nullptr;
+  }
 };
 
 //------------------------------------------------------------------------------
 // The 'not' predicate, the logical negation of the 'and' predicate.
 
-// Not<Char<'a'>>::match("abcd") == nullptr
-// Not<Char<'a'>>::match("bcde") == "bcde"
+// Not<Atom<'a'>>::match("abcd") == nullptr
+// Not<Atom<'a'>>::match("bcde") == "bcde"
 
 template<typename M>
 struct Not {
   static const char* match(const char* cursor, void* ctx) {
     return M::match(cursor, ctx) ? nullptr : cursor;
+  }
+
+  static const char* match(const char* a, const char* b, void* ctx) {
+    return M::match(a, b, ctx) ? nullptr : a;
   }
 };
 
@@ -248,6 +283,10 @@ struct EOF {
   static const char* match(const char* cursor, void* ctx) {
     if (!cursor) return nullptr;
     return cursor[0] == 0 ? cursor : nullptr;
+  }
+
+  static const char* match(const char* a, const char* b, void* ctx) {
+    return a == b ? a : nullptr;
   }
 };
 
@@ -261,40 +300,66 @@ struct EOL {
     if (cursor[0] == '\n') return cursor;
     return nullptr;
   }
+
+  static const char* match(const char* a, const char* b, void* ctx) {
+    if (!a) return nullptr;
+    if (a == b) return a;
+    if (*a == '\n') return a;
+    return nullptr;
+  }
 };
 
 //------------------------------------------------------------------------------
-// Char-not-in-set matcher, which is a bit faster than using
-// Seq<Not<Char<...>>, Char<>>
+// Atom-not-in-set matcher, which is a bit faster than using
+// Seq<Not<Atom<...>>, Atom<>>
 
 template <char C1, char... rest>
-struct NotChar {
+struct NotAtom {
   static const char* match(const char* cursor, void* ctx) {
     if (!cursor || !cursor[0]) return nullptr;
     if (cursor[0] == C1) return nullptr;
-    return NotChar<rest...>::match(cursor, ctx);
+    return NotAtom<rest...>::match(cursor, ctx);
+  }
+
+  static const char* match(const char* a, const char* b, void* ctx) {
+    if (!a || a == b) return nullptr;
+    if (*a == C1) return nullptr;
+    return NotAtom<rest...>::match(a, b, ctx);
   }
 };
 
 template <char C1>
-struct NotChar<C1> {
+struct NotAtom<C1> {
   static const char* match(const char* cursor, void* ctx) {
     if (!cursor || !cursor[0]) return nullptr;
-    if (cursor[0] == C1) return nullptr;
-    return cursor + 1;
+    return (cursor[0] == C1) ? nullptr : cursor + 1;
+  }
+
+  static const char* match(const char* a, const char* b, void* ctx) {
+    if (!a || a == b) return nullptr;
+    return (*a == C1) ? nullptr : a + 1;
   }
 };
 
 //------------------------------------------------------------------------------
-// Ranges of characters, equivalent to [a-z] in regex.
+// Ranges of characters, inclusive. Equivalent to [a-z] in regex.
 
-template<int A, int B>
+template<int RA, int RB>
 struct Range {
   static const char* match(const char* cursor, void* ctx) {
     if(!cursor) return nullptr;
-    if ((unsigned char)cursor[0] >= A &&
-        (unsigned char)cursor[0] <= B) {
+    if ((unsigned char)cursor[0] >= RA &&
+        (unsigned char)cursor[0] <= RB) {
       return cursor + 1;
+    }
+    return nullptr;
+  }
+
+  static const char* match(const char* a, const char* b, void* ctx) {
+    if (!a || a == b) return nullptr;
+    if ((unsigned char)*a >= RA &&
+        (unsigned char)*a <= RB) {
+      return a + 1;
     }
     return nullptr;
   }
@@ -321,19 +386,28 @@ struct StringParam {
 template<StringParam lit>
 struct Lit {
   static const char* match(const char* cursor, void* ctx) {
-    if(!cursor) return nullptr;
-    if(!cursor[0]) return nullptr;
+    if(!cursor || !cursor[0]) return nullptr;
     for (auto i = 0; i < sizeof(lit.value); i++) {
       if (cursor[i] == 0) return nullptr;
       if (cursor[i] != lit.value[i]) return nullptr;
     }
     return cursor + sizeof(lit.value);
   }
+
+  static const char* match(const char* a, const char* b, void* ctx) {
+    if (!a || a == b) return nullptr;
+    if (a + sizeof(lit.value) > b) return nullptr;
+    for (auto i = 0; i < sizeof(lit.value); i++) {
+      if (a[i] != lit.value[i]) return nullptr;
+    }
+    return a + sizeof(lit.value);
+  }
 };
 
 //------------------------------------------------------------------------------
 // 'OneofLit' returns the first match in an array of literals.
 
+/*
 template <StringParam M1, StringParam... rest>
 struct OneofLit {
   static const char* match(const char* cursor, void* ctx) {
@@ -348,10 +422,11 @@ struct OneofLit<M1> {
     return Lit<M1>::match(cursor, ctx);
   }
 };
+*/
 
 //------------------------------------------------------------------------------
 // Advances the cursor until the pattern matches or we hit EOF. Does _not_
-// consume the pattern. Equivalent to Any<Seq<Not<M>,Char<>>>
+// consume the pattern. Equivalent to Any<Seq<Not<M>,Atom<>>>
 
 template<typename M>
 struct Until {
@@ -359,6 +434,14 @@ struct Until {
     while(cursor && *cursor) {
       if (M::match(cursor, ctx)) return cursor;
       cursor++;
+    }
+    return nullptr;
+  }
+
+  static const char* match(const char* a, const char* b, void* ctx) {
+    while(a < b) {
+      if (M::match(a, b, ctx)) return a;
+      a++;
     }
     return nullptr;
   }
@@ -383,8 +466,20 @@ struct Charset {
     }
     return nullptr;
   }
+
+  static const char* match(const char* a, const char* b, void* ctx) {
+    if (!a || a == b) return nullptr;
+    for (auto i = 0; i < sizeof(chars.value); i++) {
+      if (*a == chars.value[i]) {
+        return a + 1;
+      }
+    }
+    return nullptr;
+  }
+
 };
 
+/*
 template<StringParam chars>
 struct Digraphs {
   static const char* match(const char* cursor, void* ctx) {
@@ -413,6 +508,7 @@ struct Trigraphs {
     return nullptr;
   }
 };
+*/
 
 //------------------------------------------------------------------------------
 // References to other matchers. Enables recursive matchers.
@@ -421,6 +517,10 @@ template<auto& F>
 struct Ref {
   static const char* match(const char* cursor, void* ctx) {
     return F(cursor, ctx);
+  }
+
+  static const char* match(const char* a, const char* b, void* ctx) {
+    return F(a, b, ctx);
   }
 };
 
@@ -436,29 +536,47 @@ struct Backref {
 template<typename M>
 struct StoreBackref {
   static const char* match(const char* text, void* ctx) {
-    if (auto b = (Backref*)ctx) {
-      auto end = M::match(text, ctx);
-      b->start = text;
-      b->size = end ? int(end - text) : 0;
-      return end ? end : text;
-    }
-    else {
-      return nullptr;
-    }
+    auto end = M::match(text, ctx);
+    auto ref = (Backref*)ctx;
+    if (!end || !ref) return nullptr;
+
+    ref->start = text;
+    ref->size = int(end - text);
+    return end;
   }
+
+  static const char* match(const char* a, const char* b, void* ctx) {
+    auto c = M::match(a, b, ctx);
+    auto ref = (Backref*)ctx;
+    if (!c || !ref) return nullptr;
+
+    ref->start = a;
+    ref->size = int(c - a);
+    return c;
+  }
+
 };
 
 struct MatchBackref {
   static const char* match(const char* text, void* ctx) {
-    if (auto b = (Backref*)ctx) {
-      for (int i = 0; i < b->size; i++) {
-        if(text[i] != b->start[i]) return nullptr;
-      }
-      return text + b->size;
+    auto ref = (Backref*)ctx;
+    if (!ref) return nullptr;
+    for (int i = 0; i < ref->size; i++) {
+      if (text[i] == 0) return nullptr;
+      if (text[i] != ref->start[i]) return nullptr;
     }
-    else {
-      return nullptr;
+    return text + ref->size;
+  }
+
+  static const char* match(const char* a, const char* b, void* ctx) {
+    if (!a || a == b) return nullptr;
+    auto ref = (Backref*)ctx;
+    if (!ref) return nullptr;
+    if (a + ref->size > b) return nullptr;
+    for (int i = 0; i < ref->size; i++) {
+      if(a[i] != ref->start[i]) return nullptr;
     }
+    return a + ref->size;
   }
 };
 

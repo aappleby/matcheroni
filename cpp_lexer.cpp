@@ -14,7 +14,7 @@ using enum_name = identifier;
 
 using template_name = identifier;
 
-using n_char = NotChar<'}','\n'>;
+using n_char = NotAtom<'}','\n'>;
 
 using n_char_sequence = Some<n_char>;
 
@@ -47,15 +47,15 @@ preprocessing_token:
 
 using token = Oneof<identifier, keyword, literal, operator_or_punctuator>;
 
-using h_char = NotChar<'\n','>'>;
+using h_char = NotAtom<'\n','>'>;
 using h_char_sequence = Some<h_char>;
 
-using q_char = NotChar<'\n','"'>;
+using q_char = NotAtom<'\n','"'>;
 using q_char_sequence = Some<q_char>;
 
 using header_name = Oneof<
-  Seq<Char<'<'>, h-char-sequence, Char<'>'>>,
-  Seq<Char<'"'>, q-char-sequence, Char<'"'>>
+  Seq<Atom<'<'>, h-char-sequence, Atom<'>'>>,
+  Seq<Atom<'"'>, q-char-sequence, Atom<'"'>>
 >;
 
 pp-number:
@@ -78,7 +78,7 @@ using identifier_start = nondigit;
 // FIXME not using XID_Continue
 using identifier_continue = Oneof<digit, nondigit>;
 
-using nondigit = Oneof<Range<'a','z'>, Range<'A','Z'>, Char<'_'>>;
+using nondigit = Oneof<Range<'a','z'>, Range<'A','Z'>, Atom<'_'>>;
 
 using digit = Range<'0','9'>;
 
@@ -151,7 +151,7 @@ struct Ticked {
 
 using binary_literal = Seq<Oneof<Lit<"0b">, Lit<"0B">>, binary_digit, Any<ticked_binary_digit>>;
 
-using octal_literal = Seq<Char<'0'>, Any<ticked_octal_digit>>;
+using octal_literal = Seq<Atom<'0'>, Any<ticked_octal_digit>>;
 
 using decimal_literal = Seq<nonzero_digit, Any<ticked_decimal_digit>>;
 
@@ -186,7 +186,7 @@ using c_char_sequence = Some<c_char>;
 
 using c_char = Oneof<universal_character_name, escape_sequence, basic_c_char>;
 
-using basic_c_char =  NotChar<'\'', '\\'', '\n'>;
+using basic_c_char =  NotAtom<'\'', '\\'', '\n'>;
 
 using escape_sequence = Oneof<
   simple_escape_sequence,
@@ -195,14 +195,14 @@ using escape_sequence = Oneof<
 >;
 
 using simple_escape_sequence_char = Chars<'\’', '"', '?', '\\', 'a', 'b', 'f', 'n', 'r', 't', 'v'>;
-using simple_escape_sequence = Seq<Char<'\\'>, simple_escape_sequence_char>;
+using simple_escape_sequence = Seq<Atom<'\\'>, simple_escape_sequence_char>;
 
 using numeric_escape_sequence = Oneof<octal_escape_sequence, hexadecimal_escape_sequence>;
 
 using simple_octal_digit_sequence = Some<octal_digit>;
 
 using octal_escape_sequence = Oneof<
-  Seq<Char<'\\'>, octal_digit, Opt<octal_digit>, Opt<octal_digit>>,
+  Seq<Atom<'\\'>, octal_digit, Opt<octal_digit>, Opt<octal_digit>>,
   Seq<Lit<"\o{">, simple_octal_digit_sequence, Lit<"}">>,
 >;
 
@@ -211,7 +211,7 @@ using hexadecimal_escape_sequence = Oneof<
   Seq<Lit<"\x{">, simple_hexadecimal_digit_sequence, Lit<"}">>,
 >;
 
-using conditional_escape_sequence = Seq<Char<'\\'>, conditional_escape_sequence_char>;
+using conditional_escape_sequence = Seq<Atom<'\\'>, conditional_escape_sequence_char>;
 
 using conditional_escape_sequence_char = Seq<
   Not<
@@ -219,7 +219,7 @@ using conditional_escape_sequence_char = Seq<
     simple_escape_sequence_char,
     Chars<'N','o','u','U','x'>,
   >,
-  Char<>
+  Atom<>
 >;
 
 using floating_point_literal = Oneof<
@@ -238,23 +238,23 @@ using hexadecimal_floating_point_literal = Oneof<
 >;
 
 using fractional_constant = Oneof<
-  Seq<Opt<digit_sequence>, Char<'.'>, digit_sequence>,
-  Seq<digit_sequence, Char<'.'>>,
+  Seq<Opt<digit_sequence>, Atom<'.'>, digit_sequence>,
+  Seq<digit_sequence, Atom<'.'>>,
 >;
 
 using hexadecimal_fractional_constant = Oneof<
-  Seq<Opt<hexadecimal_digit_sequence>, Char<'.'>, hexadecimal_digit_sequence>,
-  Seq<hexadecimal_digit_sequence, Char<'.'>>,
+  Seq<Opt<hexadecimal_digit_sequence>, Atom<'.'>, hexadecimal_digit_sequence>,
+  Seq<hexadecimal_digit_sequence, Atom<'.'>>,
 >;
 
 using exponent_part = Oneof<
-  Seq<Char<'e'>, Opt<sign>, digit_sequence>,
-  Seq<Char<'E'>, Opt<sign>, digit_sequence>,
+  Seq<Atom<'e'>, Opt<sign>, digit_sequence>,
+  Seq<Atom<'E'>, Opt<sign>, digit_sequence>,
 >;
 
 using binary_exponent_part = Oneof<
-  Seq<Char<'p'>, Opt<sign>, digit_sequence>,
-  Seq<Char<'P'>, Opt<sign>, digit_sequence>,
+  Seq<Atom<'p'>, Opt<sign>, digit_sequence>,
+  Seq<Atom<'P'>, Opt<sign>, digit_sequence>,
 >;
 
 using floating_point_suffix = Oneof<
@@ -264,15 +264,15 @@ using floating_point_suffix = Oneof<
   Lit<"bf16">, Lit<"BF16">>;
 
 using string_literal = Oneof<
-  Opt<encoding-prefix>, Char<'"'>, Opt<s_char_sequence>, Char<'"'>>.
-  Opt<encoding-prefix>, Char<'R'>, raw_string>,
+  Opt<encoding-prefix>, Atom<'"'>, Opt<s_char_sequence>, Atom<'"'>>.
+  Opt<encoding-prefix>, Atom<'R'>, raw_string>,
 >;
 
 using s_char_sequence = Some<s_char>;
 
 using s_char = Oneof<universal_character_name, escape_sequence, basic_s_char>
 
-using basic_s_char = NotChar<'"', '\\', '\n'>;
+using basic_s_char = NotAtom<'"', '\\', '\n'>;
 
 raw-string:
   " d-char-sequenceopt ( r-char-sequenceopt ) d-char-sequenceopt "
@@ -286,7 +286,7 @@ r-char:
   the initial d-char-sequence (which may be empty) followed by a u+0022 quotation mark
 
 
-using d_char = NotChar<' ', '(', ')', '\\', '\t', '\v', '\f', '\n'>;
+using d_char = NotAtom<' ', '(', ')', '\\', '\t', '\v', '\f', '\n'>;
 using d_char_sequence = Some<d_char>;
 
 using boolean_literal = Oneof<Lit<"false">, Lit<"true">>;

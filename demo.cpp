@@ -40,6 +40,7 @@ void set_color(uint32_t c) {
 
 //------------------------------------------------------------------------------
 
+/*
 struct MatchTableEntry {
   matcher matcher_cb = nullptr;
   uint32_t color = 0;
@@ -62,7 +63,35 @@ MatchTableEntry matcher_table[] = {
   { match_punct,              0x808080, "punct" },
   { match_character_constant, 0x44DDDD, "char_literal" },
   { match_splice,             0x00CCFF, "splice" },
-  { Char<'\f'>::match,        0xFF00FF, "formfeed" },
+  { Atom<'\f'>::match,        0xFF00FF, "formfeed" },
+};
+*/
+
+//------------------------------------------------------------------------------
+
+struct RMatchTableEntry {
+  rmatcher rmatcher_cb = nullptr;
+  uint32_t color = 0;
+  const char* rmatcher_name = nullptr;
+  int match_count = 0;
+  int fail_count = 0;
+};
+
+RMatchTableEntry rmatcher_table[] = {
+  { rmatch_space,              0x804040, "space" },
+  { rmatch_newline,            0x404080, "newline" },
+  { rmatch_string_literal,     0x4488AA, "string" },            // must be before identifier
+  { rmatch_raw_string_literal, 0x88AAAA, "raw_string" },        // must be before identifier, should be 270 on gcc/gcc
+  { rmatch_identifier,         0xCCCC40, "identifier" },
+  { rmatch_multiline_comment,  0x66AA66, "multiline_comment" }, // must be before punct
+  { rmatch_oneline_comment,    0x008800, "oneline_comment" },   // must be before punct
+  { rmatch_preproc,            0xCC88CC, "preproc" },           // must be before punct
+  { rmatch_float,              0xFF88AA, "float" },             // must be before int
+  { rmatch_int,                0xFF8888, "int" },               // must be before punct
+  { rmatch_punct,              0x808080, "punct" },
+  { rmatch_character_constant, 0x44DDDD, "char_literal" },
+  { rmatch_splice,             0x00CCFF, "splice" },
+  { Atom<'\f'>::match,         0xFF00FF, "formfeed" },
 };
 
 //------------------------------------------------------------------------------
@@ -151,10 +180,11 @@ std::vector<std::string> negative_test_cases = {
 bool test_lex(const std::string& path, const std::string& text, bool echo) {
   current_filename = path.c_str();
 
-  const char* cursor = text.data();
-  const char* text_end = cursor + text.size() - 1;
+  const char* text_a = text.data();
+  const char* text_b = text_a + text.size() - 1;
+  const char* cursor = text_a;
 
-  const int matcher_count = sizeof(matcher_table) / sizeof(matcher_table[0]);
+  const int matcher_count = sizeof(rmatcher_table) / sizeof(rmatcher_table[0]);
 
   bool lex_ok = true;
   auto time_a = timestamp_ms();
@@ -162,38 +192,55 @@ bool test_lex(const std::string& path, const std::string& text, bool echo) {
     bool matched = false;
 
     for (int i = 0; i < matcher_count; i++) {
-      auto& t = matcher_table[i];
-      if (auto end = t.matcher_cb(cursor, nullptr)) {
+      //auto& t1 = matcher_table[i];
+      auto& t2 = rmatcher_table[i];
+
+      //auto end1 = t1.matcher_cb(cursor, nullptr);
+      auto end2 = t2.rmatcher_cb(cursor, text_b, nullptr);
+
+      /*
+      if (end1 != end2) {
+        printf("Matcher mismatch! %s\n", path.c_str());
+        printf("cursor : %.40s\n", cursor);
+        printf("end1   : %.40s\n", end1);
+        printf("end2   : %.40s\n", end2);
+        exit(1);
+      }
+      */
+
+      if (end2) {
 
         if (echo) {
-          set_color(t.color);
-          if (t.matcher_cb == match_newline) {
+          set_color(t2.color);
+          if (t2.rmatcher_cb == rmatch_newline) {
             printf("\\n");
-            fwrite(cursor, 1, end - cursor, stdout);
+            fwrite(cursor, 1, end2 - cursor, stdout);
           }
-          else if (t.matcher_cb == match_space) {
-            for (int i = 0; i < (end - cursor); i++) putc('.', stdout);
+          else if (t2.rmatcher_cb == rmatch_space) {
+            for (int i = 0; i < (end2 - cursor); i++) putc('.', stdout);
           }
           else {
-            fwrite(cursor, 1, end - cursor, stdout);
+            fwrite(cursor, 1, end2 - cursor, stdout);
           }
         }
 
-        t.match_count++;
+        //t1.match_count++;
+        t2.match_count++;
         matched = true;
 
-        if (end > text_end) {
-          printf("#### READ OFF THE END DURING %s\n", t.matcher_name);
+        if (end2 > text_b) {
+          printf("#### READ OFF THE END DURING %s\n", t2.rmatcher_name);
           printf("File %s:\n", path.c_str());
           printf("Cursor {%.40s}\n", cursor);
           exit(1);
         }
 
-        cursor = end;
+        cursor = end2;
         break;
       }
       else {
-        t.fail_count++;
+        //t1.fail_count++;
+        t2.fail_count++;
       }
     }
 
@@ -233,7 +280,7 @@ bool test_lex(const std::string& path, const std::string& text, bool echo) {
 
 //------------------------------------------------------------------------------
 
-bool test_lex(const std::string& path, size_t size, bool echo) {
+void test_lex(const std::string& path, size_t size, bool echo) {
 
   std::string text;
   text.resize(size + 1);
@@ -257,10 +304,10 @@ bool test_lex(const std::string& path, size_t size, bool echo) {
   if (skip) {
     //printf("Skipping %s as it is intended to cause an error\n", path.c_str());
     skipped_files.push_back(path);
-    return false;
+    return;
   }
 
-  return test_lex(path, text, echo);
+  test_lex(path, text, echo);
 }
 
 //------------------------------------------------------------------------------
@@ -268,17 +315,18 @@ bool test_lex(const std::string& path, size_t size, bool echo) {
 int main(int argc, char** argv) {
   printf("Matcheroni Demo\n");
 
+  /*
   {
     matcher m[] = {
-      Char<'a'>::match,
-      Char<'b'>::match,
-      Char<'c'>::match,
+      Atom<'a'>::match,
+      Atom<'b'>::match,
+      Atom<'c'>::match,
       nullptr
     };
 
     matcher* cursor = m;
 
-    using M = Oneof<Char<'a'>, Char<'b'>>;
+    using M = Oneof<Atom<'a'>, Atom<'b'>>;
 
     auto end = M::match(cursor, nullptr);
 
@@ -289,6 +337,7 @@ int main(int argc, char** argv) {
   }
 
   exit(0);
+  */
 
   using rdit = std::filesystem::recursive_directory_iterator;
   const char* base_path = argc > 1 ? argv[1] : ".";
@@ -337,6 +386,7 @@ int main(int argc, char** argv) {
   printf("Files with lex errors %ld\n", bad_files.size());
   printf("\n");
 
+  /*
   const int matcher_count = sizeof(matcher_table) / sizeof(matcher_table[0]);
   for (int i = 0; i < matcher_count; i++) {
     printf("%-20s match %8d fail %8d\n",
@@ -345,6 +395,18 @@ int main(int argc, char** argv) {
       matcher_table[i].fail_count
     );
   }
+  printf("\n");
+  */
+
+  const int rmatcher_count = sizeof(rmatcher_table) / sizeof(rmatcher_table[0]);
+  for (int i = 0; i < rmatcher_count; i++) {
+    printf("%-20s match %8d fail %8d\n",
+      rmatcher_table[i].rmatcher_name,
+      rmatcher_table[i].match_count,
+      rmatcher_table[i].fail_count
+    );
+  }
+  printf("\n");
 
   return 0;
 }

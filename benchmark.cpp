@@ -127,7 +127,7 @@ int main(int argc, char** argv) {
 
     // Matcheroni matcher
     {
-      using matcher = Seq<Char<'('>, Some<NotChar<'(', ')'>>, Char<')'>>;
+      using matcher = Seq<Atom<'('>, Some<NotAtom<'(', ')'>>, Atom<')'>>;
       const char* cursor = buf.c_str();
       int matches = 0;
 
