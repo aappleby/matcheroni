@@ -61,7 +61,7 @@ struct Char<> {
 
 //------------------------------------------------------------------------------
 
-struct NUL {
+struct EOF {
   static const char* match(const char* cursor, void* ctx) {
     if (!cursor) return nullptr;
     return cursor[0] == 0 ? cursor : nullptr;
@@ -69,7 +69,7 @@ struct NUL {
 };
 
 //------------------------------------------------------------------------------
-// Matches LF and NUL, but does not advance past it.
+// Matches LF and EOF, but does not advance past it.
 
 struct EOL {
   static const char* match(const char* cursor, void* ctx) {
@@ -80,40 +80,8 @@ struct EOL {
   }
 };
 
-//------------------------------------------------------------------------------
-// Matches backslash+LF, which is used as the line-continuation marker in C
-
-/*
-struct CONT {
-  static const char* match(const char* cursor) {
-    if (!cursor) return nullptr;
-    if (cursor[0] != '\\') return nullptr;
-    if (cursor[1] != '\n') return nullptr;
-    return cursor + 2;
-  }
-};
-*/
-
-//------------------------------------------------------------------------------
-// Consumes any character that is not LF or NUL
-
-/*
-struct NotEOL {
-  static const char* match(const char* cursor, void* ctx) {
-    if (!cursor) return nullptr;
-    // A CONT is _not_ EOL
-    if ((cursor[0] == '\\') && (cursor[1] == '\r') && (cursor[2] == '\n')) {
-      return cursor + 3;
-    }
-    if ((cursor[0] == '\\') && (cursor[1] == '\n')) {
-      return cursor + 2;
-    }
-    if (cursor[0] == 0) return nullptr;
-    if (cursor[0] == '\n') return nullptr;
-    return cursor + 1;
-  }
-};
-*/
+// This seems bad but....?
+using SOL = Char<'\n'>;
 
 //------------------------------------------------------------------------------
 // The 'Seq' matcher succeeds if all of its sub-matchers succeed in order.
@@ -341,7 +309,7 @@ struct OneofLit<M1> {
 };
 
 //------------------------------------------------------------------------------
-// Matches any non-NUL characters followed by the given pattern. The pattern is
+// Matches any non-EOF characters followed by the given pattern. The pattern is
 // not consumed.
 
 // Equivalent to Any<Seq<Not<M>,Char<>>>

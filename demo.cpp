@@ -11,7 +11,7 @@
 
 using namespace matcheroni;
 
-//\u0020;
+//------------------------------------------------------------------------------
 
 double timestamp_ms() {
   using clock = std::chrono::high_resolution_clock;
@@ -27,8 +27,7 @@ double timestamp_ms() {
   return (now_nanos - origin) * 1.0e-6;
 }
 
-int surely$thisdoesntwork;
-int $butdoesthiswork;
+//------------------------------------------------------------------------------
 
 void set_color(uint32_t c) {
   if (c) {
@@ -39,6 +38,7 @@ void set_color(uint32_t c) {
   }
 }
 
+//------------------------------------------------------------------------------
 
 struct MatchTableEntry {
   matcher matcher_cb = nullptr;
@@ -47,37 +47,6 @@ struct MatchTableEntry {
   int match_count = 0;
   int fail_count = 0;
 };
-
-const char* match_ifd_out(const char* text, void* ctx) {
-  using prefix = Lit<"#if 0">;
-  using suffix = Lit<"#endif">;
-  using match = Seq<prefix, Any<Seq<Not<suffix>, Char<>>>, suffix>;
-
-  return match::match(text, ctx);
-}
-
-const char* match_formfeed(const char* text, void* ctx) {
-  if(uint8_t(text[0]) == 0x0C) return text + 1;
-  return nullptr;
-}
-
-const char* match_cr(const char* text, void* ctx) {
-  return Char<'\r'>::match(text, ctx);
-}
-
-/*
-Conflict between multiline_comment, punct - multiline_comment wins
-Conflict between preproc, punct           - preproc wins
-Conflict between int, punct               - int wins
-Conflict between oneline_comment, punct   - comment wins
-Conflict between identifier, string       - string wins
-Conflict between float, int               - float wins
-Conflict between float, punct             - float wins
-Conflict between byte order mark, utf8    - bom wins
-Conflict between raw_string, identifier   - raw string wins
-
-predefined constants and identifiers are gonna conflict - predef wins
-*/
 
 MatchTableEntry matcher_table[] = {
   { match_space,              0x804040, "space" },
@@ -93,8 +62,7 @@ MatchTableEntry matcher_table[] = {
   { match_punct,              0x808080, "punct" },
   { match_character_constant, 0x44DDDD, "char_literal" },
   { match_splice,             0x00CCFF, "splice" },
-  { match_formfeed,           0xFF00FF, "formfeed" },
-  { match_byte_order_mark,    0xFF00FF, "byte order mark" },   // must be before utf8
+  { Char<'\f'>::match,        0xFF00FF, "formfeed" },
 };
 
 //------------------------------------------------------------------------------
@@ -106,7 +74,6 @@ int source_files = 0;
 std::vector<std::string> bad_files;
 std::vector<std::string> skipped_files;
 
-std::set<std::pair<int, int>> conflicts;
 double lex_time = 0;
 
 const char* current_filename = nullptr;
@@ -115,6 +82,7 @@ std::vector<std::string> negative_test_cases = {
   "/objc/",                           // Objective C
   "/objc.dg/",                        // Objective C
   "/objc-obj-c++-shared/",            // Objective C
+  "/asm/", // all assembler
 
   "19990407-1.c",                     // requires preproc
   "c2x-digit-separators-2.c",         // dg-error
@@ -159,6 +127,23 @@ std::vector<std::string> negative_test_cases = {
   "warn-normalized-1.c",              // Not lexable without preproc
   "warn-normalized-2.c",              // Not lexable without preproc
   "warning-zero-in-literals-1.c",     // Nulls inside literals
+  "include2.c", // dg-error
+  "directiv.c", // dg-error
+  "strify3.c", // x@y?
+  "ppc-asm.h", // @notoc?
+  "has-include-1.c", // dg-error
+  "has-include-next-1.c", // dg-error
+  "pragma-message.c", // dg-error
+  "macspace1.c", // dg-error
+  "macspace2.c", // dg-error
+  "literals-2.c", // dg-error
+  "recurse-3.c", // recursive macros that don't compile
+  "if-2.c", // dg-error
+  "abitest.h", // assembler
+  "dce110_timing_generator.c", // "@TODOSTEREO" in if'd out block
+  "carl9170/phy.h", // invalid backslash in macro
+  "linux/elfnote.h", // assembly
+  "boot/ppc_asm.h", // assembly
 };
 
 //------------------------------------------------------------------------------
@@ -216,7 +201,6 @@ bool test_lex(const std::string& path, const std::string& text, bool echo) {
       lex_ok = false;
       printf("\n");
       printf("File %s:\n", path.c_str());
-      //printf("Could not match {%.40s}\n", cursor);
       printf("Could not match\n");
 
       for (int i = 0; i < 40; i++) {
@@ -263,15 +247,18 @@ bool test_lex(const std::string& path, size_t size, bool echo) {
   text[size] = 0;
   fclose(f);
 
-  /*
-  if (text.find("dg-error") != std::string::npos ||
-      text.find("dg-bogus") != std::string::npos ||
-      text.find("@") != std::string::npos) { // gcc has some "stringizing literals with @ in them" test cases
+  bool skip = false;
+  if (text.find("__ASSEMBLY__") != std::string::npos) skip = true;
+  if (text.find("__ASSEMBLER__") != std::string::npos) skip = true;
+
+  // Stuff with ".macro" is also assembler
+  if (text.find(".macro") != std::string::npos) skip = true;
+
+  if (skip) {
     //printf("Skipping %s as it is intended to cause an error\n", path.c_str());
     skipped_files.push_back(path);
     return false;
   }
-  */
 
   return test_lex(path, text, echo);
 }
@@ -280,18 +267,6 @@ bool test_lex(const std::string& path, size_t size, bool echo) {
 
 int main(int argc, char** argv) {
   printf("Matcheroni Demo\n");
-
-  if (0) {
-    //const char* text = R"('\'')";
-    //printf("{%s}\n", text);
-    //printf("{%s}\n", character_constant::match(text));
-
-    //auto path = "testcases/test.c";
-    //auto size = std::filesystem::file_size(path);
-    //test_lex(path, size, true);
-    return 0;
-  }
-
 
   using rdit = std::filesystem::recursive_directory_iterator;
   const char* base_path = argc > 1 ? argv[1] : ".";
@@ -332,7 +307,7 @@ int main(int argc, char** argv) {
 
   printf("\n");
   printf("Total time %f msec\n", total_time);
-  printf("Lex time   %f msec\n", lex_time);
+  printf("Lex time %f msec\n", lex_time);
   printf("Total files %d\n", total_files);
   printf("Total source files %d\n", source_files);
   printf("Total bytes %d\n", total_bytes);
@@ -349,24 +324,5 @@ int main(int argc, char** argv) {
     );
   }
 
-  /*
-  for (auto& f : skipped_files) {
-    if (f.find("dir-only") != std::string::npos) {
-      printf("%s\n", f.c_str());
-    }
-  }
-  */
-
-  /*
-  if (bad_files.size()) {
-    printf("\nFiles with lex errors:\n");
-    for (const auto& p : bad_files) {
-      printf("%s\n", p.c_str());
-    }
-  }
-  */
-
   return 0;
 }
-
-//------------------------------------------------------------------------------

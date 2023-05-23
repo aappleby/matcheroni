@@ -7,8 +7,6 @@ using namespace matcheroni;
 
 extern const char* current_filename;
 
-// "s\{\n}t\{\n}\{\n}r??/{\n}  1";
-
 //------------------------------------------------------------------------------
 
 using utf8_ext       = Range<0x80, 0xBF>;
@@ -21,9 +19,21 @@ using utf8_char = Oneof<utf8_onebyte, utf8_twobyte, utf8_threebyte, utf8_fourbyt
 using utf8_multi = Oneof<utf8_twobyte, utf8_threebyte, utf8_fourbyte>;
 using utf8_bom = Seq<Char<0xEF>, Char<0xBB>, Char<0xBF>>;
 
+const char* match_utf8(const char* text, void* ctx) {
+  auto end = utf8_char::match(text, ctx);
+  return end;
+}
+
+const char* match_utf8_bom(const char* text, void* ctx) {
+  return utf8_bom::match(text, ctx);
+}
+
 // Not sure if this should be in here
 using latin1_ext = Range<128,255>;
 
+/*
+// Yeaaaah, not gonna try to support trigraphs, they're obsolete and have been
+// removed from the latest C spec.
 using trigraphs = OneofLit<
   R"(??=)",
   R"(??()",
@@ -35,32 +45,10 @@ using trigraphs = OneofLit<
   R"(??>)",
   R"(??-)"
 >;
+*/
 
 //------------------------------------------------------------------------------
 // Misc
-
-const char* match_byte_order_mark(const char* text, void* ctx) {
-  return utf8_bom::match(text, ctx);
-}
-
-const char* match_utf8(const char* text, void* ctx) {
-  auto end = utf8_char::match(text, ctx);
-
-#if 1
-  if (end) {
-    printf("\n");
-    printf("%s\n", current_filename);
-    printf("{##########################{%.20s}##########################}\n", text);
-    for (auto c = text; c < end; c++) {
-      printf("{%c} 0x%02x ", *c, (unsigned char)(*c));
-    }
-    putc('\n', stdout);
-    printf("\n");
-  }
-#endif
-
-  return end;
-}
 
 const char* match_space(const char* text, void* ctx) {
   using ws = Char<' ','\t'>;
@@ -97,28 +85,6 @@ using splice = Seq<
 const char* match_splice(const char* text, void* ctx) {
   return splice::match(text, ctx);
 }
-
-//------------------------------------------------------------------------------
-// 6.4   Lexical Elements
-/*
-using token = Oneof<
-  keyword,
-  identifier,
-  constant,
-  string_literal,
-  punctuator
->;
-
-preprocessing-token:
-  header-name
-  identifier
-  pp-number
-  character-constant
-  string-literal
-  punctuator
-  each universal-character-name that cannot be one of the above
-  each non-white-space character that cannot be one of the above
-*/
 
 //------------------------------------------------------------------------------
 // 6.4.1 Keywords
@@ -215,8 +181,15 @@ using universal_character_name = Oneof<
 //------------------------------------------------------------------------------
 // 6.4.2 Identifiers - GCC allows dollar signs in identifiers?
 
-// FIXME do we want utf8_multi tacked on here? Do we care about utf8 right now?
-using nondigit   = Oneof<Range<'a', 'z'>, Range<'A', 'Z'>, Char<'_'>, Char<'$'>, universal_character_name, latin1_ext, utf8_multi>;
+using nondigit = Oneof<
+  Range<'a', 'z'>,
+  Range<'A', 'Z'>,
+  Char<'_'>,
+  Char<'$'>,
+  universal_character_name,
+  latin1_ext, // One of the GCC test files requires this
+  utf8_multi  // Lots of GCC test files for unicode
+>;
 
 using identifier = Seq<nondigit, Any<Oneof<digit, nondigit>>>;
 
@@ -281,7 +254,10 @@ using enumeration_constant = identifier;
 // 6.4.4.4 Character constants
 
 
-using simple_escape_sequence      = Seq<Char<'\\'>, Charset<"'\"?\\abfnrtv">>;
+//using simple_escape_sequence      = Seq<Char<'\\'>, Charset<"'\"?\\abfnrtv">>;
+
+// GCC adds \e and \E, and '\(' '\{' '\[' '\%' are warnings but allowed
+using simple_escape_sequence      = Seq<Char<'\\'>, Charset<"'\"?\\abfnrtveE({[%">>;
 
 using octal_escape_sequence = Oneof<
   Seq<Char<'\\'>, octal_digit, Opt<octal_digit>, Opt<octal_digit>>,
@@ -310,7 +286,11 @@ const char* match_escape_sequence(const char* text, void* ctx) {
 using encoding_prefix    = Oneof<Lit<"u8">, Char<'u', 'U', 'L'>>; // u8 must go first
 using c_char             = Oneof<escape_sequence, NotChar<'\'', '\\', '\n'>>;
 using c_char_sequence    = Some<c_char>;
-using character_constant = Seq< Opt<encoding_prefix>, Char<'\''>, c_char_sequence, Char<'\''> >;
+
+//using character_constant = Seq< Opt<encoding_prefix>, Char<'\''>, c_char_sequence, Char<'\''> >;
+
+// GCC allows empty character constants?
+using character_constant = Seq< Opt<encoding_prefix>, Char<'\''>, Any<c_char>, Char<'\''> >;
 
 const char* match_character_constant(const char* text, void* ctx) {
   return character_constant::match(text, ctx);
@@ -374,18 +354,20 @@ const char* match_raw_string_literal(const char* text, void* ctx) {
 <: :> <% %> %: %:%:
 */
 
-const char* match_punct(const char* text, void* ctx) {
-  // We're just gonna match these one punct at a time
 #if 0
-  using trigraphs = Trigraphs<"...<<=>>=">;
-  using digraphs  = Digraphs<"---=->!=*=/=&&&=##%=^=+++=<<<===>=>>|=||">;
-  using unigraphs = Charset<"-,;:!?.()[]{}*/&#%^+<=>|~">;
-  using match = Oneof<trigraphs, digraphs, unigraphs>;
-  return match::match(text, ctx);
+using trigraphs = Trigraphs<"...<<=>>=">;
+using digraphs  = Digraphs<"---=->!=*=/=&&&=##%=^=+++=<<<===>=>>|=||">;
+using unigraphs = Charset<"-,;:!?.()[]{}*/&#%^+<=>|~">;
+using all_punct = Oneof<trigraphs, digraphs, unigraphs>;
 #endif
 
-  using unigraphs = Charset<"-,;:!?.()[]{}*/&#%^+<=>|~">;
-  return unigraphs::match(text, ctx);
+// We're just gonna match these one punct at a time
+using punctuator = Charset<"-,;:!?.()[]{}*/&#%^+<=>|~">;
+
+const char* match_punct(const char* text, void* ctx) {
+
+  //return all_punct::match(text, ctx);
+  return punctuator::match(text, ctx);
 }
 
 //------------------------------------------------------------------------------
@@ -399,23 +381,6 @@ using header_name = Oneof<
   Seq< Char<'<'>, h_char_sequence, Char<'>'> >,
   Seq< Char<'"'>, q_char_sequence, Char<'"'> >
 >;
-
-//------------------------------------------------------------------------------
-// 6.4.8 Preprocessing numbers
-
-/*
-pp-number:
-  digit
-  . digit
-  pp-number identifier_continue
-  pp-number ’ digit
-  pp-number ’ nondigit
-  pp-number e sign
-  pp-number E sign
-  pp-number p sign
-  pp-number P sign
-  pp-number .
-*/
 
 //------------------------------------------------------------------------------
 // 6.4.9 Comments
@@ -459,113 +424,19 @@ const char* match_nested_comment_body(const char* text, void* ctx) {
 }
 
 //------------------------------------------------------------------------------
-// 6.10 Preprocessing directives
+// We can't really handle preprocessing stuff so we're just matching the
+// initial keyword.
 
-/*
-preprocessing-file:
-groupopt
-group:
-group-part
-group group-part
-group-part:
-if-section
-control-line
-text-line
-# non-directive
-if-section:
-if-group elif-groupsopt else-groupopt endif-line
-if-group:
-# if constant-expression new-line groupopt
-# ifdef identifier new-line groupopt
-# ifndef identifier new-line groupopt
-elif-groups:
-elif-group
-elif-groups elif-group
-elif-group:
-# elif constant-expression new-line groupopt
-# elifdef identifier new-line groupopt
-# elifndef identifier new-line groupopt
-else-group:
-# else new-line groupopt
-endif-line:
-# endif new-line
-control-line:
-# include pp-tokens new-line
-# embed pp-tokens new-line
-# define identifier replacement-list new-line
-# define identifier lparen identifier-listopt ) replacement-list new-line
-# define identifier lparen ... ) replacement-list new-line
-# define identifier lparen identifier-list , ... ) replacement-list new-line
-# undef identifier new-line
-# line pp-tokens new-line
-# error pp-tokensopt new-line
-# warning pp-tokensopt new-line
-# pragma pp-tokensopt new-line
-# new-line
-text-line:
-pp-tokensopt new-line
-non-directive:
-pp-tokens new-line
-lparen:
-a ( character not immediately preceded by white space
-replacement-list:
-pp-tokensopt
-pp-tokens:
-preprocessing-token
-pp-tokens preprocessing-token
-new-line:
-the new-line character
-identifier-list:
-identifier
-identifier-list , identifier
-pp-parameter:
-pp-parameter-name pp-parameter-clauseopt
-pp-parameter-name:
-pp-standard-parameter
-pp-prefixed-parameter
-pp-standard-parameter:
-identifier
-pp-prefixed-parameter:
-identifier :: identifier
-pp-parameter-clause:
-( pp-balanced-token-sequenceopt )
-pp-balanced-token-sequence:
-pp-balanced-token
-pp-balanced-token-sequence pp-balanced-token
-pp-balanced-token:
-( pp-balanced-token-sequenceopt )
-[ pp-balanced-token-sequenceopt ]
-{ pp-balanced-token-sequenceopt }
-any pp-token other than a parenthesis, a bracket, or a brace
-embed-parameter-sequence:
-pp-parameter
-embed-parameter-sequence pp-parameter
-*/
-
-const char* match_angle_path(const char* text, void* ctx) {
-  // Quoted paths
-  using quote     = Char<'"'>;
-  using notquote  = NotChar<'"'>;
-  using path1 = Seq<quote, Some<notquote>, quote>;
-
-  // Angle-bracket paths
-  using lbrack    = Char<'<'>;
-  using rbrack    = Char<'>'>;
-  using notbrack  = NotChar<'<', '>'>;
-  using path2 = Seq<lbrack, Some<notbrack>, rbrack>;
-
-  using match = Oneof<path1, path2>;
-  return path2::match(text, ctx);
-  //return match::match(text, ctx);
-}
+using preproc = Seq<
+  Char<'#'>,
+  OneofLit<
+    "define", "elif", "elifdef", "elifndef", "else", "embed", "endif", "error",
+    "if", "ifdef", "ifndef", "include", "line", "pragma", "undef", "warning"
+  >
+>;
 
 const char* match_preproc(const char* text, void* ctx) {
-
-  // Raw strings in preprocs can make a preproc span multiple lines...?
-  using item = Oneof<Ref<match_raw_string_literal>, splice, NotChar<'\n'>>;
-
-  using match = Seq<Char<'#'>, Any<item>, And<EOL>>;
-  return match::match(text, ctx);
+  return preproc::match(text, ctx);
 }
 
 //------------------------------------------------------------------------------
