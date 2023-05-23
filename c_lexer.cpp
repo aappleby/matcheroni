@@ -10,17 +10,6 @@ extern const char* current_filename;
 //------------------------------------------------------------------------------
 // Misc helpers
 
-const char* match_space(const char* text, void* ctx) {
-  using ws = Atom<' ','\t'>;
-  using match = Some<ws>;
-  return match::match(text, ctx);
-}
-
-const char* match_newline(const char* text, void* ctx) {
-  using match = Seq<Opt<Atom<'\r'>>, Atom<'\n'>>;
-  return match::match(text, ctx);
-}
-
 const char* rmatch_space(const char* a, const char* b, void* ctx) {
   using ws = Atom<' ','\t'>;
   using match = Some<ws>;
@@ -32,10 +21,12 @@ const char* rmatch_newline(const char* a, const char* b, void* ctx) {
   return match::match(a, b, ctx);
 }
 
+/*
 const char* match_indentation(const char* text, void* ctx) {
   using match = Seq<Atom<'\n'>, Any<Atom<' ', '\t'>>>;
   return match::match(text, ctx);
 }
+*/
 
 const char* match_str(const char* text, const char* lit) {
   while(1) {
@@ -92,15 +83,6 @@ using utf8_char = Oneof<utf8_onebyte, utf8_twobyte, utf8_threebyte, utf8_fourbyt
 using utf8_multi = Oneof<utf8_twobyte, utf8_threebyte, utf8_fourbyte>;
 using utf8_bom = Seq<Atom<0xEF>, Atom<0xBB>, Atom<0xBF>>;
 
-const char* match_utf8(const char* text, void* ctx) {
-  auto end = utf8_char::match(text, ctx);
-  return end;
-}
-
-const char* match_utf8_bom(const char* text, void* ctx) {
-  return utf8_bom::match(text, ctx);
-}
-
 const char* rmatch_utf8(const char* a, const char* b, void* ctx) {
   auto end = utf8_char::match(a, b, ctx);
   return end;
@@ -132,10 +114,6 @@ using splice = Seq<
   Any<space>,
   Atom<'\n'>
 >;
-
-const char* match_splice(const char* text, void* ctx) {
-  return splice::match(text, ctx);
-}
 
 const char* rmatch_splice(const char* a, const char* b, void* ctx) {
   return splice::match(a, b, ctx);
@@ -212,10 +190,6 @@ using integer_constant = Oneof<
   Seq<octal_constant,       Opt<integer_suffix>>
 >;
 
-const char* match_int(const char* text, void* ctx) {
-  return integer_constant::match(text, ctx);
-}
-
 const char* rmatch_int(const char* a, const char* b, void* ctx) {
   return integer_constant::match(a, b, ctx);
 }
@@ -250,10 +224,6 @@ using nondigit = Oneof<
 >;
 
 using identifier = Seq<nondigit, Any<Oneof<digit, nondigit>>>;
-
-const char* match_identifier(const char* text, void* ctx) {
-  return identifier::match(text, ctx);
-}
 
 const char* rmatch_identifier(const char* a, const char* b, void* ctx) {
   return identifier::match(a, b, ctx);
@@ -303,10 +273,6 @@ using floating_constant = Oneof<
   hexadecimal_floating_constant
 >;
 
-const char* match_float(const char* text, void* ctx) {
-  return floating_constant::match(text, ctx);
-}
-
 const char* rmatch_float(const char* a, const char* b, void* ctx) {
   return floating_constant::match(a, b, ctx);
 }
@@ -342,10 +308,6 @@ using escape_sequence = Oneof<
   universal_character_name
 >;
 
-const char* match_escape_sequence(const char* text, void* ctx) {
-  return escape_sequence::match(text, ctx);
-}
-
 const char* rmatch_escape_sequence(const char* a, const char* b, void* ctx) {
   return escape_sequence::match(a, b, ctx);
 }
@@ -362,10 +324,6 @@ using c_char_sequence    = Some<c_char>;
 
 // ...in GCC they're only a warning.
 using character_constant = Seq< Opt<encoding_prefix>, Atom<'\''>, Any<c_char>, Atom<'\''> >;
-
-const char* match_character_constant(const char* text, void* ctx) {
-  return character_constant::match(text, ctx);
-}
 
 const char* rmatch_character_constant(const char* a, const char* b, void* ctx) {
   return character_constant::match(a, b, ctx);
@@ -409,17 +367,8 @@ using raw_string_literal = Seq<
 // Raw strings require matching backreferences, so we squish that into the
 // grammar by passing the backreference in the context pointer.
 
-const char* match_string_literal(const char* text, void* ctx) {
-  return string_literal::match(text, ctx);
-}
-
 const char* rmatch_string_literal(const char* a, const char* b, void* ctx) {
   return string_literal::match(a, b, ctx);
-}
-
-const char* match_raw_string_literal(const char* text, void* ctx) {
-  Backref backref;
-  return raw_string_literal::match(text, &backref);
 }
 
 const char* rmatch_raw_string_literal(const char* a, const char* b, void* ctx) {
@@ -432,10 +381,6 @@ const char* rmatch_raw_string_literal(const char* a, const char* b, void* ctx) {
 
 // We're just gonna match these one punct at a time
 using punctuator = Charset<"-,;:!?.()[]{}*/&#%^+<=>|~">;
-
-const char* match_punct(const char* text, void* ctx) {
-  return punctuator::match(text, ctx);
-}
 
 const char* rmatch_punct(const char* a, const char* b, void* ctx) {
   return punctuator::match(a, b, ctx);
@@ -474,14 +419,6 @@ using slc = Seq<Lit<"//">, Until<EOL>>;
 using mlc_ldelim = Lit<"/*">;
 using mlc_rdelim = Lit<"*/">;
 using mlc  = Seq<mlc_ldelim, Until<mlc_rdelim>, mlc_rdelim>;
-
-const char* match_oneline_comment(const char* text, void* ctx) {
-  return slc::match(text, ctx);
-}
-
-const char* match_multiline_comment(const char* text, void* ctx) {
-  return mlc::match(text, ctx);
-}
 
 const char* rmatch_oneline_comment(const char* a, const char* b, void* ctx) {
   return slc::match(a, b, ctx);
@@ -527,24 +464,6 @@ const char* match_nested_comment_body(const char* text, void* ctx) {
 //------------------------------------------------------------------------------
 // We can't really handle preprocessing stuff so we're just matching the
 // initial keyword.
-
-const char* match_preproc(const char* text, void* ctx) {
-  if (*text != '#') return nullptr;
-  text++;
-
-  const char* preprocs[16] = {
-    "define", "elif", "elifdef", "elifndef", "else", "embed", "endif", "error",
-    "if", "ifdef", "ifndef", "include", "line", "pragma", "undef", "warning"
-  };
-
-  for (int i = 0; i < 16; i++) {
-    if (auto t = match_str(text, preprocs[i])) {
-      return t;
-    }
-  }
-
-  return nullptr;
-}
 
 const char* rmatch_preproc(const char* a, const char* b, void* ctx) {
   if (*a != '#') return nullptr;

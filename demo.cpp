@@ -40,35 +40,6 @@ void set_color(uint32_t c) {
 
 //------------------------------------------------------------------------------
 
-/*
-struct MatchTableEntry {
-  matcher matcher_cb = nullptr;
-  uint32_t color = 0;
-  const char* matcher_name = nullptr;
-  int match_count = 0;
-  int fail_count = 0;
-};
-
-MatchTableEntry matcher_table[] = {
-  { match_space,              0x804040, "space" },
-  { match_newline,            0x404080, "newline" },
-  { match_string_literal,     0x4488AA, "string" },            // must be before identifier
-  { match_raw_string_literal, 0x88AAAA, "raw_string" },        // must be before identifier, should be 270 on gcc/gcc
-  { match_identifier,         0xCCCC40, "identifier" },
-  { match_multiline_comment,  0x66AA66, "multiline_comment" }, // must be before punct
-  { match_oneline_comment,    0x008800, "oneline_comment" },   // must be before punct
-  { match_preproc,            0xCC88CC, "preproc" },           // must be before punct
-  { match_float,              0xFF88AA, "float" },             // must be before int
-  { match_int,                0xFF8888, "int" },               // must be before punct
-  { match_punct,              0x808080, "punct" },
-  { match_character_constant, 0x44DDDD, "char_literal" },
-  { match_splice,             0x00CCFF, "splice" },
-  { Atom<'\f'>::match,        0xFF00FF, "formfeed" },
-};
-*/
-
-//------------------------------------------------------------------------------
-
 struct RMatchTableEntry {
   rmatcher rmatcher_cb = nullptr;
   uint32_t color = 0;
@@ -192,21 +163,8 @@ bool test_lex(const std::string& path, const std::string& text, bool echo) {
     bool matched = false;
 
     for (int i = 0; i < matcher_count; i++) {
-      //auto& t1 = matcher_table[i];
       auto& t2 = rmatcher_table[i];
-
-      //auto end1 = t1.matcher_cb(cursor, nullptr);
       auto end2 = t2.rmatcher_cb(cursor, text_b, nullptr);
-
-      /*
-      if (end1 != end2) {
-        printf("Matcher mismatch! %s\n", path.c_str());
-        printf("cursor : %.40s\n", cursor);
-        printf("end1   : %.40s\n", end1);
-        printf("end2   : %.40s\n", end2);
-        exit(1);
-      }
-      */
 
       if (end2) {
 
@@ -224,7 +182,6 @@ bool test_lex(const std::string& path, const std::string& text, bool echo) {
           }
         }
 
-        //t1.match_count++;
         t2.match_count++;
         matched = true;
 
@@ -239,7 +196,6 @@ bool test_lex(const std::string& path, const std::string& text, bool echo) {
         break;
       }
       else {
-        //t1.fail_count++;
         t2.fail_count++;
       }
     }
@@ -385,18 +341,6 @@ int main(int argc, char** argv) {
   printf("Files skipped %ld\n", skipped_files.size());
   printf("Files with lex errors %ld\n", bad_files.size());
   printf("\n");
-
-  /*
-  const int matcher_count = sizeof(matcher_table) / sizeof(matcher_table[0]);
-  for (int i = 0; i < matcher_count; i++) {
-    printf("%-20s match %8d fail %8d\n",
-      matcher_table[i].matcher_name,
-      matcher_table[i].match_count,
-      matcher_table[i].fail_count
-    );
-  }
-  printf("\n");
-  */
 
   const int rmatcher_count = sizeof(rmatcher_table) / sizeof(rmatcher_table[0]);
   for (int i = 0; i < rmatcher_count; i++) {
