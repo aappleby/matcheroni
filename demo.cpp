@@ -271,32 +271,29 @@ void test_lex(const std::string& path, size_t size, bool echo) {
 int main(int argc, char** argv) {
   printf("Matcheroni Demo\n");
 
-  /*
   {
-    using text_matcher = matcher<const char>;
+    using text_matcher = matcher<char>;
     text_matcher m[] = {
-      Atom<'c'>::match,
+      Opt<Atom<'a'>>::match,
       Atom<'b'>::match,
-      Atom<'a'>::match,
+      Atom<'c'>::match,
     };
 
     text_matcher* a = m;
     text_matcher* b = m + 3;
 
     using M = Oneof<
-      Atom< Atom<'a'>::match<const char> >,
-      Atom< Atom<'b'>::match<const char> >
+      Atom< Opt<Atom<'a'>>::match<char> >,
+      Atom< Atom<'b'>::match >
     >;
 
     auto end = M::match<text_matcher>(a, b, nullptr);
 
+    printf("matched %ld\n", end - a);
     printf("a   %p\n", a);
     printf("b   %p\n", b);
     printf("end %p\n", end);
   }
-
-  exit(0);
-  */
 
   using rdit = std::filesystem::recursive_directory_iterator;
   const char* base_path = argc > 1 ? argv[1] : ".";

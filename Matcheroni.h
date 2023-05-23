@@ -70,22 +70,22 @@ struct Atom<> {
 // Examples:
 // Seq<Atom<'a'>, Atom<'b'>::match("abcd") == "cd"
 
-template<typename M1, typename... rest>
+template<typename P, typename... rest>
 struct Seq {
 
   template<typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
-    auto c = M1::match(a, b, ctx);
+    auto c = P::match(a, b, ctx);
     return c ? Seq<rest...>::match(c, b, ctx) : nullptr;
   }
 };
 
-template<typename M1>
-struct Seq<M1> {
+template<typename P>
+struct Seq<P> {
 
   template<typename atom>
   static atom* match(atom* a, atom* b, void* ctx) {
-    return M1::match(a, b, ctx);
+    return P::match(a, b, ctx);
   }
 };
 
@@ -97,23 +97,23 @@ struct Seq<M1> {
 // Oneof<Atom<'a'>, Atom<'b'>>::match("abcd") == "bcd"
 // Oneof<Atom<'a'>, Atom<'b'>>::match("bcde") == "cde"
 
-template <typename M1, typename... rest>
+template <typename P, typename... rest>
 struct Oneof {
 
   template<typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
-    auto c = M1::match(a, b, ctx);
+    auto c = P::match(a, b, ctx);
     return c ? c : Oneof<rest...>::match(a, b, ctx);
   }
 };
 
 
-template <typename M1>
-struct Oneof<M1> {
+template <typename P>
+struct Oneof<P> {
 
   template<typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
-    return M1::match(a, b, ctx);
+    return P::match(a, b, ctx);
   }
 };
 
@@ -127,12 +127,12 @@ struct Oneof<M1> {
 // Any<Atom<'a'>>::match("aaaab") == "b"
 // Any<Atom<'a'>>::match("bbbbc") == "bbbbc"
 
-template<typename M>
+template<typename P>
 struct Any {
 
   template <typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
-    while(auto c = M::match(a, b, ctx)) a = c;
+    while(auto c = P::match(a, b, ctx)) a = c;
     return a;
   }
 };
@@ -143,12 +143,12 @@ struct Any {
 // Opt<Atom<'a'>>::match("abcd") == "bcd"
 // Opt<Atom<'a'>>::match("bcde") == "bcde"
 
-template<typename M>
+template<typename P>
 struct Opt {
 
   template <typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
-    auto c = M::match(a, b, ctx);
+    auto c = P::match(a, b, ctx);
     return c ? c : a;
   }
 };
@@ -160,26 +160,26 @@ struct Opt {
 // Some<Atom<'a'>>::match("aaaab") == "b"
 // Some<Atom<'a'>>::match("bbbbc") == nullptr
 
-template<typename M>
+template<typename P>
 struct Some {
 
   template <typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
-    auto c = M::match(a, b, ctx);
-    return c ? Any<M>::match(c, b, ctx) : nullptr;
+    auto c = P::match(a, b, ctx);
+    return c ? Any<P>::match(c, b, ctx) : nullptr;
   }
 };
 
 //------------------------------------------------------------------------------
 // Repetition, equivalent to M{N} in regex.
 
-template<int N, typename M>
+template<int N, typename P>
 struct Rep {
 
   template <typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
     for(auto i = 0; i < N; i++) {
-      auto c = M::match(a, b, ctx);
+      auto c = P::match(a, b, ctx);
       if (!c) return nullptr;
       a = c;
     }
@@ -194,12 +194,12 @@ struct Rep {
 // And<Atom<'a'>>::match("abcd") == "abcd"
 // And<Atom<'a'>>::match("bcde") == nullptr
 
-template<typename M>
+template<typename P>
 struct And {
 
   template <typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
-    auto c = M::match(a, b, ctx);
+    auto c = P::match(a, b, ctx);
     return c ? a : nullptr;
   }
 };
@@ -210,12 +210,12 @@ struct And {
 // Not<Atom<'a'>>::match("abcd") == nullptr
 // Not<Atom<'a'>>::match("bcde") == "bcde"
 
-template<typename M>
+template<typename P>
 struct Not {
 
   template <typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
-    auto c = M::match(a, b, ctx);
+    auto c = P::match(a, b, ctx);
     return c ? nullptr : a;
   }
 };
@@ -234,24 +234,24 @@ struct EOF {
 // Atom-not-in-set matcher, which is a bit faster than using
 // Seq<Not<Atom<...>>, Atom<>>
 
-template <auto C1, auto... rest>
+template <auto C, auto... rest>
 struct NotAtom {
 
   template <typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
     if (!a || a == b) return nullptr;
-    if (*a == C1) return nullptr;
+    if (*a == C) return nullptr;
     return NotAtom<rest...>::match(a, b, ctx);
   }
 };
 
-template <auto C1>
-struct NotAtom<C1> {
+template <auto C>
+struct NotAtom<C> {
 
   template <typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
     if (!a || a == b) return nullptr;
-    return (*a == C1) ? nullptr : a + 1;
+    return (*a == C) ? nullptr : a + 1;
   }
 };
 
@@ -276,12 +276,12 @@ struct Range {
 // Advances the cursor until the pattern matches or we hit EOF. Does _not_
 // consume the pattern. Equivalent to Any<Seq<Not<M>,Atom<>>>
 
-template<typename M>
+template<typename P>
 struct Until {
   template<typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
     while(a < b) {
-      if (M::match(a, b, ctx)) return a;
+      if (P::match(a, b, ctx)) return a;
       a++;
     }
     return nullptr;
@@ -291,13 +291,55 @@ struct Until {
 //------------------------------------------------------------------------------
 // References to other matchers. Enables recursive matchers.
 
-template<auto& F>
+template<auto& M>
 struct Ref {
   template<typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
-    return F(a, b, ctx);
+    return M(a, b, ctx);
   }
 };
+
+//------------------------------------------------------------------------------
+// To use backreferences, a matcher above these ones must pass a pointer to a
+// Backref object in the ctx parameter.
+
+template<typename atom>
+struct Backref {
+  const atom* start;
+  int size;
+};
+
+template<typename P>
+struct StoreBackref {
+
+  template<typename atom>
+  static const atom* match(const atom* a, const atom* b, void* ctx) {
+    auto c = P::match(a, b, ctx);
+    auto ref = (Backref<atom>*)ctx;
+    if (!c || !ref) return nullptr;
+
+    ref->start = a;
+    ref->size = int(c - a);
+    return c;
+  }
+
+};
+
+struct MatchBackref {
+
+  template<typename atom>
+  static const atom* match(const atom* a, const atom* b, void* ctx) {
+    if (!a || a == b) return nullptr;
+    auto ref = (Backref<atom>*)ctx;
+    if (!ref) return nullptr;
+    if (a + ref->size > b) return nullptr;
+    for (int i = 0; i < ref->size; i++) {
+      if(a[i] != ref->start[i]) return nullptr;
+    }
+    return a + ref->size;
+  }
+};
+
 
 
 
@@ -408,6 +450,7 @@ struct OneofLit<M1> {
 
 template<StringParam chars>
 struct Charset {
+
   static const char* match(const char* a, const char* b, void* ctx) {
     if (!a || a == b) return nullptr;
     for (auto i = 0; i < sizeof(chars.value); i++) {
@@ -450,44 +493,6 @@ struct Trigraphs {
   }
 };
 */
-
-//------------------------------------------------------------------------------
-// To use backreferences, a matcher above these ones must pass a pointer to a
-// Backref object in the ctx parameter.
-
-struct Backref {
-  const char* start;
-  int size;
-};
-
-template<typename M>
-
-
-struct StoreBackref {
-  static const char* match(const char* a, const char* b, void* ctx) {
-    auto c = M::match(a, b, ctx);
-    auto ref = (Backref*)ctx;
-    if (!c || !ref) return nullptr;
-
-    ref->start = a;
-    ref->size = int(c - a);
-    return c;
-  }
-
-};
-
-struct MatchBackref {
-  static const char* match(const char* a, const char* b, void* ctx) {
-    if (!a || a == b) return nullptr;
-    auto ref = (Backref*)ctx;
-    if (!ref) return nullptr;
-    if (a + ref->size > b) return nullptr;
-    for (int i = 0; i < ref->size; i++) {
-      if(a[i] != ref->start[i]) return nullptr;
-    }
-    return a + ref->size;
-  }
-};
 
 //------------------------------------------------------------------------------
 

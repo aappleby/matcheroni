@@ -372,7 +372,7 @@ const char* rmatch_string_literal(const char* a, const char* b, void* ctx) {
 }
 
 const char* rmatch_raw_string_literal(const char* a, const char* b, void* ctx) {
-  Backref backref;
+  Backref<char> backref;
   return raw_string_literal::match(a, b, &backref);
 }
 
