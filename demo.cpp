@@ -283,11 +283,11 @@ int main(int argc, char** argv) {
     text_matcher* b = m + 3;
 
     using M = Oneof<
-      Atom< Opt<Atom<'a'>>::match<char> >,
+      Atom< Opt<Atom<'a'>>::match >,
       Atom< Atom<'b'>::match >
     >;
 
-    auto end = M::match<text_matcher>(a, b, nullptr);
+    auto end = M::match(a, b, nullptr);
 
     printf("matched %ld\n", end - a);
     printf("a   %p\n", a);

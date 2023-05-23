@@ -14,14 +14,11 @@ using matcher = const atom* (*) (const atom* a, const atom* b, void* ctx);
 
 //------------------------------------------------------------------------------
 // The most fundamental unit of matching is a single atom. For convenience, we
-// implement the Atom matcher so that it can handle small sets of atoms and
-// allows Atom<> to match any atom.
+// implement the Atom matcher so that it can handle small sets of atoms.
 
 // Examples:
 // Atom<'a'>::match("abcd"...) == "bcd"
 // Atom<'a','c'>::match("cdef"...) == "def"
-// Atom<>::match("z123"...) == "123"
-// Atom<>::match(""...) == nullptr
 
 template <auto... rest>
 struct Atom;
@@ -54,10 +51,10 @@ struct Atom<C> {
   }
 };
 
-template <>
-struct Atom<> {
+template<typename _atom>
+struct AnyAtom {
+  using atom = _atom;
 
-  template<typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
     if (!a || a == b) return nullptr;
     return a + 1;
@@ -72,8 +69,8 @@ struct Atom<> {
 
 template<typename P, typename... rest>
 struct Seq {
+  using atom = P::atom;
 
-  template<typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
     auto c = P::match(a, b, ctx);
     return c ? Seq<rest...>::match(c, b, ctx) : nullptr;
@@ -82,9 +79,9 @@ struct Seq {
 
 template<typename P>
 struct Seq<P> {
+  using atom = P::atom;
 
-  template<typename atom>
-  static atom* match(atom* a, atom* b, void* ctx) {
+  static const atom* match(const atom* a, const atom* b, void* ctx) {
     return P::match(a, b, ctx);
   }
 };
@@ -99,8 +96,8 @@ struct Seq<P> {
 
 template <typename P, typename... rest>
 struct Oneof {
+  using atom = P::atom;
 
-  template<typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
     auto c = P::match(a, b, ctx);
     return c ? c : Oneof<rest...>::match(a, b, ctx);
@@ -110,8 +107,8 @@ struct Oneof {
 
 template <typename P>
 struct Oneof<P> {
+  using atom = P::atom;
 
-  template<typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
     return P::match(a, b, ctx);
   }
@@ -129,8 +126,8 @@ struct Oneof<P> {
 
 template<typename P>
 struct Any {
+  using atom = P::atom;
 
-  template <typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
     while(auto c = P::match(a, b, ctx)) a = c;
     return a;
@@ -145,8 +142,8 @@ struct Any {
 
 template<typename P>
 struct Opt {
+  using atom = P::atom;
 
-  template <typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
     auto c = P::match(a, b, ctx);
     return c ? c : a;
@@ -162,8 +159,8 @@ struct Opt {
 
 template<typename P>
 struct Some {
+  using atom = P::atom;
 
-  template <typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
     auto c = P::match(a, b, ctx);
     return c ? Any<P>::match(c, b, ctx) : nullptr;
@@ -175,8 +172,8 @@ struct Some {
 
 template<int N, typename P>
 struct Rep {
+  using atom = P::atom;
 
-  template <typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
     for(auto i = 0; i < N; i++) {
       auto c = P::match(a, b, ctx);
@@ -196,8 +193,8 @@ struct Rep {
 
 template<typename P>
 struct And {
+  using atom = P::atom;
 
-  template <typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
     auto c = P::match(a, b, ctx);
     return c ? a : nullptr;
@@ -212,8 +209,8 @@ struct And {
 
 template<typename P>
 struct Not {
+  using atom = P::atom;
 
-  template <typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
     auto c = P::match(a, b, ctx);
     return c ? nullptr : a;
@@ -223,8 +220,10 @@ struct Not {
 //------------------------------------------------------------------------------
 // Matches EOF, but does not advance past it.
 
+template <typename C>
 struct EOF {
-  template <typename atom>
+  using atom = C;
+
   static const atom* match(const atom* a, const atom* b, void* ctx) {
     return a == b ? a : nullptr;
   }
@@ -232,12 +231,12 @@ struct EOF {
 
 //------------------------------------------------------------------------------
 // Atom-not-in-set matcher, which is a bit faster than using
-// Seq<Not<Atom<...>>, Atom<>>
+// Seq<Not<Atom<...>>, AnyAtom>
 
 template <auto C, auto... rest>
 struct NotAtom {
+  using atom = decltype(C);
 
-  template <typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
     if (!a || a == b) return nullptr;
     if (*a == C) return nullptr;
@@ -247,8 +246,8 @@ struct NotAtom {
 
 template <auto C>
 struct NotAtom<C> {
+  using atom = decltype(C);
 
-  template <typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
     if (!a || a == b) return nullptr;
     return (*a == C) ? nullptr : a + 1;
@@ -258,14 +257,13 @@ struct NotAtom<C> {
 //------------------------------------------------------------------------------
 // Ranges of atoms, inclusive. Equivalent to [a-z] in regex.
 
-template<auto RA, auto RB>
+template<auto RA, decltype(RA) RB>
 struct Range {
+  using atom = decltype(RA);
 
-  template<typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
     if (!a || a == b) return nullptr;
-    if (static_cast<decltype(RA)>(*a) >= RA &&
-        static_cast<decltype(RB)>(*a) <= RB) {
+    if (*a >= RA && *a <= RB) {
       return a + 1;
     }
     return nullptr;
@@ -274,11 +272,12 @@ struct Range {
 
 //------------------------------------------------------------------------------
 // Advances the cursor until the pattern matches or we hit EOF. Does _not_
-// consume the pattern. Equivalent to Any<Seq<Not<M>,Atom<>>>
+// consume the pattern. Equivalent to Any<Seq<Not<M>,AnyAtom>>
 
 template<typename P>
 struct Until {
-  template<typename atom>
+  using atom = P::atom;
+
   static const atom* match(const atom* a, const atom* b, void* ctx) {
     while(a < b) {
       if (P::match(a, b, ctx)) return a;
@@ -311,6 +310,7 @@ struct Backref {
 
 template<typename P>
 struct StoreBackref {
+  using atom = P::atom;
 
   template<typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
@@ -325,9 +325,10 @@ struct StoreBackref {
 
 };
 
+template<typename _atom>
 struct MatchBackref {
+  using atom = _atom;
 
-  template<typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
     if (!a || a == b) return nullptr;
     auto ref = (Backref<atom>*)ctx;
@@ -378,8 +379,8 @@ struct MatchBackref {
 // Matches newline and EOF, but does not advance past it.
 
 struct EOL {
+  using atom = char;
 
-  template <typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
     if (!a) return nullptr;
     if (a == b) return a;
@@ -408,8 +409,8 @@ struct StringParam {
 
 template<StringParam lit>
 struct Lit {
+  using atom = char;
 
-  template<typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
     if (!a || a == b) return nullptr;
     if (a + sizeof(lit.value) > b) return nullptr;
@@ -450,8 +451,9 @@ struct OneofLit<M1> {
 
 template<StringParam chars>
 struct Charset {
+  using atom = char;
 
-  static const char* match(const char* a, const char* b, void* ctx) {
+  static const atom* match(const atom* a, const atom* b, void* ctx) {
     if (!a || a == b) return nullptr;
     for (auto i = 0; i < sizeof(chars.value); i++) {
       if (*a == chars.value[i]) {

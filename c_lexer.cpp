@@ -73,11 +73,11 @@ const char* match_str(const char* a, const char* b, const char* lit) {
 //------------------------------------------------------------------------------
 // Basic UTF8 support
 
-using utf8_ext       = Range<uint8_t(0x80), uint8_t(0xBF)>;
-using utf8_onebyte   = Range<uint8_t(0x00), uint8_t(0x7F)>;
-using utf8_twobyte   = Seq<Range<uint8_t(0xC0), uint8_t(0xDF)>, utf8_ext>;
-using utf8_threebyte = Seq<Range<uint8_t(0xE0), uint8_t(0xEF)>, utf8_ext, utf8_ext>;
-using utf8_fourbyte  = Seq<Range<uint8_t(0xF0), uint8_t(0xF7)>, utf8_ext, utf8_ext, utf8_ext>;
+using utf8_ext       = Range<char(0x80), char(0xBF)>;
+using utf8_onebyte   = Range<char(0x00), char(0x7F)>;
+using utf8_twobyte   = Seq<Range<char(0xC0), char(0xDF)>, utf8_ext>;
+using utf8_threebyte = Seq<Range<char(0xE0), char(0xEF)>, utf8_ext, utf8_ext>;
+using utf8_fourbyte  = Seq<Range<char(0xF0), char(0xF7)>, utf8_ext, utf8_ext, utf8_ext>;
 
 using utf8_char = Oneof<utf8_onebyte, utf8_twobyte, utf8_threebyte, utf8_fourbyte>;
 using utf8_multi = Oneof<utf8_twobyte, utf8_threebyte, utf8_fourbyte>;
@@ -93,7 +93,7 @@ const char* rmatch_utf8_bom(const char* a, const char* b, void* ctx) {
 }
 
 // Not sure if this should be in here
-using latin1_ext = Range<uint8_t(128),uint8_t(255)>;
+using latin1_ext = Range<char(128),char(255)>;
 
 // Yeaaaah, not gonna try to support trigraphs, they're obsolete and have been
 // removed from the latest C spec. Also we have to declare them funny to get them through the preprocessor...
@@ -348,8 +348,8 @@ using string_literal  = Seq<Opt<encoding_prefix>, Atom<'"'>, Opt<s_char_sequence
 using d_char          = NotAtom<' ', '(', ')', '\t', '\v', '\f', '\n'>;
 using d_char_sequence = Some<d_char>;
 
-using r_terminator    = Seq<Atom<')'>, MatchBackref, Atom<'"'>>;
-using r_char          = Seq<Not<r_terminator>, Atom<>>;
+using r_terminator    = Seq<Atom<')'>, MatchBackref<char>, Atom<'"'>>;
+using r_char          = Seq<Not<r_terminator>, AnyAtom<char>>;
 using r_char_sequence = Some<r_char>;
 
 using raw_string_literal = Seq<
@@ -360,7 +360,7 @@ using raw_string_literal = Seq<
   Atom<'('>,
   Opt<r_char_sequence>,
   Atom<')'>,
-  MatchBackref,
+  MatchBackref<char>,
   Atom<'"'>
 >;
 
@@ -435,7 +435,7 @@ const char* rmatch_multiline_comment(const char* a, const char* b, void* ctx) {
 const char* match_nested_comment(const char* text, void* ctx) {
   using ldelim = Lit<"/*">;
   using rdelim = Lit<"*/">;
-  using item   = Oneof<Ref<match_nested_comment>, Atom<>>;
+  using item   = Oneof<Ref<match_nested_comment>, AnyAtom<char>>;
   using match  = Seq<ldelim, Any<item>, rdelim>;
   return match::match(text, ctx);
 }
@@ -445,7 +445,7 @@ const char* match_nested_comment_body(const char* text, void* ctx);
 const char* match_nested_comment(const char* text, void* ctx) {
   using ldelim = Lit<"/*">;
   using rdelim = Lit<"*/">;
-  using item   = Seq<Not<ldelim>, Not<rdelim>, Atom<>>;
+  using item   = Seq<Not<ldelim>, Not<rdelim>, AnyAtom<char>>;
   using body   = Ref<match_nested_comment_body>;
   using match  = Seq<ldelim, body, rdelim>;
   return match::match(text, ctx);
@@ -454,7 +454,7 @@ const char* match_nested_comment(const char* text, void* ctx) {
 const char* match_nested_comment_body(const char* text, void* ctx) {
   using ldelim = Lit<"/*">;
   using rdelim = Lit<"*/">;
-  using item   = Seq<Not<ldelim>, Not<rdelim>, Atom<>>;
+  using item   = Seq<Not<ldelim>, Not<rdelim>, AnyAtom<char>>;
   using nested = Ref<match_nested_comment>;
   using match  = Any<Oneof<nested,item>>;
   return match::match(text, ctx);

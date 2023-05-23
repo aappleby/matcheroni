@@ -5,7 +5,7 @@ using namespace matcheroni;
 void* match_type_name(const char* text, void* ctx);
 
 // FIXME fake
-using identifier = Atom<>;
+using identifier = AnyAtom<char>;
 
 // (6.7.2.4)
 using atomic_type_specifier = Seq<
