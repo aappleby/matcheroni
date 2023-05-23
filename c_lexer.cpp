@@ -8,6 +8,33 @@ using namespace matcheroni;
 extern const char* current_filename;
 
 //------------------------------------------------------------------------------
+// Misc helpers
+
+const char* match_space(const char* text, void* ctx) {
+  using ws = Char<' ','\t'>;
+  using match = Some<ws>;
+  return match::match(text, ctx);
+}
+
+const char* match_newline(const char* text, void* ctx) {
+  using match = Seq<Opt<Char<'\r'>>, Char<'\n'>>;
+  return match::match(text, ctx);
+}
+
+const char* match_indentation(const char* text, void* ctx) {
+  using match = Seq<Char<'\n'>, Any<Char<' ', '\t'>>>;
+  return match::match(text, ctx);
+}
+
+const char* match_str(const char* text, const char* lit) {
+  for (;*text || *lit; text++, lit++) {
+    if (*text != *lit) return nullptr;
+  }
+  return text;
+}
+
+//------------------------------------------------------------------------------
+// Basic UTF8 support
 
 using utf8_ext       = Range<0x80, 0xBF>;
 using utf8_onebyte   = Range<0x00, 0x7F>;
@@ -31,40 +58,9 @@ const char* match_utf8_bom(const char* text, void* ctx) {
 // Not sure if this should be in here
 using latin1_ext = Range<128,255>;
 
-/*
 // Yeaaaah, not gonna try to support trigraphs, they're obsolete and have been
-// removed from the latest C spec.
-using trigraphs = OneofLit<
-  R"(??=)",
-  R"(??()",
-  R"(??/)",
-  R"(??))",
-  R"(??')",
-  R"(??<)",
-  R"(??!)",
-  R"(??>)",
-  R"(??-)"
->;
-*/
-
-//------------------------------------------------------------------------------
-// Misc
-
-const char* match_space(const char* text, void* ctx) {
-  using ws = Char<' ','\t'>;
-  using match = Some<ws>;
-  return match::match(text, ctx);
-}
-
-const char* match_newline(const char* text, void* ctx) {
-  using match = Seq<Opt<Char<'\r'>>, Char<'\n'>>;
-  return match::match(text, ctx);
-}
-
-const char* match_indentation(const char* text, void* ctx) {
-  using match = Seq<Char<'\n'>, Any<Char<' ', '\t'>>>;
-  return match::match(text, ctx);
-}
+// removed from the latest C spec. Also we have to declare them funny to get them through the preprocessor...
+//using trigraphs = Trigraphs<R"(??=)" R"(??()" R"(??/)" R"(??))" R"(??')" R"(??<)" R"(??!)" R"(??>)" R"(??-)">;
 
 //------------------------------------------------------------------------------
 // 5.1.1.2 : Lines ending in a backslash and a newline get spliced together
@@ -90,6 +86,7 @@ const char* match_splice(const char* text, void* ctx) {
 // 6.4.1 Keywords
 
 const char* match_keyword(const char* text, void* ctx) {
+  // Probably too many strings to pass as template parameters...
   const char* keywords[55] = {
     "alignas", "alignof", "auto", "bool", "break", "case", "char", "const",
     "constexpr", "continue", "default", "do", "double", "else", "enum",
@@ -101,13 +98,9 @@ const char* match_keyword(const char* text, void* ctx) {
     "_Decimal32", "_Decimal64", "_Generic", "_Imaginary", "_Noreturn"
   };
   for (int i = 0; i < 55; i++) {
-    const char* k = keywords[i];
-    const char* t = text;
-    while (*k && *t && (*k == *t)) {
-      k++;
-      t++;
+    if (auto t = match_str(text, keywords[i])) {
+      return t;
     }
-    if (*k == 0) return t;
   }
   return nullptr;
 }
@@ -253,10 +246,10 @@ using enumeration_constant = identifier;
 //------------------------------------------------------------------------------
 // 6.4.4.4 Character constants
 
-
+// This is what's in the spec...
 //using simple_escape_sequence      = Seq<Char<'\\'>, Charset<"'\"?\\abfnrtv">>;
 
-// GCC adds \e and \E, and '\(' '\{' '\[' '\%' are warnings but allowed
+// ...but GCC adds \e and \E, and '\(' '\{' '\[' '\%' are warnings but allowed
 using simple_escape_sequence      = Seq<Char<'\\'>, Charset<"'\"?\\abfnrtveE({[%">>;
 
 using octal_escape_sequence = Oneof<
@@ -287,9 +280,10 @@ using encoding_prefix    = Oneof<Lit<"u8">, Char<'u', 'U', 'L'>>; // u8 must go 
 using c_char             = Oneof<escape_sequence, NotChar<'\'', '\\', '\n'>>;
 using c_char_sequence    = Some<c_char>;
 
+// The spec disallows empty character constants, but...
 //using character_constant = Seq< Opt<encoding_prefix>, Char<'\''>, c_char_sequence, Char<'\''> >;
 
-// GCC allows empty character constants?
+// ...in GCC they're only a warning.
 using character_constant = Seq< Opt<encoding_prefix>, Char<'\''>, Any<c_char>, Char<'\''> >;
 
 const char* match_character_constant(const char* text, void* ctx) {
@@ -304,7 +298,7 @@ using predefined_constant = Oneof<Lit<"false">, Lit<"true">, Lit<"nullptr">>;
 //------------------------------------------------------------------------------
 // 6.4.5 String literals
 
-// Note, we add splices here since we're matching before preproc
+// Note, we add splices here since we're matching before preproccessing.
 using s_char          = Oneof<splice, escape_sequence, NotChar<'"', '\\', '\n'>>;
 using s_char_sequence = Some<s_char>;
 using string_literal  = Seq<Opt<encoding_prefix>, Char<'"'>, Opt<s_char_sequence>, Char<'"'>>;
@@ -344,31 +338,24 @@ const char* match_raw_string_literal(const char* text, void* ctx) {
 
 //------------------------------------------------------------------------------
 // 6.4.6 Punctuators
-/*
-[ ] ( ) { } . ->
-++ -- & * + - ~ !
-/ % << >> < > <= >= == != ^ | && ||
-? : :: ; ...
-= *= /= %= += -= <<= >>= &= ^= |=
-, # ##
-<: :> <% %> %: %:%:
-*/
-
-#if 0
-using trigraphs = Trigraphs<"...<<=>>=">;
-using digraphs  = Digraphs<"---=->!=*=/=&&&=##%=^=+++=<<<===>=>>|=||">;
-using unigraphs = Charset<"-,;:!?.()[]{}*/&#%^+<=>|~">;
-using all_punct = Oneof<trigraphs, digraphs, unigraphs>;
-#endif
 
 // We're just gonna match these one punct at a time
 using punctuator = Charset<"-,;:!?.()[]{}*/&#%^+<=>|~">;
 
 const char* match_punct(const char* text, void* ctx) {
-
-  //return all_punct::match(text, ctx);
   return punctuator::match(text, ctx);
 }
+
+#if 0
+using tripunct  = Trigraphs<"...<<=>>=">;
+using dipunct   = Digraphs<"---=->!=*=/=&&&=##%=^=+++=<<<===>=>>|=||">;
+using unipunct  = Charset<"-,;:!?.()[]{}*/&#%^+<=>|~">;
+using all_punct = Oneof<tripunct, dipunct, unipunct>;
+
+const char* match_punct(const char* text, void* ctx) {
+  return all_punct::match(text, ctx);
+}
+#endif
 
 //------------------------------------------------------------------------------
 // 6.4.7 Header names
@@ -401,8 +388,17 @@ const char* match_multiline_comment(const char* text, void* ctx) {
 }
 
 // Multi-line nested comments (not actually in C, just here for reference)
-// FIXME this can be singly-recursive
 
+// FIXME make sure this matches the multiply-recursive version
+const char* match_nested_comment(const char* text, void* ctx) {
+  using ldelim = Lit<"/*">;
+  using rdelim = Lit<"*/">;
+  using item   = Oneof<Ref<match_nested_comment>, Char<>>;
+  using match  = Seq<ldelim, Any<item>, rdelim>;
+  return match::match(text, ctx);
+}
+
+#if 0
 const char* match_nested_comment_body(const char* text, void* ctx);
 
 const char* match_nested_comment(const char* text, void* ctx) {
@@ -422,21 +418,28 @@ const char* match_nested_comment_body(const char* text, void* ctx) {
   using match  = Any<Oneof<nested,item>>;
   return match::match(text, ctx);
 }
+#endif
 
 //------------------------------------------------------------------------------
 // We can't really handle preprocessing stuff so we're just matching the
 // initial keyword.
 
-using preproc = Seq<
-  Char<'#'>,
-  OneofLit<
+const char* match_preproc(const char* text, void* ctx) {
+  if (*text != '#') return nullptr;
+  text++;
+
+  const char* preprocs[16] = {
     "define", "elif", "elifdef", "elifndef", "else", "embed", "endif", "error",
     "if", "ifdef", "ifndef", "include", "line", "pragma", "undef", "warning"
-  >
->;
+  };
 
-const char* match_preproc(const char* text, void* ctx) {
-  return preproc::match(text, ctx);
+  for (int i = 0; i < 16; i++) {
+    if (auto t = match_str(text, preprocs[i])) {
+      return t;
+    }
+  }
+
+  return nullptr;
 }
 
 //------------------------------------------------------------------------------

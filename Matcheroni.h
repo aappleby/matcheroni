@@ -11,6 +11,20 @@ namespace matcheroni {
 
 typedef const char*(*matcher)(const char*, void* ctx);
 
+template<typename T, typename M>
+T* metamatch(T* cursor, void* ctx);
+
+template<typename M>
+const char* metamatch(const char* cursor, void* ctx) {
+  return M::match(cursor, ctx);
+}
+
+template<typename M>
+matcher* metamatch(matcher* cursor, void* ctx) {
+  if (cursor == nullptr) return nullptr;
+  return (cursor[0] == M::match) ? cursor + 1 : nullptr;
+}
+
 //------------------------------------------------------------------------------
 // The most fundamental unit of matching is a single character. For convenience,
 // we implement the Char matcher so that it can handle small sets of characters
@@ -47,6 +61,9 @@ struct Char<C1> {
     if (cursor && cursor[0] == char(C1)) return cursor + 1;
     return nullptr;
   }
+
+  static int _dummy;
+  static constexpr void* _typeid = &_dummy;
 };
 
 template <>
@@ -57,31 +74,10 @@ struct Char<> {
     if (!cursor[0]) return nullptr;
     return cursor + 1;
   }
+
+  static int _dummy;
+  static constexpr void* _typeid = &_dummy;
 };
-
-//------------------------------------------------------------------------------
-
-struct EOF {
-  static const char* match(const char* cursor, void* ctx) {
-    if (!cursor) return nullptr;
-    return cursor[0] == 0 ? cursor : nullptr;
-  }
-};
-
-//------------------------------------------------------------------------------
-// Matches LF and EOF, but does not advance past it.
-
-struct EOL {
-  static const char* match(const char* cursor, void* ctx) {
-    if (!cursor) return nullptr;
-    if (cursor[0] == 0) return cursor;
-    if (cursor[0] == '\n') return cursor;
-    return nullptr;
-  }
-};
-
-// This seems bad but....?
-using SOL = Char<'\n'>;
 
 //------------------------------------------------------------------------------
 // The 'Seq' matcher succeeds if all of its sub-matchers succeed in order.
@@ -97,12 +93,22 @@ struct Seq {
     if (!cursor) return nullptr;
     return Seq<rest...>::match(cursor, ctx);
   }
+
+  static matcher match(matcher* cursor, void* ctx) {
+    if (!cursor) return nullptr;
+    return cursor[0] == M1::match ? Seq<rest...>::match(cursor + 1, ctx) : nullptr;
+  }
 };
 
 template<typename M1>
 struct Seq<M1> {
   static const char* match(const char* cursor, void* ctx) {
     return M1::match(cursor, ctx);
+  }
+
+  static matcher* match(matcher* cursor, void* ctx) {
+    if (!cursor) return nullptr;
+    return cursor[0] == M1::match ? cursor + 1 : nullptr;
   }
 };
 
@@ -120,17 +126,33 @@ struct Oneof {
     if (auto end = M1::match(cursor, ctx)) return end;
     return Oneof<rest...>::match(cursor, ctx);
   }
+
+  static matcher* match(matcher* cursor, void* ctx) {
+    if (cursor == nullptr) return nullptr;
+    return (cursor[0] == M1::match) ? cursor + 1 : Oneof<rest...>::match(cursor, ctx);
+  }
 };
+
 
 template <typename M1>
 struct Oneof<M1> {
   static const char* match(const char* cursor, void* ctx) {
-    return M1::match(cursor, ctx);
+    if (cursor == nullptr) return nullptr;
+    //return M1::match(cursor, ctx);
+    return metamatch<M1>(cursor, ctx);
+  }
+
+  static matcher* match(matcher* cursor, void* ctx) {
+    if (cursor == nullptr) return nullptr;
+    return (cursor[0] == M1::match) ? cursor + 1 : nullptr;
   }
 };
 
 //------------------------------------------------------------------------------
-// Zero-or-more patterns, equivalent to M* in regex.
+// Zero-or-more patterns, roughly equivalent to M* in regex.
+// HOWEVER - Seq<Any<Char<'a'>>, Char<'a'>> (unlike "a*a" in regex) will
+// _never_ match anything, as the first Any<> is greedy and consumes all 'a's
+// without doing any backtracking.
 
 // Examples:
 // Any<Char<'a'>>::match("aaaab") == "b"
@@ -144,6 +166,21 @@ struct Any {
       if (!end) break;
       cursor = end;
     }
+    return cursor;
+  }
+};
+
+//------------------------------------------------------------------------------
+// Zero-or-one 'optional' patterns, equivalent to M? in regex.
+
+// Opt<Char<'a'>>::match("abcd") == "bcd"
+// Opt<Char<'a'>>::match("bcde") == "bcde"
+
+template<typename M>
+struct Opt {
+  static const char* match(const char* cursor, void* ctx) {
+    if (!cursor || !cursor[0]) return nullptr;
+    if (auto end = M::match(cursor, ctx)) return end;
     return cursor;
   }
 };
@@ -164,16 +201,15 @@ struct Some {
 };
 
 //------------------------------------------------------------------------------
-// Optional patterns, equivalent to M? in regex.
+// Repetition, equivalent to M{N} in regex.
 
-// Opt<Char<'a'>>::match("abcd") == "bcd"
-// Opt<Char<'a'>>::match("bcde") == "bcde"
-
-template<typename M>
-struct Opt {
+template<int N, typename M>
+struct Rep {
   static const char* match(const char* cursor, void* ctx) {
-    if (!cursor || !cursor[0]) return nullptr;
-    if (auto end = M::match(cursor, ctx)) return end;
+    for(auto i = 0; i < N; i++) {
+      cursor = M::match(cursor, ctx);
+      if (!cursor) return nullptr;
+    }
     return cursor;
   }
 };
@@ -202,6 +238,28 @@ template<typename M>
 struct Not {
   static const char* match(const char* cursor, void* ctx) {
     return M::match(cursor, ctx) ? nullptr : cursor;
+  }
+};
+
+//------------------------------------------------------------------------------
+// Matches EOF, but does not advance past it.
+
+struct EOF {
+  static const char* match(const char* cursor, void* ctx) {
+    if (!cursor) return nullptr;
+    return cursor[0] == 0 ? cursor : nullptr;
+  }
+};
+
+//------------------------------------------------------------------------------
+// Matches newline and EOF, but does not advance past it.
+
+struct EOL {
+  static const char* match(const char* cursor, void* ctx) {
+    if (!cursor) return nullptr;
+    if (cursor[0] == 0) return cursor;
+    if (cursor[0] == '\n') return cursor;
+    return nullptr;
   }
 };
 
@@ -243,20 +301,6 @@ struct Range {
 };
 
 //------------------------------------------------------------------------------
-// Repetition, equivalent to M{N} in regex.
-
-template<int N, typename M>
-struct Rep {
-  static const char* match(const char* cursor, void* ctx) {
-    for(auto i = 0; i < N; i++) {
-      cursor = M::match(cursor, ctx);
-      if (!cursor) return nullptr;
-    }
-    return cursor;
-  }
-};
-
-//------------------------------------------------------------------------------
 // Not a matcher, but a template helper that allows us to use strings as
 // template arguments. The parameter behaves as a fixed-length character array
 // that does ___NOT___ include the trailing null.
@@ -264,10 +308,7 @@ struct Rep {
 template<int N>
 struct StringParam {
   constexpr StringParam(const char (&str)[N]) {
-    for (int i = 0; i < N-1; i++) {
-      value[i] = str[i];
-    }
-    //std::copy_n(str, N-1, value);
+    for (int i = 0; i < N-1; i++) value[i] = str[i];
   }
   char value[N-1];
 };
@@ -309,10 +350,8 @@ struct OneofLit<M1> {
 };
 
 //------------------------------------------------------------------------------
-// Matches any non-EOF characters followed by the given pattern. The pattern is
-// not consumed.
-
-// Equivalent to Any<Seq<Not<M>,Char<>>>
+// Advances the cursor until the pattern matches or we hit EOF. Does _not_
+// consume the pattern. Equivalent to Any<Seq<Not<M>,Char<>>>
 
 template<typename M>
 struct Until {
@@ -325,12 +364,11 @@ struct Until {
   }
 };
 
-
 //------------------------------------------------------------------------------
 // Matches larger sets of chars, digraphs, and trigraphs packed into a string
 // literal.
 
-// Chars<"abcdef">::match("defg") == "efg"
+// Charset<"abcdef">::match("defg") == "efg"
 // Digraphs<"aabbcc">::match("bbccdd") == "ccddee"
 // Trigraphs<"abc123xyz">::match("123456") == "456"
 
