@@ -73,15 +73,15 @@ const char* match_str(const char* a, const char* b, const char* lit) {
 //------------------------------------------------------------------------------
 // Basic UTF8 support
 
-using utf8_ext       = Range<0x80, 0xBF>;
-using utf8_onebyte   = Range<0x00, 0x7F>;
-using utf8_twobyte   = Seq<Range<0xC0, 0xDF>, utf8_ext>;
-using utf8_threebyte = Seq<Range<0xE0, 0xEF>, utf8_ext, utf8_ext>;
-using utf8_fourbyte  = Seq<Range<0xF0, 0xF7>, utf8_ext, utf8_ext, utf8_ext>;
+using utf8_ext       = Range<uint8_t(0x80), uint8_t(0xBF)>;
+using utf8_onebyte   = Range<uint8_t(0x00), uint8_t(0x7F)>;
+using utf8_twobyte   = Seq<Range<uint8_t(0xC0), uint8_t(0xDF)>, utf8_ext>;
+using utf8_threebyte = Seq<Range<uint8_t(0xE0), uint8_t(0xEF)>, utf8_ext, utf8_ext>;
+using utf8_fourbyte  = Seq<Range<uint8_t(0xF0), uint8_t(0xF7)>, utf8_ext, utf8_ext, utf8_ext>;
 
 using utf8_char = Oneof<utf8_onebyte, utf8_twobyte, utf8_threebyte, utf8_fourbyte>;
 using utf8_multi = Oneof<utf8_twobyte, utf8_threebyte, utf8_fourbyte>;
-using utf8_bom = Seq<Atom<0xEF>, Atom<0xBB>, Atom<0xBF>>;
+using utf8_bom = Seq<Atom<uint8_t(0xEF)>, Atom<uint8_t(0xBB)>, Atom<uint8_t(0xBF)>>;
 
 const char* rmatch_utf8(const char* a, const char* b, void* ctx) {
   auto end = utf8_char::match(a, b, ctx);
@@ -93,7 +93,7 @@ const char* rmatch_utf8_bom(const char* a, const char* b, void* ctx) {
 }
 
 // Not sure if this should be in here
-using latin1_ext = Range<128,255>;
+using latin1_ext = Range<uint8_t(128),uint8_t(255)>;
 
 // Yeaaaah, not gonna try to support trigraphs, they're obsolete and have been
 // removed from the latest C spec. Also we have to declare them funny to get them through the preprocessor...

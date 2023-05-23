@@ -41,7 +41,7 @@ void set_color(uint32_t c) {
 //------------------------------------------------------------------------------
 
 struct RMatchTableEntry {
-  rmatcher rmatcher_cb = nullptr;
+  matcher<const char> rmatcher_cb = nullptr;
   uint32_t color = 0;
   const char* rmatcher_name = nullptr;
   int match_count = 0;
@@ -273,23 +273,26 @@ int main(int argc, char** argv) {
 
   /*
   {
-    matcher m[] = {
-      Atom<'a'>::match,
-      Atom<'b'>::match,
+    using text_matcher = matcher<const char>;
+    text_matcher m[] = {
       Atom<'c'>::match,
-      nullptr
+      Atom<'b'>::match,
+      Atom<'a'>::match,
     };
 
-    matcher* cursor = m;
+    text_matcher* a = m;
+    text_matcher* b = m + 3;
 
-    using M = Oneof<Atom<'a'>, Atom<'b'>>;
+    using M = Oneof<
+      Atom< Atom<'a'>::match<const char> >,
+      Atom< Atom<'b'>::match<const char> >
+    >;
 
-    auto end = M::match(cursor, nullptr);
+    auto end = M::match<text_matcher>(a, b, nullptr);
 
-    printf("m      %p\n", m);
-    printf("cursor %p\n", cursor);
-    printf("end    %p\n", end);
-
+    printf("a   %p\n", a);
+    printf("b   %p\n", b);
+    printf("end %p\n", end);
   }
 
   exit(0);

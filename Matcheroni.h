@@ -5,32 +5,17 @@ namespace matcheroni {
 
 //------------------------------------------------------------------------------
 // Matcheroni is based on building trees of "matcher" functions. A matcher takes
-// a raw C string as input and returns either the endpoint of the match if
+// a range of atoms as input and returns either the endpoint of the match if
 // found, or nullptr if a match was not found.
-// Matchers must also handle null pointers and empty strings.
+// Matchers must always handle null pointers and empty ranges.
 
-typedef const char*(*rmatcher)(const char* a, const char* b, void* ctx);
-
-/*
-template<typename T, typename M>
-T* metamatch(T* cursor, void* ctx);
-
-template<typename M>
-const char* metamatch(const char* cursor, void* ctx) {
-  return M::match(cursor, ctx);
-}
-
-template<typename M>
-matcher* metamatch(matcher* cursor, void* ctx) {
-  if (cursor == nullptr) return nullptr;
-  return (cursor[0] == M::match) ? cursor + 1 : nullptr;
-}
-*/
+template<typename atom>
+using matcher = atom* (*) (atom* a, atom* b, void* ctx);
 
 //------------------------------------------------------------------------------
-// The most fundamental unit of matching is a single character. For convenience,
-// we implement the Atom matcher so that it can handle small sets of characters
-// and allows Atom<> to match any nonzero character.
+// The most fundamental unit of matching is a single atom. For convenience, we
+// implement the Atom matcher so that it can handle small sets of atoms and
+// allows Atom<> to match any atom.
 
 // Examples:
 // Atom<'a'>::match("abcd") == "bcd"
@@ -47,7 +32,11 @@ struct Atom<C1, rest...> {
   template<typename atom>
   static atom* match(atom* a, atom* b, void* ctx) {
     if (!a || a == b) return nullptr;
-    return (*a == atom(C1)) ? a + 1 : Atom<rest...>::match(a, b, ctx);
+    if (static_cast<decltype(C1)>(*a) == C1) {
+      return a + 1;
+    } else {
+      return Atom<rest...>::match(a, b, ctx);;
+    }
   }
 };
 
@@ -57,7 +46,11 @@ struct Atom<C1> {
   template<typename atom>
   static atom* match(atom* a, atom* b, void* ctx) {
     if (!a || a == b) return nullptr;
-    return (*a == atom(C1)) ? a + 1 : nullptr;
+    if (static_cast<decltype(C1)>(*a) == atom(C1)) {
+      return a + 1;
+    } else {
+      return nullptr;
+    }
   }
 };
 
@@ -79,8 +72,9 @@ struct Atom<> {
 
 template<typename M1, typename... rest>
 struct Seq {
-  static const char* match(const char* a, const char* b, void* ctx) {
-    if (!a || a == b) return nullptr;
+
+  template<typename atom>
+  static atom* match(atom* a, atom* b, void* ctx) {
     auto c = M1::match(a, b, ctx);
     return c ? Seq<rest...>::match(c, b, ctx) : nullptr;
   }
@@ -88,7 +82,9 @@ struct Seq {
 
 template<typename M1>
 struct Seq<M1> {
-  static const char* match(const char* a, const char* b, void* ctx) {
+
+  template<typename atom>
+  static atom* match(atom* a, atom* b, void* ctx) {
     return M1::match(a, b, ctx);
   }
 };
@@ -103,7 +99,9 @@ struct Seq<M1> {
 
 template <typename M1, typename... rest>
 struct Oneof {
-  static const char* match(const char* a, const char* b, void* ctx) {
+
+  template<typename atom>
+  static atom* match(atom* a, atom* b, void* ctx) {
     auto c = M1::match(a, b, ctx);
     return c ? c : Oneof<rest...>::match(a, b, ctx);
   }
@@ -112,7 +110,9 @@ struct Oneof {
 
 template <typename M1>
 struct Oneof<M1> {
-  static const char* match(const char* a, const char* b, void* ctx) {
+
+  template<typename atom>
+  static atom* match(atom* a, atom* b, void* ctx) {
     return M1::match(a, b, ctx);
   }
 };
@@ -129,7 +129,9 @@ struct Oneof<M1> {
 
 template<typename M>
 struct Any {
-  static const char* match(const char* a, const char* b, void* ctx) {
+
+  template <typename atom>
+  static atom* match(atom* a, atom* b, void* ctx) {
     while(auto c = M::match(a, b, ctx)) a = c;
     return a;
   }
@@ -143,9 +145,11 @@ struct Any {
 
 template<typename M>
 struct Opt {
-  static const char* match(const char* a, const char* b, void* ctx) {
-    if (auto c = M::match(a, b, ctx)) return c;
-    return a;
+
+  template <typename atom>
+  static atom* match(atom* a, atom* b, void* ctx) {
+    auto c = M::match(a, b, ctx);
+    return c ? c : a;
   }
 };
 
@@ -158,7 +162,9 @@ struct Opt {
 
 template<typename M>
 struct Some {
-  static const char* match(const char* a, const char* b, void* ctx) {
+
+  template <typename atom>
+  static atom* match(atom* a, atom* b, void* ctx) {
     auto c = M::match(a, b, ctx);
     return c ? Any<M>::match(c, b, ctx) : nullptr;
   }
@@ -169,7 +175,9 @@ struct Some {
 
 template<int N, typename M>
 struct Rep {
-  static const char* match(const char* a, const char* b, void* ctx) {
+
+  template <typename atom>
+  static atom* match(atom* a, atom* b, void* ctx) {
     for(auto i = 0; i < N; i++) {
       auto c = M::match(a, b, ctx);
       if (!c) return nullptr;
@@ -188,8 +196,11 @@ struct Rep {
 
 template<typename M>
 struct And {
-  static const char* match(const char* a, const char* b, void* ctx) {
-    return M::match(a, b, ctx) ? a : nullptr;
+
+  template <typename atom>
+  static atom* match(atom* a, atom* b, void* ctx) {
+    auto c = M::match(a, b, ctx);
+    return c ? a : nullptr;
   }
 };
 
@@ -201,8 +212,11 @@ struct And {
 
 template<typename M>
 struct Not {
-  static const char* match(const char* a, const char* b, void* ctx) {
-    return M::match(a, b, ctx) ? nullptr : a;
+
+  template <typename atom>
+  static atom* match(atom* a, atom* b, void* ctx) {
+    auto c = M::match(a, b, ctx);
+    return c ? nullptr : a;
   }
 };
 
@@ -210,20 +224,9 @@ struct Not {
 // Matches EOF, but does not advance past it.
 
 struct EOF {
-  static const char* match(const char* a, const char* b, void* ctx) {
+  template <typename atom>
+  static atom* match(atom* a, atom* b, void* ctx) {
     return a == b ? a : nullptr;
-  }
-};
-
-//------------------------------------------------------------------------------
-// Matches newline and EOF, but does not advance past it.
-
-struct EOL {
-  static const char* match(const char* a, const char* b, void* ctx) {
-    if (!a) return nullptr;
-    if (a == b) return a;
-    if (*a == '\n') return a;
-    return nullptr;
   }
 };
 
@@ -231,34 +234,114 @@ struct EOL {
 // Atom-not-in-set matcher, which is a bit faster than using
 // Seq<Not<Atom<...>>, Atom<>>
 
-template <char C1, char... rest>
+template <auto C1, auto... rest>
 struct NotAtom {
-  static const char* match(const char* a, const char* b, void* ctx) {
+
+  template <typename atom>
+  static atom* match(atom* a, atom* b, void* ctx) {
     if (!a || a == b) return nullptr;
     if (*a == C1) return nullptr;
     return NotAtom<rest...>::match(a, b, ctx);
   }
 };
 
-template <char C1>
+template <auto C1>
 struct NotAtom<C1> {
-  static const char* match(const char* a, const char* b, void* ctx) {
+
+  template <typename atom>
+  static atom* match(atom* a, atom* b, void* ctx) {
     if (!a || a == b) return nullptr;
     return (*a == C1) ? nullptr : a + 1;
   }
 };
 
 //------------------------------------------------------------------------------
-// Ranges of characters, inclusive. Equivalent to [a-z] in regex.
+// Ranges of atoms, inclusive. Equivalent to [a-z] in regex.
 
-template<int RA, int RB>
+template<auto RA, auto RB>
 struct Range {
-  static const char* match(const char* a, const char* b, void* ctx) {
+
+  template<typename atom>
+  static atom* match(atom* a, atom* b, void* ctx) {
     if (!a || a == b) return nullptr;
-    if ((unsigned char)*a >= RA &&
-        (unsigned char)*a <= RB) {
+    if (static_cast<decltype(RA)>(*a) >= RA &&
+        static_cast<decltype(RB)>(*a) <= RB) {
       return a + 1;
     }
+    return nullptr;
+  }
+};
+
+//------------------------------------------------------------------------------
+// Advances the cursor until the pattern matches or we hit EOF. Does _not_
+// consume the pattern. Equivalent to Any<Seq<Not<M>,Atom<>>>
+
+template<typename M>
+struct Until {
+  template<typename atom>
+  static atom* match(atom* a, atom* b, void* ctx) {
+    while(a < b) {
+      if (M::match(a, b, ctx)) return a;
+      a++;
+    }
+    return nullptr;
+  }
+};
+
+//------------------------------------------------------------------------------
+// References to other matchers. Enables recursive matchers.
+
+template<auto& F>
+struct Ref {
+  template<typename atom>
+  static atom* match(atom* a, atom* b, void* ctx) {
+    return F(a, b, ctx);
+  }
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//------------------------------------------------------------------------------
+// Matches newline and EOF, but does not advance past it.
+
+struct EOL {
+
+  template <typename atom>
+  static atom* match(atom* a, atom* b, void* ctx) {
+    if (!a) return nullptr;
+    if (a == b) return a;
+    if (*a == atom('\n')) return a;
     return nullptr;
   }
 };
@@ -283,7 +366,9 @@ struct StringParam {
 
 template<StringParam lit>
 struct Lit {
-  static const char* match(const char* a, const char* b, void* ctx) {
+
+  template<typename atom>
+  static atom* match(atom* a, atom* b, void* ctx) {
     if (!a || a == b) return nullptr;
     if (a + sizeof(lit.value) > b) return nullptr;
     for (auto i = 0; i < sizeof(lit.value); i++) {
@@ -312,21 +397,6 @@ struct OneofLit<M1> {
   }
 };
 */
-
-//------------------------------------------------------------------------------
-// Advances the cursor until the pattern matches or we hit EOF. Does _not_
-// consume the pattern. Equivalent to Any<Seq<Not<M>,Atom<>>>
-
-template<typename M>
-struct Until {
-  static const char* match(const char* a, const char* b, void* ctx) {
-    while(a < b) {
-      if (M::match(a, b, ctx)) return a;
-      a++;
-    }
-    return nullptr;
-  }
-};
 
 //------------------------------------------------------------------------------
 // Matches larger sets of chars, digraphs, and trigraphs packed into a string
@@ -380,16 +450,6 @@ struct Trigraphs {
   }
 };
 */
-
-//------------------------------------------------------------------------------
-// References to other matchers. Enables recursive matchers.
-
-template<auto& F>
-struct Ref {
-  static const char* match(const char* a, const char* b, void* ctx) {
-    return F(a, b, ctx);
-  }
-};
 
 //------------------------------------------------------------------------------
 // To use backreferences, a matcher above these ones must pass a pointer to a
