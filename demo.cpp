@@ -8,6 +8,7 @@
 #include <memory.h>
 #include <chrono>
 #include <set>
+#include <type_traits>
 
 using namespace matcheroni;
 
@@ -49,19 +50,19 @@ struct RMatchTableEntry {
 };
 
 RMatchTableEntry rmatcher_table[] = {
-  { rmatch_space,              0x804040, "space" },
-  { rmatch_newline,            0x404080, "newline" },
-  { rmatch_string_literal,     0x4488AA, "string" },            // must be before identifier
-  { rmatch_raw_string_literal, 0x88AAAA, "raw_string" },        // must be before identifier, should be 270 on gcc/gcc
-  { rmatch_identifier,         0xCCCC40, "identifier" },
-  { rmatch_multiline_comment,  0x66AA66, "multiline_comment" }, // must be before punct
-  { rmatch_oneline_comment,    0x008800, "oneline_comment" },   // must be before punct
-  { rmatch_preproc,            0xCC88CC, "preproc" },           // must be before punct
-  { rmatch_float,              0xFF88AA, "float" },             // must be before int
-  { rmatch_int,                0xFF8888, "int" },               // must be before punct
-  { rmatch_punct,              0x808080, "punct" },
-  { rmatch_character_constant, 0x44DDDD, "char_literal" },
-  { rmatch_splice,             0x00CCFF, "splice" },
+  { match_space,              0x804040, "space" },
+  { match_newline,            0x404080, "newline" },
+  { match_string_literal,     0x4488AA, "string" },            // must be before identifier
+  { match_raw_string_literal, 0x88AAAA, "raw_string" },        // must be before identifier, should be 270 on gcc/gcc
+  { match_identifier,         0xCCCC40, "identifier" },
+  { match_multiline_comment,  0x66AA66, "multiline_comment" }, // must be before punct
+  { match_oneline_comment,    0x008800, "oneline_comment" },   // must be before punct
+  { match_preproc,            0xCC88CC, "preproc" },           // must be before punct
+  { match_float,              0xFF88AA, "float" },             // must be before int
+  { match_int,                0xFF8888, "int" },               // must be before punct
+  { match_punct,              0x808080, "punct" },
+  { match_character_constant, 0x44DDDD, "char_literal" },
+  { match_splice,             0x00CCFF, "splice" },
   { Atom<'\f'>::match,         0xFF00FF, "formfeed" },
 };
 
@@ -170,11 +171,11 @@ bool test_lex(const std::string& path, const std::string& text, bool echo) {
 
         if (echo) {
           set_color(t2.color);
-          if (t2.rmatcher_cb == rmatch_newline) {
+          if (t2.rmatcher_cb == match_newline) {
             printf("\\n");
             fwrite(cursor, 1, end2 - cursor, stdout);
           }
-          else if (t2.rmatcher_cb == rmatch_space) {
+          else if (t2.rmatcher_cb == match_space) {
             for (int i = 0; i < (end2 - cursor); i++) putc('.', stdout);
           }
           else {
@@ -268,8 +269,12 @@ void test_lex(const std::string& path, size_t size, bool echo) {
 
 //------------------------------------------------------------------------------
 
+extern int test_c99_peg();
+
 int main(int argc, char** argv) {
   printf("Matcheroni Demo\n");
+
+  //exit(test_c99_peg());
 
   {
     using text_matcher = matcher<char>;

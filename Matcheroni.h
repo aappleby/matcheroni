@@ -290,9 +290,11 @@ struct Until {
 //------------------------------------------------------------------------------
 // References to other matchers. Enables recursive matchers.
 
+template <typename R, typename... A> R ret(const R *(*)(A...));
+
 template<auto& M>
 struct Ref {
-  template<typename atom>
+  using atom = decltype(ret(M));
   static const atom* match(const atom* a, const atom* b, void* ctx) {
     return M(a, b, ctx);
   }
