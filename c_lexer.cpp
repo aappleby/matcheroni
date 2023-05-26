@@ -7,8 +7,82 @@ using namespace matcheroni;
 
 extern const char* current_filename;
 
+// not needed at top level for lexer?
+// should probably fix preproc thing so we get header name...
+const char* match_escape_sequence   (const char* a, const char* b, void* ctx);
+const char* match_nested_comment    (const char* a, const char* b, void* ctx);
+const char* match_utf8              (const char* a, const char* b, void* ctx);
+const char* match_utf8_bom          (const char* a, const char* b, void* ctx);
+
+//------------------------------------------------------------------------------
+
+struct MatcherTableEntry {
+  matcher<char> matcher_cb = nullptr;
+  uint32_t color = 0;
+  const char* matcher_name = nullptr;
+  int match_count = 0;
+  int fail_count = 0;
+};
+
+MatcherTableEntry matcher_table[] = {
+  { match_space,              0x804040, "space" },
+  { match_newline,            0x404080, "newline" },
+  { match_header_name,        0x4488AA, "header_name" },       // must be before identifier
+  { match_string_literal,     0x4488AA, "string" },            // must be before identifier
+  { match_raw_string_literal, 0x88AAAA, "raw_string" },        // must be before identifier
+  { match_identifier,         0xCCCC40, "identifier" },
+  { match_multiline_comment,  0x66AA66, "multiline_comment" }, // must be before punct
+  { match_oneline_comment,    0x008800, "oneline_comment" },   // must be before punct
+  { match_preproc,            0xCC88CC, "preproc" },           // must be before punct
+  { match_float,              0xFF88AA, "float" },             // must be before int
+  { match_int,                0xFF8888, "int" },               // must be before punct
+  { match_punct,              0x808080, "punct" },
+  { match_character_constant, 0x44DDDD, "char_literal" },
+  { match_splice,             0x00CCFF, "splice" },
+  { match_formfeed,           0xFF00FF, "formfeed" },
+};
+
+//------------------------------------------------------------------------------
+
+Token next_token(const char* cursor, const char* text_end) {
+  const int matcher_count = sizeof(matcher_table) / sizeof(matcher_table[0]);
+  for (int i = 0; i < matcher_count; i++) {
+    auto& t = matcher_table[i];
+    auto end = t.matcher_cb(cursor, text_end, nullptr);
+    if (end) {
+      t.match_count++;
+      return Token {
+        .name   = t.matcher_name,
+        .match  = t.matcher_cb,
+        .color  = t.color,
+        .span_a = cursor,
+        .span_b = end,
+      };
+    } else {
+      t.fail_count++;
+    }
+  }
+  return {0};
+}
+
+void dump_lexer_stats() {
+  const int matcher_count = sizeof(matcher_table) / sizeof(matcher_table[0]);
+  for (int i = 0; i < matcher_count; i++) {
+    printf("%-20s match %8d fail %8d\n",
+      matcher_table[i].matcher_name,
+      matcher_table[i].match_count,
+      matcher_table[i].fail_count
+    );
+  }
+  printf("\n");
+}
+
 //------------------------------------------------------------------------------
 // Misc helpers
+
+const char* match_formfeed(const char* a, const char* b, void* ctx) {
+  return Atom<'\f'>::match(a, b, ctx);
+}
 
 const char* match_space(const char* a, const char* b, void* ctx) {
   using ws = Atom<' ','\t'>;
@@ -62,7 +136,7 @@ const char* match_utf8(const char* a, const char* b, void* ctx) {
   using utf8_fourbyte  = Seq<Range<char(0xF0), char(0xF7)>, utf8_ext, utf8_ext, utf8_ext>;
 
   // matching 1-byte utf breaks things in match_identifier
-  using utf8_char      = Oneof<utf8_onebyte, utf8_twobyte, utf8_threebyte, utf8_fourbyte>;
+  using utf8_char      = Oneof<utf8_twobyte, utf8_threebyte, utf8_fourbyte>;
   //using utf8_char      = Oneof<utf8_onebyte, utf8_twobyte, utf8_threebyte, utf8_fourbyte>;
 
   return utf8_char::match(a, b, ctx);

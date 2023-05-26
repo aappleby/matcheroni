@@ -41,33 +41,6 @@ void set_color(uint32_t c) {
 
 //------------------------------------------------------------------------------
 
-struct RMatchTableEntry {
-  matcher<char> rmatcher_cb = nullptr;
-  uint32_t color = 0;
-  const char* rmatcher_name = nullptr;
-  int match_count = 0;
-  int fail_count = 0;
-};
-
-RMatchTableEntry rmatcher_table[] = {
-  { match_space,              0x804040, "space" },
-  { match_newline,            0x404080, "newline" },
-  { match_string_literal,     0x4488AA, "string" },            // must be before identifier
-  { match_raw_string_literal, 0x88AAAA, "raw_string" },        // must be before identifier, should be 270 on gcc/gcc
-  { match_identifier,         0xCCCC40, "identifier" },
-  { match_multiline_comment,  0x66AA66, "multiline_comment" }, // must be before punct
-  { match_oneline_comment,    0x008800, "oneline_comment" },   // must be before punct
-  { match_preproc,            0xCC88CC, "preproc" },           // must be before punct
-  { match_float,              0xFF88AA, "float" },             // must be before int
-  { match_int,                0xFF8888, "int" },               // must be before punct
-  { match_punct,              0x808080, "punct" },
-  { match_character_constant, 0x44DDDD, "char_literal" },
-  { match_splice,             0x00CCFF, "splice" },
-  { Atom<'\f'>::match,         0xFF00FF, "formfeed" },
-};
-
-//------------------------------------------------------------------------------
-
 int total_files = 0;
 int total_bytes = 0;
 int source_files = 0;
@@ -145,6 +118,7 @@ std::vector<std::string> negative_test_cases = {
   "carl9170/phy.h", // invalid backslash in macro
   "linux/elfnote.h", // assembly
   "boot/ppc_asm.h", // assembly
+  "openacc_lib.h", // ...fortran?
 };
 
 //------------------------------------------------------------------------------
@@ -156,52 +130,39 @@ bool test_lex(const std::string& path, const std::string& text, bool echo) {
   const char* text_b = text_a + text.size() - 1;
   const char* cursor = text_a;
 
-  const int matcher_count = sizeof(rmatcher_table) / sizeof(rmatcher_table[0]);
-
   bool lex_ok = true;
   auto time_a = timestamp_ms();
   while(*cursor) {
     bool matched = false;
 
-    for (int i = 0; i < matcher_count; i++) {
-      auto& t2 = rmatcher_table[i];
-      auto end2 = t2.rmatcher_cb(cursor, text_b, nullptr);
+    auto token = next_token(cursor, text_b);
 
-      if (end2) {
-
-        if (echo) {
-          set_color(t2.color);
-          if (t2.rmatcher_cb == match_newline) {
-            printf("\\n");
-            fwrite(cursor, 1, end2 - cursor, stdout);
-          }
-          else if (t2.rmatcher_cb == match_space) {
-            for (int i = 0; i < (end2 - cursor); i++) putc('.', stdout);
-          }
-          else {
-            fwrite(cursor, 1, end2 - cursor, stdout);
-          }
-        }
-
-        t2.match_count++;
-        matched = true;
-
-        if (end2 > text_b) {
-          printf("#### READ OFF THE END DURING %s\n", t2.rmatcher_name);
-          printf("File %s:\n", path.c_str());
-          printf("Cursor {%.40s}\n", cursor);
-          exit(1);
-        }
-
-        cursor = end2;
-        break;
+    if (token.match) {
+      if (token.span_b > text_b) {
+        printf("#### READ OFF THE END DURING %s\n", token.name);
+        printf("File %s:\n", path.c_str());
+        printf("Cursor {%.40s}\n", cursor);
+        exit(1);
       }
-      else {
-        t2.fail_count++;
+
+      if (echo) {
+        set_color(token.color);
+        if (token.match == match_newline) {
+          printf("\\n");
+          fwrite(cursor, 1, token.span_b - cursor, stdout);
+        }
+        else if (token.match == match_space) {
+          for (int i = 0; i < (token.span_b - cursor); i++) putc('.', stdout);
+        }
+        else {
+          fwrite(cursor, 1, token.span_b - cursor, stdout);
+        }
       }
+
+      cursor = token.span_b;
     }
 
-    if (!matched) {
+    else {
       lex_ok = false;
       printf("\n");
       printf("File %s:\n", path.c_str());
@@ -254,6 +215,8 @@ void test_lex(const std::string& path, size_t size, bool echo) {
   bool skip = false;
   if (text.find("__ASSEMBLY__") != std::string::npos) skip = true;
   if (text.find("__ASSEMBLER__") != std::string::npos) skip = true;
+  if (text.find("@function") != std::string::npos) skip = true;
+  if (text.find("@progbits") != std::string::npos) skip = true;
 
   // Stuff with ".macro" is also assembler
   if (text.find(".macro") != std::string::npos) skip = true;
@@ -274,7 +237,8 @@ extern int test_c99_peg();
 int main(int argc, char** argv) {
   printf("Matcheroni Demo\n");
 
-  //exit(test_c99_peg());
+  //test_c99_peg();
+  //exit(0);
 
   {
     using text_matcher = matcher<char>;
@@ -347,15 +311,7 @@ int main(int argc, char** argv) {
   printf("Files with lex errors %ld\n", bad_files.size());
   printf("\n");
 
-  const int rmatcher_count = sizeof(rmatcher_table) / sizeof(rmatcher_table[0]);
-  for (int i = 0; i < rmatcher_count; i++) {
-    printf("%-20s match %8d fail %8d\n",
-      rmatcher_table[i].rmatcher_name,
-      rmatcher_table[i].match_count,
-      rmatcher_table[i].fail_count
-    );
-  }
-  printf("\n");
+  dump_lexer_stats();
 
   return 0;
 }
