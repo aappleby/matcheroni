@@ -27,7 +27,7 @@ struct MatcherTableEntry {
 MatcherTableEntry matcher_table[] = {
   { match_space,              0x804040, "space" },
   { match_newline,            0x404080, "newline" },
-  { match_header_name,        0x4488AA, "header_name" },       // must be before identifier
+  //{ match_header_name,        0x4488AA, "header_name" },       // must be before identifier
   { match_string_literal,     0x4488AA, "string" },            // must be before identifier
   { match_raw_string_literal, 0x88AAAA, "raw_string" },        // must be before identifier
   { match_identifier,         0xCCCC40, "identifier" },
@@ -473,6 +473,9 @@ const char* match_punct(const char* a, const char* b, void* ctx) {
 // 6.4.7 Header names
 
 const char* match_header_name(const char* a, const char* b, void* ctx) {
+  // FIXME get this working again once preproc stuff is cleaned up
+
+  /*
   using q_char          = NotAtom<'\n', '"'>;
   using q_char_sequence = Some<q_char>;
   using h_char          = NotAtom<'\n', '>'>;
@@ -481,7 +484,12 @@ const char* match_header_name(const char* a, const char* b, void* ctx) {
     Seq< Atom<'<'>, h_char_sequence, Atom<'>'> >,
     Seq< Atom<'"'>, q_char_sequence, Atom<'"'> >
   >;
+  return header_name::match(a, b, ctx);
+  */
 
+  using h_char          = NotAtom<'\n', '>'>;
+  using h_char_sequence = Some<h_char>;
+  using header_name     = Seq< Atom<'<'>, h_char_sequence, Atom<'>'> >;
   return header_name::match(a, b, ctx);
 }
 
