@@ -5,13 +5,32 @@ using namespace matcheroni;
 
 // Helpers
 
+// a, b, c
+template<typename item, typename delim>
+using delimited_list = Seq<
+  item,
+  Any<Seq<delim, item>>
+>;
+
+// a, b, c,
+template<typename item, typename delim>
+using delimited_list2 = Seq<
+  item,
+  Any<Seq<delim, item>>,
+  Opt<delim>
+>;
+
 template<typename item>
-using comma_separated_list = Seq<item, Any<Seq<Atom<','>, item>>>;
+using comma_separated_list = Seq<
+  item,
+  Any<Seq<Atom<','>, item>>
+>;
 
 template<typename item>
 using comma_separated_list2 = Seq<
-  Any<Seq<item, Atom<','>>>,
-  Opt<item>
+  item,
+  Any<Seq<Atom<','>, item>>,
+  Opt<Atom<','>>
 >;
 
 // Predecls
@@ -71,8 +90,6 @@ using initializer = Ref<match_initializer>;
 
 //------------------------------------------------------------------------------
 // 6.7.2.2 Enumeration specifiers
-
-//------------------------------------------------------------------------------
 
 const char* match_enum_specifier(const char* a, const char* b, void* ctx) {
   using type_specifier_qualifier = Ref<match_type_specifier_qualifier>;
@@ -270,10 +287,10 @@ const char* match_direct_declarator(const char* a, const char* b, void* ctx) {
   >;
   using type_qualifier_list = Some<type_qualifier>;
   using array_declarator = Oneof<
-    Seq< direct_declarator, Atom<'['>, Opt<type_qualifier_list>, Opt<assignment_expression>, Atom<']'> >,
-    Seq< direct_declarator, Atom<'['>, Lit<"static">, Opt<type_qualifier_list>, assignment_expression, Atom<']'> >,
-    Seq< direct_declarator, Atom<'['>, type_qualifier_list, Lit<"static">, assignment_expression, Atom<']'> >,
-    Seq< direct_declarator, Atom<'['>, Opt<type_qualifier_list>, Atom<'*'>, Atom<']'> >
+    Seq< direct_declarator, Atom<'['>,                Opt<type_qualifier_list>,             Opt<assignment_expression>, Atom<']'> >,
+    Seq< direct_declarator, Atom<'['>, Lit<"static">, Opt<type_qualifier_list>,                 assignment_expression,  Atom<']'> >,
+    Seq< direct_declarator, Atom<'['>,                    type_qualifier_list,   Lit<"static">, assignment_expression,  Atom<']'> >,
+    Seq< direct_declarator, Atom<'['>,                Opt<type_qualifier_list>,  Atom<'*'>,                             Atom<']'> >
   >;
 
   using function_declarator = Seq<
@@ -482,6 +499,13 @@ using translation_unit = Some<external_declaration>;
 
 #if 0
 
+using constant = Oneof<
+  integer_constant,
+  floating_constant,
+  enumeration_constant,
+  character_constant,
+  predefined_constant
+>;
 
 // (6.5.1)
 using primary_expression = Oneof<
@@ -551,7 +575,7 @@ using unary_expression = Oneof<
   Seq< Lit<"--">, unary_expression >,
   Seq< unary_operator, cast_expression >,
   Seq< Lit<"sizeof">, unary_expression >,
-  Seq< Lit<"sizeof">, Atom<'('>, type_name, Atom<')'> >,
+  Seq< Lit<"sizeof">,  Atom<'('>, type_name, Atom<')'> >,
   Seq< Lit<"alignof">, Atom<'('>, type_name, Atom<')'> >
 >;
 
@@ -561,73 +585,45 @@ using cast_expression = Oneof<
   Seq< Atom<'('>, type_name, Atom<')'>, cast_expression >
 >;
 
-// (6.5.5)
-using multiplicative_expression = Oneof<
-  cast_expression,
-  Seq<multiplicative_expression, Atom<'*'>, cast_expression>,
-  Seq<multiplicative_expression, Atom<'/'>, cast_expression>,
-  Seq<multiplicative_expression, Atom<'%'>, cast_expression>
->;
 
-// (6.5.6)
-using additive_expression = Oneof<
-  multiplicative_expression,
-  Seq< additive_expression, Atom<'+'>, multiplicative_expression >,
-  Seq< additive_expression, Atom<'-'>, multiplicative_expression >
->;
+using multiplicative_operator = Oneof<Atom<'*'>, Atom<'/'>, Atom<'%'>>;
+using additive_operator       = Oneof<Atom<'+'>, Atom<'-'>>;
+using shift_operator          = Oneof<Lit<"<<">, Lit<">>">>;
+using relational_operator     = Oneof<Atom<'<'>, Atom<'>'>, Lit<"<=">, Lit<">=">>;
+using equality_operator       = Oneof<Lit<"==">, Lit<"!=">>;
 
-// (6.5.7)
-using shift_expression = Oneof<
-  additive_expression,
-  Seq< shift_expression, Lit<"<<">, additive_expression >,
-  Seq< shift_expression, Lit<">>">, additive_expression >
->;
+using multiplicative_expsression = delimited_list<cast_expression,           multiplicative_operator>;
+using additive_expression        = delimited_list<multiplicative_expression, additive_operator>;
+using shift_expression           = delimited_list<additive_expression,       shift_operator>;
+using relational_expression      = delimited_list<shift_expression,          relational_operator>;
+using equality_expression        = delimited_list<relational_expression,     equality_operator>;
+using and_expression             = delimited_list<equality_expression,       Atom<'&'> >;
+using exclusive_or_expression    = delimited_list<and_expression,            Atom<'^'> >;
+using inclusive_or_expression    = delimited_list<exclusive_or_expression,   Atom<'|'> >;
+using logical_and_expression     = delimited_list<inclusive_or_expression,   Lit<"&&"> >;
+using logical_or_expression      = delimited_list<logical_and_expression,    Lit<"||"> >;
 
-// (6.5.8)
-using relational_expression = Oneof<
-  shift_expression,
-  Seq< relational_expression, Atom<'<'>, shift_expression >,
-  Seq< relational_expression, Atom<'>'>, shift_expression >,
-  Seq< relational_expression, Lit<"<=">, shift_expression >,
-  Seq< relational_expression, Lit<">=">, shift_expression >
->;
+struct ParenExpression : public Node {
+  PunctNode* lparen;
+  Expresson* exp;
+  PunctNode* rparen;
+};
 
-//(6.5.9)
-using equality_expression = Oneof<
-  relational_expression,
-  Seq<equality_expression, Lit<"==">, relational_expression>,
-  Seq<equality_expression, Lit<"!=">, relational_expression>
->;
+struct PostfixExpression : public Node {
+  Expression*      lhs;
+  PostfixOperator* op;
+};
 
-// (6.5.10)
-using and_expression = Oneof<
-  equality_expression
-  Seq< and_expression, Atom<'&'>, equality_expression >
->;
+struct PrefixExpression : public Node {
+  PrefixOperator* op;
+  Expression*     rhs;
+};
 
-// (6.5.11)
-using exclusive_or_expression = Oneof<
-  and_expression,
-  Seq< exclusive_or_expression, Atom<'^'>, and_expression >
->;
-
-// (6.5.12)
-using inclusive_or_expression = Oneof<
-  exclusive_or_expression,
-  Seq<inclusive_or_expression, Atom<'|'>, exclusive_or_expression>
->;
-
-// (6.5.13)
-using logical_and_expression = Oneof<
-  inclusive_or_expression,
-  Seq<logical_and_expression, Lit<"&&">, inclusive_or_expression>
->;
-
-// (6.5.14)
-using logical_or_expression = Oneof<
-  logical_and_expression,
-  Seq<logical_or_expression, Lit<"||">, logical_and_expression>
->;
+struct BinaryExpression : public Node {
+  Expression*     lhs;
+  BinaryOperator* op;
+  Expression*     rhs;
+};
 
 // (6.5.15)
 using conditional_expression = Oneof<

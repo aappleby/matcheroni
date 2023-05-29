@@ -2,6 +2,10 @@
 #include <assert.h>
 #include "c_lexer.h"
 
+struct Node;
+
+void dump_tree(Node* head, int max_depth = 1000, int indentation = 0);
+
 //------------------------------------------------------------------------------
 
 enum TokenType {
@@ -57,6 +61,14 @@ inline const char* tok_to_str(TokenType t) {
   }
   return "<token>";
 }
+
+//------------------------------------------------------------------------------
+
+struct Lexeme {
+  LexemeType  lexeme;
+  const char* span_a; // First char
+  const char* span_b; // Last char + 1
+};
 
 //------------------------------------------------------------------------------
 
