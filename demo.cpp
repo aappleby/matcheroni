@@ -237,8 +237,8 @@ extern int test_c99_peg();
 int main(int argc, char** argv) {
   printf("Matcheroni Demo\n");
 
-  //test_c99_peg();
-  //exit(0);
+  test_c99_peg();
+  exit(0);
 
   {
     using text_matcher = matcher<char>;

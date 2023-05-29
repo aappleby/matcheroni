@@ -415,12 +415,55 @@ struct Lit {
   static const atom* match(const atom* a, const atom* b, void* ctx) {
     if (!a || a == b) return nullptr;
     if (a + sizeof(lit.value) > b) return nullptr;
-    for (auto i = 0; i < sizeof(lit.value); i++) {
+
+    auto N = sizeof(lit.value) / sizeof(lit.value[0]);
+    for (auto i = 0; i < N; i++) {
       if (a[i] != lit.value[i]) return nullptr;
     }
     return a + sizeof(lit.value);
   }
 };
+
+#if 0
+//------------------------------------------------------------------------------
+// Not a matcher, but a template helper that allows us to use arrays of strings
+// as template arguments.
+
+template<int N>
+struct StringParams {
+  constexpr StringParams(const char* const (&strs)[N]) {
+    for (int i = 0; i < N; i++) value[i] = strs[i];
+  }
+  const char* value[N];
+};
+
+
+//------------------------------------------------------------------------------
+// Matches arrays of string literals. Does ___NOT___ include the trailing null.
+
+// const char* keywords[] = {"foo", "bar"};
+// Lits<keywords>::match("foobar") == "bar"
+
+//template<const char* const* lits, int N>
+template<StringParams lits>
+struct Lits {
+  using atom = char;
+
+  static const atom* match(const atom* a, const atom* b, void* ctx) {
+    if (!a || a == b) return nullptr;
+
+    auto N = sizeof(lits.value) / sizeof(lits.value[0]);
+    for (auto i = 0; i < N; i++) {
+      auto lit = lits.value[i];
+      auto c = a;
+      for (;c < b && (*c == *lit) && *lit; c++, lit++);
+      if (*lit == 0) return c;
+    }
+
+    return nullptr;
+  }
+};
+#endif
 
 //------------------------------------------------------------------------------
 // 'OneofLit' returns the first match in an array of literals.

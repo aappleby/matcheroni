@@ -2,6 +2,8 @@
 #include "Matcheroni.h"
 #include <stdint.h>
 #include <stdio.h>
+#include <array>
+#include <cstdint>
 
 using namespace matcheroni;
 
@@ -18,6 +20,7 @@ const char* match_utf8_bom          (const char* a, const char* b, void* ctx);
 
 struct MatcherTableEntry {
   matcher<char> matcher_cb = nullptr;
+  LexemeType  lex = LEX_INVALID;
   uint32_t color = 0;
   const char* matcher_name = nullptr;
   int match_count = 0;
@@ -25,21 +28,20 @@ struct MatcherTableEntry {
 };
 
 MatcherTableEntry matcher_table[] = {
-  { match_space,              0x804040, "space" },
-  { match_newline,            0x404080, "newline" },
-  //{ match_header_name,        0x4488AA, "header_name" },       // must be before identifier
-  { match_string_literal,     0x4488AA, "string" },            // must be before identifier
-  { match_raw_string_literal, 0x88AAAA, "raw_string" },        // must be before identifier
-  { match_identifier,         0xCCCC40, "identifier" },
-  { match_multiline_comment,  0x66AA66, "multiline_comment" }, // must be before punct
-  { match_oneline_comment,    0x008800, "oneline_comment" },   // must be before punct
-  { match_preproc,            0xCC88CC, "preproc" },           // must be before punct
-  { match_float,              0xFF88AA, "float" },             // must be before int
-  { match_int,                0xFF8888, "int" },               // must be before punct
-  { match_punct,              0x808080, "punct" },
-  { match_character_constant, 0x44DDDD, "char_literal" },
-  { match_splice,             0x00CCFF, "splice" },
-  { match_formfeed,           0xFF00FF, "formfeed" },
+  { match_space,              LEX_SPACE,      0x804040, "space" },
+  { match_newline,            LEX_NEWLINE,    0x404080, "newline" },
+  { match_string_literal,     LEX_STRING,     0x4488AA, "string" },            // must be before identifier
+  { match_raw_string_literal, LEX_RAW_STRING, 0x88AAAA, "raw_string" },        // must be before identifier
+  { match_identifier,         LEX_ID,         0xCCCC40, "identifier" },
+  { match_multiline_comment,  LEX_MLCOMMENT,  0x66AA66, "multiline_comment" }, // must be before punct
+  { match_oneline_comment,    LEX_SLCOMMENT,  0x008800, "oneline_comment" },   // must be before punct
+  { match_preproc,            LEX_PREPROC,    0xCC88CC, "preproc" },           // must be before punct
+  { match_float,              LEX_FLOAT,      0xFF88AA, "float" },             // must be before int
+  { match_int,                LEX_INT,        0xFF8888, "int" },               // must be before punct
+  { match_punct,              LEX_PUNCT,      0x808080, "punct" },
+  { match_character_constant, LEX_CHAR,       0x44DDDD, "char_literal" },
+  { match_splice,             LEX_SPLICE,     0x00CCFF, "splice" },
+  { match_formfeed,           LEX_FORMFEED,   0xFF00FF, "formfeed" },
 };
 
 //------------------------------------------------------------------------------
@@ -52,6 +54,7 @@ Token next_token(const char* cursor, const char* text_end) {
     if (end) {
       t.match_count++;
       return Token {
+        .lex    = t.lex,
         .name   = t.matcher_name,
         .match  = t.matcher_cb,
         .color  = t.color,
@@ -62,7 +65,7 @@ Token next_token(const char* cursor, const char* text_end) {
       t.fail_count++;
     }
   }
-  return {0};
+  return Token();
 }
 
 void dump_lexer_stats() {
@@ -95,31 +98,10 @@ const char* match_newline(const char* a, const char* b, void* ctx) {
   return match::match(a, b, ctx);
 }
 
-const char* match_str(const char* text, const char* lit) {
-  while(1) {
-    if (*text == 0 && *lit != 0) return nullptr;
-    if (*text != 0 && *lit == 0) return text;
-    if (*text == 0 && *lit == 0) return text;
-    if (*text != *lit) return nullptr;
-    text++;
-    lit++;
-  }
-
-  return nullptr;
-}
-
 const char* match_str(const char* a, const char* b, const char* lit) {
-  while(1) {
-    if (*a == 0 && *lit != 0) return nullptr;
-    if (*a != 0 && *lit == 0) return a;
-    if (*a == 0 && *lit == 0) return a;
-    if (*a != *lit) return nullptr;
-    if (a == b) return nullptr;
-    a++;
-    lit++;
-  }
-
-  return nullptr;
+  auto c = a;
+  for (;c < b && (*c == *lit) && *lit; c++, lit++);
+  return *lit ? nullptr : c;
 }
 
 template<typename M>
@@ -174,24 +156,23 @@ const char* match_splice(const char* a, const char* b, void* ctx) {
 //------------------------------------------------------------------------------
 // 6.4.1 Keywords
 
-// FIXME turn into "using keywords = Lits<c_keywords>;"
+const char* match_keyword(const char* a, const char* b, void* ctx) {
 
-// Probably too many strings to pass as template parameters...
-const char* c_keywords[] = {
-  "alignas", "alignof", "auto", "bool", "break", "case", "char", "const",
-  "constexpr", "continue", "default", "do", "double", "else", "enum",
-  "extern", "false", "float", "for", "goto", "if", "inline", "int", "long",
-  "nullptr", "register", "restrict", "return", "short", "signed", "sizeof",
-  "static", "static_assert", "struct", "switch", "thread_local", "true",
-  "typedef", "typeof", "typeof_unqual", "union", "unsigned", "void",
-  "volatile", "while", "", "_Atomic", "_BitInt", "_Complex", "_Decimal128",
-  "_Decimal32", "_Decimal64", "_Generic", "_Imaginary", "_Noreturn"
-};
-const int keyword_count = sizeof(c_keywords) / sizeof(c_keywords[0]);
+  // Probably too many strings to pass as template parameters...
+  const char* c_keywords[] = {
+    "alignas", "alignof", "auto", "bool", "break", "case", "char", "const",
+    "constexpr", "continue", "default", "do", "double", "else", "enum",
+    "extern", "false", "float", "for", "goto", "if", "inline", "int", "long",
+    "nullptr", "register", "restrict", "return", "short", "signed", "sizeof",
+    "static", "static_assert", "struct", "switch", "thread_local", "true",
+    "typedef", "typeof", "typeof_unqual", "union", "unsigned", "void",
+    "volatile", "while", "", "_Atomic", "_BitInt", "_Complex", "_Decimal128",
+    "_Decimal32", "_Decimal64", "_Generic", "_Imaginary", "_Noreturn"
+  };
+  const int keyword_count = sizeof(c_keywords) / sizeof(c_keywords[0]);
 
-const char* match_keyword(const char* text, void* ctx) {
   for (int i = 0; i < keyword_count; i++) {
-    if (auto t = match_str(text, c_keywords[i])) {
+    if (auto t = match_str(a, b, c_keywords[i])) {
       return t;
     }
   }
@@ -322,13 +303,14 @@ const char* match_float(const char* a, const char* b, void* ctx) {
   using binary_exponent_part = Seq<Atom<'p', 'P'>, Opt<sign>, digit_sequence>;
 
   using decimal_floating_constant = Oneof<
-    Seq< fractional_constant, Opt<exponent_part>, Opt<floating_suffix> >,
-    Seq< digit_sequence, exponent_part, Opt<floating_suffix> >
+    Seq< Opt<sign>, fractional_constant, Opt<exponent_part>, Opt<floating_suffix> >,
+    Seq< Opt<sign>, digit_sequence, exponent_part, Opt<floating_suffix> >
   >;
 
   using hexadecimal_prefix         = Oneof<Lit<"0x">, Lit<"0X">>;
 
   using hexadecimal_floating_constant = Seq<
+    Opt<sign>,
     hexadecimal_prefix,
     Oneof<hexadecimal_fractional_constant, hexadecimal_digit_sequence>,
     binary_exponent_part,
@@ -473,9 +455,6 @@ const char* match_punct(const char* a, const char* b, void* ctx) {
 // 6.4.7 Header names
 
 const char* match_header_name(const char* a, const char* b, void* ctx) {
-  // FIXME get this working again once preproc stuff is cleaned up
-
-  /*
   using q_char          = NotAtom<'\n', '"'>;
   using q_char_sequence = Some<q_char>;
   using h_char          = NotAtom<'\n', '>'>;
@@ -484,12 +463,6 @@ const char* match_header_name(const char* a, const char* b, void* ctx) {
     Seq< Atom<'<'>, h_char_sequence, Atom<'>'> >,
     Seq< Atom<'"'>, q_char_sequence, Atom<'"'> >
   >;
-  return header_name::match(a, b, ctx);
-  */
-
-  using h_char          = NotAtom<'\n', '>'>;
-  using h_char_sequence = Some<h_char>;
-  using header_name     = Seq< Atom<'<'>, h_char_sequence, Atom<'>'> >;
   return header_name::match(a, b, ctx);
 }
 
@@ -510,59 +483,64 @@ const char* match_multiline_comment(const char* a, const char* b, void* ctx) {
   return mlc::match(a, b, ctx);
 }
 
-#if 0
 // Multi-line nested comments (not actually in C, just here for reference)
-
-// FIXME make sure this matches the multiply-recursive version
-const char* match_nested_comment(const char* text, void* ctx) {
+// FIXME needs test case
+const char* match_nested_comment(const char* a, const char* b, void* ctx) {
   using ldelim = Lit<"/*">;
   using rdelim = Lit<"*/">;
   using item   = Oneof<Ref<match_nested_comment>, AnyAtom<char>>;
   using match  = Seq<ldelim, Any<item>, rdelim>;
-  return match::match(text, ctx);
+  return match::match(a, b, ctx);
 }
-
-const char* match_nested_comment_body(const char* text, void* ctx);
-
-const char* match_nested_comment(const char* text, void* ctx) {
-  using ldelim = Lit<"/*">;
-  using rdelim = Lit<"*/">;
-  using item   = Seq<Not<ldelim>, Not<rdelim>, AnyAtom<char>>;
-  using body   = Ref<match_nested_comment_body>;
-  using match  = Seq<ldelim, body, rdelim>;
-  return match::match(text, ctx);
-}
-
-const char* match_nested_comment_body(const char* text, void* ctx) {
-  using ldelim = Lit<"/*">;
-  using rdelim = Lit<"*/">;
-  using item   = Seq<Not<ldelim>, Not<rdelim>, AnyAtom<char>>;
-  using nested = Ref<match_nested_comment>;
-  using match  = Any<Oneof<nested,item>>;
-  return match::match(text, ctx);
-}
-#endif
 
 //------------------------------------------------------------------------------
-// We can't really handle preprocessing stuff so we're just matching the
-// initial keyword.
+// FIXME clean this up... :P
 
-const char* match_preproc(const char* a, const char* b, void* ctx) {
-  if (*a != '#') return nullptr;
-  a++;
+const char* until_eol(const char* a, const char* b, void* ctx) {
+  bool splice = false;
 
-  const char* preprocs[16] = {
-    "define", "elif", "elifdef", "elifndef", "else", "embed", "endif", "error",
-    "if", "ifdef", "ifndef", "include", "line", "pragma", "undef", "warning"
-  };
-
-  for (int i = 0; i < 16; i++) {
-    if (auto t = match_str(a, b, preprocs[i])) {
-      return t;
+  while(a < b) {
+    if (auto end = match_raw_string_literal(a, b, ctx)) {
+      a = end;
+      continue;
     }
+
+    auto c = *a;
+
+    if (c == 0) {
+      return a;
+    }
+
+    if (c == '\n') {
+      if (splice) {
+        splice = false;
+      }
+      else {
+        return a;
+      }
+    }
+
+    if (c == '\\') {
+      splice = true;
+    }
+    else if (c != ' ' && c != '\t' && c != '\r') {
+      splice = false;
+    }
+
+    a++;
   }
 
-  return nullptr;
+  return a;
+};
+
+const char* match_preproc(const char* a, const char* b, void* ctx) {
+  if (*a == '#') {
+    auto end = until_eol(a, b, ctx);
+    return end;
+  }
+  else {
+    return nullptr;
+  }
 }
 
 //------------------------------------------------------------------------------

@@ -2,8 +2,8 @@ set -x
 mkdir -p bin
 
 MODE="-g -O0"
-#MODE="-O3 -flto"
-#MODE="-Os -flto"
+#MODE="-O3"
+#MODE="-Os"
 
 echo "Building c_lexer"
 g++ $MODE -std=c++20 -c c_lexer.cpp -o bin/c_lexer.o

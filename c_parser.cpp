@@ -21,8 +21,6 @@ const char* match_type_specifier_qualifier(const char* a, const char* b, void* c
 const char* match_attribute_specifier_sequence(const char* a, const char* b, void* ctx);
 using attribute_specifier_sequence = Ref<match_attribute_specifier_sequence>;
 
-
-
 // FIXME these are fake
 using identifier = Lit<"id">;
 using constant_expression = Lit<"constant_expression">;
@@ -235,6 +233,8 @@ const char* match_declaration(const char* a, const char* b, void* ctx) {
   return declaration::match(a, b, ctx);
 }
 
+using declaration = Ref<match_declaration>;
+
 //------------------------------------------------------------------------------
 // 6.7.6 Declarators
 
@@ -299,6 +299,8 @@ const char* match_declarator(const char* a, const char* b, void* ctx) {
   using declarator = Seq<Opt<pointer>, direct_declarator>;
   return declarator::match(a, b, ctx);
 }
+
+using declarator = Ref<match_declarator>;
 
 //------------------------------------------------------------------------------
 
@@ -388,149 +390,281 @@ const char* match_parameter_type_list(const char* a, const char* b, void* ctx) {
 
 //------------------------------------------------------------------------------
 
+using expression_statement = Oneof<
+  Seq<Opt<expression>, Atom<';'> >,
+  Seq<attribute_specifier_sequence, expression, Atom<';'> >
+>;
+
+using label = Oneof<
+  Seq<Opt<attribute_specifier_sequence>, identifier, Atom<':'> >,
+  Seq<Opt<attribute_specifier_sequence>, Lit<"case">, constant_expression, Atom<':'> >,
+  Seq<Opt<attribute_specifier_sequence>, Lit<"default">, Atom<':'> >
+>;
+
+const char* match_statement(const char* a, const char* b, void* ctx);
+const char* match_compound_statement(const char* a, const char* b, void* ctx);
+
+using statement = Ref<match_statement>;
+
+using secondary_block = statement;
+
+using labeled_statement = Seq<label, statement>;
+
+
+using compound_statement = Ref<match_compound_statement>;
+
+using selection_statement = Oneof<
+  Seq< Lit<"if">, Atom<'('>, expression, Atom<')'>, secondary_block >,
+  Seq< Lit<"if">, Atom<'('>, expression, Atom<')'>, secondary_block, Lit<"else">, secondary_block >,
+  Seq< Lit<"switch">, Atom<'('>, expression, Atom<')'>, secondary_block >
+>;
+
+using jump_statement = Oneof<
+  Seq< Lit<"goto">, identifier, Atom<';'> >,
+  Seq< Lit<"continue">, Atom<';'> >,
+  Seq< Lit<"break">, Atom<';'> >,
+  Seq< Lit<"return">, Opt<expression>, Atom<';'> >
+>;
+
+using iteration_statement = Oneof<
+  Seq< Lit<"while">, Atom<'('>, expression, Atom<')'>, secondary_block >,
+  Seq< Lit<"do">, secondary_block, Lit<"while">, Atom<'('>, expression, Atom<')'>, Atom<';'> >,
+  Seq< Lit<"for">, Atom<'('>, Opt<expression>, Atom<';'>, Opt<expression>, Atom<';'>, Opt<expression>, Atom<')'>, secondary_block >,
+  Seq< Lit<"for">, Atom<'('>, declaration, Opt<expression>, Atom<';'>, Opt<expression>, Atom<')'>, secondary_block >
+>;
+
+
+using primary_block = Oneof<
+  compound_statement,
+  selection_statement,
+  iteration_statement
+>;
+
+using unlabeled_statement = Oneof<
+  expression_statement,
+  Seq<Opt<attribute_specifier_sequence>, primary_block>,
+  Seq<Opt<attribute_specifier_sequence>, jump_statement>
+>;
+
+const char* match_compound_statement(const char* a, const char* b, void* ctx) {
+  using block_item = Oneof<
+    declaration,
+    unlabeled_statement,
+    label
+  >;
+  using block_item_list = Some<block_item>;
+  using compound_statement = Seq< Atom<'{'>, Opt<block_item_list>, Atom<'}'>>;
+  return compound_statement::match(a, b, ctx);
+}
+
+const char* match_statement(const char* a, const char* b, void* ctx) {
+  using statement = Oneof<labeled_statement, unlabeled_statement>;
+  return statement::match(a, b, ctx);
+}
+
+//------------------------------------------------------------------------------
+
+using function_body = compound_statement;
+
+using function_definition = Seq<
+  Opt<attribute_specifier_sequence>,
+  declaration_specifiers,
+  declarator,
+  function_body
+>;
+
+using external_declaration = Oneof<function_definition, declaration>;
+
+using translation_unit = Some<external_declaration>;
+
+//------------------------------------------------------------------------------
+
 
 #if 0
 
 
 // (6.5.1)
-exp_primary:
-  identifier
-  constant
-  lit_string
-  ( expression )
-  //generic-selection
-
-/*
-// (6.5.1.1)
-generic-selection:
-  _Generic ( exp_assign , generic-assoc-list )
+using primary_expression = Oneof<
+  identifier,
+  constant,
+  string_literal,
+  Seq< Atom<'('>, expression, Atom<')'> >,
+  generic_selection
+>;
 
 // (6.5.1.1)
-generic-assoc-list:
-  generic-association
-  generic-assoc-list , generic-association
+using generic_selection = Seq<
+  Lit<"_Generic">,
+  Atom<'('>,
+  assignment_expression,
+  Atom<','>
+  generic_assoc_list,
+  Atom<')'>
+>;
 
 // (6.5.1.1)
-generic-association:
-  type_name : exp_assign
-  default : exp_assign
-*/
+using generic_assoc_list = Oneof<
+  generic_association,
+  Seq<generic_assoc_list, Atom<','>, generic_association>
+>;
+
+// (6.5.1.1)
+using generic_association = Oneof<
+  Seq< type_name, Atom<':'>, assignment_expression >,
+  Seq< Lit<"default">, Atom<':'>, assignment_expression >
+>;
 
 // (6.5.2)
-exp_postfix:
-  exp_primary
-  exp_postfix [ expression ]
-  exp_postfix ( Opt<argument-expression-list> )
-  exp_postfix Atom<'.'> identifier
-  exp_postfix Lit<"->"> identifier
-  exp_postfix Lit<"++">
-  exp_postfix Lit<"--">
-  lit_compound
+using postfix_expression = Oneof<
+  primary_expression,
+  Seq< postfix_expression, Atom<'['>, expression, Atom<']'> >,
+  Seq< postfix_expression, Atom<'('>, Opt<argument_expression_list>, Atom<')'> >,
+  Seq< postfix_expression, Atom<'.'>, identifier >,
+  Seq< postfix_expression, Lit<"->">, identifier >,
+  Seq< postfix_expression, Lit<"++"> >,
+  Seq< postfix_expression, Lit<"--"> >,
+  compound_literal
+>;
 
 // (6.5.2)
-argument-expression-list: Seq<exp_assign, Opt<Seq<Atom<','>, exp_assign>>>
+using argument_expression_list = Seq<
+  assignment_expression,
+  Opt< Seq<Atom<','>, assignment_expression> >
+>;
 
 // (6.5.2.5)
-lit_compound:
-  ( Any<storage_class_specifier> type_name ) braced_initializer
+using compound_literal = Seq<
+  Atom<'('>,
+  Any<storage_class_specifier>,
+  type_name,
+  Atom<')'>,
+  braced_initializer
+>;
 
 // (6.5.3)
-exp_unary:
-  exp_postfix
-  Lit<"++"> exp_unary
-  Lit<"--"> exp_unary
-  op_unary exp_cast
-  sizeof exp_unary
-  sizeof ( type_name )
-  alignof ( type_name )
+using unary_operator = Atom<'&', '*', '+', '-', '~', '!'>;
+
 // (6.5.3)
-op_unary: one of
-  & * + - ~ !
+using unary_expression = Oneof<
+  postfix_expression,
+  Seq< Lit<"++">, unary_expression >,
+  Seq< Lit<"--">, unary_expression >,
+  Seq< unary_operator, cast_expression >,
+  Seq< Lit<"sizeof">, unary_expression >,
+  Seq< Lit<"sizeof">, Atom<'('>, type_name, Atom<')'> >,
+  Seq< Lit<"alignof">, Atom<'('>, type_name, Atom<')'> >
+>;
+
 // (6.5.4)
-exp_cast:
-  exp_unary
-  ( type_name ) exp_cast
+using cast_expression = Oneof<
+  unary_expression,
+  Seq< Atom<'('>, type_name, Atom<')'>, cast_expression >
+>;
+
 // (6.5.5)
-exp_mul:
-  exp_cast
-  exp_mul * exp_cast
-  exp_mul / exp_cast
-  exp_mul % exp_cast
+using multiplicative_expression = Oneof<
+  cast_expression,
+  Seq<multiplicative_expression, Atom<'*'>, cast_expression>,
+  Seq<multiplicative_expression, Atom<'/'>, cast_expression>,
+  Seq<multiplicative_expression, Atom<'%'>, cast_expression>
+>;
+
 // (6.5.6)
-exp_add:
-  exp_mul
-  add_exp + exp_mul
-  add_exp - exp_mul
+using additive_expression = Oneof<
+  multiplicative_expression,
+  Seq< additive_expression, Atom<'+'>, multiplicative_expression >,
+  Seq< additive_expression, Atom<'-'>, multiplicative_expression >
+>;
+
 // (6.5.7)
-exp_shift:
-  add_exp
-  exp_shift << add_exp
-  exp_shift >> add_exp
+using shift_expression = Oneof<
+  additive_expression,
+  Seq< shift_expression, Lit<"<<">, additive_expression >,
+  Seq< shift_expression, Lit<">>">, additive_expression >
+>;
+
 // (6.5.8)
-exp_rel:
-  exp_shift
-  exp_rel < exp_shift
-  exp_rel > exp_shift
-  exp_rel <= exp_shift
-  exp_rel >= exp_shift
+using relational_expression = Oneof<
+  shift_expression,
+  Seq< relational_expression, Atom<'<'>, shift_expression >,
+  Seq< relational_expression, Atom<'>'>, shift_expression >,
+  Seq< relational_expression, Lit<"<=">, shift_expression >,
+  Seq< relational_expression, Lit<">=">, shift_expression >
+>;
 
 //(6.5.9)
-eq_exp:
-  exp_rel
-  eq_exp == exp_rel
-  eq_exp != exp_rel
+using equality_expression = Oneof<
+  relational_expression,
+  Seq<equality_expression, Lit<"==">, relational_expression>,
+  Seq<equality_expression, Lit<"!=">, relational_expression>
+>;
 
 // (6.5.10)
-exp_bitand:
-  eq_exp
-  exp_bitand & eq_exp
+using and_expression = Oneof<
+  equality_expression
+  Seq< and_expression, Atom<'&'>, equality_expression >
+>;
 
 // (6.5.11)
-exp_bitxor:
-  exp_bitand
-  exp_bitxor ^ exp_bitand
+using exclusive_or_expression = Oneof<
+  and_expression,
+  Seq< exclusive_or_expression, Atom<'^'>, and_expression >
+>;
 
 // (6.5.12)
-exp_bitor:
-  exp_bitxor
-  exp_bitor | exp_bitxor
+using inclusive_or_expression = Oneof<
+  exclusive_or_expression,
+  Seq<inclusive_or_expression, Atom<'|'>, exclusive_or_expression>
+>;
 
 // (6.5.13)
-exp_logand:
-  exp_bitor
-  exp_logand && exp_bitor
+using logical_and_expression = Oneof<
+  inclusive_or_expression,
+  Seq<logical_and_expression, Lit<"&&">, inclusive_or_expression>
+>;
 
 // (6.5.14)
-exp_logor:
-  exp_logand
-  exp_logor || exp_logand
+using logical_or_expression = Oneof<
+  logical_and_expression,
+  Seq<logical_or_expression, Lit<"||">, logical_and_expression>
+>;
 
 // (6.5.15)
-exp_cond:
-  exp_logor
-  exp_logor ? expression : exp_cond
+using conditional_expression = Oneof<
+  logical_or_expression,
+  Seq<logical_or_expression, Atom<'?'>, expression, Atom<':'>, conditional_expression>
+>;
 
 // (6.5.16)
-exp_assign:
-  exp_cond
-  exp_unary op_assign exp_assign
+using assignment_operator = Oneof<
+  Lit<"=">,
+  Lit<"*=">,
+  Lit<"/=">,
+  Lit<"%=">,
+  Lit<"+=">,
+  Lit<"-=">,
+  Lit<"<<=">,
+  Lit<">>=">,
+  Lit<"&=">,
+  Lit<"^=">,
+  Lit<"|=">
+>;
 
 // (6.5.16)
-op_assign: one of
-  = *= /= %= += -= <<= >>= &= ^= |=
+using assignment_expression = Oneof<
+  conditional_expression
+  Seq<unary_expression, assignment_operator, assignment_expression>
+>
 
 // (6.5.17)
-expression:
-  exp_assign
-  expression , exp_assign
-
-exp_assign
-exp_assign , exp_assign
-expression , exp_assign , exp_assign
+using expression = Oneof<
+  assignment_expression,
+  Seq<expression, Atom<','>, assignment_expression>
+>
 
 // (6.6)
-exp_const:
-  exp_cond
+using constant_expression = conditional_expression;
+
 #endif
 
 //------------------------------------------------------------------------------
