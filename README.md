@@ -1,2 +1,1 @@
-# Matcheroni
-A minimalist single-header library for building simple, fast text matchers.
+All the header files in this directory _should_ be convertible to SystemVerilog.

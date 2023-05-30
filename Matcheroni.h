@@ -25,8 +25,9 @@ struct Atom;
 
 template <auto C, auto... rest>
 struct Atom<C, rest...> {
-  using atom = decltype(C);
+  //using atom = decltype(C);
 
+  template<typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
     if (!a || a == b) return nullptr;
     if (*a == C) {
@@ -39,8 +40,9 @@ struct Atom<C, rest...> {
 
 template <auto C>
 struct Atom<C> {
-  using atom = decltype(C);
+  //using atom = decltype(C);
 
+  template<typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
     if (!a || a == b) return nullptr;
     if (*a == C) {
@@ -53,8 +55,9 @@ struct Atom<C> {
 
 template<typename _atom>
 struct AnyAtom {
-  using atom = _atom;
+  //using atom = _atom;
 
+  template<typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
     if (!a || a == b) return nullptr;
     return a + 1;
@@ -69,8 +72,9 @@ struct AnyAtom {
 
 template<typename P, typename... rest>
 struct Seq {
-  using atom = P::atom;
+  //using atom = P::atom;
 
+  template<typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
     auto c = P::match(a, b, ctx);
     return c ? Seq<rest...>::match(c, b, ctx) : nullptr;
@@ -79,8 +83,9 @@ struct Seq {
 
 template<typename P>
 struct Seq<P> {
-  using atom = P::atom;
+  //using atom = P::atom;
 
+  template<typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
     return P::match(a, b, ctx);
   }
@@ -96,8 +101,9 @@ struct Seq<P> {
 
 template <typename P, typename... rest>
 struct Oneof {
-  using atom = P::atom;
+  //using atom = P::atom;
 
+  template<typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
     auto c = P::match(a, b, ctx);
     return c ? c : Oneof<rest...>::match(a, b, ctx);
@@ -107,8 +113,9 @@ struct Oneof {
 
 template <typename P>
 struct Oneof<P> {
-  using atom = P::atom;
+  //using atom = P::atom;
 
+  template<typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
     return P::match(a, b, ctx);
   }
@@ -126,8 +133,9 @@ struct Oneof<P> {
 
 template<typename P>
 struct Any {
-  using atom = P::atom;
+  //using atom = P::atom;
 
+  template<typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
     while(auto c = P::match(a, b, ctx)) a = c;
     return a;
@@ -142,8 +150,9 @@ struct Any {
 
 template<typename P>
 struct Opt {
-  using atom = P::atom;
+  //using atom = P::atom;
 
+  template<typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
     auto c = P::match(a, b, ctx);
     return c ? c : a;
@@ -159,8 +168,9 @@ struct Opt {
 
 template<typename P>
 struct Some {
-  using atom = P::atom;
+  //using atom = P::atom;
 
+  template<typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
     auto c = P::match(a, b, ctx);
     return c ? Any<P>::match(c, b, ctx) : nullptr;
@@ -172,8 +182,9 @@ struct Some {
 
 template<int N, typename P>
 struct Rep {
-  using atom = P::atom;
+  //using atom = P::atom;
 
+  template<typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
     for(auto i = 0; i < N; i++) {
       auto c = P::match(a, b, ctx);
@@ -193,8 +204,9 @@ struct Rep {
 
 template<typename P>
 struct And {
-  using atom = P::atom;
+  //using atom = P::atom;
 
+  template<typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
     auto c = P::match(a, b, ctx);
     return c ? a : nullptr;
@@ -209,8 +221,9 @@ struct And {
 
 template<typename P>
 struct Not {
-  using atom = P::atom;
+  //using atom = P::atom;
 
+  template<typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
     auto c = P::match(a, b, ctx);
     return c ? nullptr : a;
@@ -222,8 +235,9 @@ struct Not {
 
 template <typename C>
 struct EOF {
-  using atom = C;
+  //using atom = C;
 
+  template<typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
     return a == b ? a : nullptr;
   }
@@ -235,8 +249,9 @@ struct EOF {
 
 template <auto C, auto... rest>
 struct NotAtom {
-  using atom = decltype(C);
+  //using atom = decltype(C);
 
+  template<typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
     if (!a || a == b) return nullptr;
     if (*a == C) return nullptr;
@@ -246,8 +261,9 @@ struct NotAtom {
 
 template <auto C>
 struct NotAtom<C> {
-  using atom = decltype(C);
+  //using atom = decltype(C);
 
+  template<typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
     if (!a || a == b) return nullptr;
     return (*a == C) ? nullptr : a + 1;
@@ -259,8 +275,9 @@ struct NotAtom<C> {
 
 template<auto RA, decltype(RA) RB>
 struct Range {
-  using atom = decltype(RA);
+  //using atom = decltype(RA);
 
+  template<typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
     if (!a || a == b) return nullptr;
     if (*a >= RA && *a <= RB) {
@@ -276,8 +293,9 @@ struct Range {
 
 template<typename P>
 struct Until {
-  using atom = P::atom;
+  //using atom = P::atom;
 
+  template<typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
     while(a < b) {
       if (P::match(a, b, ctx)) return a;
@@ -294,7 +312,9 @@ template <typename R, typename... A> R ret(const R *(*)(A...));
 
 template<auto& M>
 struct Ref {
-  using atom = decltype(ret(M));
+  //using atom = decltype(ret(M));
+
+  template<typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
     return M(a, b, ctx);
   }
@@ -312,8 +332,9 @@ struct Backref {
 
 template<typename P>
 struct StoreBackref {
-  using atom = P::atom;
+  //using atom = P::atom;
 
+  template<typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
     auto c = P::match(a, b, ctx);
     auto ref = (Backref<atom>*)ctx;
@@ -328,8 +349,9 @@ struct StoreBackref {
 
 template<typename _atom>
 struct MatchBackref {
-  using atom = _atom;
+  //using atom = _atom;
 
+  template<typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
     if (!a || a == b) return nullptr;
     auto ref = (Backref<atom>*)ctx;

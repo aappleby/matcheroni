@@ -4,8 +4,10 @@
 #include <memory.h>
 #include "c_lexer.h"
 #include "Node.h"
+#include "NodeTypes.h"
 
 #include <stack>
+#include <vector>
 
 using namespace matcheroni;
 
@@ -26,92 +28,47 @@ int main(int argc, char** argv) {
 
 //------------------------------------------------------------------------------
 
-#if 0
-//----------------------------------------
-LEX_ROOT       TOK_ROOT       \n#include <stdio.
- |- LEX_PREPROC    TOK_INVALID    #include <stdio.h>
- |- LEX_ID         TOK_INVALID    int
- |- LEX_ID         TOK_INVALID    main
- |- LEX_PUNCT      TOK_INVALID    (
- |- LEX_ID         TOK_INVALID    int
- |- LEX_ID         TOK_INVALID    argc
- |- LEX_PUNCT      TOK_INVALID    ,
- |- LEX_ID         TOK_INVALID    char
- |- LEX_PUNCT      TOK_INVALID    *
- |- LEX_PUNCT      TOK_INVALID    *
- |- LEX_ID         TOK_INVALID    argv
- |- LEX_PUNCT      TOK_INVALID    )
- |- LEX_PUNCT      TOK_INVALID    {
-
-expression_statement
-  expression : call_expression
-    function : identifier
-    arguments : argument_list
-      args[] = { string, constant, identifier }
-  terminator : punct
-
- |- LEX_ID         TOK_INVALID    printf
-
- |- LEX_PUNCT      TOK_INVALID    (
- |- LEX_STRING     TOK_INVALID    "Hello () World %d %p!\n"
- |- LEX_PUNCT      TOK_INVALID    ,
- |- LEX_INT        TOK_INVALID    12345
- |- LEX_PUNCT      TOK_INVALID    ,
- |- LEX_ID         TOK_INVALID    argv
- |- LEX_PUNCT      TOK_INVALID    )
-
- |- LEX_PUNCT      TOK_INVALID    ;
- |- LEX_ID         TOK_INVALID    return
- |- LEX_INT        TOK_INVALID    0
- |- LEX_PUNCT      TOK_INVALID    ;
- |- LEX_PUNCT      TOK_INVALID    }
- #endif
-
-//------------------------------------------------------------------------------
-
-Node* fold_nodes(Node* a, Node* b, LexemeType lex, TokenType tok) {
+Node* fold_nodes(Node* a, Node* b, NodeType tok) {
   auto parent = a->parent;
 
-  auto n = new Node(lex, tok, a->span_a, b->span_b);
+  auto n = new Node(tok, a->lex_a, b->lex_b);
 
   n->parent = nullptr;
-  n->tok_prev = a->tok_prev;
-  n->tok_next = b->tok_next;
-  n->lex_prev = nullptr;
-  n->lex_next = nullptr;
-  n->tok_head = a;
-  n->tok_tail = b;
+  n->prev = a->prev;
+  n->next = b->next;
+  n->head = a;
+  n->tail = b;
 
-  if (n->tok_prev) n->tok_prev->tok_next = n;
-  if (n->tok_next) n->tok_next->tok_prev = n;
+  if (n->prev) n->prev->next = n;
+  if (n->next) n->next->prev = n;
 
-  if (parent->tok_head == a) parent->tok_head = n;
-  if (parent->tok_tail == b) parent->tok_tail = n;
+  if (parent->head == a) parent->head = n;
+  if (parent->tail == b) parent->tail = n;
 
-  a->tok_prev = nullptr;
-  b->tok_next = nullptr;
+  a->prev = nullptr;
+  b->next = nullptr;
 
-  for (auto c = a; c; c = c->tok_next) c->parent = n;
+  for (auto c = a; c; c = c->next) c->parent = n;
 
   return n;
 }
 
 //------------------------------------------------------------------------------
 
-void fold_delims(Node* a, Node* b, char ldelim, char rdelim, TokenType block_type) {
+void fold_delims(Node* a, Node* b, char ldelim, char rdelim, NodeType block_type) {
 
   std::stack<Node*> ldelims;
 
-  for (Node* cursor = a; cursor; cursor = cursor->tok_next) {
-    if (cursor->lexeme != LEX_PUNCT) continue;
+  for (Node* cursor = a; cursor; cursor = cursor->next) {
+    if (cursor->lex_a->lexeme != LEX_PUNCT) continue;
 
-    if (*cursor->span_a == ldelim) {
+    if (*cursor->lex_a->span_a == ldelim) {
       ldelims.push(cursor);
     }
-    else if (*cursor->span_a == rdelim) {
+    else if (*cursor->lex_a->span_a == rdelim) {
       auto node_ldelim = ldelims.top();
       auto node_rdelim = cursor;
-      cursor = fold_nodes(node_ldelim, node_rdelim, LEX_INVALID, block_type);
+      cursor = fold_nodes(node_ldelim, node_rdelim, block_type);
       ldelims.pop();
     }
   }
@@ -119,23 +76,128 @@ void fold_delims(Node* a, Node* b, char ldelim, char rdelim, TokenType block_typ
 
 //------------------------------------------------------------------------------
 
-Node* parse_translation_unit(Node* root) {
-  //Node* unit = new Node();
+Node* parse_type_specifier_qualifier(Lexeme* a, Lexeme* b) {
+  return nullptr;
+}
 
-  for(auto cursor = root->tok_head; cursor; cursor = cursor->tok_next) {
-    if (cursor->lexeme == LEX_PREPROC) {
-      printf("<preproc>\n");
-      continue;
+//------------------------------------------------------------------------------
+
+Node* parse_declaration_specifier(Lexeme* a, Lexeme* b) {
+  // 6.7.1 Storage-class specifiers
+  using storage_class_specifier = Oneof<
+    Lit<"auto">,
+    Lit<"constexpr">,
+    Lit<"extern">,
+    Lit<"register">,
+    Lit<"static">,
+    Lit<"thread_local">,
+    Lit<"typedef">
+  >;
+
+  // 6.7.4 Function specifiers
+  using function_specifier = Oneof<
+    Lit<"inline">,
+    Lit<"_Noreturn">
+  >;
+
+  using declaration_specifier = Oneof<
+    storage_class_specifier,
+    //type_specifier_qualifier,
+    function_specifier
+  >;
+
+  auto end = declaration_specifier::match(a->span_a, a->span_b, nullptr);
+  if (end == a->span_b) {
+    auto result = new Node(NODE_DECLARATION_SPECIFIER, a, a+1);
+    return result;
+  }
+
+  return nullptr;
+}
+
+//------------------------------------------------------------------------------
+
+Node* parse_declaration_specifiers(Lexeme* a, Lexeme* b) {
+  //using declaration_specifiers = Some<Oneof<declaration_specifier, type_specifier_qualifier> >;
+  //return declaration_specifiers::match(a, b, ctx);
+
+  auto result = new Node(NODE_DECLARATION_SPECIFIERS, nullptr, nullptr);
+
+  while(a < b) {
+    if (auto child = parse_declaration_specifier(a, b)) {
+      result->append(child);
+      a = child->lex_b;
+    }
+  }
+
+  return nullptr;
+}
+
+//------------------------------------------------------------------------------
+/*
+using function_definition = Seq<
+  Opt<attribute_specifier_sequence>,
+  declaration_specifiers,
+  declarator,
+  function_body
+>;
+*/
+
+Node* parse_function_definition(Lexeme* a, Lexeme* b) {
+  auto declaration_specifiers = parse_declaration_specifiers(a, b);
+  if (!declaration_specifiers) return nullptr;
+
+  return nullptr;
+}
+
+//------------------------------------------------------------------------------
+/*
+(6.7) declaration:
+  declaration-specifiers init-declarator-listopt ;
+  attribute-specifier-sequence declaration-specifiers init-declarator-list ;
+  static_assert-declaration
+  attribute-declaration
+*/
+
+Node* parse_declaration(Lexeme* a, Lexeme* b) {
+  return nullptr;
+}
+
+//------------------------------------------------------------------------------
+/*
+(6.9) external-declaration:
+  function-definition
+  declaration
+*/
+
+Node* parse_external_declaration(Lexeme* a, Lexeme* b) {
+  if (auto func = parse_function_definition(a, b)) {
+    return func;
+  }
+  else if (auto decl = parse_declaration(a, b)) {
+    return decl;
+  }
+  else {
+    return nullptr;
+  }
+}
+
+//------------------------------------------------------------------------------
+/*
+(6.9) translation-unit:
+  external-declaration
+  translation-unit external-declaration
+*/
+
+Node* parse_translation_unit(Lexeme* a, Lexeme* b) {
+  auto result = new TranslationUnit(a, b);
+
+  for(auto cursor = a; cursor < b; cursor++) {
+    if (auto decl = parse_external_declaration(a, b)) {
+      result->decls.push_back(decl);
     }
     else {
-      /*
-      using function_definition = Seq<
-        Opt<attribute_specifier_sequence>,
-        declaration_specifiers,
-        declarator,
-        function_body
-      >;
-      */
+      return nullptr;
     }
   }
 
@@ -152,27 +214,43 @@ int test_c99_peg() {
 
   auto cursor = text_a;
 
-  Node* root = new Node(LEX_ROOT, TOK_ROOT, text_a, text_b);
+  std::vector<Lexeme> lexemes;
 
+  while(cursor) {
+    auto t = next_lexeme(cursor, text_b);
+    lexemes.push_back(t);
+    if (t.lexeme == LEX_EOF) break;
+    cursor = t.span_b;
+  }
+
+  if (0) {
+    for(auto& l : lexemes) {
+      printf("%-15s", l.str());
+      printf("\n");
+    }
+  }
+
+  auto a = lexemes.data();
+  auto b = a + lexemes.size();
+
+  /*
   while(cursor < text_b) {
     auto t = next_token(cursor, text_b);
-
     if (t) {
       auto n = new Node(t.lex, TOK_INVALID, t.span_a, t.span_b);
       root->append_lex(n);
-
       if (!n->is_gap()) root->append_tok(n);
-
       cursor = t.span_b;
     }
     else {
       break;
     }
   }
+  */
 
   printf("//----------------------------------------\n");
 
-  dump_tree(root, 100);
+  //dump_tree(root, 100);
 
   printf("//----------------------------------------\n");
 

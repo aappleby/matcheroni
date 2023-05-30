@@ -135,31 +135,34 @@ bool test_lex(const std::string& path, const std::string& text, bool echo) {
   while(*cursor) {
     bool matched = false;
 
-    auto token = next_token(cursor, text_b);
+    auto lexeme = next_lexeme(cursor, text_b);
 
-    if (token.match) {
-      if (token.span_b > text_b) {
-        printf("#### READ OFF THE END DURING %s\n", token.name);
+    if (lexeme) {
+      if (lexeme.span_b > text_b) {
+        printf("#### READ OFF THE END DURING %d\n", lexeme.lexeme);
         printf("File %s:\n", path.c_str());
         printf("Cursor {%.40s}\n", cursor);
         exit(1);
       }
 
+      /*
       if (echo) {
-        set_color(token.color);
-        if (token.match == match_newline) {
+        set_color(lexeme.color);
+        if (lexeme.match == match_newline) {
           printf("\\n");
-          fwrite(cursor, 1, token.span_b - cursor, stdout);
+          fwrite(cursor, 1, lexeme.span_b - cursor, stdout);
         }
-        else if (token.match == match_space) {
-          for (int i = 0; i < (token.span_b - cursor); i++) putc('.', stdout);
+        else if (lexeme.match == match_space) {
+          for (int i = 0; i < (lexeme.span_b - cursor); i++) putc('.', stdout);
         }
         else {
-          fwrite(cursor, 1, token.span_b - cursor, stdout);
+          fwrite(cursor, 1, lexeme.span_b - cursor, stdout);
         }
       }
+      */
 
-      cursor = token.span_b;
+      if (lexeme.lexeme == LEX_EOF) break;
+      cursor = lexeme.span_b;
     }
 
     else {
@@ -237,9 +240,10 @@ extern int test_c99_peg();
 int main(int argc, char** argv) {
   printf("Matcheroni Demo\n");
 
-  test_c99_peg();
-  exit(0);
+  //test_c99_peg();
+  //exit(0);
 
+  /*
   {
     using text_matcher = matcher<char>;
     text_matcher m[] = {
@@ -263,6 +267,7 @@ int main(int argc, char** argv) {
     printf("b   %p\n", b);
     printf("end %p\n", end);
   }
+  */
 
   using rdit = std::filesystem::recursive_directory_iterator;
   const char* base_path = argc > 1 ? argv[1] : ".";

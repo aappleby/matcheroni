@@ -16,65 +16,73 @@ const char* match_nested_comment    (const char* a, const char* b, void* ctx);
 const char* match_utf8              (const char* a, const char* b, void* ctx);
 const char* match_utf8_bom          (const char* a, const char* b, void* ctx);
 
-//------------------------------------------------------------------------------
-
-struct MatcherTableEntry {
-  matcher<char> matcher_cb = nullptr;
-  LexemeType  lex = LEX_INVALID;
-  uint32_t color = 0;
-  const char* matcher_name = nullptr;
-  int match_count = 0;
-  int fail_count = 0;
-};
-
-MatcherTableEntry matcher_table[] = {
-  { match_space,              LEX_SPACE,      0x804040, "space" },
-  { match_newline,            LEX_NEWLINE,    0x404080, "newline" },
-  { match_string_literal,     LEX_STRING,     0x4488AA, "string" },            // must be before identifier
-  { match_raw_string_literal, LEX_RAW_STRING, 0x88AAAA, "raw_string" },        // must be before identifier
-  { match_identifier,         LEX_ID,         0xCCCC40, "identifier" },
-  { match_multiline_comment,  LEX_MLCOMMENT,  0x66AA66, "multiline_comment" }, // must be before punct
-  { match_oneline_comment,    LEX_SLCOMMENT,  0x008800, "oneline_comment" },   // must be before punct
-  { match_preproc,            LEX_PREPROC,    0xCC88CC, "preproc" },           // must be before punct
-  { match_float,              LEX_FLOAT,      0xFF88AA, "float" },             // must be before int
-  { match_int,                LEX_INT,        0xFF8888, "int" },               // must be before punct
-  { match_punct,              LEX_PUNCT,      0x808080, "punct" },
-  { match_character_constant, LEX_CHAR,       0x44DDDD, "char_literal" },
-  { match_splice,             LEX_SPLICE,     0x00CCFF, "splice" },
-  { match_formfeed,           LEX_FORMFEED,   0xFF00FF, "formfeed" },
-};
+const char* match_eof(const char* a, const char* b, void* ctx) {
+  if (a == b) return a;
+  return nullptr;
+}
 
 //------------------------------------------------------------------------------
 
-Token next_token(const char* cursor, const char* text_end) {
+struct LexemeTableEntry {
+  template<typename atom>
+  using matcher = matcheroni::matcher<atom>;
+
+  matcher<char> match  = nullptr;
+  LexemeType    lexeme = LEX_INVALID;
+  unsigned int  color  = 0;
+  const char*   name   = nullptr;
+};
+
+LexemeTableEntry matcher_table[] = {
+  { match_space,      LEX_SPACE,      0x804040, "space" },
+  { match_newline,    LEX_NEWLINE,    0x404080, "newline" },
+  { match_string,     LEX_STRING,     0x4488AA, "string" },        // must be before identifier because R"()"
+  { match_identifier, LEX_IDENTIFIER, 0xCCCC40, "identifier" },
+  { match_comment,    LEX_COMMENT,    0x66AA66, "comment" },       // must be before punct
+  { match_preproc,    LEX_PREPROC,    0xCC88CC, "preproc" },       // must be before punct
+  { match_float,      LEX_FLOAT,      0xFF88AA, "float" },         // must be before int
+  { match_int,        LEX_INT,        0xFF8888, "int" },           // must be before punct
+  { match_punct,      LEX_PUNCT,      0x808080, "punct" },
+  { match_char,       LEX_CHAR,       0x44DDDD, "char_literal" },
+  { match_splice,     LEX_SPLICE,     0x00CCFF, "splice" },
+  { match_formfeed,   LEX_FORMFEED,   0xFF00FF, "formfeed" },
+  { match_eof,        LEX_EOF,        0xFF00FF, "EOF" },
+};
+
+const int matcher_table_count = sizeof(matcher_table) / sizeof(matcher_table[0]);
+
+int match_count[matcher_table_count] = {0};
+int fail_count[matcher_table_count] = {0};
+
+//------------------------------------------------------------------------------
+
+Lexeme next_lexeme(const char* cursor, const char* text_end) {
   const int matcher_count = sizeof(matcher_table) / sizeof(matcher_table[0]);
   for (int i = 0; i < matcher_count; i++) {
-    auto& t = matcher_table[i];
-    auto end = t.matcher_cb(cursor, text_end, nullptr);
+    auto t = matcher_table[i];
+    auto end = t.match(cursor, text_end, nullptr);
     if (end) {
-      t.match_count++;
-      return Token {
-        .lex    = t.lex,
-        .name   = t.matcher_name,
-        .match  = t.matcher_cb,
-        .color  = t.color,
+      match_count[i]++;
+      return Lexeme {
+        .lexeme = t.lexeme,
         .span_a = cursor,
         .span_b = end,
       };
     } else {
-      t.fail_count++;
+      fail_count[i]++;
     }
   }
-  return Token();
+
+  return Lexeme();
 }
 
 void dump_lexer_stats() {
   const int matcher_count = sizeof(matcher_table) / sizeof(matcher_table[0]);
   for (int i = 0; i < matcher_count; i++) {
     printf("%-20s match %8d fail %8d\n",
-      matcher_table[i].matcher_name,
-      matcher_table[i].match_count,
-      matcher_table[i].fail_count
+      matcher_table[i].name,
+      match_count[i],
+      fail_count[i]
     );
   }
   printf("\n");
@@ -365,7 +373,7 @@ const char* match_escape_sequence(const char* a, const char* b, void* ctx) {
 //------------------------------------------------------------------------------
 // 6.4.4.4 Character constants
 
-const char* match_character_constant(const char* a, const char* b, void* ctx) {
+const char* match_char(const char* a, const char* b, void* ctx) {
   // Multi-character character literals are allowed by spec, but their meaning is
   // implementation-defined...
 
@@ -391,7 +399,7 @@ using predefined_constant = Oneof<Lit<"false">, Lit<"true">, Lit<"nullptr">>;
 //------------------------------------------------------------------------------
 // 6.4.5 String literals
 
-const char* match_string_literal(const char* a, const char* b, void* ctx) {
+const char* match_cooked_string_literal(const char* a, const char* b, void* ctx) {
   // Note, we add splices here since we're matching before preproccessing.
   using s_char          = Oneof<Ref<match_splice>, Ref<match_escape_sequence>, NotAtom<'"', '\\', '\n'>>;
   using s_char_sequence = Some<s_char>;
@@ -432,6 +440,15 @@ const char* match_raw_string_literal(const char* a, const char* b, void* ctx) {
   // grammar by passing the backreference in the context pointer.
   Backref<char> backref;
   return raw_string_literal::match(a, b, &backref);
+}
+
+const char* match_string(const char* a, const char* b, void* ctx) {
+  using any_string = Oneof<
+    Ref<match_cooked_string_literal>,
+    Ref<match_raw_string_literal>
+  >;
+
+  return any_string::match(a, b, ctx);
 }
 
 //------------------------------------------------------------------------------
@@ -481,6 +498,15 @@ const char* match_multiline_comment(const char* a, const char* b, void* ctx) {
   using mlc_rdelim = Lit<"*/">;
   using mlc  = Seq<mlc_ldelim, Until<mlc_rdelim>, mlc_rdelim>;
   return mlc::match(a, b, ctx);
+}
+
+const char* match_comment(const char* a, const char* b, void* ctx) {
+  using comment = Oneof<
+    Ref<match_oneline_comment>,
+    Ref<match_multiline_comment>
+  >;
+
+  return comment::match(a, b, ctx);
 }
 
 // Multi-line nested comments (not actually in C, just here for reference)

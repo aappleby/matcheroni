@@ -8,24 +8,23 @@ void dump_tree(Node* head, int max_depth = 1000, int indentation = 0);
 
 //------------------------------------------------------------------------------
 
-enum TokenType {
-  TOK_INVALID = 0,
-  TOK_ROOT,
+enum NodeType {
+  NODE_INVALID = 0,
+  NODE_TRANSLATION_UNIT,
 
-  // Gap tokens
-  TOK_SPACE,
-  TOK_NEWLINE,
-  TOK_SLCOMMENT,
-  TOK_MLCOMMENT,
-  TOK_SPLICE,
+  NODE_DECLARATION_SPECIFIER,
+  NODE_DECLARATION_SPECIFIERS,
 
-  TOK_ID,
+  NODE_PREPROC,
+  NODE_IDENTIFIER,
+  NODE_CONSTANT,
 
+
+  /*
   BLOCK_PAREN,
   BLOCK_BRACK,
   BLOCK_BRACE,
 
-  /*
   TOK_NONE,
   TOK_HEADER_NAME,
   TOK_PREPROC,
@@ -43,105 +42,54 @@ enum TokenType {
   */
 };
 
-inline const char* tok_to_str(TokenType t) {
+inline const char* tok_to_str(NodeType t) {
   switch(t) {
-    case TOK_INVALID: return "TOK_INVALID";
-    case TOK_ROOT: return "TOK_ROOT";
-    case TOK_SPACE: return "TOK_SPACE";
-    case TOK_NEWLINE: return "TOK_NEWLINE";
-    case TOK_SLCOMMENT: return "TOK_SLCOMMENT";
-    case TOK_MLCOMMENT: return "TOK_MLCOMMENT";
-    case TOK_SPLICE: return "TOK_SPLICE";
+    case NODE_INVALID:          return "NODE_INVALID";
+    case NODE_TRANSLATION_UNIT: return "NODE_TRANSLATION_UNIT";
+    case NODE_PREPROC:          return "NODE_PREPROC";
+    case NODE_IDENTIFIER:       return "NODE_IDENTIFIER";
+    case NODE_CONSTANT:         return "NODE_CONSTANT";
 
-    case TOK_ID: return "TOK_ID";
-
-    case BLOCK_PAREN: return "BLOCK_PAREN";
-    case BLOCK_BRACK: return "BLOCK_BRACK";
-    case BLOCK_BRACE: return "BLOCK_BRACE";
+    //case BLOCK_PAREN: return "BLOCK_PAREN";
+    //case BLOCK_BRACK: return "BLOCK_BRACK";
+    //case BLOCK_BRACE: return "BLOCK_BRACE";
   }
   return "<token>";
 }
 
 //------------------------------------------------------------------------------
 
-struct Lexeme {
-  LexemeType  lexeme;
-  const char* span_a; // First char
-  const char* span_b; // Last char + 1
-};
-
-//------------------------------------------------------------------------------
-
 struct Node {
 
-  Node(LexemeType lexeme, TokenType token, const char* span_a, const char* span_b) {
-    this->lexeme = lexeme;
-    this->token  = token;
-    this->span_a = span_a;
-    this->span_b = span_b;
+  Node(NodeType node_type, Lexeme* lex_a, Lexeme* lex_b) {
+    this->node_type = node_type;
+    this->lex_a = lex_a;
+    this->lex_b = lex_b;
   };
 
-  LexemeType     lexeme;
-  TokenType   token;
-  const char* span_a; // First char
-  const char* span_b; // Last char + 1
+  NodeType node_type;
+  Lexeme*  lex_a;
+  Lexeme*  lex_b;
 
-  Node* parent   = nullptr; // Parent node
-
-  // Lexeme tree
-  Node* lex_prev = nullptr; // Prev lexeme
-  Node* lex_next = nullptr; // Next lexeme
-  Node* lex_head = nullptr; // First sub-lexeme
-  Node* lex_tail = nullptr; // Last sub-lexeme
-
-  // Token tree
-  Node* tok_prev = nullptr; // Prev token
-  Node* tok_next = nullptr; // Next token
-  Node* tok_head = nullptr; // First sub-token
-  Node* tok_tail = nullptr; // Last sub-token
+  Node* parent = nullptr;
+  Node* prev   = nullptr;
+  Node* next   = nullptr;
+  Node* head   = nullptr;
+  Node* tail   = nullptr;
 
   //----------------------------------------
 
-  bool is_gap() {
-    switch(lexeme) {
-      case LEX_NEWLINE:
-      case LEX_SPACE:
-      case LEX_SLCOMMENT:
-      case LEX_MLCOMMENT:
-      case LEX_SPLICE:
-      case LEX_FORMFEED:
-        return true;
-    }
-    return false;
-  }
-
-  //----------------------------------------
-
-  void append_lex(Node* lex) {
-    lex->parent = this;
-
-    if (lex_tail) {
-      lex_tail->lex_next = lex;
-      lex->lex_prev = lex_tail;
-      lex_tail = lex;
-    }
-    else {
-      lex_head = lex;
-      lex_tail = lex;
-    }
-  }
-
-  void append_tok(Node* tok) {
+  void append(Node* tok) {
     tok->parent = this;
 
-    if (tok_tail) {
-      tok_tail->tok_next = tok;
-      tok->tok_prev = tok_tail;
-      tok_tail = tok;
+    if (tail) {
+      tail->next = tok;
+      tok->prev = tail;
+      tail = tok;
     }
     else {
-      tok_head = tok;
-      tok_tail = tok;
+      head = tok;
+      tail = tok;
     }
   }
 
@@ -149,70 +97,33 @@ struct Node {
 
   void sanity() {
     // All our children should be sane.
-    for (auto cursor = lex_head; cursor; cursor = cursor->lex_next) {
+    for (auto cursor = head; cursor; cursor = cursor->next) {
       cursor->sanity();
     }
 
     // Our prev/next pointers should be hooked up correctly
-    assert(!tok_next || tok_next->tok_prev == this);
-    assert(!tok_prev || tok_prev->tok_next == this);
+    assert(!next || next->prev == this);
+    assert(!prev || prev->next == this);
 
-    assert(!lex_prev || lex_prev->lex_next == this);
-    assert(!lex_next || lex_next->lex_prev == this);
+    //assert(!lex_prev || lex_prev->lex_next == this);
+    ///assert(!lex_next || lex_next->lex_prev == this);
 
 
     // Our span should exactly enclose our children.
-    assert(!lex_prev || lex_prev->span_b == span_a);
-    assert(!lex_next || lex_next->span_a == span_b);
-    assert(!tok_head || tok_head->span_a == span_a);
-    assert(!tok_tail || tok_tail->span_b == span_b);
+    //assert(!lex_prev || lex_prev->span_b == span_a);
+    //assert(!lex_next || lex_next->span_a == span_b);
+    //assert(!tok_head || tok_head->span_a == span_a);
+    //assert(!tok_tail || tok_tail->span_b == span_b);
 
     Node* cursor = nullptr;
 
     // Check token chain
-    for (cursor = tok_head; cursor && cursor != tok_tail; cursor = cursor->tok_next);
-    assert(cursor == tok_tail);
+    for (cursor = head; cursor && cursor != tail; cursor = cursor->next);
+    assert(cursor == tail);
 
-    for (cursor = tok_tail; cursor && cursor != tok_head; cursor = cursor->tok_prev);
-    assert(cursor == tok_head);
-
-    // Check lexeme chain
-    for (cursor = lex_head; cursor && cursor != lex_tail; cursor = cursor->lex_next);
-    assert(cursor == lex_tail);
-
-    for (cursor = lex_tail; cursor && cursor != lex_head; cursor = cursor->lex_prev);
-    assert(cursor == lex_head);
+    for (cursor = tail; cursor && cursor != head; cursor = cursor->prev);
+    assert(cursor == head);
   }
 };
-
-//------------------------------------------------------------------------------
-
-#if 0
-struct NodeList {
-  Node* head_tok = nullptr;
-  Node* tail_tok = nullptr;
-
-  Node* head_sib = nullptr;
-  Node* tail_sib = nullptr;
-
-  void sanity(const char* span_a, const char* span_b) {
-    if (!head_tok) return;
-    Node* cursor = nullptr;
-
-    assert(head_tok->span_a == span_a);
-    assert(tail_tok->span_b == span_b);
-
-    for (cursor = head_tok; cursor && cursor != tail_tok; cursor = cursor->next_lex) {
-      assert(cursor->span_b == cursor->next_lex->span_a);
-    }
-    assert(cursor == tail_tok);
-
-    for (cursor = tail_tok; cursor && cursor != head_tok; cursor = cursor->prev_lex) {
-      assert(cursor->span_a == cursor->prev_lex->span_b);
-    }
-    assert(cursor == head_tok);
-  }
-};
-#endif
 
 //------------------------------------------------------------------------------

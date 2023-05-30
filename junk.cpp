@@ -3,9 +3,9 @@
 
 using namespace matcheroni;
 
-using identifier = Atom<TOK_ID>;
+using identifier = Atom<NODE_IDENTIFIER>;
 using constant = Atom<TOK_CONST>;
-using string_literal = Atom<TOK_STRING>;
+using string_literal = Atom<NODE_STRING>;
 using lparen = Atom<TOK_LPAREN>;
 using rparen = Atom<TOK_RPAREN>;
 using lbrace = Atom<TOK_LBRACE>;

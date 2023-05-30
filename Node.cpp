@@ -35,8 +35,9 @@ void dump_span(int max_len, const char* a, const char* b) {
 //------------------------------------------------------------------------------
 
 void dump_node(Node* n) {
-  printf("%-15s", lex_to_str(n->lexeme));
-  printf("%-15s", tok_to_str(n->token));
+  //printf("%-15s", lex_to_str(n->lexeme));
+  printf("%-15s", tok_to_str(n->node_type));
+  /*
   if (n->lexeme == LEX_PUNCT) {
     printf("%c", *n->span_a);
   }
@@ -47,12 +48,14 @@ void dump_node(Node* n) {
   else {
     dump_span(20, n->span_a, n->span_b);
   }
+  */
   printf("\n");
 }
 
 //------------------------------------------------------------------------------
 
 void dump_gap(Node* n, int indentation) {
+  /*
   if (!n) {
     printf("dump_gap got nullptr\n");
     return;
@@ -90,6 +93,7 @@ void dump_gap(Node* n, int indentation) {
     printf("*");
     dump_node(cursor);
   }
+  */
 }
 
 //------------------------------------------------------------------------------
@@ -97,11 +101,11 @@ void dump_gap(Node* n, int indentation) {
 void dump_tree(Node* head, int max_depth, int indentation) {
   if (indentation > max_depth) return;
 
-  for (auto cursor = head; cursor; cursor = cursor->tok_next) {
+  for (auto cursor = head; cursor; cursor = cursor->next) {
 
     for (int i = 0; i < indentation-1; i++) printf(" |  ");
     if (indentation) {
-      if (!cursor->tok_next || !cursor->tok_prev) {
+      if (!cursor->next || !cursor->prev) {
         printf(" |- ");
       }
       else {
@@ -110,8 +114,8 @@ void dump_tree(Node* head, int max_depth, int indentation) {
     }
 
     dump_node(cursor);
-    if (cursor->tok_head) {
-      dump_tree(cursor->tok_head, max_depth, indentation + 1);
+    if (cursor->head) {
+      dump_tree(cursor->head, max_depth, indentation + 1);
     }
     //dump_gap(cursor, indentation + 1);
   }
