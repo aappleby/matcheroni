@@ -11,6 +11,28 @@
 
 using namespace matcheroni;
 
+bool atom_eq(const Lexeme& a, const char& b) {
+  return a.len() == 1 && *a.span_a == b;
+}
+
+bool atom_lte(const Lexeme& a, const char& b) {
+  return a.len() == 1 && *a.span_a <= b;
+}
+
+bool atom_gte(const Lexeme& a, const char& b) {
+  return a.len() == 1 && *a.span_a >= b;
+}
+
+template<int N>
+bool atom_eq(const Lexeme& a, const matcheroni::StringParam<N>& b) {
+  if ((a.span_b - a.span_a) != b.len) return false;
+  for (auto i = 0; i < b.len; i++) {
+    if (a.span_a[i] != b.value[i]) return false;
+  }
+
+  return true;
+}
+
 //------------------------------------------------------------------------------
 
 const char* text = R"(
@@ -82,22 +104,24 @@ Node* parse_type_specifier_qualifier(Lexeme* a, Lexeme* b) {
 
 //------------------------------------------------------------------------------
 
-Node* parse_declaration_specifier(Lexeme* a, Lexeme* b) {
+
+
+Node* parse_declaration_specifier(const Lexeme* a, const Lexeme* b) {
   // 6.7.1 Storage-class specifiers
   using storage_class_specifier = Oneof<
-    Lit<"auto">,
-    Lit<"constexpr">,
-    Lit<"extern">,
-    Lit<"register">,
-    Lit<"static">,
-    Lit<"thread_local">,
-    Lit<"typedef">
+    AtomLit<"auto">,
+    AtomLit<"constexpr">,
+    AtomLit<"extern">,
+    AtomLit<"register">,
+    AtomLit<"static">,
+    AtomLit<"thread_local">,
+    AtomLit<"typedef">
   >;
 
   // 6.7.4 Function specifiers
   using function_specifier = Oneof<
-    Lit<"inline">,
-    Lit<"_Noreturn">
+    AtomLit<"inline">,
+    AtomLit<"_Noreturn">
   >;
 
   using declaration_specifier = Oneof<
@@ -106,9 +130,9 @@ Node* parse_declaration_specifier(Lexeme* a, Lexeme* b) {
     function_specifier
   >;
 
-  auto end = declaration_specifier::match(a->span_a, a->span_b, nullptr);
-  if (end == a->span_b) {
-    auto result = new Node(NODE_DECLARATION_SPECIFIER, a, a+1);
+  auto end = declaration_specifier::match(a, b, nullptr);
+  if (end) {
+    auto result = new Node(NODE_DECLARATION_SPECIFIER, a, end);
     return result;
   }
 
@@ -117,7 +141,7 @@ Node* parse_declaration_specifier(Lexeme* a, Lexeme* b) {
 
 //------------------------------------------------------------------------------
 
-Node* parse_declaration_specifiers(Lexeme* a, Lexeme* b) {
+Node* parse_declaration_specifiers(const Lexeme* a, const Lexeme* b) {
   //using declaration_specifiers = Some<Oneof<declaration_specifier, type_specifier_qualifier> >;
   //return declaration_specifiers::match(a, b, ctx);
 
@@ -143,7 +167,7 @@ using function_definition = Seq<
 >;
 */
 
-Node* parse_function_definition(Lexeme* a, Lexeme* b) {
+Node* parse_function_definition(const Lexeme* a, const Lexeme* b) {
   auto declaration_specifiers = parse_declaration_specifiers(a, b);
   if (!declaration_specifiers) return nullptr;
 
@@ -159,7 +183,7 @@ Node* parse_function_definition(Lexeme* a, Lexeme* b) {
   attribute-declaration
 */
 
-Node* parse_declaration(Lexeme* a, Lexeme* b) {
+Node* parse_declaration(const Lexeme* a, const Lexeme* b) {
   return nullptr;
 }
 
@@ -170,7 +194,7 @@ Node* parse_declaration(Lexeme* a, Lexeme* b) {
   declaration
 */
 
-Node* parse_external_declaration(Lexeme* a, Lexeme* b) {
+Node* parse_external_declaration(const Lexeme* a, const Lexeme* b) {
   if (auto func = parse_function_definition(a, b)) {
     return func;
   }
@@ -189,7 +213,7 @@ Node* parse_external_declaration(Lexeme* a, Lexeme* b) {
   translation-unit external-declaration
 */
 
-Node* parse_translation_unit(Lexeme* a, Lexeme* b) {
+Node* parse_translation_unit(const Lexeme* a, const Lexeme* b) {
   auto result = new TranslationUnit(a, b);
 
   for(auto cursor = a; cursor < b; cursor++) {
@@ -206,8 +230,27 @@ Node* parse_translation_unit(Lexeme* a, Lexeme* b) {
 
 //------------------------------------------------------------------------------
 
+void bluh() {
+  const char* t = "foobarbaz";
+  Lexeme a[3] = {
+    { LEX_PUNCT, &t[0], &t[3] },
+    { LEX_PUNCT, &t[3], &t[6] },
+    { LEX_PUNCT, &t[6], &t[9] },
+  };
+
+  using pattern = Oneof<AtomLit<"bar">, AtomLit<"foo">>;
+
+  const Lexeme* result = pattern::match(&a[0], &a[3], nullptr);
+
+  printf("%p\n", result);
+}
+
+//------------------------------------------------------------------------------
+
 int test_c99_peg() {
   printf("Hello World\n");
+
+  bluh();
 
   auto text_a = text;
   auto text_b = text + strlen(text);

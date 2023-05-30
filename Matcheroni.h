@@ -13,6 +13,48 @@ template<typename atom>
 using matcher = const atom* (*) (const atom* a, const atom* b, void* ctx);
 
 //------------------------------------------------------------------------------
+
+/*
+template<typename atom1, typename atom2>
+inline bool atom_eq(const atom1& a, const atom2& b);
+
+template<typename atom1, typename atom2>
+inline bool atom_lte(const atom1& a, const atom2& b);
+
+template<typename atom1, typename atom2>
+inline bool atom_gte(const atom1& a, const atom2& b);
+*/
+
+inline bool atom_eq(const char& a, const char& b) {
+  return a == b;
+}
+
+inline bool atom_lte(const char& a, const char& b) {
+  return a <= b;
+}
+
+inline bool atom_gte(const char& a, const char& b) {
+  return a >= b;
+}
+
+/*
+template<typename atom1, typename atom2>
+inline bool atom_eq(const atom1& a, const atom2& b) {
+  return a == b;
+}
+
+template<typename atom1, typename atom2>
+inline bool atom_lte(const atom1& a, const atom2& b) {
+  return a <= b;
+}
+
+template<typename atom1, typename atom2>
+inline bool atom_gte(const atom1& a, const atom2& b) {
+  return a >= b;
+}
+*/
+
+//------------------------------------------------------------------------------
 // The most fundamental unit of matching is a single atom. For convenience, we
 // implement the Atom matcher so that it can handle small sets of atoms.
 
@@ -25,12 +67,11 @@ struct Atom;
 
 template <auto C, auto... rest>
 struct Atom<C, rest...> {
-  //using atom = decltype(C);
 
   template<typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
     if (!a || a == b) return nullptr;
-    if (*a == C) {
+    if (atom_eq(*a, C)) {
       return a + 1;
     } else {
       return Atom<rest...>::match(a, b, ctx);;
@@ -40,12 +81,11 @@ struct Atom<C, rest...> {
 
 template <auto C>
 struct Atom<C> {
-  //using atom = decltype(C);
 
   template<typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
     if (!a || a == b) return nullptr;
-    if (*a == C) {
+    if (atom_eq(*a, C)) {
       return a + 1;
     } else {
       return nullptr;
@@ -55,7 +95,6 @@ struct Atom<C> {
 
 template<typename _atom>
 struct AnyAtom {
-  //using atom = _atom;
 
   template<typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
@@ -72,7 +111,6 @@ struct AnyAtom {
 
 template<typename P, typename... rest>
 struct Seq {
-  //using atom = P::atom;
 
   template<typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
@@ -83,7 +121,6 @@ struct Seq {
 
 template<typename P>
 struct Seq<P> {
-  //using atom = P::atom;
 
   template<typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
@@ -101,7 +138,6 @@ struct Seq<P> {
 
 template <typename P, typename... rest>
 struct Oneof {
-  //using atom = P::atom;
 
   template<typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
@@ -113,7 +149,6 @@ struct Oneof {
 
 template <typename P>
 struct Oneof<P> {
-  //using atom = P::atom;
 
   template<typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
@@ -133,7 +168,6 @@ struct Oneof<P> {
 
 template<typename P>
 struct Any {
-  //using atom = P::atom;
 
   template<typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
@@ -150,7 +184,6 @@ struct Any {
 
 template<typename P>
 struct Opt {
-  //using atom = P::atom;
 
   template<typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
@@ -168,7 +201,6 @@ struct Opt {
 
 template<typename P>
 struct Some {
-  //using atom = P::atom;
 
   template<typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
@@ -182,7 +214,6 @@ struct Some {
 
 template<int N, typename P>
 struct Rep {
-  //using atom = P::atom;
 
   template<typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
@@ -204,7 +235,6 @@ struct Rep {
 
 template<typename P>
 struct And {
-  //using atom = P::atom;
 
   template<typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
@@ -221,7 +251,6 @@ struct And {
 
 template<typename P>
 struct Not {
-  //using atom = P::atom;
 
   template<typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
@@ -235,7 +264,6 @@ struct Not {
 
 template <typename C>
 struct EOF {
-  //using atom = C;
 
   template<typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
@@ -249,24 +277,22 @@ struct EOF {
 
 template <auto C, auto... rest>
 struct NotAtom {
-  //using atom = decltype(C);
 
   template<typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
     if (!a || a == b) return nullptr;
-    if (*a == C) return nullptr;
+    if (atom_eq(*a, C)) return nullptr;
     return NotAtom<rest...>::match(a, b, ctx);
   }
 };
 
 template <auto C>
 struct NotAtom<C> {
-  //using atom = decltype(C);
 
   template<typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
     if (!a || a == b) return nullptr;
-    return (*a == C) ? nullptr : a + 1;
+    return atom_eq(*a, C) ? nullptr : a + 1;
   }
 };
 
@@ -275,12 +301,11 @@ struct NotAtom<C> {
 
 template<auto RA, decltype(RA) RB>
 struct Range {
-  //using atom = decltype(RA);
 
   template<typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
     if (!a || a == b) return nullptr;
-    if (*a >= RA && *a <= RB) {
+    if (atom_gte(*a, RA) && atom_lte(*a, RB)) {
       return a + 1;
     }
     return nullptr;
@@ -293,7 +318,6 @@ struct Range {
 
 template<typename P>
 struct Until {
-  //using atom = P::atom;
 
   template<typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
@@ -312,7 +336,6 @@ template <typename R, typename... A> R ret(const R *(*)(A...));
 
 template<auto& M>
 struct Ref {
-  //using atom = decltype(ret(M));
 
   template<typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
@@ -332,7 +355,6 @@ struct Backref {
 
 template<typename P>
 struct StoreBackref {
-  //using atom = P::atom;
 
   template<typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
@@ -349,7 +371,6 @@ struct StoreBackref {
 
 template<typename _atom>
 struct MatchBackref {
-  //using atom = _atom;
 
   template<typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
@@ -358,11 +379,13 @@ struct MatchBackref {
     if (!ref) return nullptr;
     if (a + ref->size > b) return nullptr;
     for (int i = 0; i < ref->size; i++) {
-      if(a[i] != ref->start[i]) return nullptr;
+      if(!atom_eq(a[i], ref->start[i])) return nullptr;
     }
     return a + ref->size;
   }
 };
+
+//------------------------------------------------------------------------------
 
 
 
@@ -402,8 +425,8 @@ struct MatchBackref {
 // Matches newline and EOF, but does not advance past it.
 
 struct EOL {
-  using atom = char;
 
+  template<typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
     if (!a) return nullptr;
     if (a == b) return a;
@@ -414,15 +437,16 @@ struct EOL {
 
 //------------------------------------------------------------------------------
 // Not a matcher, but a template helper that allows us to use strings as
-// template arguments. The parameter behaves as a fixed-length character array
+// template parameters. The parameter behaves as a fixed-length character array
 // that does ___NOT___ include the trailing null.
 
 template<int N>
 struct StringParam {
+  constexpr static auto len = N-1;
   constexpr StringParam(const char (&str)[N]) {
-    for (int i = 0; i < N-1; i++) value[i] = str[i];
+    for (int i = 0; i < len; i++) value[i] = str[i];
   }
-  char value[N-1];
+  char value[len];
 };
 
 //------------------------------------------------------------------------------
@@ -432,17 +456,35 @@ struct StringParam {
 
 template<StringParam lit>
 struct Lit {
-  using atom = char;
 
+  template<typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
     if (!a || a == b) return nullptr;
     if (a + sizeof(lit.value) > b) return nullptr;
 
-    auto N = sizeof(lit.value) / sizeof(lit.value[0]);
-    for (auto i = 0; i < N; i++) {
+    for (auto i = 0; i < lit.len; i++) {
       if (a[i] != lit.value[i]) return nullptr;
     }
     return a + sizeof(lit.value);
+  }
+};
+
+
+//------------------------------------------------------------------------------
+// Matches string literals as if they were atoms. Does ___NOT___ include the
+// trailing null.
+
+template<StringParam lit>
+struct AtomLit {
+
+  template<typename atom>
+  static const atom* match(const atom* a, const atom* b, void* ctx) {
+    if (!a || a == b) return nullptr;
+    if (atom_eq(*a, lit)) {
+      return a + 1;
+    } else {
+      return nullptr;
+    }
   }
 };
 
@@ -469,8 +511,8 @@ struct StringParams {
 //template<const char* const* lits, int N>
 template<StringParams lits>
 struct Lits {
-  using atom = char;
 
+  template<typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
     if (!a || a == b) return nullptr;
 
@@ -517,8 +559,8 @@ struct OneofLit<M1> {
 
 template<StringParam chars>
 struct Charset {
-  using atom = char;
 
+  template<typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
     if (!a || a == b) return nullptr;
     for (auto i = 0; i < sizeof(chars.value); i++) {

@@ -61,15 +61,15 @@ inline const char* tok_to_str(NodeType t) {
 
 struct Node {
 
-  Node(NodeType node_type, Lexeme* lex_a, Lexeme* lex_b) {
+  Node(NodeType node_type, const Lexeme* lex_a, const Lexeme* lex_b) {
     this->node_type = node_type;
     this->lex_a = lex_a;
     this->lex_b = lex_b;
   };
 
   NodeType node_type;
-  Lexeme*  lex_a;
-  Lexeme*  lex_b;
+  const Lexeme* lex_a;
+  const Lexeme* lex_b;
 
   Node* parent = nullptr;
   Node* prev   = nullptr;

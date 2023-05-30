@@ -57,23 +57,23 @@ int fail_count[matcher_table_count] = {0};
 //------------------------------------------------------------------------------
 
 Lexeme next_lexeme(const char* cursor, const char* text_end) {
+  if (cursor == text_end) {
+    int x = 1;
+  }
+
   const int matcher_count = sizeof(matcher_table) / sizeof(matcher_table[0]);
   for (int i = 0; i < matcher_count; i++) {
     auto t = matcher_table[i];
     auto end = t.match(cursor, text_end, nullptr);
     if (end) {
       match_count[i]++;
-      return Lexeme {
-        .lexeme = t.lexeme,
-        .span_a = cursor,
-        .span_b = end,
-      };
+      return Lexeme(t.lexeme, cursor, end);
     } else {
       fail_count[i]++;
     }
   }
 
-  return Lexeme();
+  return Lexeme::invalid();
 }
 
 void dump_lexer_stats() {

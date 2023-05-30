@@ -119,6 +119,7 @@ std::vector<std::string> negative_test_cases = {
   "linux/elfnote.h", // assembly
   "boot/ppc_asm.h", // assembly
   "openacc_lib.h", // ...fortran?
+  "encoding-issues-", // embedded nuls
 };
 
 //------------------------------------------------------------------------------
@@ -131,13 +132,18 @@ bool test_lex(const std::string& path, const std::string& text, bool echo) {
   const char* cursor = text_a;
 
   bool lex_ok = true;
+
+  //----------------------------------------
+
   auto time_a = timestamp_ms();
-  while(*cursor) {
-    bool matched = false;
+  while(cursor) {
 
     auto lexeme = next_lexeme(cursor, text_b);
 
-    if (lexeme) {
+    if (lexeme.is_eof()) {
+      break;
+    }
+    else if (lexeme.is_valid()) {
       if (lexeme.span_b > text_b) {
         printf("#### READ OFF THE END DURING %d\n", lexeme.lexeme);
         printf("File %s:\n", path.c_str());
@@ -160,11 +166,8 @@ bool test_lex(const std::string& path, const std::string& text, bool echo) {
         }
       }
       */
-
-      if (lexeme.lexeme == LEX_EOF) break;
       cursor = lexeme.span_b;
     }
-
     else {
       lex_ok = false;
       printf("\n");
@@ -190,6 +193,13 @@ bool test_lex(const std::string& path, const std::string& text, bool echo) {
     }
   }
   auto time_b = timestamp_ms();
+
+  //----------------------------------------
+
+  if (cursor != text_b) {
+    printf("???\n");
+  }
+
   if (lex_ok) lex_time += time_b - time_a;
 
   if (echo) {
@@ -230,6 +240,7 @@ void test_lex(const std::string& path, size_t size, bool echo) {
     return;
   }
 
+  source_files++;
   test_lex(path, text, echo);
 }
 
@@ -299,7 +310,6 @@ int main(int argc, char** argv) {
       }
       if (skip) continue;
 
-      source_files++;
       test_lex(path, size, echo);
     }
   }
