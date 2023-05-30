@@ -75,6 +75,32 @@ struct Lexeme {
     return int(span_b - span_a);
   }
 
+  //----------------------------------------
+
+  bool is_punct() const {
+    return (lexeme == LEX_PUNCT);
+  }
+
+  bool is_punct(char p) const {
+    return (lexeme == LEX_PUNCT) && (*span_a == p);
+  }
+
+  bool is_lit(const char* lit) const {
+    auto c = span_a;
+    for (;c < span_b && (*c == *lit) && *lit; c++, lit++);
+    return *lit ? false : true;
+  }
+
+  bool is_identifier(const char* lit = nullptr) const {
+    return (lexeme == LEX_IDENTIFIER) && (lit == nullptr || is_lit(lit));
+  }
+
+  bool is_constant() const {
+    return (lexeme == LEX_FLOAT) || (lexeme == LEX_INT) || (lexeme == LEX_CHAR) || (lexeme == LEX_STRING);
+  }
+
+  //----------------------------------------
+
   static Lexeme invalid() { return Lexeme(LEX_INVALID, nullptr, nullptr); }
 
   LexemeType    lexeme;

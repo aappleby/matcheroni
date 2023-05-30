@@ -1,8 +1,8 @@
 set -x
 mkdir -p bin
 
-#MODE="-g -O0"
-MODE="-O3"
+MODE="-g -O0"
+#MODE="-O3"
 #MODE="-Os"
 
 echo "Building c_lexer"

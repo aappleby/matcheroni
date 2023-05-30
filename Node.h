@@ -19,6 +19,23 @@ enum NodeType {
   NODE_IDENTIFIER,
   NODE_CONSTANT,
 
+  NODE_TYPEDEF_NAME,
+  NODE_TYPEOF_SPECIFIER,
+  NODE_DECLTYPE,
+  NODE_DECLARATION,
+
+  NODE_CLASS_SPECIFIER,
+  NODE_FIELD_DECLARATION_LIST,
+
+  NODE_ACCESS_SPECIFIER,
+  NODE_COMPOUND_STATEMENT,
+  NODE_PARAMETER_LIST,
+  NODE_CONSTRUCTOR,
+
+  NODE_TEMPLATE_DECLARATION,
+  NODE_TEMPLATE_PARAMETER_LIST,
+
+  NODE_PUNCT,
 
   /*
   BLOCK_PAREN,
@@ -62,10 +79,26 @@ inline const char* tok_to_str(NodeType t) {
 struct Node {
 
   Node(NodeType node_type, const Lexeme* lex_a, const Lexeme* lex_b) {
+    assert(node_type != NODE_INVALID);
+    if (lex_a == nullptr && lex_b == nullptr) {
+    }
+    else {
+      assert(lex_b > lex_a);
+    }
+
     this->node_type = node_type;
     this->lex_a = lex_a;
     this->lex_b = lex_b;
   };
+
+  ~Node() {
+    auto cursor = head;
+    while(cursor) {
+      auto next = cursor->next;
+      delete cursor;
+      cursor = next;
+    }
+  }
 
   NodeType node_type;
   const Lexeme* lex_a;
@@ -76,6 +109,16 @@ struct Node {
   Node* next   = nullptr;
   Node* head   = nullptr;
   Node* tail   = nullptr;
+
+  //----------------------------------------
+
+  Node* child(int index) {
+    auto cursor = head;
+    for (auto i = 0; i < index; i++) {
+      if (cursor) cursor = cursor->next;
+    }
+    return cursor;
+  }
 
   //----------------------------------------
 
@@ -124,6 +167,12 @@ struct Node {
     for (cursor = tail; cursor && cursor != head; cursor = cursor->prev);
     assert(cursor == head);
   }
+
+  //----------------------------------------
+
+  void dump_tree() {
+  }
+
 };
 
 //------------------------------------------------------------------------------
