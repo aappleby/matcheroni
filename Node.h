@@ -1,6 +1,8 @@
 #pragma once
 #include <assert.h>
 #include "c_lexer.h"
+#include <stdio.h>
+#include <string>
 
 struct Node;
 
@@ -10,66 +12,66 @@ void dump_tree(Node* head, int max_depth = 1000, int indentation = 0);
 
 enum NodeType {
   NODE_INVALID = 0,
-  NODE_TRANSLATION_UNIT,
-
+  NODE_ACCESS_SPECIFIER,
+  NODE_BINARY_EXPRESSION,
+  NODE_BINARY_OP,
+  NODE_CLASS_DECLARATION,
+  NODE_CLASS_DEFINITION,
+  NODE_COMPOUND_STATEMENT,
+  NODE_CONSTANT,
+  NODE_CONSTRUCTOR,
   NODE_DECLARATION_SPECIFIER,
   NODE_DECLARATION_SPECIFIERS,
-
-  NODE_PREPROC,
-  NODE_IDENTIFIER,
-  NODE_CONSTANT,
-
-  NODE_TYPEDEF_NAME,
-  NODE_TYPEOF_SPECIFIER,
-  NODE_DECLTYPE,
   NODE_DECLARATION,
-
-  NODE_CLASS_SPECIFIER,
+  NODE_DECLTYPE,
   NODE_FIELD_DECLARATION_LIST,
-
-  NODE_ACCESS_SPECIFIER,
-  NODE_COMPOUND_STATEMENT,
+  NODE_IDENTIFIER,
+  NODE_IF_STATEMENT,
   NODE_PARAMETER_LIST,
-  NODE_CONSTRUCTOR,
-
+  NODE_PARENTHESIZED_EXPRESSION,
+  NODE_PREPROC,
+  NODE_PUNCT,
+  NODE_SPECIFIER_LIST,
   NODE_TEMPLATE_DECLARATION,
   NODE_TEMPLATE_PARAMETER_LIST,
-
-  NODE_PUNCT,
-
-  /*
-  BLOCK_PAREN,
-  BLOCK_BRACK,
-  BLOCK_BRACE,
-
-  TOK_NONE,
-  TOK_HEADER_NAME,
-  TOK_PREPROC,
-  TOK_CONST, TOK_STRING,
-  TOK_LPAREN, TOK_RPAREN,
-  TOK_LBRACE, TOK_RBRACE,
-  TOK_LBRACK, TOK_RBRACK,
-  TOK_DOT, TOK_COMMA, TOK_ARROW, TOK_PLUSPLUS, TOK_MINUSMINUS,
-  TOK_SIZEOF,
-  TOK_PLUS, TOK_MINUS, TOK_AMPERSAND, TOK_STAR, TOK_TILDE, TOK_BANG,
-  TOK_FSLASH, TOK_BSLASH, TOK_PERCENT,
-  TOK_EQ, TOK_LT, TOK_GT, TOK_LTLT, TOK_GTGT, TOK_LTEQ, TOK_GTEQ, TOK_EQEQ, TOK_BANGEQ,
-  TOK_STAREQ, TOK_FSLASHEQ, TOK_PERCENTEQ, TOK_PLUSEQ, TOK_MINUSEQ, TOK_LTLTEQ, TOK_GTGTEQ, TOK_AMPEQ, TOK_CARETEQ, TOK_PIPEEQ,
-  TOK_CARET, TOK_PIPE, TOK_AMPAMP, TOK_PIPEPIPE, TOK_QUEST, TOK_COLON,
-  */
+  NODE_TRANSLATION_UNIT,
+  NODE_TYPEDEF_NAME,
+  NODE_TYPEOF_SPECIFIER,
+  NODE_UNARY_EXPRESSION,
+  NODE_UNARY_OP,
 };
 
 inline const char* tok_to_str(NodeType t) {
   switch(t) {
-    case NODE_INVALID:          return "NODE_INVALID";
-    case NODE_TRANSLATION_UNIT: return "NODE_TRANSLATION_UNIT";
-    case NODE_PREPROC:          return "NODE_PREPROC";
-    case NODE_IDENTIFIER:       return "NODE_IDENTIFIER";
-    case NODE_CONSTANT:         return "NODE_CONSTANT";
+    case NODE_INVALID: return "NODE_INVALID";
 
-    //case BLOCK_PAREN: return "BLOCK_PAREN";
-    //case BLOCK_BRACK: return "BLOCK_BRACK";
-    //case BLOCK_BRACE: return "BLOCK_BRACE";
+    case NODE_ACCESS_SPECIFIER: return "NODE_ACCESS_SPECIFIER";
+    case NODE_BINARY_EXPRESSION: return "NODE_BINARY_EXPRESSION";
+    case NODE_BINARY_OP: return "NODE_BINARY_OP";
+    case NODE_CLASS_DECLARATION: return "NODE_CLASS_DECLARATION";
+    case NODE_CLASS_DEFINITION: return "NODE_CLASS_DEFINITION";
+    case NODE_COMPOUND_STATEMENT: return "NODE_COMPOUND_STATEMENT";
+    case NODE_CONSTANT: return "NODE_CONSTANT";
+    case NODE_CONSTRUCTOR: return "NODE_CONSTRUCTOR";
+    case NODE_DECLARATION_SPECIFIER: return "NODE_DECLARATION_SPECIFIER";
+    case NODE_DECLARATION_SPECIFIERS: return "NODE_DECLARATION_SPECIFIERS";
+    case NODE_DECLARATION: return "NODE_DECLARATION";
+    case NODE_DECLTYPE: return "NODE_DECLTYPE";
+    case NODE_FIELD_DECLARATION_LIST: return "NODE_FIELD_DECLARATION_LIST";
+    case NODE_IDENTIFIER: return "NODE_IDENTIFIER";
+    case NODE_IF_STATEMENT: return "NODE_IF_STATEMENT";
+    case NODE_PARAMETER_LIST: return "NODE_PARAMETER_LIST";
+    case NODE_PARENTHESIZED_EXPRESSION: return "NODE_PARENTHESIZED_EXPRESSION";
+    case NODE_PREPROC: return "NODE_PREPROC";
+    case NODE_PUNCT: return "NODE_PUNCT";
+    case NODE_SPECIFIER_LIST: return "NODE_SPECIFIER_LIST";
+    case NODE_TEMPLATE_DECLARATION: return "NODE_TEMPLATE_DECLARATION";
+    case NODE_TEMPLATE_PARAMETER_LIST: return "NODE_TEMPLATE_PARAMETER_LIST";
+    case NODE_TRANSLATION_UNIT: return "NODE_TRANSLATION_UNIT";
+    case NODE_TYPEDEF_NAME: return "NODE_TYPEDEF_NAME";
+    case NODE_TYPEOF_SPECIFIER: return "NODE_TYPEOF_SPECIFIER";
+    case NODE_UNARY_EXPRESSION: return "NODE_UNARY_EXPRESSION";
+    case NODE_UNARY_OP: return "NODE_UNARY_OP";
   }
   return "<token>";
 }
@@ -78,7 +80,7 @@ inline const char* tok_to_str(NodeType t) {
 
 struct Node {
 
-  Node(NodeType node_type, const Lexeme* lex_a, const Lexeme* lex_b) {
+  Node(NodeType node_type, const Lexeme* lex_a = nullptr, const Lexeme* lex_b = nullptr) {
     assert(node_type != NODE_INVALID);
     if (lex_a == nullptr && lex_b == nullptr) {
     }
@@ -100,16 +102,6 @@ struct Node {
     }
   }
 
-  NodeType node_type;
-  const Lexeme* lex_a;
-  const Lexeme* lex_b;
-
-  Node* parent = nullptr;
-  Node* prev   = nullptr;
-  Node* next   = nullptr;
-  Node* head   = nullptr;
-  Node* tail   = nullptr;
-
   //----------------------------------------
 
   Node* child(int index) {
@@ -123,6 +115,8 @@ struct Node {
   //----------------------------------------
 
   void append(Node* tok) {
+    if (!tok) return;
+
     tok->parent = this;
 
     if (tail) {
@@ -170,9 +164,48 @@ struct Node {
 
   //----------------------------------------
 
-  void dump_tree() {
+  void dump_span() {
+    if (!lex_a || !lex_b) {
+      printf("<bad span>");
+    }
+    auto len = (lex_b - 1)->span_b - lex_a->span_a;
+    if (len > 40) len = 40;
+    for (auto i = 0; i < len; i++) {
+      putc(lex_a->span_a[i], stdout);
+    }
   }
 
+  virtual void dump_tree(int indentation = 0) {
+    for (int i = 0; i < indentation; i++) printf("  ");
+    if (!field.empty()) printf("%-10.10s : ", field.c_str());
+    printf("%s", tok_to_str(node_type));
+
+    if (lex_a && lex_b) {
+      printf(" '");
+      dump_span();
+      printf("' ");
+    }
+
+    printf("\n");
+    for (auto c = head; c; c = c->next) {
+      c->dump_tree(indentation + 1);
+    }
+  }
+
+  //----------------------------------------
+
+  NodeType node_type;
+
+  const Lexeme* lex_a;
+  const Lexeme* lex_b;
+
+  std::string field;
+
+  Node* parent = nullptr;
+  Node* prev   = nullptr;
+  Node* next   = nullptr;
+  Node* head   = nullptr;
+  Node* tail   = nullptr;
 };
 
 //------------------------------------------------------------------------------

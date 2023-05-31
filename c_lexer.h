@@ -124,6 +124,9 @@ const char* match_splice     (const char* a, const char* b, void* ctx);
 const char* match_formfeed   (const char* a, const char* b, void* ctx);
 const char* match_eof        (const char* a, const char* b, void* ctx);
 
+const char* match_binary_op  (const char* a, const char* b, void* ctx);
+const char* match_unary_op   (const char* a, const char* b, void* ctx);
+
 Lexeme next_lexeme(const char* cursor, const char* end);
 void dump_lexer_stats();
 

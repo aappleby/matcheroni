@@ -7,17 +7,18 @@
 
 using namespace matcheroni;
 
-extern const char* current_filename;
+const char* match_lit(const char* a, const char* b, const char* lit) {
+  auto c = a;
+  for (;c < b && (*c == *lit) && *lit; c++, lit++);
+  return *lit ? nullptr : c;
+}
 
-// not needed at top level for lexer?
-// should probably fix preproc thing so we get header name...
-const char* match_escape_sequence   (const char* a, const char* b, void* ctx);
-const char* match_nested_comment    (const char* a, const char* b, void* ctx);
-const char* match_utf8              (const char* a, const char* b, void* ctx);
-const char* match_utf8_bom          (const char* a, const char* b, void* ctx);
-
-const char* match_eof(const char* a, const char* b, void* ctx) {
-  if (a == b) return a;
+const char* match_lits(const char* a, const char* b, const char** lits, int lit_count) {
+  for (auto i = 0; i < lit_count; i++) {
+    if (auto t = match_lit(a, b, lits[i])) {
+      return t;
+    }
+  }
   return nullptr;
 }
 
@@ -91,6 +92,11 @@ void dump_lexer_stats() {
 //------------------------------------------------------------------------------
 // Misc helpers
 
+const char* match_eof(const char* a, const char* b, void* ctx) {
+  if (a == b) return a;
+  return nullptr;
+}
+
 const char* match_formfeed(const char* a, const char* b, void* ctx) {
   return Atom<'\f'>::match(a, b, ctx);
 }
@@ -104,12 +110,6 @@ const char* match_space(const char* a, const char* b, void* ctx) {
 const char* match_newline(const char* a, const char* b, void* ctx) {
   using match = Seq<Opt<Atom<'\r'>>, Atom<'\n'>>;
   return match::match(a, b, ctx);
-}
-
-const char* match_str(const char* a, const char* b, const char* lit) {
-  auto c = a;
-  for (;c < b && (*c == *lit) && *lit; c++, lit++);
-  return *lit ? nullptr : c;
 }
 
 template<typename M>
@@ -180,7 +180,7 @@ const char* match_keyword(const char* a, const char* b, void* ctx) {
   const int keyword_count = sizeof(c_keywords) / sizeof(c_keywords[0]);
 
   for (int i = 0; i < keyword_count; i++) {
-    if (auto t = match_str(a, b, c_keywords[i])) {
+    if (auto t = match_lit(a, b, c_keywords[i])) {
       return t;
     }
   }
@@ -453,6 +453,27 @@ const char* match_string(const char* a, const char* b, void* ctx) {
 
 //------------------------------------------------------------------------------
 // 6.4.6 Punctuators
+
+
+const char* match_binary_op(const char* a, const char* b, void* ctx) {
+  const char* ops[] = {
+    "<<=",">>=",
+    "==","!=","<=",">=",
+    "&&","||",
+    "<<",">>",
+    "+=","-=","*=","/=","%=","&=","|=","^=",
+    "+","-","*","/","%","<",">","&","|","^",",","=",
+  };
+  int op_count = sizeof(ops)/sizeof(*ops);
+  return match_lits(a, b, ops, op_count);
+}
+
+
+const char* match_unary_op(const char* a, const char* b, void* ctx) {
+  const char* ops[] = { "++", "--", "+", "-", "!", "~", "&", "*" };
+  int op_count = sizeof(ops)/sizeof(*ops);
+  return match_lits(a, b, ops, op_count);
+}
 
 const char* match_punct(const char* a, const char* b, void* ctx) {
   // We're just gonna match these one punct at a time
