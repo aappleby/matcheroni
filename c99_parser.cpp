@@ -6,6 +6,9 @@
 #include "Node.h"
 #include "NodeTypes.h"
 
+#include "Lexemes.h"
+#include "Tokens.h"
+
 #include <stack>
 #include <vector>
 #include <filesystem>
@@ -1129,7 +1132,7 @@ struct Parser {
 
 //------------------------------------------------------------------------------
 
-void lex_file(const std::string& path, int size, std::string& text, std::vector<Lexeme>& lexemes) {
+void lex_file(const std::string& path, int size, std::string& text, std::vector<Lexeme>& lexemes, std::vector<Token>& tokens) {
   printf("Lexing %s\n", path.c_str());
   text.resize(size + 1);
   memset(text.data(), 0, size + 1);
@@ -1208,8 +1211,9 @@ int test_c99_peg() {
     auto size = f.file_size();
     std::string text;
     std::vector<Lexeme> lexemes;
+    std::vector<Token> tokens;
 
-    lex_file(path, size, text, lexemes);
+    lex_file(path, size, text, lexemes, tokens);
 
     //dump_lexemes(path, size, text, lexemes);
 
