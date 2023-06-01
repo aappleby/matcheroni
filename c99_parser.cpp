@@ -424,22 +424,23 @@ struct Parser {
       // Var declaration with init
       auto _declop   = take_punct();
       auto _declinit = parse_expression();
-      auto _semi     = take_opt_punct(';');
+      //auto _semi     = take_opt_punct(';');
 
       assert(_declop);
       assert(_declinit);
 
       _declop->field = "op";
       _declinit->field = "init";
-      if (_semi) _semi->field = "semi";
+      //if (_semi) _semi->field = "semi";
 
       return new Declaration(
         declaration_specifiers,
         _decltype,
         _declname,
         _declop,
-        _declinit,
-        _semi);
+        _declinit
+        //,_semi
+      );
     }
     else if (token->is_punct('(')) {
       // Function declaration or definition
@@ -448,9 +449,9 @@ struct Parser {
     }
     else {
       // Var declaration without init
-      auto _semi = take_opt_punct(';');
-      if (_semi) _semi->field = "semi";
-      return new Declaration(declaration_specifiers, _decltype, _declname, _semi);
+      //auto _semi = take_opt_punct(';');
+      //if (_semi) _semi->field = "semi";
+      return new Declaration(declaration_specifiers, _decltype, _declname /*, _semi*/);
     }
   }
 
@@ -529,6 +530,22 @@ struct Parser {
   }
 
   //----------------------------------------
+
+  Node* parse_assignment_op() {
+    auto span_a = token->lex->span_a;
+    auto span_b = token_eof->lex->span_a;
+
+    auto end = match_assign_op(span_a, span_b, nullptr);
+    if (!end) return nullptr;
+
+    auto match_lex_a = token;
+    auto match_lex_b = token;
+    while(match_lex_b->lex->span_a < end) match_lex_b++;
+    auto result = new Node(NODE_OPERATOR, match_lex_a, match_lex_b);
+    token = match_lex_b;
+    return result;
+  }
+
 
   Node* parse_infix_op() {
     auto span_a = token->lex->span_a;
@@ -675,7 +692,12 @@ struct Parser {
       return parse_function_definition(specifiers);
     }
     else {
-      return parse_declaration(specifiers);
+      auto decl = parse_declaration(specifiers);
+      auto semi = take_punct(';');
+      auto result = new Node(NODE_DECLARATION_STATEMENT, nullptr, nullptr);
+      result->append(decl);
+      result->append(semi);
+      return result;
     }
   }
 
@@ -705,8 +727,14 @@ struct Parser {
   //----------------------------------------
 
   Node* parse_function_call() {
-    assert(false);
-    return nullptr;
+
+    auto func = take_identifier();
+    auto params = parse_argument_list();
+
+    auto result = new Node(NODE_CALL_EXPRESSION, nullptr, nullptr);
+    result->append(func);
+    result->append(params);
+    return result;
   }
 
   //----------------------------------------
@@ -830,6 +858,26 @@ struct Parser {
 
   //----------------------------------------
 
+  Node* parse_argument_list() {
+    auto result = new Node(NODE_ARGUMENT_LIST);
+
+    result->append(take_punct('('));
+
+    while(!token->is_punct(')')) {
+      auto exp = parse_expression();
+      result->append(exp);
+      if (token->is_punct(',')) {
+        result->append(take_punct(','));
+      }
+    }
+
+    result->append(take_punct(')'));
+
+    return result;
+  }
+
+  //----------------------------------------
+
   Node* parse_parenthesized_expression() {
     auto result = new Node(NODE_PARENTHESIZED_EXPRESSION);
     result->append(take_punct('('));
@@ -863,21 +911,56 @@ struct Parser {
       return parse_if_statement();
     }
 
+    if (token[0].is_identifier("return")) {
+      auto ret = take_identifier();
+      auto val = parse_expression();
+      auto semi = take_punct(';');
+      auto result = new Node(NODE_RETURN_STATEMENT, nullptr, nullptr);
+      result->append(ret);
+      result->append(val);
+      result->append(semi);
+      return result;
+    }
+
     auto specs = parse_specifier_list();
 
-    if (token[0].is_identifier() && token[1].is_identifier()) {
-      if (token[2].is_punct('=') || token[2].is_punct(';')) {
-        return parse_declaration(specs);
+    if (token[0].is_identifier()) {
+      auto end = match_assign_op(token[1].lex->span_a, token_eof->lex->span_a, nullptr);
+      if (end) {
+        auto lhs  = take_identifier();
+        auto op   = parse_assignment_op();
+        auto val  = parse_expression();
+        auto semi = take_punct(';');
+
+        auto result = new Node(NODE_ASSIGNMENT_STATEMENT, nullptr, nullptr);
+        result->append(lhs);
+        result->append(op);
+        result->append(val);
+        result->append(semi);
+        return result;
       }
-      else {
-        assert(false);
-        return nullptr;
+      else if (token[1].is_identifier()) {
+        if (token[2].is_punct('=') || token[2].is_punct(';')) {
+          auto decl = parse_declaration(specs);
+          auto semi = take_punct(';');
+          auto result = new Node(NODE_DECLARATION_STATEMENT, nullptr, nullptr);
+          result->append(decl);
+          result->append(semi);
+          return result;
+        }
+      }
+      else if (token[1].is_punct('(')) {
+        auto call = parse_function_call();
+        auto semi = take_punct(';');
+        auto result = new Node(NODE_EXPRESSION_STATEMENT, nullptr, nullptr);
+        result->append(call);
+        result->append(semi);
+        return result;
       }
     }
-    else {
-      assert(false);
-      return nullptr;
-    }
+
+    assert(false);
+    return nullptr;
   }
 
   //----------------------------------------

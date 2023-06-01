@@ -75,32 +75,28 @@ struct Constructor : public Node {
 //------------------------------------------------------------------------------
 
 struct Declaration : public Node {
-  Declaration(Node* _specs, Node* _decltype, Node* _declname, Node* _declop, Node* _declinit, Node* _semi)
+  Declaration(Node* _specs, Node* _decltype, Node* _declname, Node* _declop, Node* _declinit)
   : Node(NODE_DECLARATION, nullptr, nullptr) {
     append(_specs);
     append(_decltype);
     append(_declname);
     append(_declop);
     append(_declinit);
-    append(_semi);
     this->_specs    = _specs;
     this->_decltype = _decltype;
     this->_declname = _declname;
     this->_declop   = _declop;
     this->_declinit = _declinit;
-    this->_semi     = _semi;
   }
 
-  Declaration(Node* _specs, Node* _decltype, Node* _declname, Node* _semi)
+  Declaration(Node* _specs, Node* _decltype, Node* _declname)
   : Node(NODE_DECLARATION, nullptr, nullptr) {
     append(_specs);
     append(_decltype);
     append(_declname);
-    append(_semi);
     this->_specs    = _specs;
     this->_decltype = _decltype;
     this->_declname = _declname;
-    this->_semi     = _semi;
   }
 
   Node* _specs    = nullptr;
@@ -108,7 +104,6 @@ struct Declaration : public Node {
   Node* _declname = nullptr;
   Node* _declop   = nullptr;
   Node* _declinit = nullptr;
-  Node* _semi     = nullptr;
 };
 
 //------------------------------------------------------------------------------

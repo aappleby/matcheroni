@@ -454,6 +454,14 @@ const char* match_string(const char* a, const char* b, void* ctx) {
 //------------------------------------------------------------------------------
 // for the parser
 
+const char* match_assign_op(const char* a, const char* b, void* ctx) {
+ const char* ops[] = {
+    "+=","-=","*=","/=","%=","&=","|=","^=", "=",
+  };
+  int op_count = sizeof(ops)/sizeof(*ops);
+  return match_lits(a, b, ops, op_count);
+}
+
 const char* match_infix_op(const char* a, const char* b, void* ctx) {
   const char* ops[] = {
     "<<=",">>=",
