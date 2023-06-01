@@ -23,24 +23,24 @@ enum LexemeType {
 //------------------------------------------------------------------------------
 
 struct Lexeme {
-  Lexeme(LexemeType lexeme, const char* span_a, const char* span_b) {
-    assert((lexeme == LEX_INVALID) ^ (span_a != nullptr));
-    assert((lexeme == LEX_INVALID) ^ (span_b != nullptr));
-    this->lexeme = lexeme;
+  Lexeme(LexemeType type, const char* span_a, const char* span_b) {
+    assert((type == LEX_INVALID) ^ (span_a != nullptr));
+    assert((type == LEX_INVALID) ^ (span_b != nullptr));
+    this->type = type;
     this->span_a = span_a;
     this->span_b = span_b;
   }
 
   bool is_valid() const {
-    return lexeme != LEX_INVALID;
+    return type != LEX_INVALID;
   }
 
   bool is_eof() const {
-    return lexeme == LEX_EOF;
+    return type == LEX_EOF;
   }
 
   bool is_gap() const {
-    switch(lexeme) {
+    switch(type) {
       case LEX_NEWLINE:
       case LEX_SPACE:
       case LEX_COMMENT:
@@ -52,7 +52,7 @@ struct Lexeme {
   }
 
   const char* str() const {
-    switch(lexeme) {
+    switch(type) {
       case LEX_INVALID:    return "LEX_INVALID";
       case LEX_SPACE:      return "LEX_SPACE";
       case LEX_NEWLINE:    return "LEX_NEWLINE";
@@ -78,11 +78,11 @@ struct Lexeme {
   //----------------------------------------
 
   bool is_punct() const {
-    return (lexeme == LEX_PUNCT);
+    return (type == LEX_PUNCT);
   }
 
   bool is_punct(char p) const {
-    return (lexeme == LEX_PUNCT) && (*span_a == p);
+    return (type == LEX_PUNCT) && (*span_a == p);
   }
 
   bool is_lit(const char* lit) const {
@@ -92,20 +92,20 @@ struct Lexeme {
   }
 
   bool is_identifier(const char* lit = nullptr) const {
-    return (lexeme == LEX_IDENTIFIER) && (lit == nullptr || is_lit(lit));
+    return (type == LEX_IDENTIFIER) && (lit == nullptr || is_lit(lit));
   }
 
   bool is_constant() const {
-    return (lexeme == LEX_FLOAT) || (lexeme == LEX_INT) || (lexeme == LEX_CHAR) || (lexeme == LEX_STRING);
+    return (type == LEX_FLOAT) || (type == LEX_INT) || (type == LEX_CHAR) || (type == LEX_STRING);
   }
 
   //----------------------------------------
 
   static Lexeme invalid() { return Lexeme(LEX_INVALID, nullptr, nullptr); }
 
-  LexemeType    lexeme;
-  const char*   span_a;
-  const char*   span_b;
+  LexemeType  type;
+  const char* span_a;
+  const char* span_b;
 };
 
 //------------------------------------------------------------------------------

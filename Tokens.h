@@ -18,6 +18,22 @@ enum TokenType {
 
 //------------------------------------------------------------------------------
 
+inline TokenType lex_to_tok(LexemeType lex) {
+  switch(lex) {
+    case LEX_STRING:     return TOK_STRING;
+    case LEX_IDENTIFIER: return TOK_IDENTIFIER;
+    case LEX_PREPROC:    return TOK_PREPROC;
+    case LEX_FLOAT:      return TOK_FLOAT;
+    case LEX_INT:        return TOK_INT;
+    case LEX_PUNCT:      return TOK_PUNCT;
+    case LEX_CHAR:       return TOK_CHAR;
+    case LEX_EOF:        return TOK_EOF;
+  }
+  return TOK_INVALID;
+}
+
+//------------------------------------------------------------------------------
+
 struct Token {
   Token(TokenType type, const Lexeme* lex) {
     assert((type == TOK_INVALID) ^ (lex != nullptr));

@@ -13,15 +13,6 @@
         "kind": "build",
         "isDefault": false
       },
-      "presentation": {
-        "echo": true,
-        "reveal": "never",
-        "focus": false,
-        //"panel": "shared",
-        "panel": "dedicated",
-        "showReuseMessage": false,
-        "clear": true
-      }
     },
   ]
 }

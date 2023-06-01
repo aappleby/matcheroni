@@ -36,7 +36,7 @@ void dump_span(int max_len, const char* a, const char* b) {
 
 void dump_node(Node* n) {
   //printf("%-15s", lex_to_str(n->lexeme));
-  printf("%-15s", tok_to_str(n->node_type));
+  printf("%-15s", node_to_str(n->node_type));
   /*
   if (n->lexeme == LEX_PUNCT) {
     printf("%c", *n->span_a);

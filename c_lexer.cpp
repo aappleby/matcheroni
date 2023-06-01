@@ -452,28 +452,35 @@ const char* match_string(const char* a, const char* b, void* ctx) {
 }
 
 //------------------------------------------------------------------------------
-// 6.4.6 Punctuators
+// for the parser
 
-
-const char* match_binary_op(const char* a, const char* b, void* ctx) {
+const char* match_infix_op(const char* a, const char* b, void* ctx) {
   const char* ops[] = {
     "<<=",">>=",
     "==","!=","<=",">=",
     "&&","||",
     "<<",">>",
     "+=","-=","*=","/=","%=","&=","|=","^=",
-    "+","-","*","/","%","<",">","&","|","^",",","=",
+    "+","-","*","/","%","<",">","&","|","^","=", // comma operator?
   };
   int op_count = sizeof(ops)/sizeof(*ops);
   return match_lits(a, b, ops, op_count);
 }
 
-
-const char* match_unary_op(const char* a, const char* b, void* ctx) {
+const char* match_prefix_op(const char* a, const char* b, void* ctx) {
   const char* ops[] = { "++", "--", "+", "-", "!", "~", "&", "*" };
   int op_count = sizeof(ops)/sizeof(*ops);
   return match_lits(a, b, ops, op_count);
 }
+
+const char* match_postfix_op(const char* a, const char* b, void* ctx) {
+  const char* ops[] = { "++", "--" };
+  int op_count = sizeof(ops)/sizeof(*ops);
+  return match_lits(a, b, ops, op_count);
+}
+
+//------------------------------------------------------------------------------
+// 6.4.6 Punctuators
 
 const char* match_punct(const char* a, const char* b, void* ctx) {
   // We're just gonna match these one punct at a time

@@ -9,5 +9,8 @@ public:
     }
   }
 
-  int bar = 7;
+  const void dump() {
+  }
+
+  const int bar = 7;
 };

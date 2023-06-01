@@ -145,7 +145,7 @@ bool test_lex(const std::string& path, const std::string& text, bool echo) {
     }
     else if (lexeme.is_valid()) {
       if (lexeme.span_b > text_b) {
-        printf("#### READ OFF THE END DURING %d\n", lexeme.lexeme);
+        printf("#### READ OFF THE END DURING %d\n", lexeme.type);
         printf("File %s:\n", path.c_str());
         printf("Cursor {%.40s}\n", cursor);
         exit(1);

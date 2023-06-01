@@ -17,27 +17,27 @@ double timestamp_ms();
 
 using namespace matcheroni;
 
-bool atom_eq(const Lexeme& a, const LexemeType& b) {
-  return a.lexeme == b;
+bool atom_eq(const Token& a, const TokenType& b) {
+  return a.type == b;
 }
 
-bool atom_eq(const Lexeme& a, const char& b) {
-  return a.len() == 1 && *a.span_a == b;
+bool atom_eq(const Token& a, const char& b) {
+  return a.lex->len() == 1 && (*a.lex->span_a == b);
 }
 
-bool atom_lte(const Lexeme& a, const char& b) {
-  return a.len() == 1 && *a.span_a <= b;
+bool atom_lte(const Token& a, const char& b) {
+  return a.lex->len() == 1 && (*a.lex->span_a <= b);
 }
 
-bool atom_gte(const Lexeme& a, const char& b) {
-  return a.len() == 1 && *a.span_a >= b;
+bool atom_gte(const Token& a, const char& b) {
+  return a.lex->len() == 1 && (*a.lex->span_a >= b);
 }
 
 template<int N>
-bool atom_eq(const Lexeme& a, const matcheroni::StringParam<N>& b) {
-  if ((a.span_b - a.span_a) != b.len) return false;
+bool atom_eq(const Token& a, const matcheroni::StringParam<N>& b) {
+  if (a.lex->len() != b.len) return false;
   for (auto i = 0; i < b.len; i++) {
-    if (a.span_a[i] != b.value[i]) return false;
+    if (a.lex->span_a[i] != b.value[i]) return false;
   }
 
   return true;
@@ -60,10 +60,11 @@ int main(int argc, char** argv) {
 
 //------------------------------------------------------------------------------
 
+/*
 Node* fold_nodes(Node* a, Node* b, NodeType tok) {
   auto parent = a->parent;
 
-  auto n = new Node(tok, a->lex_a, b->lex_b);
+  auto n = new Node(tok, a->tok_a, b->tok_b);
 
   n->parent = nullptr;
   n->prev = a->prev;
@@ -84,20 +85,22 @@ Node* fold_nodes(Node* a, Node* b, NodeType tok) {
 
   return n;
 }
+*/
 
 //------------------------------------------------------------------------------
 
+/*
 void fold_delims(Node* a, Node* b, char ldelim, char rdelim, NodeType block_type) {
 
   std::stack<Node*> ldelims;
 
   for (Node* cursor = a; cursor; cursor = cursor->next) {
-    if (cursor->lex_a->lexeme != LEX_PUNCT) continue;
+    if (cursor->tok_a->lex->type != LEX_PUNCT) continue;
 
-    if (*cursor->lex_a->span_a == ldelim) {
+    if (*cursor->tok_a->lex->span_a == ldelim) {
       ldelims.push(cursor);
     }
-    else if (*cursor->lex_a->span_a == rdelim) {
+    else if (*cursor->tok_a->lex->span_a == rdelim) {
       auto node_ldelim = ldelims.top();
       auto node_rdelim = cursor;
       cursor = fold_nodes(node_ldelim, node_rdelim, block_type);
@@ -105,54 +108,103 @@ void fold_delims(Node* a, Node* b, char ldelim, char rdelim, NodeType block_type
     }
   }
 }
+*/
+
+const char* c_specifiers[] = {
+  "const",
+  "constexpr",
+  "extern",
+  "inline",
+  "register",
+  "restrict",
+  "signed",
+  "static",
+  "thread_local",
+  "unsigned",
+  "volatile",
+  "_Noreturn",
+};
+
+const char* c_primitives[] = {
+  "auto",
+  "bool",
+  "char",
+  "double",
+  "float",
+  "int",
+  "long",
+  "short",
+  "void",
+};
+
+const char* c_control[] = {
+  "break",
+  "case",
+  "continue",
+  "default",
+  "do",
+  "else",
+  "for",
+  "goto",
+  "if",
+  "return",
+  "switch",
+  "while",
+};
+
+const char* c_constants[] = {
+  "false",
+  "nullptr",
+  "true",
+};
+
+const char* c_intrinsics[] = {
+  "alignas",
+  "alignof",
+  "sizeof",
+  "static_assert",
+  "typeof",
+  "typeof_unqual",
+};
+
+const char* c_structs[] = {
+  "enum",
+  "struct",
+  "typedef",
+  "union",
+};
 
 //------------------------------------------------------------------------------
 
 struct Parser {
-  const Lexeme* lex_a;
-  const Lexeme* lex_b;
-
-  //----------------------------------------
-
-  NodeType lex_to_node(LexemeType t) {
-    switch(t) {
-      case LEX_STRING: return NODE_CONSTANT;
-      case LEX_IDENTIFIER: return NODE_IDENTIFIER;
-      case LEX_PREPROC: return NODE_PREPROC;
-      case LEX_FLOAT: return NODE_CONSTANT;
-      case LEX_INT: return NODE_CONSTANT;
-      case LEX_PUNCT: return NODE_PUNCT;
-      case LEX_CHAR: return NODE_CONSTANT;
-    }
-    assert(false);
-    return NODE_INVALID;
-  }
+  const Token* token;
+  const Token* token_eof;
 
   //----------------------------------------
 
   Node* take_lexeme() {
-    auto result = new Node(lex_to_node(lex_a->lexeme), lex_a, lex_a + 1);
-    lex_a = lex_a + 1;
+    auto result = new Node(tok_to_node(token->type), token, token + 1);
+    token = token + 1;
     return result;
   }
 
   Node* take_punct() {
-    assert (lex_a->is_punct());
+    assert (token->is_punct());
     return take_lexeme();
   }
 
   void skip_punct(char punct) {
-    assert (lex_a->is_punct(punct));
-    lex_a++;
+    assert (token->is_punct(punct));
+    token++;
   }
 
   Node* take_punct(char punct) {
-    assert (lex_a->is_punct(punct));
+    assert (token->is_punct(punct));
     return take_lexeme();
   }
 
   Node* take_opt_punct(char punct) {
-    if (lex_a->is_punct(punct)) {
+    if (token->is_punct(punct)) {
       return take_lexeme();
     }
     else {
@@ -161,12 +213,12 @@ struct Parser {
   }
 
   Node* take_identifier(const char* identifier = nullptr) {
-    assert(lex_a->is_identifier(identifier));
+    assert(token->is_identifier(identifier));
     return take_lexeme();
   }
 
   Node* take_constant() {
-    assert(lex_a->is_constant());
+    assert(token->is_constant());
     return take_lexeme();
   }
 
@@ -178,9 +230,9 @@ struct Parser {
       Atom<':'>
     >;
 
-    if (auto end = pattern::match(lex_a, lex_b, nullptr)) {
-      Node* result = new Node(NODE_ACCESS_SPECIFIER, lex_a, end);
-      lex_a = end;
+    if (auto end = pattern::match(token, token_eof, nullptr)) {
+      Node* result = new Node(NODE_ACCESS_SPECIFIER, token, end);
+      token = end;
       return result;
     }
     return nullptr;
@@ -211,8 +263,8 @@ struct Parser {
   */
 
   template<typename P>
-  const Lexeme* match() {
-    return P::match(lex_a, lex_b, nullptr);
+  const Token* match() {
+    return P::match(token, token_eof, nullptr);
   }
 
   Node* parse_class_specifier() {
@@ -244,7 +296,7 @@ struct Parser {
     result->append(result->ldelim);
 
     while(1) {
-      if (lex_a->is_punct('}')) break;
+      if (token->is_punct('}')) break;
       auto statement = parse_statement();
       assert(statement);
       result->statements.push_back(statement);
@@ -283,10 +335,10 @@ struct Parser {
 
     std::vector<Node*> specifiers;
 
-    while(lex_a < lex_b) {
+    while(token < token_eof) {
       bool match = false;
       for (auto i = 0; i < keyword_count; i++) {
-        if (lex_a->is_identifier(keywords[i])) {
+        if (token->is_identifier(keywords[i])) {
           match = true;
           specifiers.push_back(take_identifier());
           break;
@@ -308,27 +360,6 @@ struct Parser {
   //----------------------------------------
 
   /*
-
-    _constructor_specifiers: $ => choice(
-      'extern',
-      'static',
-      'register',
-      'inline',
-      'thread_local',
-      'const',
-      'volatile',
-      'restrict',
-      '__restrict__',
-      '_Atomic',
-      '_Noreturn',
-      'mutable',
-      'constexpr',
-      'constinit',
-      'consteval',
-      'virtual',
-      'explicit',
-    ),
-
     struct Constructor {
       vector<Node*> specifiers;
       Node* name;
@@ -352,18 +383,17 @@ struct Parser {
 
   */
 
-  Node* parse_constructor() {
+  Node* parse_constructor(Node* _specs) {
 
     // Constructor
-    Node* _specs  = parse_specifiers();
     Node* _decl   = take_identifier();
     Node* _params = parse_parameter_list();
     Node* _body   = nullptr;
 
-    if (lex_a->is_punct('{')) {
+    if (token->is_punct('{')) {
       _body = parse_compound_statement();
     }
-    else if (lex_a->is_punct(';')) {
+    else if (token->is_punct(';')) {
       skip_punct(';');
     }
     else {
@@ -381,7 +411,7 @@ struct Parser {
     static_assert-declaration
     attribute-declaration
   */
-  Node* parse_declaration() {
+  Node* parse_declaration(Node* declaration_specifiers) {
     // not following the spec here right now
 
     auto _decltype = parse_decltype();
@@ -390,19 +420,28 @@ struct Parser {
     _decltype->field = "type";
     _declname->field = "name";
 
-    if (lex_a->is_punct('=')) {
+    if (token->is_punct('=')) {
       // Var declaration with init
       auto _declop   = take_punct();
       auto _declinit = parse_expression();
       auto _semi     = take_opt_punct(';');
 
+      assert(_declop);
+      assert(_declinit);
+
       _declop->field = "op";
       _declinit->field = "init";
       if (_semi) _semi->field = "semi";
 
-      return new Declaration(_decltype, _declname, _declop, _declinit, _semi);
+      return new Declaration(
+        declaration_specifiers,
+        _decltype,
+        _declname,
+        _declop,
+        _declinit,
+        _semi);
     }
-    else if (lex_a->is_punct('(')) {
+    else if (token->is_punct('(')) {
       // Function declaration or definition
       assert(false);
       return nullptr;
@@ -411,72 +450,47 @@ struct Parser {
       // Var declaration without init
       auto _semi = take_opt_punct(';');
       if (_semi) _semi->field = "semi";
-      return new Declaration(_decltype, _declname, _semi);
+      return new Declaration(declaration_specifiers, _decltype, _declname, _semi);
     }
   }
 
   //----------------------------------------
 
-  Node* parse_declaration_specifier() {
+  Node* parse_specifier() {
     Node* result = nullptr;
 
-    // 6.7.1 Storage-class specifiers
-    using storage_class_specifier = Oneof<
-      AtomLit<"auto">,
-      AtomLit<"constexpr">,
-      AtomLit<"extern">,
-      AtomLit<"register">,
-      AtomLit<"static">,
-      AtomLit<"thread_local">,
-      AtomLit<"typedef">
-    >;
-
-    // 6.7.4 Function specifiers
-    using function_specifier = Oneof<
-      AtomLit<"inline">,
-      AtomLit<"_Noreturn">
-    >;
-
-    using declaration_specifier = Oneof<
-      storage_class_specifier,
-      //type_specifier_qualifier,
-      function_specifier
-    >;
-
-    if (auto end = declaration_specifier::match(lex_a, lex_b, nullptr)) {
-      result = new Node(NODE_DECLARATION_SPECIFIER, lex_a, end);
-      lex_a = end;
-    }
-
-    return result;
-  }
-
-  //----------------------------------------
-
-  Node* parse_declaration_specifiers() {
-    //using declaration_specifiers = Some<Oneof<declaration_specifier, type_specifier_qualifier> >;
-    //return declaration_specifiers::match(a, b, ctx);
-
-    auto result = new Node(NODE_DECLARATION_SPECIFIERS, nullptr, nullptr);
-
-    while(1) {
-      if (auto child = parse_declaration_specifier()) {
-        result->append(child);
-      }
-      else {
-        break;
+    for (auto c : c_specifiers) {
+      if (token->is_identifier(c)) {
+        auto result = new Node(NODE_SPECIFIER, token, token+1);
+        token = token + 1;
+        return result;
       }
     }
-
-    if (result->head) return result;
 
     return nullptr;
   }
 
   //----------------------------------------
 
-  Node* parse_declarator() {
-    assert(false);
+  Node* parse_specifier_list() {
+
+    std::vector<Node*> specs;
+
+    while(1) {
+      if (auto child = parse_specifier()) {
+        specs.push_back(child);
+      }
+      else {
+        break;
+      }
+    }
+
+    if (specs.size()) {
+      auto result = new Node(NODE_SPECIFIER_LIST, nullptr, nullptr);
+      for (auto s : specs) result->append(s);
+      return result;
+    }
+
     return nullptr;
   }
 
@@ -484,25 +498,25 @@ struct Parser {
 
   Node* parse_decltype() {
     // FIXME placeholder
-    if (lex_a->lexeme != LEX_IDENTIFIER) return nullptr;
-    auto result = new Node(NODE_DECLTYPE, lex_a, lex_a + 1);
-    lex_a = lex_a + 1;
+    if (token->type != TOK_IDENTIFIER) return nullptr;
+    auto result = new Node(NODE_DECLTYPE, token, token + 1);
+    token = token + 1;
     return result;
   }
 
   //----------------------------------------
 
   Node* parse_expression_atom() {
-    if (lex_a->is_punct('(')) {
+    if (token->is_punct('(')) {
       return parse_parenthesized_expression();
     }
 
-    if (lex_a->is_constant()) {
+    if (token->is_constant()) {
       return take_constant();
     }
 
-    if (lex_a[0].is_identifier()) {
-      if (lex_a[1].is_punct('(')) {
+    if (token[0].is_identifier()) {
+      if (token[1].is_punct('(')) {
         return parse_function_call();
       }
       else {
@@ -516,92 +530,92 @@ struct Parser {
 
   //----------------------------------------
 
-  Node* parse_binary_op() {
-    auto span_a = lex_a->span_a;
-    auto span_b = lex_b->span_b;
+  Node* parse_infix_op() {
+    auto span_a = token->lex->span_a;
+    auto span_b = token_eof->lex->span_a;
 
-    auto end = match_binary_op(span_a, span_b, nullptr);
+    auto end = match_infix_op(span_a, span_b, nullptr);
     if (!end) return nullptr;
 
-    auto match_lex_a = lex_a;
-    auto match_lex_b = lex_a;
-    while(match_lex_b->span_a < end) match_lex_b++;
-    auto result = new Node(NODE_BINARY_OP, match_lex_a, match_lex_b);
-    lex_a = match_lex_b;
+    auto match_lex_a = token;
+    auto match_lex_b = token;
+    while(match_lex_b->lex->span_a < end) match_lex_b++;
+    auto result = new Node(NODE_OPERATOR, match_lex_a, match_lex_b);
+    token = match_lex_b;
     return result;
   }
 
-  Node* parse_unary_op() {
-    auto span_a = lex_a->span_a;
-    auto span_b = lex_b->span_b;
+  Node* parse_prefix_op() {
+    auto span_a = token->lex->span_a;
+    auto span_b = token_eof->lex->span_a;
 
-    auto end = match_unary_op(span_a, span_b, nullptr);
+    auto end = match_prefix_op(span_a, span_b, nullptr);
     if (!end) return nullptr;
 
-    auto match_lex_a = lex_a;
-    auto match_lex_b = lex_a;
-    while(match_lex_b->span_a < end) match_lex_b++;
-    auto result = new Node(NODE_UNARY_OP, match_lex_a, match_lex_b);
-    lex_a = match_lex_b;
+    auto match_lex_a = token;
+    auto match_lex_b = token;
+    while(match_lex_b->lex->span_a < end) match_lex_b++;
+    auto result = new Node(NODE_OPERATOR, match_lex_a, match_lex_b);
+    token = match_lex_b;
+    return result;
+  }
+
+  Node* parse_postfix_op() {
+    auto span_a = token->lex->span_a;
+    auto span_b = token_eof->lex->span_a;
+
+    auto end = match_postfix_op(span_a, span_b, nullptr);
+    if (!end) return nullptr;
+
+    auto match_lex_a = token;
+    auto match_lex_b = token;
+    while(match_lex_b->lex->span_a < end) match_lex_b++;
+    auto result = new Node(NODE_OPERATOR, match_lex_a, match_lex_b);
+    token = match_lex_b;
     return result;
   }
 
   //----------------------------------------
 
-  // using punctuator = Charset<"-,;:!?.()[]{}*/&#%^+<=>|~">;
-  /*
-    unary - & * + - ~ ! ++ -- sizeof alignof
-
-    ; : ...
-    ? :: . .* -> ->* ~
-    ! + - * / % ^ & |
-    = += -= *= /= %= ^= &= |=
-    == != < > <= >= <=> && ||
-    << >> <<= >>= ,
-    and or xor not bitand bitor compl
-    and_eq or_eq xor_eq not_eq
-  */
-
   Node* parse_expression() {
-    std::stack<Node*> op_stack;
-    std::stack<Node*> arg_stack;
 
-    if (auto op = parse_unary_op()) {
-      auto exp = parse_expression();
-      auto result = new Node(NODE_UNARY_EXPRESSION);
+    // FIXME there are probably other expression terminators?
+    if (token->is_eof())      return nullptr;
+    if (token->is_punct(')')) return nullptr;
+    if (token->is_punct(';')) return nullptr;
+    if (token->is_punct(',')) return nullptr;
+
+    Node* lhs = nullptr;
+
+    if (auto op = parse_prefix_op()) {
+      lhs = new Node(NODE_PREFIX_EXPRESSION);
+      lhs->append(op);
+      lhs->append(parse_expression_atom());
+    }
+    else {
+      lhs = parse_expression_atom();
+    }
+
+    if (!lhs) return nullptr;
+
+    if (auto op = parse_postfix_op()) {
+      auto result = new Node(NODE_POSTFIX_EXPRESSION);
+      result->append(lhs);
       result->append(op);
-      result->append(exp);
+      lhs = result;
+    }
+
+    if (auto op = parse_infix_op()) {
+      auto result = new Node(NODE_INFIX_EXPRESSION);
+      auto rhs = parse_expression();
+      result->append(lhs);
+      result->append(op);
+      result->append(rhs);
       return result;
     }
 
-    auto c = lex_a[0].span_a[0];
-
-    if (c == '-') {
-    }
-
-    //auto atom = parse_expression_atom();
-
-    /*
-    while(1) {
-      if (lex_a->is_eof()) break;
-      if (lex_a->is_punct(')')) break;
-      if (lex_a->is_punct(';')) break;
-
-      if (auto atom = parse_expression_atom()) {
-        arg_stack.push(atom);
-      }
-      else if (auto op = parse_operator()) {
-        op_stack.push(op);
-      }
-      else {
-        assert(false);
-        return nullptr;
-      }
-    }
-    */
-
-
-    return nullptr;
+    // this doesn't seem right...
+    return lhs;
   }
 
   //----------------------------------------
@@ -612,16 +626,18 @@ struct Parser {
   */
 
   Node* parse_external_declaration() {
-    if (lex_a->is_eof()) return nullptr;
+    if (token->is_eof()) return nullptr;
 
-    if (lex_a->is_identifier("class")) {
+    if (token->is_identifier("class")) {
       return parse_class_specifier();
     }
 
-    if (auto func = parse_function_definition()) {
+    auto specifiers = parse_specifier_list();
+
+    if (auto func = parse_function_definition(specifiers)) {
       return func;
     }
-    else if (auto decl = parse_declaration()) {
+    else if (auto decl = parse_declaration(specifiers)) {
       return decl;
     }
     else {
@@ -649,14 +665,17 @@ struct Parser {
   */
 
   Node* parse_field_declaration() {
-    if (lex_a[0].is_identifier() && lex_a[1].is_punct('(')) {
-      return parse_constructor();
+
+    auto specifiers = parse_specifier_list();
+
+    if (token[0].is_identifier() && token[1].is_punct('(')) {
+      return parse_constructor(specifiers);
     }
-    else if (lex_a[0].is_identifier() && lex_a[1].is_identifier() && lex_a[2].is_punct('(')) {
-      return parse_function_definition();
+    else if (token[0].is_identifier() && token[1].is_identifier() && token[2].is_punct('(')) {
+      return parse_function_definition(specifiers);
     }
     else {
-      return parse_declaration();
+      return parse_declaration(specifiers);
     }
   }
 
@@ -666,8 +685,8 @@ struct Parser {
     auto result = new FieldDeclarationList();
     result->ldelim = take_punct('{');
     result->append(result->ldelim);
-    while(lex_a < lex_b) {
-      if (lex_a->is_punct('}')) {
+    while(token < token_eof) {
+      if (token->is_punct('}')) {
         break;
       }
       else if (auto child = parse_access_specifier()) {
@@ -720,32 +739,45 @@ struct Parser {
   compound-statement
   */
 
-  Node* parse_function_definition() {
-    auto old_a = lex_a;
+  Node* parse_function_definition(Node* declaration_specifiers) {
 
-    auto declaration_specifiers = parse_declaration_specifiers();
-    if (!declaration_specifiers) {
-      lex_a = old_a;
+    if (token[0].is_identifier() && token[1].is_identifier() && token[2].is_punct('(')) {
+      auto type = take_identifier();
+      auto name = take_identifier();
+      auto params = parse_parameter_list();
+
+      if (token[0].is_punct(';')) {
+        assert(false);
+        return nullptr;
+      }
+      else if (token[0].is_punct('{')) {
+        auto body = parse_compound_statement();
+
+        auto result = new Node(NODE_FUNCTION_DEFINITION, nullptr, nullptr);
+        result->append(type);
+        result->append(name);
+        result->append(params);
+        result->append(body);
+        return result;
+      }
+      else {
+        assert(false);
+        return nullptr;
+      }
+
+    }
+    else {
+      assert(false);
       return nullptr;
     }
-
-    auto declarator = parse_declarator();
-    if (!declarator) {
-      lex_a = old_a;
-      return nullptr;
-    }
-
-    assert(false);
-
-    return nullptr;
   }
 
   //----------------------------------------
 
   Node* parse_identifier() {
-    if (lex_a->lexeme != LEX_IDENTIFIER) return nullptr;
-    auto result = new Node(NODE_IDENTIFIER, lex_a, lex_a + 1);
-    lex_a = lex_a + 1;
+    if (token->type != TOK_IDENTIFIER) return nullptr;
+    auto result = new Node(NODE_IDENTIFIER, token, token + 1);
+    token = token + 1;
     return result;
   }
 
@@ -756,10 +788,18 @@ struct Parser {
     result->append(take_identifier("if"));
     result->append(parse_parenthesized_expression());
     result->append(parse_statement());
-    if (lex_a[0].is_identifier("else")) {
+    if (token[0].is_identifier("else")) {
       result->append(take_identifier("else"));
       result->append(parse_statement());
     }
+    return result;
+  }
+
+  Node* parse_while_statement() {
+    auto result = new Node(NODE_WHILE_STATEMENT);
+    result->append(take_identifier("while"));
+    result->append(parse_parenthesized_expression());
+    result->append(parse_statement());
     return result;
   }
 
@@ -771,12 +811,13 @@ struct Parser {
     result->ldelim = take_punct('(');
     result->append(result->ldelim);
 
-    while(!lex_a->is_punct(')')) {
-      auto decl = parse_declaration();
+    while(!token->is_punct(')')) {
+      auto specs = parse_specifier_list();
+      auto decl = parse_declaration(specs);
       assert(decl);
       result->decls.push_back(decl);
       result->append(decl);
-      if (lex_a->is_punct(',')) {
+      if (token->is_punct(',')) {
         result->append(take_punct(','));
       }
     }
@@ -800,11 +841,11 @@ struct Parser {
   //----------------------------------------
 
   Node* parse_preproc() {
-    using pattern = Atom<LEX_PREPROC>;
+    using pattern = Atom<TOK_PREPROC>;
 
-    if (auto end = pattern::match(lex_a, lex_b, nullptr)) {
-      auto result = new Node(NODE_PREPROC, lex_a, end);
-      lex_a = end;
+    if (auto end = pattern::match(token, token_eof, nullptr)) {
+      auto result = new Node(NODE_PREPROC, token, end);
+      token = end;
       return result;
     }
 
@@ -814,23 +855,19 @@ struct Parser {
   //----------------------------------------
 
   Node* parse_statement() {
-    if (lex_a[0].is_punct('{')) {
+    if (token[0].is_punct('{')) {
       return parse_compound_statement();
     }
 
-    if (lex_a[0].is_identifier("if")) {
+    if (token[0].is_identifier("if")) {
       return parse_if_statement();
     }
 
+    auto specs = parse_specifier_list();
 
-    if (lex_a[0].is_identifier() && lex_a[1].is_identifier()) {
-      if (lex_a[2].is_punct('=')) {
-        // Declaration with initializer
-        return parse_declaration();
-      }
-      else if (lex_a[2].is_punct(';')) {
-        // Declaration without initializer
-        return parse_declaration();
+    if (token[0].is_identifier() && token[1].is_identifier()) {
+      if (token[2].is_punct('=') || token[2].is_punct(';')) {
+        return parse_declaration(specs);
       }
       else {
         assert(false);
@@ -864,49 +901,13 @@ struct Parser {
     };
     auto keyword_count = sizeof(keywords)/sizeof(keywords[0]);
     for (auto i = 0; i < keyword_count; i++) {
-      if (lex_a->is_identifier(keywords[i])) {
+      if (token->is_identifier(keywords[i])) {
         return take_identifier();
       }
     }
 
     return nullptr;
   }
-
-  //----------------------------------------
-  /*
-  LEX_IDENTIFIER  Module
-
-  LEX_PUNCT       (
-  LEX_IDENTIFIER  const
-  LEX_IDENTIFIER  char
-  LEX_PUNCT       *
-  LEX_IDENTIFIER  filename
-  LEX_PUNCT       =
-  LEX_STRING      "examples/uart/message.hex"
-  LEX_PUNCT       ,
-  LEX_IDENTIFIER  logic
-  LEX_PUNCT       <
-  LEX_INT         10
-  LEX_PUNCT       >
-  LEX_IDENTIFIER  start_addr
-  LEX_PUNCT       =
-  LEX_INT         0
-  LEX_PUNCT       )
-
-  LEX_PUNCT       {
-  LEX_IDENTIFIER  addr
-  LEX_PUNCT       =
-  LEX_IDENTIFIER  start_addr
-  LEX_PUNCT       ;
-  LEX_IDENTIFIER  readmemh
-  LEX_PUNCT       (
-  LEX_IDENTIFIER  filename
-  LEX_PUNCT       ,
-  LEX_IDENTIFIER  data
-  LEX_PUNCT       )
-  LEX_PUNCT       ;
-  LEX_PUNCT       }
-  */
 
   //----------------------------------------
 
@@ -933,12 +934,13 @@ struct Parser {
     skip_punct('<');
 
     while(1) {
-      result->append(parse_declaration());
-      if (lex_a->is_punct('>')) {
+      auto specs = parse_specifier_list();
+      result->append(parse_declaration(specs));
+      if (token->is_punct('>')) {
         skip_punct('>');
         break;
       }
-      else if (lex_a->is_punct(',')) {
+      else if (token->is_punct(',')) {
         skip_punct(',');
       }
       else {
@@ -981,9 +983,9 @@ struct Parser {
   Node* parse_translation_unit() {
     auto result = new TranslationUnit();
 
-    while(!lex_a->is_eof()) {
+    while(!token->is_eof()) {
 
-      if (Lit<"template">::match(lex_a->span_a, lex_a->span_b, nullptr)) {
+      if (Lit<"template">::match(token->lex->span_a, token_eof->lex->span_a, nullptr)) {
         result->append(parse_template_decl());
       }
       if (auto decl = parse_preproc()) {
@@ -1030,9 +1032,9 @@ struct Parser {
       Seq< AtomLit<"typeof_unqual">, Atom<'('>, typeof_specifier_argument, Atom<')'> >
     >;
 
-    if (auto end = typeof_specifier::match(lex_a, lex_b, nullptr)) {
-      result = new Node(NODE_TYPEOF_SPECIFIER, lex_a, end);
-      lex_a = end;
+    if (auto end = typeof_specifier::match(token, token_eof, nullptr)) {
+      result = new Node(NODE_TYPEOF_SPECIFIER, token, end);
+      token = end;
     }
 
     return result;
@@ -1044,9 +1046,9 @@ struct Parser {
     Node* result = nullptr;
     using typedef_name = Atom<LEX_IDENTIFIER>;
 
-    if (auto end = typedef_name::match(lex_a, lex_b, nullptr)) {
-      result = new Node(NODE_TYPEDEF_NAME, lex_a, end);
-      lex_a = end;
+    if (auto end = typedef_name::match(token, token_eof, nullptr)) {
+      result = new Node(NODE_TYPEDEF_NAME, token, end);
+      token = end;
     }
 
     return result;
@@ -1055,30 +1057,6 @@ struct Parser {
   //----------------------------------------
 
   Node* parse_type_specifier(Lexeme* a, Lexeme* b) {
-    /*
-    type-specifier:
-      void
-      char
-      short
-      int
-      long
-      float
-      double
-      signed
-      unsigned
-      _BitInt ( constant-expression )
-      bool
-      _Complex
-      _Decimal32
-      _Decimal64
-      _Decimal128
-      atomic-type-specifier
-      struct-or-union-specifier
-      enum-specifier
-      typedef-name
-      typeof-specifier
-    */
-
     return nullptr;
   }
 
@@ -1111,7 +1089,7 @@ struct Parser {
     };
     auto keyword_count = sizeof(keywords)/sizeof(keywords[0]);
     for (auto i = 0; i < keyword_count; i++) {
-      if (lex_a->is_identifier(keywords[i])) {
+      if (token->is_identifier(keywords[i])) {
         return take_identifier();
       }
     }
@@ -1147,15 +1125,22 @@ void lex_file(const std::string& path, int size, std::string& text, std::vector<
 
   const char* cursor = text_a;
   while(cursor) {
-    auto t = next_lexeme(cursor, text_b);
-    if (!t.is_gap()) {
-      lexemes.push_back(t);
-    }
-    if (t.lexeme == LEX_EOF) {
-      for (int i = 0; i < 9; i++) lexemes.push_back(t);
+    auto lex = next_lexeme(cursor, text_b);
+    if (lex.type == LEX_EOF) {
+      for (int i = 0; i < 10; i++) lexemes.push_back(lex);
       break;
     }
-    cursor = t.span_b;
+    else {
+      lexemes.push_back(lex);
+    }
+    cursor = lex.span_b;
+  }
+
+  for (auto i = 0; i < lexemes.size(); i++) {
+    auto l = &lexemes[i];
+    if (!l->is_gap()) {
+      tokens.push_back(Token(lex_to_tok(l->type), l));
+    }
   }
 }
 
@@ -1218,8 +1203,8 @@ int test_c99_peg() {
     //dump_lexemes(path, size, text, lexemes);
 
     Parser p;
-    p.lex_a = lexemes.data();
-    p.lex_b = p.lex_a + lexemes.size();
+    p.token = tokens.data();
+    p.token_eof = tokens.data() + tokens.size() - 1;
 
     auto root = p.parse_translation_unit();
     printf("\n");
