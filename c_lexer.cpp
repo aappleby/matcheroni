@@ -22,6 +22,9 @@ const char* match_lits(const char* a, const char* b, const char** lits, int lit_
   return nullptr;
 }
 
+template<typename M>
+using ticked = Seq<Opt<Atom<'\''>>, M>;
+
 //------------------------------------------------------------------------------
 
 struct LexemeTableEntry {
@@ -112,9 +115,6 @@ const char* match_newline(const char* a, const char* b, void* ctx) {
   return match::match(a, b, ctx);
 }
 
-template<typename M>
-using ticked = Seq<Opt<Atom<'\''>>, M>;
-
 //------------------------------------------------------------------------------
 // Basic UTF8 support
 
@@ -193,6 +193,7 @@ const char* match_keyword(const char* a, const char* b, void* ctx) {
 const char* match_int(const char* a, const char* b, void* ctx) {
   using digit                = Range<'0', '9'>;
   using nonzero_digit        = Range<'1', '9'>;
+
   using decimal_constant     = Seq<nonzero_digit, Any<ticked<digit>>>;
 
   using hexadecimal_prefix         = Oneof<Lit<"0x">, Lit<"0X">>;
@@ -290,8 +291,8 @@ const char* match_float(const char* a, const char* b, void* ctx) {
   >;
 
   using digit = Range<'0', '9'>;
-  using ticked_digit   = Seq<Opt<Atom<'\''>>, digit>;
-  using digit_sequence = Seq<digit, Any<ticked_digit>>;
+
+  using digit_sequence = Seq<digit, Any<ticked<digit>>>;
 
   using fractional_constant = Oneof<
     Seq<Opt<digit_sequence>, Atom<'.'>, digit_sequence>,
@@ -419,27 +420,27 @@ const char* match_raw_string_literal(const char* a, const char* b, void* ctx) {
   //using d_char          = NotAtom<' ', '(', ')', '\\', '\t', '\v', '\f', '\n'>;
   using d_char          = NotAtom<' ', '(', ')', '\t', '\v', '\f', '\n'>;
   using d_char_sequence = Some<d_char>;
+  using backref_type    = Opt<d_char_sequence>;
 
-  using r_terminator    = Seq<Atom<')'>, MatchBackref<char>, Atom<'"'>>;
-  using r_char          = Seq<Not<r_terminator>, AnyAtom<char>>;
+  using r_terminator    = Seq<Atom<')'>, MatchBackref<backref_type>, Atom<'"'>>;
+  using r_char          = Seq<Not<r_terminator>, AnyAtom>;
   using r_char_sequence = Some<r_char>;
 
   using raw_string_literal = Seq<
     Opt<encoding_prefix>,
     Atom<'R'>,
     Atom<'"'>,
-    StoreBackref<Opt<d_char_sequence>>,
+    StoreBackref<backref_type>,
     Atom<'('>,
     Opt<r_char_sequence>,
     Atom<')'>,
-    MatchBackref<char>,
+    MatchBackref<backref_type>,
     Atom<'"'>
   >;
 
   // Raw strings require matching backreferences, so we squish that into the
   // grammar by passing the backreference in the context pointer.
-  Backref<char> backref;
-  return raw_string_literal::match(a, b, &backref);
+  return raw_string_literal::match(a, b, nullptr);
 }
 
 const char* match_string(const char* a, const char* b, void* ctx) {
@@ -550,7 +551,7 @@ const char* match_comment(const char* a, const char* b, void* ctx) {
 const char* match_nested_comment(const char* a, const char* b, void* ctx) {
   using ldelim = Lit<"/*">;
   using rdelim = Lit<"*/">;
-  using item   = Oneof<Ref<match_nested_comment>, AnyAtom<char>>;
+  using item   = Oneof<Ref<match_nested_comment>, AnyAtom>;
   using match  = Seq<ldelim, Any<item>, rdelim>;
   return match::match(a, b, ctx);
 }

@@ -219,7 +219,7 @@ using conditional_escape_sequence_char = Seq<
     simple_escape_sequence_char,
     Chars<'N','o','u','U','x'>,
   >,
-  AnyAtom<char>
+  AnyAtom
 >;
 
 using floating_point_literal = Oneof<

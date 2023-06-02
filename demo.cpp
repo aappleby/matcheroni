@@ -8,6 +8,7 @@
 #include <memory.h>
 #include <chrono>
 #include <set>
+#include <map>
 #include <type_traits>
 
 using namespace matcheroni;
@@ -122,6 +123,23 @@ std::vector<std::string> negative_test_cases = {
   "encoding-issues-", // embedded nuls
 };
 
+std::map<LexemeType, uint32_t> lextype_to_color = {
+  {LEX_INVALID    , 0x0000FF},
+  {LEX_SPACE      , 0x804040},
+  {LEX_NEWLINE    , 0x404080},
+  {LEX_STRING     , 0x4488AA},
+  {LEX_IDENTIFIER , 0xCCCC40},
+  {LEX_COMMENT    , 0x66AA66},
+  {LEX_PREPROC    , 0xCC88CC},
+  {LEX_FLOAT      , 0xFF88AA},
+  {LEX_INT        , 0xFF8888},
+  {LEX_PUNCT      , 0x808080},
+  {LEX_CHAR       , 0x44DDDD},
+  {LEX_SPLICE     , 0x00CCFF},
+  {LEX_FORMFEED   , 0xFF00FF},
+  {LEX_EOF        , 0xFF00FF},
+};
+
 //------------------------------------------------------------------------------
 
 bool test_lex(const std::string& path, const std::string& text, bool echo) {
@@ -151,21 +169,19 @@ bool test_lex(const std::string& path, const std::string& text, bool echo) {
         exit(1);
       }
 
-      /*
       if (echo) {
-        set_color(lexeme.color);
-        if (lexeme.match == match_newline) {
+        set_color(lextype_to_color[lexeme.type]);
+        if (lexeme.type == LEX_NEWLINE) {
           printf("\\n");
           fwrite(cursor, 1, lexeme.span_b - cursor, stdout);
         }
-        else if (lexeme.match == match_space) {
+        else if (lexeme.type == LEX_SPACE) {
           for (int i = 0; i < (lexeme.span_b - cursor); i++) putc('.', stdout);
         }
         else {
           fwrite(cursor, 1, lexeme.span_b - cursor, stdout);
         }
       }
-      */
       cursor = lexeme.span_b;
     }
     else {
@@ -226,12 +242,11 @@ void test_lex(const std::string& path, size_t size, bool echo) {
   fclose(f);
 
   bool skip = false;
+  // Filter out all the header files that are actually assembly
   if (text.find("__ASSEMBLY__") != std::string::npos) skip = true;
   if (text.find("__ASSEMBLER__") != std::string::npos) skip = true;
   if (text.find("@function") != std::string::npos) skip = true;
   if (text.find("@progbits") != std::string::npos) skip = true;
-
-  // Stuff with ".macro" is also assembler
   if (text.find(".macro") != std::string::npos) skip = true;
 
   if (skip) {
@@ -251,34 +266,8 @@ extern int test_c99_peg();
 int main(int argc, char** argv) {
   printf("Matcheroni Demo\n");
 
-  test_c99_peg();
-  exit(0);
-
-  /*
-  {
-    using text_matcher = matcher<char>;
-    text_matcher m[] = {
-      Opt<Atom<'a'>>::match,
-      Atom<'b'>::match,
-      Atom<'c'>::match,
-    };
-
-    text_matcher* a = m;
-    text_matcher* b = m + 3;
-
-    using M = Oneof<
-      Atom< Opt<Atom<'a'>>::match >,
-      Atom< Atom<'b'>::match >
-    >;
-
-    auto end = M::match(a, b, nullptr);
-
-    printf("matched %ld\n", end - a);
-    printf("a   %p\n", a);
-    printf("b   %p\n", b);
-    printf("end %p\n", end);
-  }
-  */
+  //test_c99_peg();
+  //exit(0);
 
   using rdit = std::filesystem::recursive_directory_iterator;
   const char* base_path = argc > 1 ? argv[1] : ".";

@@ -93,9 +93,7 @@ struct Atom<C> {
   }
 };
 
-template<typename _atom>
 struct AnyAtom {
-
   template<typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
     if (!a || a == b) return nullptr;
@@ -344,44 +342,36 @@ struct Ref {
 };
 
 //------------------------------------------------------------------------------
-// To use backreferences, a matcher above these ones must pass a pointer to a
-// Backref object in the ctx parameter.
-
-template<typename atom>
-struct Backref {
-  const atom* start;
-  int size;
-};
 
 template<typename P>
 struct StoreBackref {
 
+  inline static const void* start;
+  inline static int size;
+
   template<typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
     auto c = P::match(a, b, ctx);
-    auto ref = (Backref<atom>*)ctx;
-    if (!c || !ref) return nullptr;
-
-    ref->start = a;
-    ref->size = int(c - a);
+    if (!c) return nullptr;
+    start = a;
+    size = int(c - a);
     return c;
   }
-
 };
 
-template<typename _atom>
+template<typename P>
 struct MatchBackref {
 
   template<typename atom>
   static const atom* match(const atom* a, const atom* b, void* ctx) {
     if (!a || a == b) return nullptr;
-    auto ref = (Backref<atom>*)ctx;
-    if (!ref) return nullptr;
-    if (a + ref->size > b) return nullptr;
-    for (int i = 0; i < ref->size; i++) {
-      if(!atom_eq(a[i], ref->start[i])) return nullptr;
+    const atom* start = (const atom*)(StoreBackref<P>::start);
+    int size = StoreBackref<P>::size;
+    if (a + size > b) return nullptr;
+    for (int i = 0; i < size; i++) {
+      if(!atom_eq(a[i], start[i])) return nullptr;
     }
-    return a + ref->size;
+    return a + size;
   }
 };
 
