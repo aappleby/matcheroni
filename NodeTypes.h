@@ -53,76 +53,11 @@ struct CompoundStatement : public Node {
 
 //------------------------------------------------------------------------------
 
-struct Constructor : public Node {
-  Constructor(Node* _specs, Node* _name, Node* _params, Node* _body)
-  : Node(NODE_CONSTRUCTOR, nullptr, nullptr) {
-    append(_specs);
-    append(_name);
-    append(_params);
-    append(_body);
-    this->_specs  = _specs;
-    this->_name   = _name;
-    this->_params = _params;
-    this->_body   = _body;
-  }
-
-  Node* _specs;
-  Node* _name;
-  Node* _params;
-  Node* _body;
-};
-
-//------------------------------------------------------------------------------
-
-struct Declaration : public Node {
-  Declaration(Node* _specs, Node* _decltype, Node* _declname, Node* _declop, Node* _declinit)
-  : Node(NODE_DECLARATION, nullptr, nullptr) {
-    append(_specs);
-    append(_decltype);
-    append(_declname);
-    append(_declop);
-    append(_declinit);
-    this->_specs    = _specs;
-    this->_decltype = _decltype;
-    this->_declname = _declname;
-    this->_declop   = _declop;
-    this->_declinit = _declinit;
-  }
-
-  Declaration(Node* _specs, Node* _decltype, Node* _declname)
-  : Node(NODE_DECLARATION, nullptr, nullptr) {
-    append(_specs);
-    append(_decltype);
-    append(_declname);
-    this->_specs    = _specs;
-    this->_decltype = _decltype;
-    this->_declname = _declname;
-  }
-
-  Node* _specs    = nullptr;
-  Node* _decltype = nullptr;
-  Node* _declname = nullptr;
-  Node* _declop   = nullptr;
-  Node* _declinit = nullptr;
-};
-
-//------------------------------------------------------------------------------
-
-struct FieldDeclarationList : public Node {
-  FieldDeclarationList() : Node(NODE_FIELD_DECLARATION_LIST, nullptr, nullptr) {}
+struct NodeList : public Node {
+  NodeList(NodeType type) : Node(type, nullptr, nullptr) {}
 
   Node* ldelim = nullptr;
-  std::vector<Node*> decls;
-  Node* rdelim = nullptr;
-};
-
-//------------------------------------------------------------------------------
-
-struct ParameterList : public Node {
-  ParameterList() : Node(NODE_PARAMETER_LIST, nullptr, nullptr) {}
-
-  Node* ldelim = nullptr;
-  std::vector<Node*> decls;
+  std::vector<Node*> items;
   Node* rdelim = nullptr;
 };
 

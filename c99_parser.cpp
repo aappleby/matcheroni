@@ -182,30 +182,25 @@ struct Parser {
 
   //----------------------------------------
 
-  Node* take_lexeme() {
-    auto result = new Node(tok_to_node(token->type), token, token + 1);
-    token = token + 1;
+  Node* take_lexemes(NodeType type, int count) {
+    auto result = new Node(type, token, token + count);
+    token = token + count;
     return result;
   }
 
   Node* take_punct() {
     assert (token->is_punct());
-    return take_lexeme();
-  }
-
-  void skip_punct(char punct) {
-    assert (token->is_punct(punct));
-    token++;
+    return take_lexemes(NODE_PUNCT, 1);
   }
 
   Node* take_punct(char punct) {
     assert (token->is_punct(punct));
-    return take_lexeme();
+    return take_lexemes(NODE_PUNCT, 1);
   }
 
   Node* take_opt_punct(char punct) {
     if (token->is_punct(punct)) {
-      return take_lexeme();
+      return take_lexemes(NODE_PUNCT, 1);
     }
     else {
       return nullptr;
@@ -214,12 +209,12 @@ struct Parser {
 
   Node* take_identifier(const char* identifier = nullptr) {
     assert(token->is_identifier(identifier));
-    return take_lexeme();
+    return take_lexemes(NODE_IDENTIFIER, 1);
   }
 
   Node* take_constant() {
     assert(token->is_constant());
-    return take_lexeme();
+    return take_lexemes(NODE_CONSTANT, 1);
   }
 
   //----------------------------------------
@@ -287,9 +282,31 @@ struct Parser {
     );
   }
 
+  Node* parse_struct_specifier() {
+
+    using decl = Seq<AtomLit<"struct">, Atom<LEX_IDENTIFIER>, Atom<';'>>;
+
+    if (auto end = match<decl>()) {
+      return new ClassDeclaration(
+        take_identifier("struct"),
+        take_identifier(),
+        take_punct(';')
+      );
+    }
+
+    return new ClassDefinition(
+      take_identifier("struct"),
+      take_identifier(),
+      parse_field_declaration_list(),
+      take_punct(';')
+    );
+  }
+
   //----------------------------------------
 
   Node* parse_compound_statement() {
+    if (!token->is_punct('{')) return nullptr;
+
     auto result = new CompoundStatement();
 
     result->ldelim = take_punct('{');
@@ -383,6 +400,7 @@ struct Parser {
 
   */
 
+  /*
   Node* parse_constructor(Node* _specs) {
 
     // Constructor
@@ -402,6 +420,7 @@ struct Parser {
 
     return new Constructor(_specs, _decl, _params, _body);
   }
+  */
 
   //----------------------------------------
   /*
@@ -411,20 +430,14 @@ struct Parser {
     static_assert-declaration
     attribute-declaration
   */
-  Node* parse_declaration(Node* declaration_specifiers) {
+#if 0
+  Node* parse_declaration(Node* declaration_specifiers, const char rdelim) {
     // not following the spec here right now
-
-    auto _decltype = parse_decltype();
-    auto _declname = parse_identifier();
-
-    _decltype->field = "type";
-    _declname->field = "name";
 
     if (token->is_punct('=')) {
       // Var declaration with init
       auto _declop   = take_punct();
-      auto _declinit = parse_expression();
-      //auto _semi     = take_opt_punct(';');
+      auto _declinit = parse_expression(rdelim);
 
       assert(_declop);
       assert(_declinit);
@@ -439,21 +452,36 @@ struct Parser {
         _declname,
         _declop,
         _declinit
-        //,_semi
       );
     }
     else if (token->is_punct('(')) {
       // Function declaration or definition
-      assert(false);
-      return nullptr;
+
+      auto params = parse_parameter_list();
+
+      if (auto body = parse_compound_statement()) {
+        auto result = new Node(NODE_FUNCTION_DEFINITION);
+        result->append(_decltype);
+        result->append(_declname);
+        result->append(params);
+        result->append(body);
+        return result;
+      }
+      else {
+        auto result = new Node(NODE_FUNCTION_DECLARATION);
+        result->append(_decltype);
+        result->append(_declname);
+        result->append(params);
+        result->append(take_punct(';'));
+        return result;
+      }
     }
     else {
       // Var declaration without init
-      //auto _semi = take_opt_punct(';');
-      //if (_semi) _semi->field = "semi";
       return new Declaration(declaration_specifiers, _decltype, _declname /*, _semi*/);
     }
   }
+#endif
 
   //----------------------------------------
 
@@ -498,35 +526,39 @@ struct Parser {
   //----------------------------------------
 
   Node* parse_decltype() {
-    // FIXME placeholder
-    if (token->type != TOK_IDENTIFIER) return nullptr;
-    auto result = new Node(NODE_DECLTYPE, token, token + 1);
-    token = token + 1;
-    return result;
-  }
+    if (token[0].type != TOK_IDENTIFIER) return nullptr;
 
-  //----------------------------------------
+    Node* type = nullptr;
 
-  Node* parse_expression_atom() {
-    if (token->is_punct('(')) {
-      return parse_parenthesized_expression();
+    // FIXME do some proper type parsing here
+    if (token[1].is_punct('*')) {
+      type = new Node(NODE_DECLTYPE, &token[0], &token[2]);
+      token += 2;
+    }
+    else {
+      type = new Node(NODE_DECLTYPE, &token[0], &token[1]);
+      token += 1;
     }
 
-    if (token->is_constant()) {
-      return take_constant();
-    }
+    if (token[0].is_punct('<')) {
+      auto result = new Node(NODE_TEMPLATED_TYPE, nullptr, nullptr);
+      result->append(type);
+      result->append(parse_expression_list(NODE_ARGUMENT_LIST, '<', ',', '>'));
 
-    if (token[0].is_identifier()) {
-      if (token[1].is_punct('(')) {
-        return parse_function_call();
+      if (token[0].is_punct(':') && token[1].is_punct(':')) {
+        auto result2 = new Node(NODE_SCOPED_TYPE);
+        result2->append(result);
+        result2->append(take_lexemes(NODE_OPERATOR, 2));
+        result2->append(parse_decltype());
+        return result2;
       }
-      else {
-        return take_identifier();
-      }
-    }
 
-    assert(false);
-    return nullptr;
+
+      return result;
+    }
+    else {
+      return type;
+    }
   }
 
   //----------------------------------------
@@ -594,45 +626,106 @@ struct Parser {
 
   //----------------------------------------
 
-  Node* parse_expression() {
+  Node* parse_expression_rhs(Node* lhs, const char rdelim) {
+    if (token->is_eof())         return lhs;
+    if (token->is_punct(')'))    return lhs;
+    if (token->is_punct(';'))    return lhs;
+    if (token->is_punct(','))    return lhs;
+    if (token->is_punct(rdelim)) return lhs;
+
+    if (auto op = parse_postfix_op()) {
+      auto result = new Node(NODE_POSTFIX_EXPRESSION);
+      result->append(lhs);
+      result->append(op);
+      return parse_expression_rhs(result, rdelim);
+    }
+
+    if (auto op = parse_infix_op()) {
+      auto result = new Node(NODE_INFIX_EXPRESSION);
+      auto rhs = parse_expression(rdelim);
+      result->append(lhs);
+      result->append(op);
+      result->append(rhs);
+      return parse_expression_rhs(result, rdelim);
+    }
+
+    if (token[0].is_punct('[')) {
+      auto result = new Node(NODE_ARRAY_EXPRESSION);
+      result->append(lhs);
+      result->append(take_punct('['));
+      result->append(parse_expression(']'));
+      result->append(take_punct(']'));
+      return parse_expression_rhs(result, rdelim);
+    }
+
+    // Nothing found to continue the expression with?
+    assert(false);
+    return lhs;
+  }
+
+  //----------------------------------------
+
+  Node* parse_expression_lhs(const char rdelim) {
+
+    // Dirty hackkkkk - explicitly recognize templated function calls as
+    // expression atoms
+    if (token[0].is_identifier() &&
+        token[1].is_punct('<') &&
+        (token[2].is_identifier() || token[2].is_constant()) &&
+        token[3].is_punct('>')) {
+      auto func = take_identifier();
+      auto params1 = parse_expression_list(NODE_TEMPLATE_PARAMETER_LIST, '<', ',', '>');
+      auto params2 = parse_expression_list(NODE_ARGUMENT_LIST, '(', ',', ')');
+
+      auto result = new Node(NODE_CALL_EXPRESSION, nullptr, nullptr);
+      result->append(func);
+      result->append(params1);
+      result->append(params2);
+      return result;
+    }
+
+    if (auto op = parse_prefix_op()) {
+      auto result = new Node(NODE_PREFIX_EXPRESSION);
+      result->append(op);
+      result->append(parse_expression_lhs(rdelim));
+      return result;
+    }
+
+    if (token->is_punct('(')) {
+      return parse_parenthesized_expression();
+    }
+
+    if (token->is_constant()) {
+      return take_constant();
+    }
+
+    if (token[0].is_identifier() && token[1].is_punct('(')) {
+      return parse_function_call();
+    }
+
+    if (token[0].is_identifier()) {
+      return take_identifier();
+    }
+
+    assert(false);
+    return nullptr;
+  }
+
+  //----------------------------------------
+
+  Node* parse_expression(const char rdelim) {
 
     // FIXME there are probably other expression terminators?
     if (token->is_eof())      return nullptr;
     if (token->is_punct(')')) return nullptr;
     if (token->is_punct(';')) return nullptr;
     if (token->is_punct(',')) return nullptr;
+    if (token->is_punct(rdelim)) return nullptr;
 
-    Node* lhs = nullptr;
-
-    if (auto op = parse_prefix_op()) {
-      lhs = new Node(NODE_PREFIX_EXPRESSION);
-      lhs->append(op);
-      lhs->append(parse_expression_atom());
-    }
-    else {
-      lhs = parse_expression_atom();
-    }
-
+    Node* lhs = parse_expression_lhs(rdelim);
     if (!lhs) return nullptr;
 
-    if (auto op = parse_postfix_op()) {
-      auto result = new Node(NODE_POSTFIX_EXPRESSION);
-      result->append(lhs);
-      result->append(op);
-      lhs = result;
-    }
-
-    if (auto op = parse_infix_op()) {
-      auto result = new Node(NODE_INFIX_EXPRESSION);
-      auto rhs = parse_expression();
-      result->append(lhs);
-      result->append(op);
-      result->append(rhs);
-      return result;
-    }
-
-    // this doesn't seem right...
-    return lhs;
+    return parse_expression_rhs(lhs, rdelim);
   }
 
   //----------------------------------------
@@ -643,23 +736,63 @@ struct Parser {
   */
 
   Node* parse_external_declaration() {
-    if (token->is_eof()) return nullptr;
+    if (token->is_eof()) {
+      return nullptr;
+    }
 
     if (token->is_identifier("class")) {
       return parse_class_specifier();
     }
 
-    auto specifiers = parse_specifier_list();
-
-    if (auto func = parse_function_definition(specifiers)) {
-      return func;
+    if (token->is_identifier("struct")) {
+      return parse_struct_specifier();
     }
-    else if (auto decl = parse_declaration(specifiers)) {
+
+    if (auto decl = parse_declaration(';')) {
       return decl;
     }
-    else {
-      return nullptr;
+
+    return nullptr;
+  }
+
+  //----------------------------------------
+
+  Node* parse_enum_declaration() {
+    if (!token[0].is_identifier("enum")) return nullptr;
+
+    Node* result = new Node(NODE_ENUM_DECLARATION);
+
+    result->append(take_identifier("enum"));
+
+    if (token[0].is_identifier("class")) {
+      result->append(take_identifier("class"));
     }
+
+    if (token[0].is_identifier()) {
+      result->append(take_identifier());
+    }
+
+    if (token[0].is_punct(':')) {
+      result->append(take_punct(':'));
+      result->append(parse_decltype());
+    }
+
+    if (token[0].is_punct('{')) {
+      result->append(parse_expression_list(NODE_ENUMERATOR_LIST, '{', ',', '}'));
+    }
+
+    // this is the weird enum {} blah;
+    if (token[0].is_identifier()) {
+      auto result2 = new Node(NODE_DECLARATION);
+      result2->append(result);
+      result2->append(take_identifier());
+      result2->append(take_punct(';'));
+      return result2;
+    }
+
+    result->append(take_punct(';'));
+
+    return result;
   }
 
   //----------------------------------------
@@ -681,44 +814,110 @@ struct Parser {
     ),
   */
 
-  Node* parse_field_declaration() {
+  Node* parse_declaration(const char rdelim) {
+    auto result = new Node(NODE_INVALID);
 
-    auto specifiers = parse_specifier_list();
+    bool is_constructor = false;
+    bool has_type = false;
+    bool has_params = false;
+    bool has_body = false;
+    bool has_init = false;
+
+    result->append(parse_specifier_list());
+
+    if (token[0].is_identifier("enum")) {
+      return parse_enum_declaration();
+    }
+
 
     if (token[0].is_identifier() && token[1].is_punct('(')) {
-      return parse_constructor(specifiers);
-    }
-    else if (token[0].is_identifier() && token[1].is_identifier() && token[2].is_punct('(')) {
-      return parse_function_definition(specifiers);
+      is_constructor = true;
+      has_type = false;
+      result->append(parse_identifier());
     }
     else {
-      auto decl = parse_declaration(specifiers);
-      auto semi = take_punct(';');
-      auto result = new Node(NODE_DECLARATION_STATEMENT, nullptr, nullptr);
-      result->append(decl);
-      result->append(semi);
-      return result;
+      // Need a better way to handle this
+      auto n1 = parse_decltype();
+
+      if (token[0].is_punct('=')) {
+        has_type = false;
+        n1->node_type = NODE_IDENTIFIER;
+        result->append(n1);
+      }
+      else {
+        has_type = true;
+        result->append(n1);
+        result->append(parse_identifier());
+      }
     }
+
+    if (token[0].is_punct('[')) {
+      result->append(take_punct('['));
+      result->append(parse_expression(']'));
+      result->append(take_punct(']'));
+    }
+
+    if (token[0].is_punct('(')) {
+      has_params = true;
+      result->append(parse_parameter_list());
+      result->append(parse_specifier_list());
+    }
+
+    if (is_constructor) {
+      result->append(parse_initializer_list());
+    }
+
+    if (token[0].is_punct('{')) {
+      has_body = true;
+      result->append(parse_compound_statement());
+    }
+
+    if (token[0].is_punct('=')) {
+      has_init = true;
+      result->append(take_punct('='));
+      result->append(parse_expression(rdelim));
+    }
+
+    if (!has_type) {
+      result->node_type = NODE_INFIX_EXPRESSION;
+    }
+    else if (is_constructor) {
+      result->node_type = NODE_CONSTRUCTOR;
+    }
+    else if (has_params && has_body) {
+      result->node_type = NODE_FUNCTION_DEFINITION;
+    }
+    else if (has_params) {
+      result->node_type = NODE_FUNCTION_DECLARATION;
+    }
+    else {
+      assert(!has_body);
+      result->node_type = NODE_DECLARATION;
+    }
+
+    return result;
   }
 
   //----------------------------------------
 
   Node* parse_field_declaration_list() {
-    auto result = new FieldDeclarationList();
+    auto result = new NodeList(NODE_FIELD_DECLARATION_LIST);
     result->ldelim = take_punct('{');
     result->append(result->ldelim);
-    while(token < token_eof) {
-      if (token->is_punct('}')) {
-        break;
-      }
-      else if (auto child = parse_access_specifier()) {
+
+    while(token < token_eof && !token->is_punct('}')) {
+      if (auto child = parse_access_specifier()) {
         result->append(child);
       }
-      else if (auto child = parse_field_declaration()) {
+      else if (auto child = parse_declaration(';')) {
         result->append(child);
-        result->decls.push_back(child);
+        result->items.push_back(child);
+        if (token[0].is_punct(';')) {
+          result->append(take_punct(';'));
+        }
       }
     }
+
     result->rdelim = take_punct('}');
     result->append(result->rdelim);
     return result;
@@ -727,77 +926,15 @@ struct Parser {
   //----------------------------------------
 
   Node* parse_function_call() {
+    if (!token[0].is_identifier() || !token[1].is_punct('(')) return nullptr;
 
     auto func = take_identifier();
-    auto params = parse_argument_list();
+    auto params = parse_expression_list(NODE_ARGUMENT_LIST, '(', ',', ')');
 
     auto result = new Node(NODE_CALL_EXPRESSION, nullptr, nullptr);
     result->append(func);
     result->append(params);
     return result;
-  }
-
-  //----------------------------------------
-  /*
-  (6.7.6) direct-declarator:
-    identifier attribute-specifier-sequenceopt
-    ( declarator )
-    array-declarator attribute-specifier-sequenceopt
-    function-declarator attribute-specifier-sequenceopt
-
-  (6.7.6) function-declarator:
-    direct-declarator ( parameter-type-listopt )
-  */
-
-  Node* parse_function_declarator() {
-    return nullptr;
-  }
-
-  //----------------------------------------
-  /*
-  using function_definition = Seq<
-    Opt<attribute_specifier_sequence>,
-    declaration_specifiers,
-    declarator,
-    function_body
-  >;
-  (6.9.1) function-definition:
-  attribute-specifier-sequenceopt declaration-specifiers declarator function-body
-  (6.9.1) function-body:
-  compound-statement
-  */
-
-  Node* parse_function_definition(Node* declaration_specifiers) {
-
-    if (token[0].is_identifier() && token[1].is_identifier() && token[2].is_punct('(')) {
-      auto type = take_identifier();
-      auto name = take_identifier();
-      auto params = parse_parameter_list();
-
-      if (token[0].is_punct(';')) {
-        assert(false);
-        return nullptr;
-      }
-      else if (token[0].is_punct('{')) {
-        auto body = parse_compound_statement();
-
-        auto result = new Node(NODE_FUNCTION_DEFINITION, nullptr, nullptr);
-        result->append(type);
-        result->append(name);
-        result->append(params);
-        result->append(body);
-        return result;
-      }
-      else {
-        assert(false);
-        return nullptr;
-      }
-
-    }
-    else {
-      assert(false);
-      return nullptr;
-    }
   }
 
   //----------------------------------------
@@ -831,19 +968,29 @@ struct Parser {
     return result;
   }
 
+  Node* parse_return_statement() {
+    auto ret = take_identifier();
+    auto val = parse_expression(';');
+    auto semi = take_punct(';');
+    auto result = new Node(NODE_RETURN_STATEMENT, nullptr, nullptr);
+    result->append(ret);
+    result->append(val);
+    result->append(semi);
+    return result;
+  }
+
   //----------------------------------------
 
   Node* parse_parameter_list() {
-    auto result = new ParameterList();
+    auto result = new NodeList(NODE_PARAMETER_LIST);
 
     result->ldelim = take_punct('(');
     result->append(result->ldelim);
 
     while(!token->is_punct(')')) {
-      auto specs = parse_specifier_list();
-      auto decl = parse_declaration(specs);
+      auto decl = parse_declaration(',');
       assert(decl);
-      result->decls.push_back(decl);
+      result->items.push_back(decl);
       result->append(decl);
       if (token->is_punct(',')) {
         result->append(take_punct(','));
@@ -858,30 +1005,10 @@ struct Parser {
 
   //----------------------------------------
 
-  Node* parse_argument_list() {
-    auto result = new Node(NODE_ARGUMENT_LIST);
-
-    result->append(take_punct('('));
-
-    while(!token->is_punct(')')) {
-      auto exp = parse_expression();
-      result->append(exp);
-      if (token->is_punct(',')) {
-        result->append(take_punct(','));
-      }
-    }
-
-    result->append(take_punct(')'));
-
-    return result;
-  }
-
-  //----------------------------------------
-
   Node* parse_parenthesized_expression() {
     auto result = new Node(NODE_PARENTHESIZED_EXPRESSION);
     result->append(take_punct('('));
-    result->append(parse_expression());
+    result->append(parse_expression(')'));
     result->append(take_punct(')'));
     return result;
   }
@@ -902,6 +1029,82 @@ struct Parser {
 
   //----------------------------------------
 
+  Node* parse_case_statement() {
+    if (!token[0].is_case_label()) return nullptr;
+
+    Node* result = new Node(NODE_CASE_STATEMENT);
+
+    if (token[0].is_identifier("case")) {
+      result->append(take_identifier());
+      result->append(parse_expression(':'));
+      result->append(take_punct(':'));
+    }
+    else if (token[0].is_identifier("default")) {
+      result->append(take_identifier());
+      result->append(take_punct(':'));
+    }
+    else {
+      assert(false);
+      return nullptr;
+    }
+
+    while (!token[0].is_case_label() && !token[0].is_punct('}')) {
+      result->append(parse_statement());
+    }
+    return result;
+  }
+
+  //----------------------------------------
+
+  Node* parse_switch_statement() {
+    if (!token[0].is_identifier("switch")) return nullptr;
+
+    Node* result = new Node(NODE_SWITCH_STATEMENT);
+
+    result->append(take_identifier("switch"));
+    result->append(parse_expression_list(NODE_ARGUMENT_LIST, '(', ',', ')'));
+    result->append(take_punct('{'));
+
+    while(!token[0].is_punct('}')) {
+      result->append(parse_case_statement());
+    }
+
+    result->append(take_punct('}'));
+    return result;
+  }
+
+  //----------------------------------------
+
+  Node* parse_declaration_or_expression(char rdelim) {
+    auto result1 = parse_declaration(rdelim);
+    if (result1) return result1;
+    return parse_expression(rdelim);
+  }
+
+
+  //----------------------------------------
+
+  Node* parse_for_statement() {
+    if (!token[0].is_identifier("for")) return nullptr;
+
+    auto result = new Node(NODE_FOR_STATEMENT);
+    result->append(take_identifier("for"));
+    result->append(take_punct('('));
+    result->append(parse_declaration_or_expression(';'));
+    result->append(take_punct(';'));
+    result->append(parse_expression(';'));
+    result->append(take_punct(';'));
+    result->append(parse_expression(')'));
+    result->append(take_punct(')'));
+    result->append(parse_statement());
+
+    result->dump_tree();
+
+    return result;
+  }
+
+  //----------------------------------------
+
   Node* parse_statement() {
     if (token[0].is_punct('{')) {
       return parse_compound_statement();
@@ -911,25 +1114,56 @@ struct Parser {
       return parse_if_statement();
     }
 
+    if (token[0].is_identifier("while")) {
+      return parse_while_statement();
+    }
+
+    if (token[0].is_identifier("for")) {
+      return parse_for_statement();
+    }
+
     if (token[0].is_identifier("return")) {
-      auto ret = take_identifier();
-      auto val = parse_expression();
-      auto semi = take_punct(';');
-      auto result = new Node(NODE_RETURN_STATEMENT, nullptr, nullptr);
-      result->append(ret);
-      result->append(val);
-      result->append(semi);
+      return parse_return_statement();
+    }
+
+    if (token[0].is_identifier("switch")) {
+      return parse_switch_statement();
+    }
+
+    if (token[0].is_identifier() && token[1].is_identifier()) {
+      auto result = new Node(NODE_DECLARATION_STATEMENT, nullptr, nullptr);
+      result->append(parse_declaration(';'));
+      result->append(take_punct(';'));
       return result;
     }
 
-    auto specs = parse_specifier_list();
+    // Dirty hack
+    if (token[0].is_identifier() &&
+        token[1].is_punct('<') &&
+        (token[2].is_identifier() || token[2].is_constant()) &&
+        token[3].is_punct('>') &&
+        token[4].is_identifier()) {
+      auto result = new Node(NODE_DECLARATION_STATEMENT, nullptr, nullptr);
+      result->append(parse_declaration(';'));
+      result->append(take_punct(';'));
+      return result;
+    }
 
+    // Must be expression statement
+    auto exp = parse_expression(';');
+    auto semi = take_punct(';');
+    auto result = new Node(NODE_EXPRESSION_STATEMENT, nullptr, nullptr);
+    result->append(exp);
+    result->append(semi);
+    return result;
+
+#if 0
     if (token[0].is_identifier()) {
       auto end = match_assign_op(token[1].lex->span_a, token_eof->lex->span_a, nullptr);
       if (end) {
         auto lhs  = take_identifier();
         auto op   = parse_assignment_op();
-        auto val  = parse_expression();
+        auto val  = parse_expression(';');
         auto semi = take_punct(';');
 
         auto result = new Node(NODE_ASSIGNMENT_STATEMENT, nullptr, nullptr);
@@ -940,14 +1174,10 @@ struct Parser {
         return result;
       }
       else if (token[1].is_identifier()) {
-        if (token[2].is_punct('=') || token[2].is_punct(';')) {
-          auto decl = parse_declaration(specs);
-          auto semi = take_punct(';');
-          auto result = new Node(NODE_DECLARATION_STATEMENT, nullptr, nullptr);
-          result->append(decl);
-          result->append(semi);
-          return result;
-        }
+        auto result = new Node(NODE_DECLARATION_STATEMENT, nullptr, nullptr);
+        result->append(parse_declaration(';'));
+        result->append(take_punct(';'));
+        return result;
       }
       else if (token[1].is_punct('(')) {
         auto call = parse_function_call();
@@ -957,10 +1187,24 @@ struct Parser {
         result->append(semi);
         return result;
       }
+      else {
+        auto exp = parse_expression(';');
+        auto semi = take_punct(';');
+        auto result = new Node(NODE_EXPRESSION_STATEMENT, nullptr, nullptr);
+        result->append(exp);
+        result->append(semi);
+        return result;
+      }
     }
-
-    assert(false);
-    return nullptr;
+    else {
+      auto exp = parse_expression(';');
+      auto semi = take_punct(';');
+      auto result = new Node(NODE_EXPRESSION_STATEMENT, nullptr, nullptr);
+      result->append(exp);
+      result->append(semi);
+      return result;
+    }
+#endif
   }
 
   //----------------------------------------
@@ -998,7 +1242,7 @@ struct Parser {
     auto result = new TemplateDeclaration();
 
     result->append(take_identifier("template"));
-    result->append(parse_template_parameter_list());
+    result->append(parse_declaration_list(NODE_TEMPLATE_PARAMETER_LIST, '<', ',', '>'));
     result->append(parse_class_specifier());
 
     result->_keyword = result->child(0);
@@ -1010,24 +1254,78 @@ struct Parser {
 
   //----------------------------------------
 
-  Node* parse_template_parameter_list() {
+  Node* parse_declaration_list(NodeType type, const char ldelim, const char spacer, const char rdelim) {
+    if (!token[0].is_punct(ldelim)) return nullptr;
 
-    Node* result = new Node(NODE_TEMPLATE_PARAMETER_LIST, nullptr, nullptr);
+    auto result = new NodeList(type);
 
-    skip_punct('<');
+    result->ldelim = take_punct(ldelim);
+    result->append(result->ldelim);
 
     while(1) {
-      auto specs = parse_specifier_list();
-      result->append(parse_declaration(specs));
-      if (token->is_punct('>')) {
-        skip_punct('>');
+      if (token->is_punct(rdelim)) {
+        result->rdelim = take_punct(rdelim);
+        result->append(result->rdelim);
         break;
       }
-      else if (token->is_punct(',')) {
-        skip_punct(',');
+      else if (token->is_punct(spacer)) {
+        result->append(take_punct(spacer));
       }
       else {
-        assert(false);
+        result->append(parse_declaration(rdelim));
+      }
+    }
+
+    return result;
+  }
+
+  Node* parse_expression_list(NodeType type, const char ldelim, const char spacer, const char rdelim) {
+    if (!token[0].is_punct(ldelim)) return nullptr;
+
+    auto result = new NodeList(type);
+
+    result->ldelim = take_punct(ldelim);
+    result->append(result->ldelim);
+
+    while(1) {
+      if (token->is_punct(rdelim)) {
+        result->rdelim = take_punct(rdelim);
+        result->append(result->rdelim);
+        break;
+      }
+      else if (token->is_punct(spacer)) {
+        result->append(take_punct(spacer));
+      }
+      else {
+        result->append(parse_expression(rdelim));
+      }
+    }
+
+    return result;
+  }
+
+
+  Node* parse_initializer_list() {
+    char ldelim = ':';
+    char spacer = ',';
+    char rdelim = '{'; // we don't consume this unlike parse_expression_list
+
+    if (!token[0].is_punct(ldelim)) return nullptr;
+
+    auto result = new Node(NODE_INITIALIZER_LIST);
+
+    result->append(take_punct(ldelim));
+
+    while(1) {
+      if (token->is_punct(rdelim)) {
+        return result;
+      }
+
+      if (token->is_punct(spacer)) {
+        result->append(take_punct(spacer));
+      }
+      else {
+        result->append(parse_expression(rdelim));
       }
     }
 
@@ -1071,7 +1369,7 @@ struct Parser {
       if (Lit<"template">::match(token->lex->span_a, token_eof->lex->span_a, nullptr)) {
         result->append(parse_template_decl());
       }
-      if (auto decl = parse_preproc()) {
+      else if (auto decl = parse_preproc()) {
         result->append(decl);
       }
       else if (auto decl = parse_external_declaration()) {
@@ -1084,63 +1382,6 @@ struct Parser {
     }
 
     return result;
-  }
-
-  //----------------------------------------
-  /*
-  type_definition: $ => seq(
-    'typedef',
-    repeat($.type_qualifier),
-    field('type', $._type_specifier),
-    commaSep1(field('declarator', $._type_declarator)),
-    ';',
-  ),
-  */
-
-  Node* parse_type_definition() {
-    return nullptr;
-  }
-
-  //----------------------------------------
-
-  Node* parse_typeof_specifier() {
-    Node* result = nullptr;
-    // FIXME
-    //using typeof_specifier_argument = Oneof<expression, type_name>;
-
-    using typeof_specifier_argument = Atom<LEX_IDENTIFIER>;
-
-    using typeof_specifier = Oneof<
-      Seq< AtomLit<"typeof">, Atom<'('>, typeof_specifier_argument, Atom<')'> >,
-      Seq< AtomLit<"typeof_unqual">, Atom<'('>, typeof_specifier_argument, Atom<')'> >
-    >;
-
-    if (auto end = typeof_specifier::match(token, token_eof, nullptr)) {
-      result = new Node(NODE_TYPEOF_SPECIFIER, token, end);
-      token = end;
-    }
-
-    return result;
-  }
-
-  //----------------------------------------
-
-  Node* parse_typedef_name() {
-    Node* result = nullptr;
-    using typedef_name = Atom<LEX_IDENTIFIER>;
-
-    if (auto end = typedef_name::match(token, token_eof, nullptr)) {
-      result = new Node(NODE_TYPEDEF_NAME, token, end);
-      token = end;
-    }
-
-    return result;
-  }
-
-  //----------------------------------------
-
-  Node* parse_type_specifier(Lexeme* a, Lexeme* b) {
-    return nullptr;
   }
 
   //----------------------------------------
@@ -1181,20 +1422,17 @@ struct Parser {
     return nullptr;
   }
 
-  //----------------------------------------
-
-  Node* parse_type_specifier_qualifier() {
-    assert(false);
-    return nullptr;
-  }
-
 
 };
 
 //------------------------------------------------------------------------------
 
-void lex_file(const std::string& path, int size, std::string& text, std::vector<Lexeme>& lexemes, std::vector<Token>& tokens) {
+void lex_file(const std::string& path, std::string& text, std::vector<Lexeme>& lexemes, std::vector<Token>& tokens) {
   printf("Lexing %s\n", path.c_str());
+
+  auto size = std::filesystem::file_size(path);
+
+
   text.resize(size + 1);
   memset(text.data(), 0, size + 1);
   FILE* file = fopen(path.c_str(), "rb");
@@ -1262,28 +1500,94 @@ void dump_lexemes(const std::string& path, int size, std::string& text, std::vec
 //------------------------------------------------------------------------------
 
 int test_c99_peg() {
-  printf("Hello World\n");
+  printf("Parseroni Demo\n");
 
   using rdit = std::filesystem::recursive_directory_iterator;
 
-  //const char* base_path = "tests";
-  const char* base_path = "mini_tests";
-
-  printf("Parsing source files in %s\n", base_path);
   auto time_a = timestamp_ms();
+  std::vector<std::string> paths;
 
+  /*
+  const char* base_path = "tests";
+  //const char* base_path = "mini_tests";
+  printf("Parsing source files in %s\n", base_path);
   for (const auto& f : rdit(base_path)) {
     if (!f.is_regular_file()) continue;
+    paths.push_back(f.path().native());
+  }
+  */
 
-    auto& path = f.path().native();
-    auto size = f.file_size();
+  paths = {
+    /*
+    "tests/all_func_types.h",
+    "tests/basic_constructor.h",
+    "tests/basic_function.h",
+    "tests/basic_increment.h",
+    "tests/basic_inputs.h",
+    "tests/basic_literals.h",
+    "tests/basic_localparam.h",
+    "tests/basic_output.h",
+    "tests/basic_param.h",
+    "tests/basic_public_reg.h",
+    "tests/basic_public_sig.h",
+    "tests/basic_reg_rww.h",
+    "tests/basic_sig_wwr.h",
+    "tests/basic_submod_param.h",
+    "tests/basic_submod_public_reg.h",
+    "tests/basic_submod.h",
+    "tests/basic_switch.h",
+    "tests/basic_task.h",
+    "tests/basic_template.h",
+    "tests/basic_tock_with_return.h",
+    "tests/bit_casts.h",
+    "tests/bit_concat.h",
+    "tests/bit_dup.h",
+    "tests/both_tock_and_tick_use_tasks_and_funcs.h",
+    "tests/builtins.h",
+    "tests/call_tick_from_tock.h",
+    "tests/case_with_fallthrough.h",
+    "tests/constructor_arg_passing.h",
+    "tests/constructor_args.h",
+    "tests/defines.h",
+    "tests/dontcare.h",
+    "tests/enum_simple.h",
+    "tests/for_loops.h",
+    "tests/good_order.h",
+    "tests/if_with_compound.h",
+    "tests/include_guards.h",
+    "tests/init_chain.h",
+    */
+    "tests/initialize_struct_to_zero.h",
+    /*
+    "tests/input_signals.h",
+    "tests/local_localparam.h",
+    "tests/magic_comments.h",
+    "tests/matching_port_and_arg_names.h",
+    "tests/minimal.h",
+    "tests/multi_tick.h",
+    "tests/namespaces.h",
+    "tests/nested_structs.h",
+    "tests/nested_submod_calls.h",
+    "tests/oneliners.h",
+    "tests/plus_equals.h",
+    "tests/private_getter.h",
+    "tests/structs_as_args.h",
+    "tests/structs_as_ports.h",
+    "tests/structs.h",
+    "tests/submod_bindings.h",
+    "tests/tock_task.h",
+    "tests/trivial_adder.h",
+    "tests/utf8-mod.bom.h",
+    "tests/utf8-mod.h",
+    */
+  };
+
+  for (const auto& path : paths) {
     std::string text;
     std::vector<Lexeme> lexemes;
     std::vector<Token> tokens;
 
-    lex_file(path, size, text, lexemes, tokens);
-
-    //dump_lexemes(path, size, text, lexemes);
+    lex_file(path, text, lexemes, tokens);
 
     Parser p;
     p.token = tokens.data();

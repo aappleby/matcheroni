@@ -3,6 +3,25 @@
 class Module {
 public:
 
+
+  /*
+  // but why would you do this?
+  void func_no_params_no_return() {
+  }
+
+  // or this?
+  void func_params_no_return(int x) {
+  }
+  */
+
+  int func_no_params_return() {
+    return 1;
+  }
+
+  int func_params_return(int x) {
+    return x + 1;
+  }
+
   int my_sig1;
   void tock_no_params_no_return() {
     my_sig1 = 12;

@@ -6,45 +6,57 @@
 
 #include "Tokens.h"
 
+void set_color(uint32_t c);
+
 //------------------------------------------------------------------------------
 
 enum NodeType {
   NODE_INVALID = 0,
+
   NODE_ACCESS_SPECIFIER,
   NODE_ARGUMENT_LIST,
+  NODE_ARRAY_EXPRESSION,
   NODE_ASSIGNMENT_STATEMENT,
+  NODE_CALL_EXPRESSION,
+  NODE_CASE_STATEMENT,
   NODE_CLASS_DECLARATION,
   NODE_CLASS_DEFINITION,
   NODE_COMPOUND_STATEMENT,
   NODE_CONSTANT,
   NODE_CONSTRUCTOR,
-  NODE_DECLARATION,
   NODE_DECLARATION_STATEMENT,
+  NODE_DECLARATION,
   NODE_DECLTYPE,
+  NODE_ENUM_DECLARATION,
+  NODE_ENUMERATOR_LIST,
+  NODE_EXPRESSION_STATEMENT,
   NODE_FIELD_DECLARATION_LIST,
-  NODE_CALL_EXPRESSION,
+  NODE_FOR_STATEMENT,
+  NODE_FUNCTION_DECLARATION,
   NODE_FUNCTION_DEFINITION,
   NODE_IDENTIFIER,
   NODE_IF_STATEMENT,
+  NODE_INFIX_EXPRESSION,
+  NODE_INITIALIZER_LIST,
+  NODE_OPERATOR,
   NODE_PARAMETER_LIST,
   NODE_PARENTHESIZED_EXPRESSION,
+  NODE_POSTFIX_EXPRESSION,
+  NODE_PREFIX_EXPRESSION,
   NODE_PREPROC,
   NODE_PUNCT,
   NODE_RETURN_STATEMENT,
-  NODE_SPECIFIER,
+  NODE_SCOPED_TYPE,
   NODE_SPECIFIER_LIST,
-  NODE_EXPRESSION_STATEMENT,
+  NODE_SPECIFIER,
+  NODE_SWITCH_STATEMENT,
   NODE_TEMPLATE_DECLARATION,
   NODE_TEMPLATE_PARAMETER_LIST,
+  NODE_TEMPLATED_TYPE,
   NODE_TRANSLATION_UNIT,
   NODE_TYPEDEF_NAME,
   NODE_TYPEOF_SPECIFIER,
   NODE_WHILE_STATEMENT,
-
-  NODE_INFIX_EXPRESSION,
-  NODE_PREFIX_EXPRESSION,
-  NODE_POSTFIX_EXPRESSION,
-  NODE_OPERATOR,
 };
 
 //------------------------------------------------------------------------------
@@ -71,39 +83,48 @@ inline const char* node_to_str(NodeType t) {
 
     case NODE_ACCESS_SPECIFIER: return "NODE_ACCESS_SPECIFIER";
     case NODE_ARGUMENT_LIST: return "NODE_ARGUMENT_LIST";
+    case NODE_ARRAY_EXPRESSION: return "NODE_ARRAY_EXPRESSION";
     case NODE_ASSIGNMENT_STATEMENT: return "NODE_ASSIGNMENT_STATEMENT";
     case NODE_CALL_EXPRESSION: return "NODE_CALL_EXPRESSION";
+    case NODE_CASE_STATEMENT: return "NODE_CASE_STATEMENT";
     case NODE_CLASS_DECLARATION: return "NODE_CLASS_DECLARATION";
     case NODE_CLASS_DEFINITION: return "NODE_CLASS_DEFINITION";
     case NODE_COMPOUND_STATEMENT: return "NODE_COMPOUND_STATEMENT";
     case NODE_CONSTANT: return "NODE_CONSTANT";
     case NODE_CONSTRUCTOR: return "NODE_CONSTRUCTOR";
-    case NODE_DECLARATION: return "NODE_DECLARATION";
     case NODE_DECLARATION_STATEMENT: return "NODE_DECLARATION_STATEMENT";
+    case NODE_DECLARATION: return "NODE_DECLARATION";
     case NODE_DECLTYPE: return "NODE_DECLTYPE";
+    case NODE_ENUM_DECLARATION: return "NODE_ENUM_DECLARATION";
+    case NODE_ENUMERATOR_LIST: return "NODE_ENUMERATOR_LIST";
     case NODE_EXPRESSION_STATEMENT: return "NODE_EXPRESSION_STATEMENT";
     case NODE_FIELD_DECLARATION_LIST: return "NODE_FIELD_DECLARATION_LIST";
+    case NODE_FOR_STATEMENT: return "NODE_FOR_STATEMENT";
+    case NODE_FUNCTION_DECLARATION: return "NODE_FUNCTION_DECLARATION";
     case NODE_FUNCTION_DEFINITION: return "NODE_FUNCTION_DEFINITION";
     case NODE_IDENTIFIER: return "NODE_IDENTIFIER";
     case NODE_IF_STATEMENT: return "NODE_IF_STATEMENT";
+    case NODE_INFIX_EXPRESSION: return "NODE_INFIX_EXPRESSION";
+    case NODE_INITIALIZER_LIST: return "NODE_INITIALIZER_LIST";
+    case NODE_OPERATOR: return "NODE_OPERATOR";
     case NODE_PARAMETER_LIST: return "NODE_PARAMETER_LIST";
     case NODE_PARENTHESIZED_EXPRESSION: return "NODE_PARENTHESIZED_EXPRESSION";
+    case NODE_POSTFIX_EXPRESSION: return "NODE_POSTFIX_EXPRESSION";
+    case NODE_PREFIX_EXPRESSION: return "NODE_PREFIX_EXPRESSION";
     case NODE_PREPROC: return "NODE_PREPROC";
     case NODE_PUNCT: return "NODE_PUNCT";
     case NODE_RETURN_STATEMENT: return "NODE_RETURN_STATEMENT";
-    case NODE_SPECIFIER: return "NODE_SPECIFIER";
+    case NODE_SCOPED_TYPE: return "NODE_SCOPED_TYPE";
     case NODE_SPECIFIER_LIST: return "NODE_SPECIFIER_LIST";
+    case NODE_SPECIFIER: return "NODE_SPECIFIER";
+    case NODE_SWITCH_STATEMENT: return "NODE_SWITCH_STATEMENT";
     case NODE_TEMPLATE_DECLARATION: return "NODE_TEMPLATE_DECLARATION";
     case NODE_TEMPLATE_PARAMETER_LIST: return "NODE_TEMPLATE_PARAMETER_LIST";
+    case NODE_TEMPLATED_TYPE: return "NODE_TEMPLATED_TYPE";
     case NODE_TRANSLATION_UNIT: return "NODE_TRANSLATION_UNIT";
     case NODE_TYPEDEF_NAME: return "NODE_TYPEDEF_NAME";
     case NODE_TYPEOF_SPECIFIER: return "NODE_TYPEOF_SPECIFIER";
     case NODE_WHILE_STATEMENT: return "NODE_WHILE_STATEMENT";
-
-    case NODE_INFIX_EXPRESSION: return "NODE_INFIX_EXPRESSION";
-    case NODE_OPERATOR: return "NODE_OPERATOR";
-    case NODE_PREFIX_EXPRESSION: return "NODE_PREFIX_EXPRESSION";
-    case NODE_POSTFIX_EXPRESSION: return "NODE_POSTFIX_EXPRESSION";
   }
   return "<unknown node>";
 }
@@ -113,7 +134,7 @@ inline const char* node_to_str(NodeType t) {
 struct Node {
 
   Node(NodeType node_type, const Token* tok_a = nullptr, const Token* tok_b = nullptr) {
-    assert(node_type != NODE_INVALID);
+    //assert(node_type != NODE_INVALID);
     if (tok_a == nullptr && tok_b == nullptr) {
     }
     else {
@@ -195,14 +216,21 @@ struct Node {
 
     auto len = lex_b->span_b - lex_a->span_a;
     if (len > 40) len = 40;
+
     for (auto i = 0; i < len; i++) {
       putc(lex_a->span_a[i], stdout);
     }
+    set_color(0);
+
     fflush(stdout);
   }
 
-  virtual void dump_tree(int indentation = 0) {
+  virtual void dump_tree(int max_depth = 0, int indentation = 0) {
+    if (max_depth && indentation == max_depth) return;
+
     for (int i = 0; i < indentation; i++) printf(" | ");
+
+    if (tok_a) set_color(tok_a->lex->color());
     if (!field.empty()) printf("%-10.10s : ", field.c_str());
     printf("%s", node_to_str(node_type));
 
@@ -213,8 +241,10 @@ struct Node {
     }
 
     printf("\n");
+    if (tok_a) set_color(0);
+
     for (auto c = head; c; c = c->next) {
-      c->dump_tree(indentation + 1);
+      c->dump_tree(max_depth, indentation + 1);
     }
   }
 

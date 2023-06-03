@@ -84,6 +84,13 @@ struct Token {
     return lex && lex->is_identifier(lit);
   }
 
+  bool is_case_label() const {
+    if (!lex) return false;
+    if (lex->is_identifier("case")) return true;
+    if (lex->is_identifier("default")) return true;
+    return false;
+  }
+
   bool is_constant() const {
     return (type == TOK_FLOAT) || (type == TOK_INT) || (type == TOK_CHAR) || (type == TOK_STRING);
   }

@@ -1,5 +1,6 @@
 #pragma once
 #include <assert.h>
+#include <stdint.h>
 
 //------------------------------------------------------------------------------
 
@@ -75,6 +76,26 @@ struct Lexeme {
     return int(span_b - span_a);
   }
 
+  uint32_t color() const {
+    switch(type) {
+      case LEX_INVALID    : return 0x0000FF;
+      case LEX_SPACE      : return 0x804040;
+      case LEX_NEWLINE    : return 0x404080;
+      case LEX_STRING     : return 0x4488AA;
+      case LEX_IDENTIFIER : return 0xCCCC40;
+      case LEX_COMMENT    : return 0x66AA66;
+      case LEX_PREPROC    : return 0xCC88CC;
+      case LEX_FLOAT      : return 0xFF88AA;
+      case LEX_INT        : return 0xFF8888;
+      case LEX_PUNCT      : return 0x808080;
+      case LEX_CHAR       : return 0x44DDDD;
+      case LEX_SPLICE     : return 0x00CCFF;
+      case LEX_FORMFEED   : return 0xFF00FF;
+      case LEX_EOF        : return 0xFF00FF;
+    }
+    return 0x0000FF;
+  }
+
   //----------------------------------------
 
   bool is_punct() const {
@@ -88,7 +109,17 @@ struct Lexeme {
   bool is_lit(const char* lit) const {
     auto c = span_a;
     for (;c < span_b && (*c == *lit) && *lit; c++, lit++);
-    return *lit ? false : true;
+
+    if (*lit) return false;
+
+    if ((*c >= 'a' && *c <= 'z') ||
+        (*c >= 'A' && *c <= 'Z') ||
+        (*c >= '0' && *c <= '9') ||
+        (*c == '_')) {
+      return false;
+    }
+
+    return true;
   }
 
   bool is_identifier(const char* lit = nullptr) const {

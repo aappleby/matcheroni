@@ -470,7 +470,10 @@ const char* match_infix_op(const char* a, const char* b, void* ctx) {
     "&&","||",
     "<<",">>",
     "+=","-=","*=","/=","%=","&=","|=","^=",
-    "+","-","*","/","%","<",">","&","|","^","=", // comma operator?
+    "+","-","*","/","%","<",">","&","|","^","=",
+    ".", // i'm considering the dot in a.b() as infix
+    "::", // scope operator also infix lol
+    // comma operator?
   };
   int op_count = sizeof(ops)/sizeof(*ops);
   return match_lits(a, b, ops, op_count);
