@@ -302,6 +302,26 @@ struct Parser {
     );
   }
 
+  Node* parse_namespace_specifier() {
+
+    using decl = Seq<AtomLit<"namespace">, Atom<LEX_IDENTIFIER>, Atom<';'>>;
+
+    if (auto end = match<decl>()) {
+      return new ClassDeclaration(
+        take_identifier("namespace"),
+        take_identifier(),
+        take_punct(';')
+      );
+    }
+
+    return new ClassDefinition(
+      take_identifier("namespace"),
+      take_identifier(),
+      parse_field_declaration_list(),
+      take_punct(';')
+    );
+  }
+
   //----------------------------------------
 
   Node* parse_compound_statement() {
@@ -738,6 +758,10 @@ struct Parser {
   Node* parse_external_declaration() {
     if (token->is_eof()) {
       return nullptr;
+    }
+
+    if (token->is_identifier("namespace")) {
+      return parse_namespace_specifier();
     }
 
     if (token->is_identifier("class")) {
@@ -1507,7 +1531,6 @@ int test_c99_peg() {
   auto time_a = timestamp_ms();
   std::vector<std::string> paths;
 
-  /*
   const char* base_path = "tests";
   //const char* base_path = "mini_tests";
   printf("Parsing source files in %s\n", base_path);
@@ -1515,72 +1538,6 @@ int test_c99_peg() {
     if (!f.is_regular_file()) continue;
     paths.push_back(f.path().native());
   }
-  */
-
-  paths = {
-    /*
-    "tests/all_func_types.h",
-    "tests/basic_constructor.h",
-    "tests/basic_function.h",
-    "tests/basic_increment.h",
-    "tests/basic_inputs.h",
-    "tests/basic_literals.h",
-    "tests/basic_localparam.h",
-    "tests/basic_output.h",
-    "tests/basic_param.h",
-    "tests/basic_public_reg.h",
-    "tests/basic_public_sig.h",
-    "tests/basic_reg_rww.h",
-    "tests/basic_sig_wwr.h",
-    "tests/basic_submod_param.h",
-    "tests/basic_submod_public_reg.h",
-    "tests/basic_submod.h",
-    "tests/basic_switch.h",
-    "tests/basic_task.h",
-    "tests/basic_template.h",
-    "tests/basic_tock_with_return.h",
-    "tests/bit_casts.h",
-    "tests/bit_concat.h",
-    "tests/bit_dup.h",
-    "tests/both_tock_and_tick_use_tasks_and_funcs.h",
-    "tests/builtins.h",
-    "tests/call_tick_from_tock.h",
-    "tests/case_with_fallthrough.h",
-    "tests/constructor_arg_passing.h",
-    "tests/constructor_args.h",
-    "tests/defines.h",
-    "tests/dontcare.h",
-    "tests/enum_simple.h",
-    "tests/for_loops.h",
-    "tests/good_order.h",
-    "tests/if_with_compound.h",
-    "tests/include_guards.h",
-    "tests/init_chain.h",
-    */
-    "tests/initialize_struct_to_zero.h",
-    /*
-    "tests/input_signals.h",
-    "tests/local_localparam.h",
-    "tests/magic_comments.h",
-    "tests/matching_port_and_arg_names.h",
-    "tests/minimal.h",
-    "tests/multi_tick.h",
-    "tests/namespaces.h",
-    "tests/nested_structs.h",
-    "tests/nested_submod_calls.h",
-    "tests/oneliners.h",
-    "tests/plus_equals.h",
-    "tests/private_getter.h",
-    "tests/structs_as_args.h",
-    "tests/structs_as_ports.h",
-    "tests/structs.h",
-    "tests/submod_bindings.h",
-    "tests/tock_task.h",
-    "tests/trivial_adder.h",
-    "tests/utf8-mod.bom.h",
-    "tests/utf8-mod.h",
-    */
-  };
 
   for (const auto& path : paths) {
     std::string text;
