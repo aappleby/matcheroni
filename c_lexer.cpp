@@ -471,7 +471,8 @@ const char* match_infix_op(const char* a, const char* b, void* ctx) {
     "<<",">>",
     "+=","-=","*=","/=","%=","&=","|=","^=",
     "+","-","*","/","%","<",">","&","|","^","=",
-    ".", // i'm considering the dot in a.b() as infix
+    ".",  // i'm considering the dot in a.b() as infix
+    "->", // and i guess arrow too?
     "::", // scope operator also infix lol
     // comma operator?
   };

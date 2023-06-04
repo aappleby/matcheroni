@@ -581,7 +581,103 @@ struct Parser {
     }
   }
 
+
+
+
+
+
   //----------------------------------------
+  // prefix:
+  //   ++ -- & * + - ~ !
+  //   '(' type_name ')'
+  //   sizeof
+
+  Node* parse_expression_prefix() {
+    auto span_a = token->lex->span_a;
+    auto span_b = token_eof->lex->span_a;
+
+    if (auto end = match_prefix_op(span_a, span_b, nullptr)) {
+      auto match_lex_a = token;
+      auto match_lex_b = token;
+      while(match_lex_b->lex->span_a < end) match_lex_b++;
+      auto result = new Node(NODE_OPERATOR, match_lex_a, match_lex_b);
+      token = match_lex_b;
+      return result;
+    }
+
+    if (token[0].is_punct('(') &&
+        token[1].is_identifier() &&
+        token[2].is_punct(')')) {
+      auto result = new Node(NODE_TYPECAST);
+      result->append(take_punct('('));
+      result->append(take_identifier());
+      result->append(take_punct(')'));
+      return result;
+    }
+
+    if (token[0].is_identifier("sizeof")) {
+      auto result = new Node(NODE_OPERATOR);
+      result->append(take_identifier("sizeof"));
+      return result;
+    }
+
+    return nullptr;
+  }
+
+  //----------------------------------------
+  // suffix:
+  //    [ expression ]
+  //    ( )
+  //    ( expression )
+  //    . identifier
+  //    -> identifier
+  //    ++
+  //    --
+
+
+  Node* parse_expression_suffix() {
+    if (token[0].is_punct('[')) {
+      auto result = new Node(NODE_ARRAY_SUFFIX);
+      result->append(take_punct('['));
+      result->append(parse_expression(']'));
+      result->append(take_punct(']'));
+      return result;
+    }
+
+    if (token[0].is_punct('(') && token[1].is_punct(')')) {
+      auto result = new Node(NODE_PARAMETER_LIST);
+      result->append(take_punct('('));
+      result->append(take_punct(')'));
+      return result;
+    }
+
+    if (token[0].is_punct('(')) {
+      auto result = new Node(NODE_PARAMETER_LIST);
+      result->append(take_punct('('));
+      result->append(parse_expression(')'));
+      result->append(take_punct(')'));
+      return result;
+    }
+
+    if (token[0].is_punct('+') && token[1].is_punct('+')) {
+      return take_lexemes(NODE_OPERATOR, 2);
+    }
+
+    if (token[0].is_punct('-') && token[1].is_punct('-')) {
+      return take_lexemes(NODE_OPERATOR, 2);
+    }
+
+    return nullptr;
+  }
+
+  //----------------------------------------
+
+
+
+
+
+
+
 
   Node* parse_assignment_op() {
     auto span_a = token->lex->span_a;
@@ -614,36 +710,6 @@ struct Parser {
     return result;
   }
 
-  Node* parse_prefix_op() {
-    auto span_a = token->lex->span_a;
-    auto span_b = token_eof->lex->span_a;
-
-    auto end = match_prefix_op(span_a, span_b, nullptr);
-    if (!end) return nullptr;
-
-    auto match_lex_a = token;
-    auto match_lex_b = token;
-    while(match_lex_b->lex->span_a < end) match_lex_b++;
-    auto result = new Node(NODE_OPERATOR, match_lex_a, match_lex_b);
-    token = match_lex_b;
-    return result;
-  }
-
-  Node* parse_postfix_op() {
-    auto span_a = token->lex->span_a;
-    auto span_b = token_eof->lex->span_a;
-
-    auto end = match_postfix_op(span_a, span_b, nullptr);
-    if (!end) return nullptr;
-
-    auto match_lex_a = token;
-    auto match_lex_b = token;
-    while(match_lex_b->lex->span_a < end) match_lex_b++;
-    auto result = new Node(NODE_OPERATOR, match_lex_a, match_lex_b);
-    token = match_lex_b;
-    return result;
-  }
-
   //----------------------------------------
 
   Node* parse_expression_rhs(Node* lhs, const char rdelim) {
@@ -653,7 +719,7 @@ struct Parser {
     if (token->is_punct(','))    return lhs;
     if (token->is_punct(rdelim)) return lhs;
 
-    if (auto op = parse_postfix_op()) {
+    if (auto op = parse_expression_suffix()) {
       auto result = new Node(NODE_POSTFIX_EXPRESSION);
       result->append(lhs);
       result->append(op);
@@ -704,7 +770,7 @@ struct Parser {
       return result;
     }
 
-    if (auto op = parse_prefix_op()) {
+    if (auto op = parse_expression_prefix()) {
       auto result = new Node(NODE_PREFIX_EXPRESSION);
       result->append(op);
       result->append(parse_expression_lhs(rdelim));
