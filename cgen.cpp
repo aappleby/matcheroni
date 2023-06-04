@@ -336,12 +336,50 @@ void storage_class_specifier() {
   oneof({"typedef", "extern", "static", "auto", "register"});
 }
 
-void logical_or_expression() {
+void and_expression() {
   FIX_FUNC;
+}
+
+void exclusive_or_expression() {
+  oneof({
+    [](){ and_expression(); },
+    [](){ and_expression(); },
+    [](){ and_expression(); },
+    [](){ exclusive_or_expression(); emit("^"); and_expression(); },
+  });
+}
+
+void inclusive_or_expression() {
+  oneof({
+    [](){ exclusive_or_expression(); },
+    [](){ exclusive_or_expression(); },
+    [](){ exclusive_or_expression(); },
+    [](){ inclusive_or_expression(); emit("|"); exclusive_or_expression(); },
+  });
+}
+
+void logical_and_expression() {
+  oneof({
+    [](){ inclusive_or_expression(); },
+    [](){ inclusive_or_expression(); },
+    [](){ inclusive_or_expression(); },
+    [](){ logical_and_expression(); emit("&&"); inclusive_or_expression(); },
+  });
+}
+
+void logical_or_expression() {
+  oneof({
+    [](){ logical_and_expression(); },
+    [](){ logical_and_expression(); },
+    [](){ logical_and_expression(); },
+    [](){ logical_or_expression(); emit("||"); logical_and_expression(); },
+  });
 }
 
 void conditional_expression() {
   oneof({
+    [](){ logical_or_expression(); },
+    [](){ logical_or_expression(); },
     [](){ logical_or_expression(); },
     [](){ logical_or_expression(); emit("?"); expression(); emit(":"); conditional_expression(); },
   });
@@ -466,12 +504,17 @@ void type_name() {
 
 void postfix_expression();
 
+void unary_expression();
+
 void cast_expression() {
-  FIX_FUNC;
+  oneof({
+    [](){ unary_expression(); },
+    [](){ emit("("); type_name(); emit(")"); cast_expression(); },
+  });
 }
 
 void unary_operator() {
-  FIX_FUNC;
+  oneof({"&", "*", "+", "-", "~", "!"});
 }
 
 void unary_expression() {
@@ -532,6 +575,15 @@ void initializer() {
 
 void postfix_expression() {
   oneof({
+    [](){ primary_expression(); },
+    [](){ primary_expression(); },
+    [](){ primary_expression(); },
+    [](){ primary_expression(); },
+    [](){ primary_expression(); },
+    [](){ primary_expression(); },
+    [](){ primary_expression(); },
+    [](){ primary_expression(); },
+    [](){ primary_expression(); },
     [](){ primary_expression(); },
     [](){ postfix_expression(); emit("[");  expression(); emit("]"); },
     [](){ postfix_expression(); emit("(");  opt(argument_expression_list); emit(")"); },
