@@ -58,12 +58,17 @@ void identifier_nondigit() {
   nondigit();
 }
 
-void identifier() {
+void _identifier() {
   oneof({
     []() { identifier_nondigit(); },
-    []() { identifier(); identifier_nondigit(); },
-    []() { identifier(); digit(); },
+    []() { _identifier(); identifier_nondigit(); },
+    []() { _identifier(); digit(); },
   });
+}
+
+void identifier() {
+  _identifier();
+  emit(" ");
 }
 
 void decimal_constant() {
@@ -297,10 +302,6 @@ void primary_expression() {
   });
 }
 
-void specifier_qualifier_list() {
-  FIX_FUNC;
-}
-
 void identifier_list() {
   oneof({
     [](){ identifier(); },
@@ -309,7 +310,7 @@ void identifier_list() {
 }
 
 void type_qualifier() {
-  oneof({"const", "restrict", "volatile"});
+  oneof({"const ", "restrict ", "volatile "});
 }
 
 void type_qualifier_list() {
@@ -328,16 +329,32 @@ void pointer() {
 
 void abstract_declarator();
 
-void assignment_expression() {
-  FIX_FUNC;
+void storage_class_specifier() {
+  oneof({"typedef ", "extern ", "static ", "auto ", "register "});
 }
 
-void storage_class_specifier() {
-  oneof({"typedef", "extern", "static", "auto", "register"});
+void relational_expression() {
+  //FIX_FUNC;
+  emit("foo");
+}
+
+void equality_expression() {
+  oneof({
+    [](){ relational_expression(); },
+    [](){ relational_expression(); },
+    [](){ relational_expression(); },
+    [](){ equality_expression(); emit("=="); relational_expression(); },
+    [](){ equality_expression(); emit("!="); relational_expression(); },
+  });
 }
 
 void and_expression() {
-  FIX_FUNC;
+  oneof({
+    [](){ equality_expression(); },
+    [](){ equality_expression(); },
+    [](){ equality_expression(); },
+    [](){ and_expression(); emit("&"); equality_expression(); },
+  });
 }
 
 void exclusive_or_expression() {
@@ -405,14 +422,14 @@ void enumerator_list() {
 
 void enum_specifier() {
   oneof({
-    [](){ emit("enum"); opt(identifier); emit("{"); enumerator_list(); emit("}"); },
-    [](){ emit("enum"); opt(identifier); emit("{"); enumerator_list(); emit(","); emit("}"); },
-    [](){ emit("enum"); identifier();    },
+    [](){ emit("enum "); opt(identifier); emit("{"); enumerator_list(); emit("}"); },
+    [](){ emit("enum "); opt(identifier); emit("{"); enumerator_list(); emit(","); emit("}"); },
+    [](){ emit("enum "); identifier();    },
   });
 }
 
 void struct_or_union_specifier() {
-  oneof({"struct", "union"});
+  oneof({"struct ", "union "});
 }
 
 void typedef_name() {
@@ -421,17 +438,17 @@ void typedef_name() {
 
 void type_specifier() {
   oneof({
-    [](){ emit("void"); },
-    [](){ emit("char"); },
-    [](){ emit("short"); },
-    [](){ emit("int"); },
-    [](){ emit("long"); },
-    [](){ emit("float"); },
-    [](){ emit("double"); },
-    [](){ emit("signed"); },
-    [](){ emit("unsigned"); },
-    [](){ emit("_Bool"); },
-    [](){ emit("_Complex"); },
+    [](){ emit("void "); },
+    [](){ emit("char "); },
+    [](){ emit("short "); },
+    [](){ emit("int "); },
+    [](){ emit("long "); },
+    [](){ emit("float "); },
+    [](){ emit("double "); },
+    [](){ emit("signed "); },
+    [](){ emit("unsigned "); },
+    [](){ emit("_Bool "); },
+    [](){ emit("_Complex "); },
     [](){ struct_or_union_specifier(); },
     [](){ enum_specifier(); },
     [](){ typedef_name(); },
@@ -439,7 +456,7 @@ void type_specifier() {
 }
 
 void function_specifier() {
-  emit("inline");
+  emit("inline ");
 }
 
 void declaration_specifiers() {
@@ -451,9 +468,7 @@ void declaration_specifiers() {
   });
 }
 
-void direct_declarator() {
-  FIX_FUNC;
-}
+void direct_declarator();
 
 void declarator() {
   opt(pointer); direct_declarator();
@@ -480,12 +495,46 @@ void parameter_type_list() {
   });
 }
 
+void unary_expression();
+
+void assignment_operator() {
+  oneof({"=", "*=", "/=", "%=", "+=", "-=", "<<=", ">>=", "&=", "^=", "|="});
+}
+
+void assignment_expression() {
+  oneof({
+    [](){ conditional_expression(); },
+    [](){ conditional_expression(); },
+    [](){ conditional_expression(); },
+    [](){ unary_expression(); assignment_operator(); assignment_expression(); },
+  });
+}
+
+void direct_declarator() {
+  oneof({
+    [](){ identifier(); },
+    [](){ identifier(); },
+    [](){ identifier(); },
+    [](){ identifier(); },
+    [](){ emit("("); declarator(); emit(")"); },
+    [](){ emit("("); declarator(); emit(")"); },
+    [](){ emit("("); declarator(); emit(")"); },
+    [](){ emit("("); declarator(); emit(")"); },
+    [](){ direct_declarator(); emit("["); opt(type_qualifier_list); opt(assignment_expression); emit("]"); },
+    [](){ direct_declarator(); emit("["); emit("static "); opt(type_qualifier_list); assignment_expression(); emit("]"); },
+    [](){ direct_declarator(); emit("["); type_qualifier_list(); emit("static "); assignment_expression(); emit("]"); },
+    [](){ direct_declarator(); emit("["); opt(type_qualifier_list); emit("*"); emit("]"); },
+    [](){ direct_declarator(); emit("("); parameter_type_list(); emit(")"); },
+    [](){ direct_declarator(); emit("("); opt(identifier_list); emit(")"); },
+  });
+}
+
 void direct_abstract_declarator() {
   oneof({
     [](){ emit("("); abstract_declarator(); emit(")"); },
     [](){ opt(direct_abstract_declarator); emit("["); opt(type_qualifier_list); opt(assignment_expression); emit("]"); },
-    [](){ opt(direct_abstract_declarator); emit("["); emit("static"); opt(type_qualifier_list); assignment_expression(); emit("]"); },
-    [](){ opt(direct_abstract_declarator); emit("["); type_qualifier_list(); emit("static"); assignment_expression(); emit("]"); },
+    [](){ opt(direct_abstract_declarator); emit("["); emit("static "); opt(type_qualifier_list); assignment_expression(); emit("]"); },
+    [](){ opt(direct_abstract_declarator); emit("["); type_qualifier_list(); emit("static "); assignment_expression(); emit("]"); },
     [](){ opt(direct_abstract_declarator); emit("["); emit("*"); emit("]"); },
     [](){ opt(direct_abstract_declarator); emit("("); opt(parameter_type_list); emit(")"); },
   });
@@ -498,13 +547,18 @@ void abstract_declarator() {
   });
 }
 
+void specifier_qualifier_list() {
+  oneof({
+    [](){ type_specifier(); opt(specifier_qualifier_list); },
+    [](){ type_qualifier(); opt(specifier_qualifier_list); },
+  });
+}
+
 void type_name() {
   specifier_qualifier_list(); opt(abstract_declarator);
 }
 
 void postfix_expression();
-
-void unary_expression();
 
 void cast_expression() {
   oneof({
@@ -605,7 +659,8 @@ void expression() {
 int main(int argc, char** argv) {
   printf("cgen\n");
   for (int i = 0; i < 100; i++) {
-    postfix_expression();
+    assignment_expression();
+    printf("\n");
     printf("\n");
   }
   return 0;
