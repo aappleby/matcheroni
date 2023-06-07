@@ -12,8 +12,8 @@
       "program": "${workspaceFolder}/bin/matcheroni_demo",
       //"program": "${workspaceFolder}/bin/cgen",
       "cwd": "${workspaceFolder}",
-      "args" : ["../gcc/gcc"],
-      //"args" : ["tests"],
+      //"args" : ["../gcc/gcc"],
+      "args" : ["tests"],
       "setupCommands": [
         {
           // Display content in STL containers pretty

@@ -35,9 +35,9 @@ using comma_separated_list2 = Seq<
 
 // Predecls
 
-const char* match_type_specifier_qualifier(const char* a, const char* b, void* ctx);
+const char* match_type_specifier_qualifier(const char* a, const char* b);
 
-const char* match_attribute_specifier_sequence(const char* a, const char* b, void* ctx);
+const char* match_attribute_specifier_sequence(const char* a, const char* b);
 using attribute_specifier_sequence = Ref<match_attribute_specifier_sequence>;
 
 // FIXME these are fake
@@ -58,7 +58,7 @@ using static_assert_declaration = Oneof<
 //------------------------------------------------------------------------------
 // 6.7.10 Initialization
 
-const char* match_initializer(const char* a, const char* b, void* ctx) {
+const char* match_initializer(const char* a, const char* b) {
 
   using designator = Oneof<
     Seq<Atom<'['>, constant_expression, Atom<']'> >,
@@ -82,7 +82,7 @@ const char* match_initializer(const char* a, const char* b, void* ctx) {
     assignment_expression,
     braced_initializer
   >;
-  return initializer::match(a, b, ctx);
+  return initializer::match(a, b);
 };
 
 using initializer = Ref<match_initializer>;
@@ -91,7 +91,7 @@ using initializer = Ref<match_initializer>;
 //------------------------------------------------------------------------------
 // 6.7.2.2 Enumeration specifiers
 
-const char* match_enum_specifier(const char* a, const char* b, void* ctx) {
+const char* match_enum_specifier(const char* a, const char* b) {
   using type_specifier_qualifier = Ref<match_type_specifier_qualifier>;
   using specifier_qualifier_list = Seq<
     Some<type_specifier_qualifier>,
@@ -113,15 +113,15 @@ const char* match_enum_specifier(const char* a, const char* b, void* ctx) {
     Seq<Lit<"enum">,                                        identifier,  Opt<enum_type_specifier> >
   >;
 
-  return enum_specifier::match(a, b, ctx);
+  return enum_specifier::match(a, b);
 }
 
 //------------------------------------------------------------------------------
 // 6.7.2.1 - Structure and union specifiers
 
-const char* match_declarator(const char* a, const char* b, void* ctx);
+const char* match_declarator(const char* a, const char* b);
 
-const char* match_struct_or_union_specifier(const char* a, const char* b, void* ctx) {
+const char* match_struct_or_union_specifier(const char* a, const char* b) {
   using struct_or_union = Oneof<Lit<"struct">, Lit<"union">>;
 
   using declarator = Ref<match_declarator>;
@@ -148,15 +148,15 @@ const char* match_struct_or_union_specifier(const char* a, const char* b, void* 
     Seq<struct_or_union, Opt<attribute_specifier_sequence>, identifier>
   >;
 
-  return struct_or_union_specifier::match(a, b, ctx);
+  return struct_or_union_specifier::match(a, b);
 }
 
 //------------------------------------------------------------------------------
 // 6.7.2.1
 
-const char* match_type_name(const char* a, const char* b, void* ctx);
+const char* match_type_name(const char* a, const char* b);
 
-const char* match_type_specifier_qualifier(const char* a, const char* b, void* ctx) {
+const char* match_type_specifier_qualifier(const char* a, const char* b) {
   using type_name = Ref<match_type_name>;
 
   using bit_int = Seq<Lit<"_BitInt">, Atom<'('>, constant_expression, Atom<')'>>;
@@ -195,14 +195,14 @@ const char* match_type_specifier_qualifier(const char* a, const char* b, void* c
     Seq< Lit<"typeof_unqual">, Atom<'('>, Oneof<expression, type_name>, Atom<')'> >
   >;
 
-  return type_specifier_qualifier::match(a, b, ctx);
+  return type_specifier_qualifier::match(a, b);
 }
 
 using type_specifier_qualifier = Ref<match_type_specifier_qualifier>;
 
 //------------------------------------------------------------------------------
 
-const char* match_declaration_specifiers(const char* a, const char* b, void* ctx) {
+const char* match_declaration_specifiers(const char* a, const char* b) {
 
   // 6.7.1 Storage-class specifiers
   using storage_class_specifier = Oneof<
@@ -227,14 +227,14 @@ const char* match_declaration_specifiers(const char* a, const char* b, void* ctx
   >;
 
   using declaration_specifiers = Seq<Some<declaration_specifier>, Opt<attribute_specifier_sequence>>;
-  return declaration_specifiers::match(a, b, ctx);
+  return declaration_specifiers::match(a, b);
 }
 
 using declaration_specifiers = Ref<match_declaration_specifiers>;
 
 //------------------------------------------------------------------------------
 
-const char* match_declaration(const char* a, const char* b, void* ctx) {
+const char* match_declaration(const char* a, const char* b) {
   using declarator = Ref<match_declarator>;
   using init_declarator = Seq<declarator, Opt<Seq<Atom<'='>, initializer>>>;
   using init_declarator_list = comma_separated_list<init_declarator>;
@@ -247,7 +247,7 @@ const char* match_declaration(const char* a, const char* b, void* ctx) {
     attribute_declaration
   >;
 
-  return declaration::match(a, b, ctx);
+  return declaration::match(a, b);
 }
 
 using declaration = Ref<match_declaration>;
@@ -255,7 +255,7 @@ using declaration = Ref<match_declaration>;
 //------------------------------------------------------------------------------
 // 6.7.6 Declarators
 
-const char* match_pointer(const char* a, const char* b, void* ctx) {
+const char* match_pointer(const char* a, const char* b) {
   using type_qualifier = Oneof<
     Lit<"const">,
     Lit<"restrict">,
@@ -265,19 +265,19 @@ const char* match_pointer(const char* a, const char* b, void* ctx) {
   using type_qualifier_list = Some<type_qualifier>;
   using pointer_unit = Seq< Atom<'*'>, Opt<attribute_specifier_sequence>, Opt<type_qualifier_list> >;
   using pointer = Some<pointer_unit>;
-  return pointer::match(a, b, ctx);
+  return pointer::match(a, b);
 }
 
-const char* match_direct_declarator(const char* a, const char* b, void* ctx);
+const char* match_direct_declarator(const char* a, const char* b);
 using direct_declarator = Ref<match_direct_declarator>;
 
-const char* match_parameter_type_list(const char* a, const char* b, void* ctx);
+const char* match_parameter_type_list(const char* a, const char* b);
 using parameter_type_list = Ref<match_parameter_type_list>;
 
 //------------------------------------------------------------------------------
 // this is probably going to recurse infinitely...
 
-const char* match_direct_declarator(const char* a, const char* b, void* ctx) {
+const char* match_direct_declarator(const char* a, const char* b) {
 
   using type_qualifier = Oneof<
     Lit<"const">,
@@ -308,33 +308,33 @@ const char* match_direct_declarator(const char* a, const char* b, void* ctx) {
     Seq<function_declarator, Opt<attribute_specifier_sequence> >
   >;
 
-  return direct_declarator::match(a, b, ctx);
+  return direct_declarator::match(a, b);
 }
 
-const char* match_declarator(const char* a, const char* b, void* ctx) {
+const char* match_declarator(const char* a, const char* b) {
   using pointer = Ref<match_pointer>;
   using declarator = Seq<Opt<pointer>, direct_declarator>;
-  return declarator::match(a, b, ctx);
+  return declarator::match(a, b);
 }
 
 using declarator = Ref<match_declarator>;
 
 //------------------------------------------------------------------------------
 
-const char* match_direct_abstract_declarator(const char* a, const char* b, void* ctx);
+const char* match_direct_abstract_declarator(const char* a, const char* b);
 using direct_abstract_declarator = Ref<match_direct_abstract_declarator>;
 
 // (6.7.7)
-const char* match_abstract_declarator(const char* a, const char* b, void* ctx) {
+const char* match_abstract_declarator(const char* a, const char* b) {
   using pointer = Ref<match_pointer>;
   using abstract_declarator = Oneof<
     pointer,
     Seq<Opt<pointer>, direct_abstract_declarator>
   >;
-  return abstract_declarator::match(a, b, ctx);
+  return abstract_declarator::match(a, b);
 }
 
-const char* match_type_name(const char* a, const char* b, void* ctx) {
+const char* match_type_name(const char* a, const char* b) {
   using type_specifier_qualifier = Ref<match_type_specifier_qualifier>;
   using abstract_declarator = Ref<match_abstract_declarator>;
 
@@ -344,11 +344,11 @@ const char* match_type_name(const char* a, const char* b, void* ctx) {
     Opt<abstract_declarator>
   >;
 
-  return type_name::match(a, b, ctx);
+  return type_name::match(a, b);
 }
 
 // this is also gonna recurse infinitely...
-const char* match_direct_abstract_declarator(const char* a, const char* b, void* ctx) {
+const char* match_direct_abstract_declarator(const char* a, const char* b) {
   // (6.7.7)
   using type_qualifier = Oneof<
     Lit<"const">,
@@ -379,12 +379,12 @@ const char* match_direct_abstract_declarator(const char* a, const char* b, void*
     Seq<array_abstract_declarator,    Opt<attribute_specifier_sequence> >,
     Seq<function_abstract_declarator, Opt<attribute_specifier_sequence> >
   >;
-  return direct_abstract_declarator::match(a, b, ctx);
+  return direct_abstract_declarator::match(a, b);
 }
 
 //------------------------------------------------------------------------------
 
-const char* match_parameter_type_list(const char* a, const char* b, void* ctx) {
+const char* match_parameter_type_list(const char* a, const char* b) {
 
   using abstract_declarator = Ref<match_abstract_declarator>;
 
@@ -402,7 +402,7 @@ const char* match_parameter_type_list(const char* a, const char* b, void* ctx) {
     Lit<"...">
   >;
 
-  return parameter_type_list::match(a, b, ctx);
+  return parameter_type_list::match(a, b);
 }
 
 //------------------------------------------------------------------------------
@@ -418,8 +418,8 @@ using label = Oneof<
   Seq<Opt<attribute_specifier_sequence>, Lit<"default">, Atom<':'> >
 >;
 
-const char* match_statement(const char* a, const char* b, void* ctx);
-const char* match_compound_statement(const char* a, const char* b, void* ctx);
+const char* match_statement(const char* a, const char* b);
+const char* match_compound_statement(const char* a, const char* b);
 
 using statement = Ref<match_statement>;
 
@@ -463,7 +463,7 @@ using unlabeled_statement = Oneof<
   Seq<Opt<attribute_specifier_sequence>, jump_statement>
 >;
 
-const char* match_compound_statement(const char* a, const char* b, void* ctx) {
+const char* match_compound_statement(const char* a, const char* b) {
   using block_item = Oneof<
     declaration,
     unlabeled_statement,
@@ -471,12 +471,12 @@ const char* match_compound_statement(const char* a, const char* b, void* ctx) {
   >;
   using block_item_list = Some<block_item>;
   using compound_statement = Seq< Atom<'{'>, Opt<block_item_list>, Atom<'}'>>;
-  return compound_statement::match(a, b, ctx);
+  return compound_statement::match(a, b);
 }
 
-const char* match_statement(const char* a, const char* b, void* ctx) {
+const char* match_statement(const char* a, const char* b) {
   using statement = Oneof<labeled_statement, unlabeled_statement>;
-  return statement::match(a, b, ctx);
+  return statement::match(a, b);
 }
 
 //------------------------------------------------------------------------------
@@ -670,18 +670,18 @@ using constant_expression = conditional_expression;
 
 // (6.7.12.1)
 
-const char* match_balanced_token(const char* a, const char* b, void* ctx) {
+const char* match_balanced_token(const char* a, const char* b) {
   using balanced_token = Oneof<
     Seq< Atom<'('>, Any<Ref<match_balanced_token>>, Atom<')'> >,
     Seq< Atom<'['>, Any<Ref<match_balanced_token>>, Atom<']'> >,
     Seq< Atom<'{'>, Any<Ref<match_balanced_token>>, Atom<'}'> >,
     NotAtom<'(',')','{','}','[',']'>
   >;
-  return balanced_token::match(a, b, ctx);
+  return balanced_token::match(a, b);
 }
 using balanced_token = Ref<match_balanced_token>;
 
-const char* match_attribute_specifier_sequence(const char* a, const char* b, void* ctx) {
+const char* match_attribute_specifier_sequence(const char* a, const char* b) {
   /*
   standard attribute is one of:
   deprecated fallthrough maybe_unused nodiscard noreturn _Noreturn unsequenced reproducible
@@ -696,7 +696,7 @@ const char* match_attribute_specifier_sequence(const char* a, const char* b, voi
   using attribute_specifier = Seq<Lit<"[[">, Any<attribute>, Lit<"]]">>;
   using attribute_specifier_sequence = Some<attribute_specifier>;
 
-  return attribute_specifier_sequence::match(a, b, ctx);
+  return attribute_specifier_sequence::match(a, b);
 }
 
 //------------------------------------------------------------------------------
