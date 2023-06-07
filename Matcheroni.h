@@ -1,6 +1,8 @@
 #ifndef __MATCHERONI_H__
 #define __MATCHERONI_H__
 
+// FIXME minimal push/pop stack for matchers
+
 namespace matcheroni {
 
 //------------------------------------------------------------------------------
@@ -10,7 +12,17 @@ namespace matcheroni {
 // Matchers must always handle null pointers and empty ranges.
 
 template<typename atom>
-using matcher = const atom* (*) (const atom* a, const atom* b, void* ctx);
+struct StackEntry;
+
+template<typename atom>
+using matcher = const atom* (*) (const atom* a, const atom* b, StackEntry<atom>*& ctx);
+
+template<typename atom>
+struct StackEntry {
+  matcher<atom> m;
+  const atom* a;
+  const atom* b;
+};
 
 //------------------------------------------------------------------------------
 
@@ -69,7 +81,7 @@ template <auto C, auto... rest>
 struct Atom<C, rest...> {
 
   template<typename atom>
-  static const atom* match(const atom* a, const atom* b, void* ctx) {
+  static const atom* match(const atom* a, const atom* b, StackEntry<atom>*& ctx) {
     if (!a || a == b) return nullptr;
     if (atom_eq(*a, C)) {
       return a + 1;
@@ -83,7 +95,7 @@ template <auto C>
 struct Atom<C> {
 
   template<typename atom>
-  static const atom* match(const atom* a, const atom* b, void* ctx) {
+  static const atom* match(const atom* a, const atom* b, StackEntry<atom>*& ctx) {
     if (!a || a == b) return nullptr;
     if (atom_eq(*a, C)) {
       return a + 1;
@@ -95,11 +107,38 @@ struct Atom<C> {
 
 struct AnyAtom {
   template<typename atom>
-  static const atom* match(const atom* a, const atom* b, void* ctx) {
+  static const atom* match(const atom* a, const atom* b, StackEntry<atom>*& ctx) {
     if (!a || a == b) return nullptr;
     return a + 1;
   }
 };
+
+//------------------------------------------------------------------------------
+
+/*
+template<typename P>
+struct Push {
+
+  template<typename atom>
+  static const atom* match(const atom* a, const atom* b, StackEntry<atom>*& ctx) {
+    auto stack = (StackEntry*)ctx;
+    stack[0].m = P::match;
+    stack[0].a = a;
+    stack[0].b = P::match(a, b, stack + 1);
+    return stack[0].b;
+  }
+};
+
+template<typename P>
+struct Pop {
+
+  template<typename atom>
+  static const atom* match(const atom* a, const atom* b, StackEntry<atom>*& ctx) {
+    auto stack = (StackEntry*)ctx;
+    assert(
+  }
+};
+*/
 
 //------------------------------------------------------------------------------
 // The 'Seq' matcher succeeds if all of its sub-matchers succeed in order.
@@ -111,7 +150,7 @@ template<typename P, typename... rest>
 struct Seq {
 
   template<typename atom>
-  static const atom* match(const atom* a, const atom* b, void* ctx) {
+  static const atom* match(const atom* a, const atom* b, StackEntry<atom>*& ctx) {
     auto c = P::match(a, b, ctx);
     return c ? Seq<rest...>::match(c, b, ctx) : nullptr;
   }
@@ -121,7 +160,7 @@ template<typename P>
 struct Seq<P> {
 
   template<typename atom>
-  static const atom* match(const atom* a, const atom* b, void* ctx) {
+  static const atom* match(const atom* a, const atom* b, StackEntry<atom>*& ctx) {
     return P::match(a, b, ctx);
   }
 };
@@ -138,7 +177,7 @@ template <typename P, typename... rest>
 struct Oneof {
 
   template<typename atom>
-  static const atom* match(const atom* a, const atom* b, void* ctx) {
+  static const atom* match(const atom* a, const atom* b, StackEntry<atom>*& ctx) {
     auto c = P::match(a, b, ctx);
     return c ? c : Oneof<rest...>::match(a, b, ctx);
   }
@@ -149,7 +188,7 @@ template <typename P>
 struct Oneof<P> {
 
   template<typename atom>
-  static const atom* match(const atom* a, const atom* b, void* ctx) {
+  static const atom* match(const atom* a, const atom* b, StackEntry<atom>*& ctx) {
     return P::match(a, b, ctx);
   }
 };
@@ -168,7 +207,7 @@ template<typename P>
 struct Any {
 
   template<typename atom>
-  static const atom* match(const atom* a, const atom* b, void* ctx) {
+  static const atom* match(const atom* a, const atom* b, StackEntry<atom>*& ctx) {
     while(auto c = P::match(a, b, ctx)) a = c;
     return a;
   }
@@ -184,7 +223,7 @@ template<typename P>
 struct Opt {
 
   template<typename atom>
-  static const atom* match(const atom* a, const atom* b, void* ctx) {
+  static const atom* match(const atom* a, const atom* b, StackEntry<atom>*& ctx) {
     auto c = P::match(a, b, ctx);
     return c ? c : a;
   }
@@ -201,7 +240,7 @@ template<typename P>
 struct Some {
 
   template<typename atom>
-  static const atom* match(const atom* a, const atom* b, void* ctx) {
+  static const atom* match(const atom* a, const atom* b, StackEntry<atom>*& ctx) {
     auto c = P::match(a, b, ctx);
     return c ? Any<P>::match(c, b, ctx) : nullptr;
   }
@@ -214,7 +253,7 @@ template<int N, typename P>
 struct Rep {
 
   template<typename atom>
-  static const atom* match(const atom* a, const atom* b, void* ctx) {
+  static const atom* match(const atom* a, const atom* b, StackEntry<atom>*& ctx) {
     for(auto i = 0; i < N; i++) {
       auto c = P::match(a, b, ctx);
       if (!c) return nullptr;
@@ -235,7 +274,7 @@ template<typename P>
 struct And {
 
   template<typename atom>
-  static const atom* match(const atom* a, const atom* b, void* ctx) {
+  static const atom* match(const atom* a, const atom* b, StackEntry<atom>*& ctx) {
     auto c = P::match(a, b, ctx);
     return c ? a : nullptr;
   }
@@ -251,7 +290,7 @@ template<typename P>
 struct Not {
 
   template<typename atom>
-  static const atom* match(const atom* a, const atom* b, void* ctx) {
+  static const atom* match(const atom* a, const atom* b, StackEntry<atom>*& ctx) {
     auto c = P::match(a, b, ctx);
     return c ? nullptr : a;
   }
@@ -264,7 +303,7 @@ template <typename C>
 struct EOF {
 
   template<typename atom>
-  static const atom* match(const atom* a, const atom* b, void* ctx) {
+  static const atom* match(const atom* a, const atom* b, StackEntry<atom>*& ctx) {
     return a == b ? a : nullptr;
   }
 };
@@ -277,7 +316,7 @@ template <auto C, auto... rest>
 struct NotAtom {
 
   template<typename atom>
-  static const atom* match(const atom* a, const atom* b, void* ctx) {
+  static const atom* match(const atom* a, const atom* b, StackEntry<atom>*& ctx) {
     if (!a || a == b) return nullptr;
     if (atom_eq(*a, C)) return nullptr;
     return NotAtom<rest...>::match(a, b, ctx);
@@ -288,7 +327,7 @@ template <auto C>
 struct NotAtom<C> {
 
   template<typename atom>
-  static const atom* match(const atom* a, const atom* b, void* ctx) {
+  static const atom* match(const atom* a, const atom* b, StackEntry<atom>*& ctx) {
     if (!a || a == b) return nullptr;
     return atom_eq(*a, C) ? nullptr : a + 1;
   }
@@ -301,7 +340,7 @@ template<auto RA, decltype(RA) RB>
 struct Range {
 
   template<typename atom>
-  static const atom* match(const atom* a, const atom* b, void* ctx) {
+  static const atom* match(const atom* a, const atom* b, StackEntry<atom>*& ctx) {
     if (!a || a == b) return nullptr;
     if (atom_gte(*a, RA) && atom_lte(*a, RB)) {
       return a + 1;
@@ -318,7 +357,7 @@ template<typename P>
 struct Until {
 
   template<typename atom>
-  static const atom* match(const atom* a, const atom* b, void* ctx) {
+  static const atom* match(const atom* a, const atom* b, StackEntry<atom>*& ctx) {
     while(a < b) {
       if (P::match(a, b, ctx)) return a;
       a++;
@@ -336,7 +375,7 @@ template<auto& M>
 struct Ref {
 
   template<typename atom>
-  static const atom* match(const atom* a, const atom* b, void* ctx) {
+  static const atom* match(const atom* a, const atom* b, StackEntry<atom>*& ctx) {
     return M(a, b, ctx);
   }
 };
@@ -350,7 +389,7 @@ struct StoreBackref {
   inline static int size;
 
   template<typename atom>
-  static const atom* match(const atom* a, const atom* b, void* ctx) {
+  static const atom* match(const atom* a, const atom* b, StackEntry<atom>*& ctx) {
     auto c = P::match(a, b, ctx);
     if (!c) return nullptr;
     start = a;
@@ -363,7 +402,7 @@ template<typename P>
 struct MatchBackref {
 
   template<typename atom>
-  static const atom* match(const atom* a, const atom* b, void* ctx) {
+  static const atom* match(const atom* a, const atom* b, StackEntry<atom>*& ctx) {
     if (!a || a == b) return nullptr;
     const atom* start = (const atom*)(StoreBackref<P>::start);
     int size = StoreBackref<P>::size;
@@ -417,7 +456,7 @@ struct MatchBackref {
 struct EOL {
 
   template<typename atom>
-  static const atom* match(const atom* a, const atom* b, void* ctx) {
+  static const atom* match(const atom* a, const atom* b, StackEntry<atom>*& ctx) {
     if (!a) return nullptr;
     if (a == b) return a;
     if (*a == atom('\n')) return a;
@@ -448,7 +487,7 @@ template<StringParam lit>
 struct Lit {
 
   template<typename atom>
-  static const atom* match(const atom* a, const atom* b, void* ctx) {
+  static const atom* match(const atom* a, const atom* b, StackEntry<atom>*& ctx) {
     if (!a || a == b) return nullptr;
     if (a + sizeof(lit.value) > b) return nullptr;
 
@@ -468,7 +507,7 @@ template<StringParam lit>
 struct AtomLit {
 
   template<typename atom>
-  static const atom* match(const atom* a, const atom* b, void* ctx) {
+  static const atom* match(const atom* a, const atom* b, StackEntry<atom>*& ctx) {
     if (!a || a == b) return nullptr;
     if (atom_eq(*a, lit)) {
       return a + 1;
@@ -503,7 +542,7 @@ template<StringParams lits>
 struct Lits {
 
   template<typename atom>
-  static const atom* match(const atom* a, const atom* b, void* ctx) {
+  static const atom* match(const atom* a, const atom* b, StackEntry<atom>*& ctx) {
     if (!a || a == b) return nullptr;
 
     auto N = sizeof(lits.value) / sizeof(lits.value[0]);
@@ -525,7 +564,7 @@ struct Lits {
 /*
 template <StringParam M1, StringParam... rest>
 struct OneofLit {
-  static const char* match(const char* cursor, void* ctx) {
+  static const char* match(const char* cursor, StackEntry<atom>*& ctx) {
     if (auto end = Lit<M1>::match(cursor, ctx)) return end;
     return OneofLit<rest...>::match(cursor, ctx);
   }
@@ -533,7 +572,7 @@ struct OneofLit {
 
 template <StringParam M1>
 struct OneofLit<M1> {
-  static const char* match(const char* cursor, void* ctx) {
+  static const char* match(const char* cursor, StackEntry<atom>*& ctx) {
     return Lit<M1>::match(cursor, ctx);
   }
 };
@@ -551,7 +590,7 @@ template<StringParam chars>
 struct Charset {
 
   template<typename atom>
-  static const atom* match(const atom* a, const atom* b, void* ctx) {
+  static const atom* match(const atom* a, const atom* b, StackEntry<atom>*& ctx) {
     if (!a || a == b) return nullptr;
     for (auto i = 0; i < sizeof(chars.value); i++) {
       if (*a == chars.value[i]) {
@@ -566,7 +605,7 @@ struct Charset {
 /*
 template<StringParam chars>
 struct Digraphs {
-  static const char* match(const char* cursor, void* ctx) {
+  static const char* match(const char* cursor, StackEntry<atom>*& ctx) {
     if(!cursor) return nullptr;
     for (auto i = 0; i < sizeof(chars.value); i += 2) {
       if (cursor[0] == chars.value[i+0] &&
@@ -580,7 +619,7 @@ struct Digraphs {
 
 template<StringParam chars>
 struct Trigraphs {
-  static const char* match(const char* cursor, void* ctx) {
+  static const char* match(const char* cursor, StackEntry<atom>*& ctx) {
     if(!cursor) return nullptr;
     for (auto i = 0; i < sizeof(chars.value); i += 3) {
       if (cursor[0] == chars.value[i+0] &&

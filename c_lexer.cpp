@@ -95,22 +95,22 @@ void dump_lexer_stats() {
 //------------------------------------------------------------------------------
 // Misc helpers
 
-const char* match_eof(const char* a, const char* b, void* ctx) {
+const char* match_eof(const char* a, const char* b, StackEntry<char>*& ctx) {
   if (a == b) return a;
   return nullptr;
 }
 
-const char* match_formfeed(const char* a, const char* b, void* ctx) {
+const char* match_formfeed(const char* a, const char* b, StackEntry<char>*& ctx) {
   return Atom<'\f'>::match(a, b, ctx);
 }
 
-const char* match_space(const char* a, const char* b, void* ctx) {
+const char* match_space(const char* a, const char* b, StackEntry<char>*& ctx) {
   using ws = Atom<' ','\t'>;
   using match = Some<ws>;
   return match::match(a, b, ctx);
 }
 
-const char* match_newline(const char* a, const char* b, void* ctx) {
+const char* match_newline(const char* a, const char* b, StackEntry<char>*& ctx) {
   using match = Seq<Opt<Atom<'\r'>>, Atom<'\n'>>;
   return match::match(a, b, ctx);
 }
@@ -118,7 +118,7 @@ const char* match_newline(const char* a, const char* b, void* ctx) {
 //------------------------------------------------------------------------------
 // Basic UTF8 support
 
-const char* match_utf8(const char* a, const char* b, void* ctx) {
+const char* match_utf8(const char* a, const char* b, StackEntry<char>*& ctx) {
   using utf8_ext       = Range<char(0x80), char(0xBF)>;
   using utf8_onebyte   = Range<char(0x00), char(0x7F)>;
   using utf8_twobyte   = Seq<Range<char(0xC0), char(0xDF)>, utf8_ext>;
@@ -132,7 +132,7 @@ const char* match_utf8(const char* a, const char* b, void* ctx) {
   return utf8_char::match(a, b, ctx);
 }
 
-const char* match_utf8_bom(const char* a, const char* b, void* ctx) {
+const char* match_utf8_bom(const char* a, const char* b, StackEntry<char>*& ctx) {
   using utf8_bom = Seq<Atom<char(0xEF)>, Atom<char(0xBB)>, Atom<char(0xBF)>>;
   return utf8_bom::match(a, b, ctx);
 }
@@ -145,7 +145,7 @@ const char* match_utf8_bom(const char* a, const char* b, void* ctx) {
 // 5.1.1.2 : Lines ending in a backslash and a newline get spliced together
 // with the following line.
 
-const char* match_splice(const char* a, const char* b, void* ctx) {
+const char* match_splice(const char* a, const char* b, StackEntry<char>*& ctx) {
   // According to GCC it's only a warning to have whitespace between the
   // backslash and the newline... and apparently \r\n is ok too?
 
@@ -164,7 +164,7 @@ const char* match_splice(const char* a, const char* b, void* ctx) {
 //------------------------------------------------------------------------------
 // 6.4.1 Keywords
 
-const char* match_keyword(const char* a, const char* b, void* ctx) {
+const char* match_keyword(const char* a, const char* b, StackEntry<char>*& ctx) {
 
   // Probably too many strings to pass as template parameters...
   const char* c_keywords[] = {
@@ -190,7 +190,7 @@ const char* match_keyword(const char* a, const char* b, void* ctx) {
 //------------------------------------------------------------------------------
 // 6.4.4.1 Integer constants
 
-const char* match_int(const char* a, const char* b, void* ctx) {
+const char* match_int(const char* a, const char* b, StackEntry<char>*& ctx) {
   using digit                = Range<'0', '9'>;
   using nonzero_digit        = Range<'1', '9'>;
 
@@ -215,10 +215,10 @@ const char* match_int(const char* a, const char* b, void* ctx) {
   using bit_precise_int_suffix = Oneof<Lit<"wb">, Lit<"WB">>;
 
   using integer_suffix = Oneof<
-    Seq<unsigned_suffix,  Opt<long_suffix>>,
     Seq<unsigned_suffix,  Opt<long_long_suffix>>,
-    Seq<long_suffix,      Opt<unsigned_suffix>>,
+    Seq<unsigned_suffix,  Opt<long_suffix>>,
     Seq<long_long_suffix, Opt<unsigned_suffix>>,
+    Seq<long_suffix,      Opt<unsigned_suffix>>,
 
     Seq<unsigned_suffix, bit_precise_int_suffix>,
     Seq<bit_precise_int_suffix, Opt<unsigned_suffix>>
@@ -238,7 +238,7 @@ const char* match_int(const char* a, const char* b, void* ctx) {
 //------------------------------------------------------------------------------
 // 6.4.3 Universal character names
 
-const char* match_universal_character_name(const char* a, const char* b, void* ctx) {
+const char* match_universal_character_name(const char* a, const char* b, StackEntry<char>*& ctx) {
   using n_char = NotAtom<'}','\n'>;
   using n_char_sequence = Some<n_char>;
   using named_universal_character = Seq<Lit<"\\N{">, n_char_sequence, Lit<"}">>;
@@ -259,7 +259,7 @@ const char* match_universal_character_name(const char* a, const char* b, void* c
 //------------------------------------------------------------------------------
 // 6.4.2 Identifiers - GCC allows dollar signs in identifiers?
 
-const char* match_identifier(const char* a, const char* b, void* ctx) {
+const char* match_identifier(const char* a, const char* b, StackEntry<char>*& ctx) {
   using digit = Range<'0', '9'>;
 
   // Not sure if this should be in here
@@ -283,7 +283,7 @@ const char* match_identifier(const char* a, const char* b, void* ctx) {
 //------------------------------------------------------------------------------
 // 6.4.4.2 Floating constants
 
-const char* match_float(const char* a, const char* b, void* ctx) {
+const char* match_float(const char* a, const char* b, StackEntry<char>*& ctx) {
   using floating_suffix = Oneof<
     Atom<'f'>, Atom<'l'>, Atom<'F'>, Atom<'L'>,
     Lit<"df">, Lit<"dd">, Lit<"dl">,
@@ -342,7 +342,7 @@ using enumeration_constant = Ref<match_identifier>;
 //------------------------------------------------------------------------------
 // Escape sequences
 
-const char* match_escape_sequence(const char* a, const char* b, void* ctx) {
+const char* match_escape_sequence(const char* a, const char* b, StackEntry<char>*& ctx) {
   // This is what's in the spec...
   //using simple_escape_sequence      = Seq<Atom<'\\'>, Charset<"'\"?\\abfnrtv">>;
 
@@ -374,7 +374,7 @@ const char* match_escape_sequence(const char* a, const char* b, void* ctx) {
 //------------------------------------------------------------------------------
 // 6.4.4.4 Character constants
 
-const char* match_char(const char* a, const char* b, void* ctx) {
+const char* match_char(const char* a, const char* b, StackEntry<char>*& ctx) {
   // Multi-character character literals are allowed by spec, but their meaning is
   // implementation-defined...
 
@@ -400,7 +400,7 @@ using predefined_constant = Oneof<Lit<"false">, Lit<"true">, Lit<"nullptr">>;
 //------------------------------------------------------------------------------
 // 6.4.5 String literals
 
-const char* match_cooked_string_literal(const char* a, const char* b, void* ctx) {
+const char* match_cooked_string_literal(const char* a, const char* b, StackEntry<char>*& ctx) {
   // Note, we add splices here since we're matching before preproccessing.
   using s_char          = Oneof<Ref<match_splice>, Ref<match_escape_sequence>, NotAtom<'"', '\\', '\n'>>;
   using s_char_sequence = Some<s_char>;
@@ -412,7 +412,7 @@ const char* match_cooked_string_literal(const char* a, const char* b, void* ctx)
 //------------------------------------------------------------------------------
 // Raw string literals from the C++ spec
 
-const char* match_raw_string_literal(const char* a, const char* b, void* ctx) {
+const char* match_raw_string_literal(const char* a, const char* b, StackEntry<char>*& ctx) {
 
   using encoding_prefix    = Oneof<Lit<"u8">, Atom<'u', 'U', 'L'>>; // u8 must go first
 
@@ -443,7 +443,7 @@ const char* match_raw_string_literal(const char* a, const char* b, void* ctx) {
   return raw_string_literal::match(a, b, nullptr);
 }
 
-const char* match_string(const char* a, const char* b, void* ctx) {
+const char* match_string(const char* a, const char* b, StackEntry<char>*& ctx) {
   using any_string = Oneof<
     Ref<match_cooked_string_literal>,
     Ref<match_raw_string_literal>
@@ -455,7 +455,7 @@ const char* match_string(const char* a, const char* b, void* ctx) {
 //------------------------------------------------------------------------------
 // for the parser
 
-const char* match_assign_op(const char* a, const char* b, void* ctx) {
+const char* match_assign_op(const char* a, const char* b, StackEntry<char>*& ctx) {
  const char* ops[] = {
     "+=","-=","*=","/=","%=","&=","|=","^=", "=",
   };
@@ -463,7 +463,7 @@ const char* match_assign_op(const char* a, const char* b, void* ctx) {
   return match_lits(a, b, ops, op_count);
 }
 
-const char* match_infix_op(const char* a, const char* b, void* ctx) {
+const char* match_infix_op(const char* a, const char* b, StackEntry<char>*& ctx) {
   const char* ops[] = {
     "<<=",">>=",
     "==","!=","<=",">=",
@@ -480,13 +480,13 @@ const char* match_infix_op(const char* a, const char* b, void* ctx) {
   return match_lits(a, b, ops, op_count);
 }
 
-const char* match_prefix_op(const char* a, const char* b, void* ctx) {
+const char* match_prefix_op(const char* a, const char* b, StackEntry<char>*& ctx) {
   const char* ops[] = { "++", "--", "+", "-", "!", "~", "&", "*" };
   int op_count = sizeof(ops)/sizeof(*ops);
   return match_lits(a, b, ops, op_count);
 }
 
-const char* match_postfix_op(const char* a, const char* b, void* ctx) {
+const char* match_postfix_op(const char* a, const char* b, StackEntry<char>*& ctx) {
   const char* ops[] = { "++", "--" };
   int op_count = sizeof(ops)/sizeof(*ops);
   return match_lits(a, b, ops, op_count);
@@ -495,7 +495,7 @@ const char* match_postfix_op(const char* a, const char* b, void* ctx) {
 //------------------------------------------------------------------------------
 // 6.4.6 Punctuators
 
-const char* match_punct(const char* a, const char* b, void* ctx) {
+const char* match_punct(const char* a, const char* b, StackEntry<char>*& ctx) {
   // We're just gonna match these one punct at a time
   using punctuator = Charset<"-,;:!?.()[]{}*/&#%^+<=>|~">;
   return punctuator::match(a, b, ctx);
@@ -512,7 +512,7 @@ const char* match_punct(const char* a, const char* b, void* ctx) {
 //------------------------------------------------------------------------------
 // 6.4.7 Header names
 
-const char* match_header_name(const char* a, const char* b, void* ctx) {
+const char* match_header_name(const char* a, const char* b, StackEntry<char>*& ctx) {
   using q_char          = NotAtom<'\n', '"'>;
   using q_char_sequence = Some<q_char>;
   using h_char          = NotAtom<'\n', '>'>;
@@ -527,13 +527,13 @@ const char* match_header_name(const char* a, const char* b, void* ctx) {
 //------------------------------------------------------------------------------
 // 6.4.9 Comments
 
-const char* match_oneline_comment(const char* a, const char* b, void* ctx) {
+const char* match_oneline_comment(const char* a, const char* b, StackEntry<char>*& ctx) {
   // Single-line comments
   using slc = Seq<Lit<"//">, Until<EOL>>;
   return slc::match(a, b, ctx);
 }
 
-const char* match_multiline_comment(const char* a, const char* b, void* ctx) {
+const char* match_multiline_comment(const char* a, const char* b, StackEntry<char>*& ctx) {
   // Multi-line non-nested comments
   using mlc_ldelim = Lit<"/*">;
   using mlc_rdelim = Lit<"*/">;
@@ -541,7 +541,7 @@ const char* match_multiline_comment(const char* a, const char* b, void* ctx) {
   return mlc::match(a, b, ctx);
 }
 
-const char* match_comment(const char* a, const char* b, void* ctx) {
+const char* match_comment(const char* a, const char* b, StackEntry<char>*& ctx) {
   using comment = Oneof<
     Ref<match_oneline_comment>,
     Ref<match_multiline_comment>
@@ -552,7 +552,7 @@ const char* match_comment(const char* a, const char* b, void* ctx) {
 
 // Multi-line nested comments (not actually in C, just here for reference)
 // FIXME needs test case
-const char* match_nested_comment(const char* a, const char* b, void* ctx) {
+const char* match_nested_comment(const char* a, const char* b, StackEntry<char>*& ctx) {
   using ldelim = Lit<"/*">;
   using rdelim = Lit<"*/">;
   using item   = Oneof<Ref<match_nested_comment>, AnyAtom>;
@@ -563,7 +563,7 @@ const char* match_nested_comment(const char* a, const char* b, void* ctx) {
 //------------------------------------------------------------------------------
 // FIXME clean this up... :P
 
-const char* until_eol(const char* a, const char* b, void* ctx) {
+const char* until_eol(const char* a, const char* b, StackEntry<char>*& ctx) {
   bool splice = false;
 
   while(a < b) {
@@ -600,7 +600,7 @@ const char* until_eol(const char* a, const char* b, void* ctx) {
   return a;
 };
 
-const char* match_preproc(const char* a, const char* b, void* ctx) {
+const char* match_preproc(const char* a, const char* b, StackEntry<char>*& ctx) {
   if (*a == '#') {
     auto end = until_eol(a, b, ctx);
     return end;

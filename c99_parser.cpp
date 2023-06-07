@@ -381,6 +381,10 @@ struct Parser {
           break;
         }
       }
+      if (token->is_punct('*')) {
+        specifiers.push_back(take_punct('*'));
+        match = true;
+      }
       if (!match) break;
     }
 
@@ -502,46 +506,6 @@ struct Parser {
     }
   }
 #endif
-
-  //----------------------------------------
-
-  Node* parse_specifier() {
-    Node* result = nullptr;
-
-    for (auto c : c_specifiers) {
-      if (token->is_identifier(c)) {
-        auto result = new Node(NODE_SPECIFIER, token, token+1);
-        token = token + 1;
-        return result;
-      }
-    }
-
-    return nullptr;
-  }
-
-  //----------------------------------------
-
-  Node* parse_specifier_list() {
-
-    std::vector<Node*> specs;
-
-    while(1) {
-      if (auto child = parse_specifier()) {
-        specs.push_back(child);
-      }
-      else {
-        break;
-      }
-    }
-
-    if (specs.size()) {
-      auto result = new Node(NODE_SPECIFIER_LIST, nullptr, nullptr);
-      for (auto s : specs) result->append(s);
-      return result;
-    }
-
-    return nullptr;
-  }
 
   //----------------------------------------
 
@@ -839,6 +803,7 @@ struct Parser {
     }
 
     if (auto decl = parse_declaration(';')) {
+      decl->append(take_punct(';'));
       return decl;
     }
 
@@ -913,7 +878,7 @@ struct Parser {
     bool has_body = false;
     bool has_init = false;
 
-    result->append(parse_specifier_list());
+    result->append(parse_specifiers());
 
     if (token[0].is_identifier("enum")) {
       return parse_enum_declaration();
@@ -937,11 +902,17 @@ struct Parser {
       else {
         has_type = true;
         result->append(n1);
+        result->append(parse_specifiers());
         result->append(parse_identifier());
       }
     }
 
-    if (token[0].is_punct('[')) {
+    if (token[0].is_punct(':')) {
+      result->append(take_punct(':'));
+      result->append(parse_expression(';'));
+    }
+
+    while (token[0].is_punct('[')) {
       result->append(take_punct('['));
       result->append(parse_expression(']'));
       result->append(take_punct(']'));
@@ -950,12 +921,13 @@ struct Parser {
     if (token[0].is_punct('(')) {
       has_params = true;
       result->append(parse_parameter_list());
-      result->append(parse_specifier_list());
+
+      //result->append(parse_specifiers());
+      if (is_constructor) {
+        result->append(parse_initializer_list());
+      }
     }
 
-    if (is_constructor) {
-      result->append(parse_initializer_list());
-    }
 
     if (token[0].is_punct('{')) {
       has_body = true;
@@ -1597,8 +1569,8 @@ int test_c99_peg() {
   auto time_a = timestamp_ms();
   std::vector<std::string> paths;
 
-  const char* base_path = "tests";
-  //const char* base_path = "mini_tests";
+  //const char* base_path = "tests";
+  const char* base_path = "mini_tests";
   printf("Parsing source files in %s\n", base_path);
   for (const auto& f : rdit(base_path)) {
     if (!f.is_regular_file()) continue;
