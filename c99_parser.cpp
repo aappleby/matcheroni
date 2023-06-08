@@ -853,50 +853,6 @@ const Token* parse_infix_op() {
 
 //----------------------------------------
 
-Node* parse_expression_rhs(Node* lhs, const char rdelim) {
-  if (token->is_eof())         return lhs;
-  if (token->is_punct(')'))    return lhs;
-  if (token->is_punct(';'))    return lhs;
-  if (token->is_punct(','))    return lhs;
-  if (token->is_punct(rdelim)) return lhs;
-
-  if (parse_expression_suffix()) {
-    auto op = pop_node();
-    auto result = new Node(NODE_POSTFIX_EXPRESSION);
-    result->append(lhs);
-    result->append(op);
-    return parse_expression_rhs(result, rdelim);
-  }
-
-  if (auto end = parse_infix_op()) {
-    auto op = pop_node();
-    parse_expression(rdelim);
-    auto rhs = pop_node();
-
-    auto result = new Node(NODE_INFIX_EXPRESSION);
-    result->append(lhs);
-    result->append(op);
-    result->append(rhs);
-    return parse_expression_rhs(result, rdelim);
-  }
-
-  if (token[0].is_punct('[')) {
-    auto result = new Node(NODE_ARRAY_EXPRESSION);
-    result->append(lhs);
-    skip_punct('[');
-    parse_expression(']');
-    result->append(pop_node());
-    skip_punct(']');
-    return parse_expression_rhs(result, rdelim);
-  }
-
-  // Nothing found to continue the expression with?
-  assert(false);
-  return lhs;
-}
-
-//----------------------------------------
-
 const Token* parse_expression_lhs(const char rdelim) {
 
   // Dirty hackkkkk - explicitly recognize templated function calls as
@@ -961,28 +917,57 @@ const Token* parse_expression_lhs(const char rdelim) {
 const Token* parse_expression(const char rdelim) {
 
   // FIXME there are probably other expression terminators?
-  if (token->is_eof())      return nullptr;
-  if (token->is_punct(')')) return nullptr;
-  if (token->is_punct(';')) return nullptr;
-  if (token->is_punct(',')) return nullptr;
+  if (token->is_eof())         return nullptr;
+  if (token->is_punct(')'))    return nullptr;
+  if (token->is_punct(';'))    return nullptr;
+  if (token->is_punct(','))    return nullptr;
   if (token->is_punct(rdelim)) return nullptr;
 
   parse_expression_lhs(rdelim);
-  Node* lhs = pop_node();
-  if (!lhs) return nullptr;
 
-  if (token->is_eof())         { push_node(lhs); return token; }
-  if (token->is_punct(')'))    { push_node(lhs); return token; }
-  if (token->is_punct(';'))    { push_node(lhs); return token; }
-  if (token->is_punct(','))    { push_node(lhs); return token; }
-  if (token->is_punct(rdelim)) { push_node(lhs); return token; }
+  if (token->is_eof())         { return token; }
+  if (token->is_punct(')'))    { return token; }
+  if (token->is_punct(';'))    { return token; }
+  if (token->is_punct(','))    { return token; }
+  if (token->is_punct(rdelim)) { return token; }
 
-  auto result = parse_expression_rhs(lhs, rdelim);
+  if (parse_expression_suffix()) {
+    auto op = pop_node();
+    auto lhs = pop_node();
+    auto result = new Node(NODE_POSTFIX_EXPRESSION);
+    result->append(lhs);
+    result->append(op);
+    push_node(result);
+    return token;
+  }
 
+  if (auto end = parse_infix_op()) {
+    auto op = pop_node();
+    auto lhs = pop_node();
+    parse_expression(rdelim);
+    auto rhs = pop_node();
 
+    auto result = new Node(NODE_INFIX_EXPRESSION);
+    result->append(lhs);
+    result->append(op);
+    result->append(rhs);
+    push_node(result);
+    return token;
+  }
 
+  if (token[0].is_punct('[')) {
+    auto result = new Node(NODE_ARRAY_EXPRESSION);
+    auto lhs = pop_node();
+    result->append(lhs);
+    skip_punct('[');
+    parse_expression(']');
+    result->append(pop_node());
+    skip_punct(']');
+    push_node(result);
+    return token;
+  }
 
-  push_node(result);
+  assert(false);
   return token;
 }
 
