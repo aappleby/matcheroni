@@ -338,9 +338,8 @@ const Token* parse_declaration(const char rdelim) {
       }
     }
 
-    if (auto end = take_punct(token, token_eof, ':')) {
+    if (auto end = skip_punct(token, token_eof, ':')) {
       token = end;
-      result->append(pop_node());
       if (parse_expression('{')) {
         result->append(pop_node());
       }
@@ -348,18 +347,16 @@ const Token* parse_declaration(const char rdelim) {
   }
 
   while (token[0].is_punct('[')) {
-    if (auto end = take_punct(token, token_eof, '[')) {
+    if (auto end = skip_punct(token, token_eof, '[')) {
       token = end;
-      result->append(pop_node());
     }
 
     if (parse_expression(']')) {
       result->append(pop_node());
     }
 
-    if (auto end = take_punct(token, token_eof, ']')) {
+    if (auto end = skip_punct(token, token_eof, ']')) {
       token = end;
-      result->append(pop_node());
     }
   }
 
@@ -387,10 +384,9 @@ const Token* parse_declaration(const char rdelim) {
     result->append(pop_node());
   }
 
-  if (auto end = take_punct(token, token_eof, '=')) {
+  if (auto end = skip_punct(token, token_eof, '=')) {
     token = end;
     has_init = true;
-    result->append(pop_node());
     parse_expression(rdelim);
     result->append(pop_node());
   }
@@ -433,9 +429,8 @@ const Token* parse_field_declaration_list() {
       auto child = pop_node();
       result->append(child);
       result->items.push_back(child);
-      if (auto end = take_punct(token, token_eof, ';')) {
+      if (auto end = skip_punct(token, token_eof, ';')) {
         token = end;
-        result->append(pop_node());
       }
     }
   }
