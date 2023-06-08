@@ -260,8 +260,18 @@ const Token* take_identifier(const Token* a, const Token* b, const char* identif
   }
 }
 
+const Token* take_identifier2(const Token* a, const Token* b) {
+  if (a->is_identifier()) {
+    push_node( new Node(NODE_IDENTIFIER, a, a + 1) );
+    return a + 1;
+  }
+  else {
+    return nullptr;
+  }
+}
+
 const Token* take_constant(const Token* a, const Token* b) {
-  assert(a->is_constant());
+  if (!a->is_constant()) return nullptr;
   return take_lexemes(a, b, NODE_CONSTANT, 1);
 }
 
@@ -866,28 +876,14 @@ const Token* parse_expression_lhs(const Token* a, const Token* b, const char rde
     return a;
   }
 
-  if (a->is_punct('(')) {
-    a = parse_parenthesized_expression(a, b);
-    return a;
-  }
+  using pattern = Oneof<
+    Ref<parse_parenthesized_expression>,
+    Ref<take_constant>,
+    Ref<parse_function_call>,
+    Ref<take_identifier2>
+  >;
 
-  if (a->is_constant()) {
-    a = take_constant(a, b);
-    return a;
-  }
-
-  if (a[0].is_identifier() && a[1].is_punct('(')) {
-    a = parse_function_call(a, b);
-    return a;
-  }
-
-  if (a[0].is_identifier()) {
-    a = take_identifier(a, b);
-    return a;
-  }
-
-  assert(false);
-  return nullptr;
+  return pattern::match(a, b);
 }
 
 //----------------------------------------
@@ -1153,6 +1149,8 @@ const Token* parse_parameter_list(const Token* a, const Token* b) {
 //----------------------------------------
 
 const Token* parse_parenthesized_expression(const Token* a, const Token* b) {
+  if (!a->is_punct('(')) return nullptr;
+
   auto result = new Node(NODE_PARENTHESIZED_EXPRESSION);
   a = skip_punct(a, b, '(');
 
