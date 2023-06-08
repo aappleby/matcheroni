@@ -237,15 +237,18 @@ const Token* skip_identifier(const char* identifier = nullptr) {
 
 //----------------------------------------
 
-const Token* take_lexemes(NodeType type, int count) {
-  push_node( new Node(type, token, token + count) );
-  token = token + count;
-  return token;
+const Token* take_lexemes(const Token* a, const Token* b, NodeType type, int count) {
+  push_node( new Node(type, a, a + count) );
+  a = a + count;
+  return a;
 }
 
 const Token* take_punct(char punct) {
-  if (token->is_punct(punct)) {
-    return take_lexemes(NODE_PUNCT, 1);
+  if (!token->is_punct(punct)) return nullptr;
+
+  if (auto end = take_lexemes(token, token_eof, NODE_PUNCT, 1)) {
+    token = end;
+    return token;
   }
   else {
     return nullptr;
@@ -265,8 +268,8 @@ const Token* take_identifier(const char* identifier = nullptr) {
 
 const Token* take_constant() {
   assert(token->is_constant());
-  //return take_lexemes(NODE_CONSTANT, 1);
-  if (take_lexemes(NODE_CONSTANT, 1)) {
+  if (auto end = take_lexemes(token, token_eof, NODE_CONSTANT, 1)) {
+    token = end;
     return token;
   }
   else {
@@ -504,20 +507,21 @@ const Token* parse_namespace_specifier() {
   if (auto end = decl::match(token, token_eof)) {
     skip_identifier("namespace");
     take_identifier();
-    auto name = pop_node();
     skip_punct(';');
     auto result = new Node(NODE_NAMESPACE_DECLARATION);
-    result->append(name);
+    result->append(pop_node());
     push_node(result);
     return token;
   }
   else {
     skip_identifier("namespace");
     take_identifier();
-    auto name = pop_node();
     parse_field_declaration_list();
-    auto body = pop_node();
     skip_punct(';');
+
+    auto body = pop_node();
+    auto name = pop_node();
+
     auto result = new Node(NODE_NAMESPACE_DEFINITION);
     result->append(name);
     result->append(body);
@@ -532,21 +536,21 @@ const Token* parse_compound_statement() {
   if (!token->is_punct('{')) return nullptr;
 
   auto result = new CompoundStatement();
+  push_node(result);
+
+  auto old_top = node_top;
 
   skip_punct('{');
-
-  while(1) {
-    if (token->is_punct('}')) break;
-    parse_statement();
-    auto statement = pop_node();
-    assert(statement);
-    result->statements.push_back(statement);
-    result->append(statement);
-  }
-
+  while(parse_statement());
   skip_punct('}');
 
-  push_node(result);
+  for (auto c = old_top; c < node_top; c++) {
+    result->statements.push_back(node_stack[c]);
+    result->append(node_stack[c]);
+  }
+
+  node_top = old_top;
+
   return token;
 }
 
@@ -687,10 +691,9 @@ const Token* parse_decltype() {
       result2->append(result);
 
       //result2->append(take_lexemes(NODE_OPERATOR, 2));
-      if (take_lexemes(NODE_OPERATOR, 2)) {
+      if (auto end = take_lexemes(token, token_eof, NODE_OPERATOR, 2)) {
+        token = end;
         result2->append(pop_node());
-      }
-      else {
       }
 
       if (parse_decltype()) {
@@ -790,7 +793,8 @@ const Token* parse_expression_suffix() {
 
   if (token[0].is_punct('+') && token[1].is_punct('+')) {
     //return take_lexemes(NODE_OPERATOR, 2);
-    if (take_lexemes(NODE_OPERATOR, 2)) {
+    if (auto end = take_lexemes(token, token_eof, NODE_OPERATOR, 2)) {
+      token = end;
       return token;
     }
     else {
@@ -800,7 +804,8 @@ const Token* parse_expression_suffix() {
 
   if (token[0].is_punct('-') && token[1].is_punct('-')) {
     //return take_lexemes(NODE_OPERATOR, 2);
-    if (take_lexemes(NODE_OPERATOR, 2)) {
+    if (auto end = take_lexemes(token, token_eof, NODE_OPERATOR, 2)) {
+      token = end;
       return token;
     }
     else {
@@ -1287,6 +1292,10 @@ const Token* parse_for_statement() {
 //----------------------------------------
 
 const Token* parse_statement() {
+  if (token[0].is_punct('}')) {
+    return nullptr;
+  }
+
   if (token[0].is_punct('{')) {
     parse_compound_statement();
     return token;
