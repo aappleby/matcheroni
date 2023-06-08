@@ -134,7 +134,7 @@ void  push_node(Node* n) { node_stack[node_top++] = n; }
 
 const Token* parse_compound_statement(const Token* a, const Token* b);
 const Token* parse_declaration_list(NodeType type, const char ldelim, const char spacer, const char rdelim);
-const Token* parse_decltype();
+const Token* parse_decltype(const Token* a, const Token* b);
 const Token* parse_enum_declaration(const Token* a, const Token* b);
 const Token* parse_expression_list(NodeType type, const char ldelim, const char spacer, const char rdelim);
 const Token* parse_expression(const char rdelim);
@@ -316,7 +316,9 @@ const Token* parse_declaration(const char rdelim) {
   }
   else {
     // Need a better way to handle this
-    parse_decltype();
+    if (auto end = parse_decltype(token, token_eof)) {
+      token = end;
+    }
     auto n1 = pop_node();
 
     if (token[0].is_punct('=')) {
@@ -673,51 +675,55 @@ Node* parse_declaration(Node* declaration_specifiers, const char rdelim) {
 
 //----------------------------------------
 
-const Token* parse_decltype() {
-  if (token[0].type != TOK_IDENTIFIER) return nullptr;
+const Token* parse_decltype(const Token* a, const Token* b) {
+  if (a[0].type != TOK_IDENTIFIER) return nullptr;
 
   Node* type = nullptr;
 
   // FIXME do some proper type parsing here
-  if (token[1].is_punct('*')) {
-    type = new Node(NODE_DECLTYPE, &token[0], &token[2]);
-    token += 2;
+  if (a[1].is_punct('*')) {
+    type = new Node(NODE_DECLTYPE, &a[0], &a[2]);
+    a += 2;
   }
   else {
-    type = new Node(NODE_DECLTYPE, &token[0], &token[1]);
-    token += 1;
+    type = new Node(NODE_DECLTYPE, &a[0], &a[1]);
+    a += 1;
   }
 
-  if (token[0].is_punct('<')) {
+  if (a[0].is_punct('<')) {
     auto result = new Node(NODE_TEMPLATED_TYPE, nullptr, nullptr);
     result->append(type);
+
+    token = a;
     if (parse_expression_list(NODE_ARGUMENT_LIST, '<', ',', '>')) {
+      a = token;
       result->append(pop_node());
     }
 
-    if (token[0].is_punct(':') && token[1].is_punct(':')) {
+    if (a[0].is_punct(':') && a[1].is_punct(':')) {
       auto result2 = new Node(NODE_SCOPED_TYPE);
       result2->append(result);
 
       //result2->append(take_lexemes(NODE_OPERATOR, 2));
-      if (auto end = take_lexemes(token, token_eof, NODE_OPERATOR, 2)) {
-        token = end;
+      if (auto end = take_lexemes(a, b, NODE_OPERATOR, 2)) {
+        a = end;
         result2->append(pop_node());
       }
 
-      if (parse_decltype()) {
+      if (auto end = parse_decltype(a, b)) {
+        a = end;
         result2->append(pop_node());
       }
       push_node(result2);
-      return token;
+      return a;
     }
 
     push_node(result);
-    return token;
+    return a;
   }
   else {
     push_node(type);
-    return token;
+    return a;
   }
 }
 
@@ -1033,11 +1039,10 @@ const Token* parse_enum_declaration(const Token* a, const Token* b) {
   if (a[0].is_punct(':')) {
     a = skip_punct(a, b, ':');
 
-    token = a;
-    if (parse_decltype()) {
+    if (auto end = parse_decltype(a, b)) {
+      a = end;
       result->append(pop_node());
     }
-    a = token;
   }
 
   if (a[0].is_punct('{')) {
