@@ -817,7 +817,7 @@ const Token* parse_assignment_op(Token* a, Token* b) {
   return nullptr;
 }
 
-Node* parse_assignment_op() {
+const Token* parse_assignment_op() {
   auto span_a = token->lex->span_a;
   auto span_b = token_eof->lex->span_a;
 
@@ -829,7 +829,8 @@ Node* parse_assignment_op() {
   while(match_lex_b->lex->span_a < end) match_lex_b++;
   auto result = new Node(NODE_OPERATOR, match_lex_a, match_lex_b);
   token = match_lex_b;
-  return result;
+  push_node(result);
+  return token;
 }
 
 //----------------------------------------
@@ -1177,7 +1178,7 @@ const Token* parse_preproc() {
 
 //----------------------------------------
 
-Node* parse_case_statement() {
+const Token* parse_case_statement() {
   if (!token[0].is_case_label()) return nullptr;
 
   Node* result = new Node(NODE_CASE_STATEMENT);
@@ -1204,7 +1205,9 @@ Node* parse_case_statement() {
       result->append(pop_node());
     }
   }
-  return result;
+
+  push_node(result);
+  return token;
 }
 
 //----------------------------------------
@@ -1224,7 +1227,8 @@ const Token* parse_switch_statement() {
   skip_punct('{');
 
   while(!token[0].is_punct('}')) {
-    result->append(parse_case_statement());
+    parse_case_statement();
+    result->append(pop_node());
   }
 
   skip_punct('}');
@@ -1235,12 +1239,14 @@ const Token* parse_switch_statement() {
 
 //----------------------------------------
 
-Node* parse_declaration_or_expression(char rdelim) {
-  parse_declaration(rdelim);
-  auto result1 = pop_node();
-  if (result1) return result1;
-  parse_expression(rdelim);
-  return pop_node();
+const Token* parse_declaration_or_expression(char rdelim) {
+  if (parse_declaration(rdelim)) {
+    return token;
+  }
+  if (parse_expression(rdelim)) {
+    return token;
+  }
+  return nullptr;
 }
 
 //----------------------------------------
@@ -1256,7 +1262,8 @@ const Token* parse_for_statement() {
 
   skip_identifier("for");
   skip_punct('(');
-  result->append(parse_declaration_or_expression(';'));
+  parse_declaration_or_expression(';');
+  result->append(pop_node());
   skip_punct(';');
   parse_expression(';');
   result->append(pop_node());
