@@ -708,26 +708,22 @@ const Token* parse_decltype(const Token* a, const Token* b) {
 
 //----------------------------------------
 
-const Token* parse_expression_prefix(const Token* a, const Token* b) {
-  using pattern_prefix_op = NodeMaker<NODE_OPERATOR,
-    Ref<match_chars<Ref<match_prefix_op>>>
-  >;
+using pattern_prefix_op = NodeMaker<NODE_OPERATOR,
+  Ref<match_chars<Ref<match_prefix_op>>>
+>;
 
-  using pattern_typecast = NodeMaker<
-    NODE_TYPECAST,
-    Seq<Atom<'('>, Atom<LEX_IDENTIFIER>, Atom<')'> >
-  >;
+using pattern_typecast = NodeMaker<
+  NODE_TYPECAST,
+  Seq<Atom<'('>, Atom<LEX_IDENTIFIER>, Atom<')'> >
+>;
 
-  using pattern_sizeof = NodeMaker<NODE_OPERATOR, AtomLit<"sizeof">>;
+using pattern_sizeof = NodeMaker<NODE_OPERATOR, AtomLit<"sizeof">>;
 
-  using pattern = Oneof<
-    pattern_prefix_op,
-    pattern_typecast,
-    pattern_sizeof
-  >;
-
-  return pattern::match(a, b);
-}
+using pattern_expression_prefix = Oneof<
+  pattern_prefix_op,
+  pattern_typecast,
+  pattern_sizeof
+>;
 
 //----------------------------------------
 // suffix:
@@ -743,6 +739,7 @@ using pattern_array_suffix = NodeMaker<NODE_ARRAY_SUFFIX,
   Seq<Atom<'['>, Opt<Ref<parse_expression2>>, Atom<']'>>
 >;
 
+// FIXME isn't this gonna blow up if there's more than one arg in the list?
 using pattern_parameter_list = NodeMaker<NODE_PARAMETER_LIST,
   Seq<Atom<'('>, Opt<Ref<parse_expression2>>, Atom<')'>>
 >;
@@ -793,7 +790,7 @@ const Token* parse_expression_lhs(const Token* a, const Token* b, const char rde
     return a;
   }
 
-  if (auto end = parse_expression_prefix(a, b)) {
+  if (auto end = pattern_expression_prefix::match(a, b)) {
     a = end;
     auto op = pop_node();
     auto result = new Node(NODE_PREFIX_EXPRESSION);
