@@ -818,7 +818,7 @@ const Token* parse_assignment_op(const Token* a, const Token* b) {
 
 //----------------------------------------
 
-const Token* parse_infix_op(const Token* a, const Token* b) {
+const Token* match_infix_op(const Token* a, const Token* b) {
   auto span_a = a->lex->span_a;
   auto span_b = b->lex->span_a;
 
@@ -828,10 +828,18 @@ const Token* parse_infix_op(const Token* a, const Token* b) {
   auto match_lex_a = a;
   auto match_lex_b = a;
   while(match_lex_b->lex->span_a < end) match_lex_b++;
-  auto result = new Node(NODE_OPERATOR, match_lex_a, match_lex_b);
-  a = match_lex_b;
-  push_node(result);
-  return a;
+  return match_lex_b;
+}
+
+const Token* take_infix_op(const Token* a, const Token* b) {
+  if (auto end = match_infix_op(a, b)) {
+    auto result = new Node(NODE_OPERATOR, a, end);
+    push_node(result);
+    return end;
+  }
+  else {
+    return nullptr;
+  }
 }
 
 //----------------------------------------
@@ -921,7 +929,7 @@ const Token* parse_expression(const Token* a, const Token* b, const char rdelim)
     return a;
   }
 
-  if (auto end = parse_infix_op(a, b)) {
+  if (auto end = take_infix_op(a, b)) {
     a = end;
     auto op = pop_node();
     auto lhs = pop_node();
