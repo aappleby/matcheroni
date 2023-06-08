@@ -144,7 +144,7 @@ const Token* parse_initializer_list(const Token* a, const Token* b);
 const Token* parse_parameter_list(const Token* a, const Token* b);
 const Token* parse_parenthesized_expression(const Token* a, const Token* b);
 const Token* parse_specifiers(const Token* a, const Token* b);
-const Token* parse_statement();
+const Token* parse_statement(const Token* a, const Token* b);
 
 //----------------------------------------
 
@@ -548,9 +548,9 @@ const Token* parse_compound_statement(const Token* a, const Token* b) {
 
   a = skip_punct(a, b, '{');
 
-  token = a;
-  while(parse_statement());
-  a = token;
+  while(auto end = parse_statement(a, b)) {
+    a = end;
+  }
 
   a = skip_punct(a, b, '}');
 
@@ -1109,21 +1109,19 @@ const Token* parse_if_statement(const Token* a, const Token* b) {
     result->append(pop_node());
   }
 
-  token = a;
-  if (parse_statement()) {
+  if (auto end = parse_statement(a, b)) {
+    a = end;
     result->append(pop_node());
   }
-  a = token;
 
   if (a[0].is_identifier("else")) {
     a = take_identifier(a, b, "else");
     result->append(pop_node());
 
-    token = a;
-    if (parse_statement()) {
+    if (auto end = parse_statement(a, b)) {
+      a = end;
       result->append(pop_node());
     }
-    a = token;
   }
 
   push_node(result);
@@ -1142,11 +1140,10 @@ const Token* parse_while_statement(const Token* a, const Token* b) {
     result->append(pop_node());
   }
 
-  token = a;
-  if (parse_statement()) {
+  if (auto end = parse_statement(a, b)) {
+    a = end;
     result->append(pop_node());
   }
-  a = token;
 
   push_node(result);
   return a;
@@ -1253,7 +1250,8 @@ const Token* parse_case_statement() {
   }
 
   while (!token[0].is_case_label() && !token[0].is_punct('}')) {
-    if (parse_statement()) {
+    if (auto end = parse_statement(token, token_eof)) {
+      token = end;
       result->append(pop_node());
     }
   }
@@ -1343,11 +1341,10 @@ const Token* parse_for_statement(const Token* a, const Token* b) {
   result->append(pop_node());
   a = skip_punct(a, b, ')');
 
-  token = a;
-  if (parse_statement()) {
+  if (auto end = parse_statement(a, b)) {
+    a = end;
     result->append(pop_node());
   }
-  a = token;
 
   auto new_size = node_top;
 
@@ -1359,74 +1356,85 @@ const Token* parse_for_statement(const Token* a, const Token* b) {
 
 //----------------------------------------
 
-const Token* parse_statement() {
-  if (token[0].is_punct('}')) {
+const Token* parse_statement(const Token* a, const Token* b) {
+  if (a[0].is_punct('}')) {
     return nullptr;
   }
 
-  if (token[0].is_punct('{')) {
-    token = parse_compound_statement(token, token_eof);
-    return token;
+  if (a[0].is_punct('{')) {
+    a = parse_compound_statement(a, b);
+    return a;
   }
 
-  if (token[0].is_identifier("if")) {
-    token = parse_if_statement(token, token_eof);
-    return token;
+  if (a[0].is_identifier("if")) {
+    a = parse_if_statement(a, b);
+    return a;
   }
 
-  if (token[0].is_identifier("while")) {
-    token = parse_while_statement(token, token_eof);
-    return token;
+  if (a[0].is_identifier("while")) {
+    a = parse_while_statement(a, b);
+    return a;
   }
 
-  if (token[0].is_identifier("for")) {
-    token = parse_for_statement(token, token_eof);
-    return token;
+  if (a[0].is_identifier("for")) {
+    a = parse_for_statement(a, b);
+    return a;
   }
 
-  if (token[0].is_identifier("return")) {
-    token = parse_return_statement(token, token_eof);
-    return token;
+  if (a[0].is_identifier("return")) {
+    a = parse_return_statement(a, b);
+    return a;
   }
 
-  if (token[0].is_identifier("switch")) {
-    token = parse_switch_statement(token, token_eof);
-    return token;
+  if (a[0].is_identifier("switch")) {
+    a = parse_switch_statement(a, b);
+    return a;
   }
 
-  if (token[0].is_identifier() && token[1].is_identifier()) {
+  if (a[0].is_identifier() && a[1].is_identifier()) {
     auto result = new Node(NODE_DECLARATION_STATEMENT, nullptr, nullptr);
+
+    token = a;
     if (parse_declaration(';')) {
+      a = token;
       result->append(pop_node());
     }
-    token = skip_punct(token, token_eof, ';');
+
+    a = skip_punct(a, b, ';');
     push_node(result);
-    return token;
+    return a;
   }
 
   // Dirty hack
-  if (token[0].is_identifier() &&
-      token[1].is_punct('<') &&
-      (token[2].is_identifier() || token[2].is_constant()) &&
-      token[3].is_punct('>') &&
-      token[4].is_identifier()) {
+  if (a[0].is_identifier() &&
+      a[1].is_punct('<') &&
+      (a[2].is_identifier() || a[2].is_constant()) &&
+      a[3].is_punct('>') &&
+      a[4].is_identifier()) {
     auto result = new Node(NODE_DECLARATION_STATEMENT, nullptr, nullptr);
+
+    token = a;
     if (parse_declaration(';')) {
+      a = token;
       result->append(pop_node());
     }
-    token = skip_punct(token, token_eof, ';');
+
+    a = skip_punct(a, b, ';');
     push_node(result);
-    return token;
+    return a;
   }
 
   // Must be expression statement
+  token = a;
   parse_expression(';');
+  a = token;
+
   auto exp = pop_node();
-  token = skip_punct(token, token_eof, ';');
+  a = skip_punct(a, b, ';');
   auto result = new Node(NODE_EXPRESSION_STATEMENT, nullptr, nullptr);
   result->append(exp);
   push_node(result);
-  return token;
+  return a;
 }
 
 //----------------------------------------
