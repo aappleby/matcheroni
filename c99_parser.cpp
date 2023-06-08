@@ -139,7 +139,7 @@ const Token* parse_enum_declaration();
 const Token* parse_expression_list(NodeType type, const char ldelim, const char spacer, const char rdelim);
 const Token* parse_expression(const char rdelim);
 const Token* parse_function_call();
-const Token* parse_identifier();
+const Token* parse_identifier(const Token* a, const Token* b);
 const Token* parse_initializer_list();
 const Token* parse_parameter_list();
 const Token* parse_parenthesized_expression();
@@ -308,7 +308,9 @@ const Token* parse_declaration(const char rdelim) {
   if (token[0].is_identifier() && token[1].is_punct('(')) {
     is_constructor = true;
     has_type = false;
-    parse_identifier();
+    if (auto end = parse_identifier(token, token_eof)) {
+      token = end;
+    }
     result->append(pop_node());
   }
   else {
@@ -328,7 +330,8 @@ const Token* parse_declaration(const char rdelim) {
         token = end;
         result->append(pop_node());
       }
-      if (parse_identifier()) {
+      if (auto end = parse_identifier(token, token_eof)) {
+        token = end;
         result->append(pop_node());
       }
     }
@@ -812,10 +815,6 @@ const Token* parse_expression_suffix() {
 
 //----------------------------------------
 
-const Token* parse_assignment_op(Token* a, Token* b) {
-  return nullptr;
-}
-
 const Token* parse_assignment_op() {
   auto span_a = token->lex->span_a;
   auto span_b = token_eof->lex->span_a;
@@ -834,20 +833,20 @@ const Token* parse_assignment_op() {
 
 //----------------------------------------
 
-const Token* parse_infix_op() {
-  auto span_a = token->lex->span_a;
-  auto span_b = token_eof->lex->span_a;
+const Token* parse_infix_op(const Token* a, const Token* b) {
+  auto span_a = a->lex->span_a;
+  auto span_b = b->lex->span_a;
 
   auto end = match_infix_op(span_a, span_b);
   if (!end) return nullptr;
 
-  auto match_lex_a = token;
-  auto match_lex_b = token;
+  auto match_lex_a = a;
+  auto match_lex_b = a;
   while(match_lex_b->lex->span_a < end) match_lex_b++;
   auto result = new Node(NODE_OPERATOR, match_lex_a, match_lex_b);
-  token = match_lex_b;
+  a = match_lex_b;
   push_node(result);
-  return token;
+  return a;
 }
 
 //----------------------------------------
@@ -940,7 +939,8 @@ const Token* parse_expression(const char rdelim) {
     return token;
   }
 
-  if (auto end = parse_infix_op()) {
+  if (auto end = parse_infix_op(token, token_eof)) {
+    token = end;
     auto op = pop_node();
     auto lhs = pop_node();
     parse_expression(rdelim);
@@ -1065,12 +1065,11 @@ const Token* parse_function_call() {
 
 //----------------------------------------
 
-const Token* parse_identifier() {
-  if (token->type != TOK_IDENTIFIER) return nullptr;
-  auto result = new Node(NODE_IDENTIFIER, token, token + 1);
+const Token* parse_identifier(const Token* a, const Token* b) {
+  if (a->type != TOK_IDENTIFIER) return nullptr;
+  auto result = new Node(NODE_IDENTIFIER, a, a + 1);
   push_node(result);
-  token = token + 1;
-  return token;
+  return a + 1;
 }
 
 //----------------------------------------

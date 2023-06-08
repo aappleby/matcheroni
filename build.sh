@@ -1,4 +1,4 @@
-set -x
+#set -x
 mkdir -p bin
 
 MODE="-g -O0"
