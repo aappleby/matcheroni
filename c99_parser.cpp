@@ -306,17 +306,13 @@ const Token* take_constant(const Token* a, const Token* b) {
 
 //----------------------------------------
 
-const Token* parse_access_specifier(const Token* a, const Token* b) {
-  using access_specifier = NodeMaker<
-    NODE_ACCESS_SPECIFIER,
-    Seq<
-      Oneof<AtomLit<"public">, AtomLit<"private">>,
-      Atom<':'>
-    >
-  >;
-
-  return access_specifier::match(a, b);
-}
+using pattern_access_specifier = NodeMaker<
+  NODE_ACCESS_SPECIFIER,
+  Seq<
+    Oneof<AtomLit<"public">, AtomLit<"private">>,
+    Atom<':'>
+  >
+>;
 
 //----------------------------------------
 
@@ -476,7 +472,7 @@ const Token* parse_field_declaration_list(const Token* a, const Token* b) {
 
   while(a < b && !a->is_punct('}')) {
 
-    if (auto end = parse_access_specifier(a, b)) {
+    if (auto end = pattern_access_specifier::match(a, b)) {
       result->append(pop_node());
       a = end;
     }
