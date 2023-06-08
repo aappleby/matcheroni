@@ -537,9 +537,6 @@ const Token* parse_namespace_specifier(const Token* a, const Token* b) {
   }
 }
 
-const Token* token;
-const Token* token_eof;
-
 //----------------------------------------
 
 const Token* parse_compound_statement(const Token* a, const Token* b) {
@@ -624,60 +621,6 @@ const Token* parse_specifiers(const Token* a, const Token* b) {
 }
 
 //----------------------------------------
-#if 0
-Node* parse_declaration(Node* declaration_specifiers, const char rdelim) {
-  // not following the spec here right now
-
-  if (token->is_punct('=')) {
-    // Var declaration with init
-    auto _declop   = take_punct();
-    auto _declinit = parse_expression(rdelim);
-
-    assert(_declop);
-    assert(_declinit);
-
-    _declop->field = "op";
-    _declinit->field = "init";
-    //if (_semi) _semi->field = "semi";
-
-    return new Declaration(
-      declaration_specifiers,
-      _decltype,
-      _declname,
-      _declop,
-      _declinit
-    );
-  }
-  else if (token->is_punct('(')) {
-    // Function declaration or definition
-
-    auto params = parse_parameter_list();
-
-    if (auto body = parse_compound_statement()) {
-      auto result = new Node(NODE_FUNCTION_DEFINITION);
-      result->append(_decltype);
-      result->append(_declname);
-      result->append(params);
-      result->append(body);
-      return result;
-    }
-    else {
-      auto result = new Node(NODE_FUNCTION_DECLARATION);
-      result->append(_decltype);
-      result->append(_declname);
-      result->append(params);
-      result->append(take_punct(';'));
-      return result;
-    }
-  }
-  else {
-    // Var declaration without init
-    return new Declaration(declaration_specifiers, _decltype, _declname /*, _semi*/);
-  }
-}
-#endif
-
-//----------------------------------------
 
 const Token* parse_decltype(const Token* a, const Token* b) {
   if (a[0].type != TOK_IDENTIFIER) return nullptr;
@@ -732,38 +675,38 @@ const Token* parse_decltype(const Token* a, const Token* b) {
 
 //----------------------------------------
 
-const Token* parse_expression_prefix() {
-  auto span_a = token->lex->span_a;
-  auto span_b = token_eof->lex->span_a;
+const Token* parse_expression_prefix(const Token* a, const Token* b) {
+  auto span_a = a->lex->span_a;
+  auto span_b = b->lex->span_a;
 
   if (auto end = match_prefix_op(span_a, span_b)) {
-    auto match_lex_a = token;
-    auto match_lex_b = token;
+    auto match_lex_a = a;
+    auto match_lex_b = a;
     while(match_lex_b->lex->span_a < end) match_lex_b++;
     auto result = new Node(NODE_OPERATOR, match_lex_a, match_lex_b);
-    token = match_lex_b;
+    a = match_lex_b;
     push_node(result);
-    return token;
+    return a;
   }
 
-  if (token[0].is_punct('(') &&
-      token[1].is_identifier() &&
-      token[2].is_punct(')')) {
+  if (a[0].is_punct('(') &&
+      a[1].is_identifier() &&
+      a[2].is_punct(')')) {
     auto result = new Node(NODE_TYPECAST);
-    token = skip_punct(token, token_eof, '(');
-    token = take_identifier(token, token_eof);
+    a = skip_punct(a, b, '(');
+    a = take_identifier(a, b);
     result->append(pop_node());
-    token = skip_punct(token, token_eof, ')');
+    a = skip_punct(a, b, ')');
     push_node(result);
-    return token;
+    return a;
   }
 
-  if (token[0].is_identifier("sizeof")) {
+  if (a[0].is_identifier("sizeof")) {
     auto result = new Node(NODE_OPERATOR);
-    token = take_identifier(token, token_eof, "sizeof");
+    a = take_identifier(a, b, "sizeof");
     result->append(pop_node());
     push_node(result);
-    return token;
+    return a;
   }
 
   return nullptr;
@@ -779,6 +722,8 @@ const Token* parse_expression_prefix() {
 //    ++
 //    --
 
+const Token* token;
+const Token* token_eof;
 
 const Token* parse_expression_suffix() {
   if (token[0].is_punct('[')) {
@@ -903,9 +848,8 @@ const Token* parse_expression_lhs(const Token* a, const Token* b, const char rde
     return a;
   }
 
-  token = a;
-  if (parse_expression_prefix()) {
-    a = token;
+  if (auto end = parse_expression_prefix(a, b)) {
+    a = end;
     auto op = pop_node();
     auto result = new Node(NODE_PREFIX_EXPRESSION);
     result->append(op);
