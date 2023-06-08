@@ -133,7 +133,7 @@ Node* pop_node()         { return node_stack[--node_top]; }
 void  push_node(Node* n) { node_stack[node_top++] = n; }
 
 const Token* parse_compound_statement(const Token* a, const Token* b);
-const Token* parse_declaration_list(NodeType type, const char ldelim, const char spacer, const char rdelim);
+const Token* parse_declaration_list(const Token* a, const Token* b, NodeType type, const char ldelim, const char spacer, const char rdelim);
 const Token* parse_decltype(const Token* a, const Token* b);
 const Token* parse_enum_declaration(const Token* a, const Token* b);
 const Token* parse_expression_list(const Token* a, const Token* b, NodeType type, const char ldelim, const char spacer, const char rdelim);
@@ -1467,9 +1467,8 @@ const Token* parse_template_decl(const Token* a, const Token* b) {
     result->append(pop_node());
   }
 
-  token = a;
-  if (parse_declaration_list(NODE_TEMPLATE_PARAMETER_LIST, '<', ',', '>')) {
-    a = token;
+  if (auto end = parse_declaration_list(a, b, NODE_TEMPLATE_PARAMETER_LIST, '<', ',', '>')) {
+    a = end;
     result->append(pop_node());
   }
 
@@ -1488,31 +1487,31 @@ const Token* parse_template_decl(const Token* a, const Token* b) {
 
 //----------------------------------------
 
-const Token* parse_declaration_list(NodeType type, const char ldelim, const char spacer, const char rdelim) {
-  if (!token[0].is_punct(ldelim)) return nullptr;
-
-  //auto tok_rdelim = find_matching_delim(token, token_eof);
+const Token* parse_declaration_list(const Token* a, const Token* b, NodeType type, const char ldelim, const char spacer, const char rdelim) {
+  if (!a[0].is_punct(ldelim)) return nullptr;
 
   auto result = new NodeList(type);
 
-  token = skip_punct(token, token_eof, ldelim);
+  a = skip_punct(a, b, ldelim);
 
   while(1) {
-    if (token->is_punct(rdelim)) {
-      token = skip_punct(token, token_eof, rdelim);
+    if (a->is_punct(rdelim)) {
+      a = skip_punct(a, b, rdelim);
       break;
     }
-    else if (token->is_punct(spacer)) {
-      token = skip_punct(token, token_eof, spacer);
+    else if (a->is_punct(spacer)) {
+      a = skip_punct(a, b, spacer);
     }
     else {
+      token = a;
       parse_declaration(rdelim);
+      a = token;
       result->append(pop_node());
     }
   }
 
   push_node(result);
-  return token;
+  return a;
 }
 
 //----------------------------------------
