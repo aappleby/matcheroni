@@ -1411,6 +1411,9 @@ const Token* parse_template_decl(const Token* a, const Token* b) {
     a = end;
     result->append(pop_node());
   }
+  else {
+    return nullptr;
+  }
 
   if (auto end = parse_declaration_list(a, b, NODE_TEMPLATE_PARAMETER_LIST, '<', ',', '>')) {
     a = end;
@@ -1545,28 +1548,23 @@ const Token* parse_type_qualifier(const Token* a, const Token* b) {
 const Token* parse_translation_unit(const Token* a, const Token* b) {
   auto result = new TranslationUnit();
 
-  while(!a->is_eof()) {
+  auto old_top = node_top;
 
-    if (Lit<"template">::match(a->lex->span_a, b->lex->span_a)) {
-      if (auto end = parse_template_decl(a, b)) {
-        a = end;
-        result->append(pop_node());
-      }
-    }
-    else if (auto end = parse_preproc(a, b)) {
-      a = end;
-      result->append(pop_node());
-    }
-    else if (auto end = parse_external_declaration(a, b)) {
-      a = end;
-      auto decl = pop_node();
-      result->append(decl);
-    }
-    else {
-      assert(false);
-      break;
-    }
+  using pattern = Oneof<
+    Ref<parse_template_decl>,
+    Ref<parse_preproc>,
+    Ref<parse_external_declaration>
+  >;
+
+  while(!a->is_eof()) {
+    a = pattern::match(a, b);
+    assert(a);
   }
+
+  for (auto i = old_top; i < node_top; i++) {
+    result->append(node_stack[i]);
+  }
+  node_top = old_top;
 
   push_node(result);
   return a;
