@@ -281,9 +281,6 @@ const Token* parse_access_specifier(const Token* a, const Token* b) {
   }
 }
 
-const Token* token;
-const Token* token_eof;
-
 //----------------------------------------
 
 const Token* parse_declaration(const Token* a, const Token* b, const char rdelim) {
@@ -484,50 +481,50 @@ const Token* parse_class_specifier(const Token* a, const Token* b) {
 
 //----------------------------------------
 
-const Token* parse_struct_specifier() {
+const Token* parse_struct_specifier(const Token* a, const Token* b) {
 
   using decl = Seq<AtomLit<"struct">, Atom<LEX_IDENTIFIER>, Atom<';'>>;
 
-  if (auto end = decl::match(token, token_eof)) {
-    token = skip_identifier(token, token_eof, "struct");
-    token = take_identifier(token, token_eof);
+  if (auto end = decl::match(a, b)) {
+    a = skip_identifier(a, b, "struct");
+    a = take_identifier(a, b);
     auto name = pop_node();
-    token = skip_punct(token, token_eof, ';');
+    a = skip_punct(a, b, ';');
 
     push_node(new StructDeclaration(name));
-    return token;
+    return a;
   }
   else {
-    token = skip_identifier(token, token_eof, "struct");
-    token = take_identifier(token, token_eof);
+    a = skip_identifier(a, b, "struct");
+    a = take_identifier(a, b);
     auto name = pop_node();
-    token = parse_field_declaration_list(token, token_eof);
+    a = parse_field_declaration_list(a, b);
     auto body = pop_node();
-    token = skip_punct(token, token_eof, ';');
+    a = skip_punct(a, b, ';');
     push_node(new StructDefinition(name, body));
-    return token;
+    return a;
   }
 
 }
 
-const Token* parse_namespace_specifier() {
+const Token* parse_namespace_specifier(const Token* a, const Token* b) {
 
   using decl = Seq<AtomLit<"namespace">, Atom<LEX_IDENTIFIER>, Atom<';'>>;
 
-  if (auto end = decl::match(token, token_eof)) {
-    token = skip_identifier(token, token_eof, "namespace");
-    token = take_identifier(token, token_eof);
-    token = skip_punct(token, token_eof, ';');
+  if (auto end = decl::match(a, b)) {
+    a = skip_identifier(a, b, "namespace");
+    a = take_identifier(a, b);
+    a = skip_punct(a, b, ';');
     auto result = new Node(NODE_NAMESPACE_DECLARATION);
     result->append(pop_node());
     push_node(result);
-    return token;
+    return a;
   }
   else {
-    token = skip_identifier(token, token_eof, "namespace");
-    token = take_identifier(token, token_eof);
-    token = parse_field_declaration_list(token, token_eof);
-    token = skip_punct(token, token_eof, ';');
+    a = skip_identifier(a, b, "namespace");
+    a = take_identifier(a, b);
+    a = parse_field_declaration_list(a, b);
+    a = skip_punct(a, b, ';');
 
     auto body = pop_node();
     auto name = pop_node();
@@ -536,9 +533,12 @@ const Token* parse_namespace_specifier() {
     result->append(name);
     result->append(body);
     push_node(result);
-    return token;
+    return a;
   }
 }
+
+const Token* token;
+const Token* token_eof;
 
 //----------------------------------------
 
@@ -1017,7 +1017,7 @@ const Token* parse_external_declaration() {
   }
 
   if (token->is_identifier("namespace")) {
-    parse_namespace_specifier();
+    token = parse_namespace_specifier(token, token_eof);
     return token;
   }
 
@@ -1027,7 +1027,7 @@ const Token* parse_external_declaration() {
   }
 
   if (token->is_identifier("struct")) {
-    parse_struct_specifier();
+    token = parse_struct_specifier(token, token_eof);
     return token;
   }
 
