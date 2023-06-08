@@ -818,9 +818,6 @@ const Token* parse_infix_op(const Token* a, const Token* b) {
 
 //----------------------------------------
 
-const Token* token;
-const Token* token_eof;
-
 const Token* parse_expression_lhs(const Token* a, const Token* b, const char rdelim) {
 
   // Dirty hackkkkk - explicitly recognize templated function calls as
@@ -952,30 +949,30 @@ const Token* parse_expression(const Token* a, const Token* b, const char rdelim)
 
 //----------------------------------------
 
-const Token* parse_external_declaration() {
-  if (token->is_eof()) {
+const Token* parse_external_declaration(const Token* a, const Token* b) {
+  if (a->is_eof()) {
     return nullptr;
   }
 
-  if (token->is_identifier("namespace")) {
-    token = parse_namespace_specifier(token, token_eof);
-    return token;
+  if (a->is_identifier("namespace")) {
+    a = parse_namespace_specifier(a, b);
+    return a;
   }
 
-  if (token->is_identifier("class")) {
-    token = parse_class_specifier(token, token_eof);
-    return token;
+  if (a->is_identifier("class")) {
+    a = parse_class_specifier(a, b);
+    return a;
   }
 
-  if (token->is_identifier("struct")) {
-    token = parse_struct_specifier(token, token_eof);
-    return token;
+  if (a->is_identifier("struct")) {
+    a = parse_struct_specifier(a, b);
+    return a;
   }
 
-  if (auto end = parse_declaration(token, token_eof, ';')) {
-    token = end;
-    token = skip_punct(token, token_eof, ';');
-    return token;
+  if (auto end = parse_declaration(a, b, ';')) {
+    a = end;
+    a = skip_punct(a, b, ';');
+    return a;
   }
 
   return nullptr;
@@ -1186,37 +1183,37 @@ const Token* parse_preproc(const Token* a, const Token* b) {
 
 //----------------------------------------
 
-const Token* parse_case_statement() {
-  if (!token[0].is_case_label()) return nullptr;
+const Token* parse_case_statement(const Token* a, const Token* b) {
+  if (!a[0].is_case_label()) return nullptr;
 
   Node* result = new Node(NODE_CASE_STATEMENT);
 
-  if (token[0].is_identifier("case")) {
-    token = take_identifier(token, token_eof);
+  if (a[0].is_identifier("case")) {
+    a = take_identifier(a, b);
     result->append(pop_node());
-    token = parse_expression(token, token_eof, ':');
+    a = parse_expression(a, b, ':');
     result->append(pop_node());
-    token = skip_punct(token, token_eof, ':');
+    a = skip_punct(a, b, ':');
   }
-  else if (token[0].is_identifier("default")) {
-    token = take_identifier(token, token_eof);
+  else if (a[0].is_identifier("default")) {
+    a = take_identifier(a, b);
     result->append(pop_node());
-    token = skip_punct(token, token_eof, ':');
+    a = skip_punct(a, b, ':');
   }
   else {
     assert(false);
     return nullptr;
   }
 
-  while (!token[0].is_case_label() && !token[0].is_punct('}')) {
-    if (auto end = parse_statement(token, token_eof)) {
-      token = end;
+  while (!a[0].is_case_label() && !a[0].is_punct('}')) {
+    if (auto end = parse_statement(a, b)) {
+      a = end;
       result->append(pop_node());
     }
   }
 
   push_node(result);
-  return token;
+  return a;
 }
 
 //----------------------------------------
@@ -1240,9 +1237,7 @@ const Token* parse_switch_statement(const Token* a, const Token* b) {
   a = skip_punct(a, b, '{');
 
   while(!a[0].is_punct('}')) {
-    token = a;
-    parse_case_statement();
-    a = token;
+    a = parse_case_statement(a, b);
     result->append(pop_node());
   }
 
@@ -1254,14 +1249,14 @@ const Token* parse_switch_statement(const Token* a, const Token* b) {
 
 //----------------------------------------
 
-const Token* parse_declaration_or_expression(char rdelim) {
-  if (auto end = parse_declaration(token, token_eof, rdelim)) {
-    token = end;
-    return token;
+const Token* parse_declaration_or_expression(const Token* a, const Token* b, char rdelim) {
+  if (auto end = parse_declaration(a, b, rdelim)) {
+    a = end;
+    return a;
   }
-  if (auto end = parse_expression(token, token_eof, rdelim)) {
-    token = end;
-    return token;
+  if (auto end = parse_expression(a, b, rdelim)) {
+    a = end;
+    return a;
   }
   return nullptr;
 }
@@ -1280,9 +1275,7 @@ const Token* parse_for_statement(const Token* a, const Token* b) {
   a = skip_identifier(a, b, "for");
   a = skip_punct(a, b, '(');
 
-  token = a;
-  parse_declaration_or_expression(';');
-  a = token;
+  a = parse_declaration_or_expression(a, b, ';');
 
   result->append(pop_node());
   a = skip_punct(a, b, ';');
@@ -1549,22 +1542,23 @@ const Token* parse_type_qualifier(const Token* a, const Token* b) {
 
 //----------------------------------------
 
-const Token* parse_translation_unit() {
+const Token* parse_translation_unit(const Token* a, const Token* b) {
   auto result = new TranslationUnit();
 
-  while(!token->is_eof()) {
+  while(!a->is_eof()) {
 
-    if (Lit<"template">::match(token->lex->span_a, token_eof->lex->span_a)) {
-      if (auto end = parse_template_decl(token, token_eof)) {
-        token = end;
+    if (Lit<"template">::match(a->lex->span_a, b->lex->span_a)) {
+      if (auto end = parse_template_decl(a, b)) {
+        a = end;
         result->append(pop_node());
       }
     }
-    else if (auto end = parse_preproc(token, token_eof)) {
-      token = end;
+    else if (auto end = parse_preproc(a, b)) {
+      a = end;
       result->append(pop_node());
     }
-    else if (parse_external_declaration()) {
+    else if (auto end = parse_external_declaration(a, b)) {
+      a = end;
       auto decl = pop_node();
       result->append(decl);
     }
@@ -1575,7 +1569,7 @@ const Token* parse_translation_unit() {
   }
 
   push_node(result);
-  return token;
+  return a;
 }
 
 
@@ -1715,13 +1709,13 @@ int test_c99_peg(int argc, char** argv) {
     lex_file(path, text, lexemes, tokens);
     lex_accum += timestamp_ms();
 
-    token = tokens.data();
-    token_eof = tokens.data() + tokens.size() - 1;
+    const Token* token = tokens.data();
+    const Token* token_eof = tokens.data() + tokens.size() - 1;
 
     printf("Parsing %s\n", path.c_str());
 
     parse_accum -= timestamp_ms();
-    parse_translation_unit();
+    parse_translation_unit(token, token_eof);
     parse_accum += timestamp_ms();
 
     auto root = pop_node();
