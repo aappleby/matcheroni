@@ -136,7 +136,7 @@ const Token* parse_compound_statement(const Token* a, const Token* b);
 const Token* parse_declaration_list(NodeType type, const char ldelim, const char spacer, const char rdelim);
 const Token* parse_decltype(const Token* a, const Token* b);
 const Token* parse_enum_declaration(const Token* a, const Token* b);
-const Token* parse_expression_list(NodeType type, const char ldelim, const char spacer, const char rdelim);
+const Token* parse_expression_list(const Token* a, const Token* b, NodeType type, const char ldelim, const char spacer, const char rdelim);
 const Token* parse_expression(const char rdelim);
 const Token* parse_function_call();
 const Token* parse_identifier(const Token* a, const Token* b);
@@ -694,9 +694,8 @@ const Token* parse_decltype(const Token* a, const Token* b) {
     auto result = new Node(NODE_TEMPLATED_TYPE, nullptr, nullptr);
     result->append(type);
 
-    token = a;
-    if (parse_expression_list(NODE_ARGUMENT_LIST, '<', ',', '>')) {
-      a = token;
+    if (auto end = parse_expression_list(a, b, NODE_ARGUMENT_LIST, '<', ',', '>')) {
+      a = end;
       result->append(pop_node());
     }
 
@@ -883,11 +882,13 @@ const Token* parse_expression_lhs(const char rdelim) {
       result->append(pop_node());
     }
 
-    if (parse_expression_list(NODE_TEMPLATE_PARAMETER_LIST, '<', ',', '>')) {
+    if (auto end = parse_expression_list(token, token_eof, NODE_TEMPLATE_PARAMETER_LIST, '<', ',', '>')) {
+      token = end;
       result->append(pop_node());
     }
 
-    if (parse_expression_list(NODE_ARGUMENT_LIST, '(', ',', ')')) {
+    if (auto end = parse_expression_list(token, token_eof, NODE_ARGUMENT_LIST, '(', ',', ')')) {
+      token = end;
       result->append(pop_node());
     }
     push_node(result);
@@ -1047,11 +1048,10 @@ const Token* parse_enum_declaration(const Token* a, const Token* b) {
 
   if (a[0].is_punct('{')) {
 
-    token = a;
-    if (parse_expression_list(NODE_ENUMERATOR_LIST, '{', ',', '}')) {
+    if (auto end = parse_expression_list(a, b, NODE_ENUMERATOR_LIST, '{', ',', '}')) {
+      a = end;
       result->append(pop_node());
     }
-    a = token;
   }
 
   // this is the weird enum {} blah;
@@ -1078,7 +1078,8 @@ const Token* parse_function_call() {
   if (token = take_identifier(token, token_eof)) {
     result->append(pop_node());
   }
-  if (parse_expression_list(NODE_ARGUMENT_LIST, '(', ',', ')')) {
+  if (auto end = parse_expression_list(token, token_eof, NODE_ARGUMENT_LIST, '(', ',', ')')) {
+    token = end;
     result->append(pop_node());
   }
 
@@ -1272,11 +1273,10 @@ const Token* parse_switch_statement(const Token* a, const Token* b) {
     result->append(pop_node());
   }
 
-  token = a;
-  if (parse_expression_list(NODE_ARGUMENT_LIST, '(', ',', ')')) {
+  if (auto end = parse_expression_list(a, b, NODE_ARGUMENT_LIST, '(', ',', ')')) {
+    a = end;
     result->append(pop_node());
   }
-  a = token;
 
 
   a = skip_punct(a, b, '{');
@@ -1517,29 +1517,31 @@ const Token* parse_declaration_list(NodeType type, const char ldelim, const char
 
 //----------------------------------------
 
-const Token* parse_expression_list(NodeType type, const char ldelim, const char spacer, const char rdelim) {
-  if (!token[0].is_punct(ldelim)) return nullptr;
+const Token* parse_expression_list(const Token* a, const Token* b, NodeType type, const char ldelim, const char spacer, const char rdelim) {
+  if (!a[0].is_punct(ldelim)) return nullptr;
 
   auto result = new NodeList(type);
 
-  token = skip_punct(token, token_eof, ldelim);
+  a = skip_punct(a, b, ldelim);
 
   while(1) {
-    if (token->is_punct(rdelim)) {
-      token = skip_punct(token, token_eof, rdelim);
+    if (a->is_punct(rdelim)) {
+      a = skip_punct(a, b, rdelim);
       break;
     }
-    else if (token->is_punct(spacer)) {
-      token = skip_punct(token, token_eof, spacer);
+    else if (a->is_punct(spacer)) {
+      a = skip_punct(a, b, spacer);
     }
     else {
+      token = a;
       parse_expression(rdelim);
+      a = token;
       result->append(pop_node());
     }
   }
 
   push_node(result);
-  return token;
+  return a;
 }
 
 //----------------------------------------
@@ -1578,7 +1580,7 @@ const Token* parse_initializer_list(const Token* a, const Token* b) {
 
 //----------------------------------------
 
-const Token* parse_type_qualifier() {
+const Token* parse_type_qualifier(const Token* a, const Token* b) {
   const char* keywords[] = {
     "const",
     "volatile",
@@ -1589,9 +1591,8 @@ const Token* parse_type_qualifier() {
   };
   auto keyword_count = sizeof(keywords)/sizeof(keywords[0]);
   for (auto i = 0; i < keyword_count; i++) {
-    if (token->is_identifier(keywords[i])) {
-      token = take_identifier(token, token_eof);
-      return token;
+    if (a->is_identifier(keywords[i])) {
+      return take_identifier(a, b);
     }
   }
 
