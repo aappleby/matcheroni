@@ -142,7 +142,7 @@ Node* parse_enum_declaration();
 Node* parse_expression_list(NodeType type, const char ldelim, const char spacer, const char rdelim);
 Node* parse_expression(const char rdelim);
 Node* parse_function_call();
-Node* parse_identifier();
+const Token* parse_identifier();
 Node* parse_initializer_list();
 Node* parse_parameter_list();
 Node* parse_parenthesized_expression();
@@ -252,21 +252,6 @@ const Token* take_punct(char punct) {
   }
 }
 
-Node* take_opt_punct(char punct) {
-  if (token->is_punct(punct)) {
-    //return take_lexemes(NODE_PUNCT, 1);
-    if (take_lexemes(NODE_PUNCT, 1)) {
-      return pop_node();
-    }
-    else {
-      return nullptr;
-    }
-  }
-  else {
-    return nullptr;
-  }
-}
-
 const Token* take_identifier(const char* identifier = nullptr) {
   assert(token->is_identifier(identifier));
   //return take_lexemes(NODE_IDENTIFIER, 1);
@@ -278,11 +263,11 @@ const Token* take_identifier(const char* identifier = nullptr) {
   }
 }
 
-Node* take_constant() {
+const Token* take_constant() {
   assert(token->is_constant());
   //return take_lexemes(NODE_CONSTANT, 1);
   if (take_lexemes(NODE_CONSTANT, 1)) {
-    return pop_node();
+    return token;
   }
   else {
     return nullptr;
@@ -327,7 +312,8 @@ Node* parse_declaration(const char rdelim) {
   if (token[0].is_identifier() && token[1].is_punct('(')) {
     is_constructor = true;
     has_type = false;
-    result->append(parse_identifier());
+    parse_identifier();
+    result->append(pop_node());
   }
   else {
     // Need a better way to handle this
@@ -342,7 +328,8 @@ Node* parse_declaration(const char rdelim) {
       has_type = true;
       result->append(n1);
       result->append(parse_specifiers());
-      result->append(parse_identifier());
+      parse_identifier();
+      result->append(pop_node());
     }
 
     if (take_punct(':')) {
@@ -890,7 +877,8 @@ Node* parse_expression_lhs(const char rdelim) {
   }
 
   if (token->is_constant()) {
-    return take_constant();
+    take_constant();
+    return pop_node();
   }
 
   if (token[0].is_identifier() && token[1].is_punct('(')) {
@@ -1006,11 +994,12 @@ Node* parse_function_call() {
 
 //----------------------------------------
 
-Node* parse_identifier() {
+const Token* parse_identifier() {
   if (token->type != TOK_IDENTIFIER) return nullptr;
   auto result = new Node(NODE_IDENTIFIER, token, token + 1);
+  push_node(result);
   token = token + 1;
-  return result;
+  return token;
 }
 
 //----------------------------------------
