@@ -706,10 +706,6 @@ const Token* parse_decltype(const Token* a, const Token* b) {
 
 //----------------------------------------
 
-const Token* match_prefix_token(const Token* a, const Token* b) {
-  return match_chars<Ref<match_prefix_op>>(a, b);
-}
-
 const Token* parse_expression_prefix(const Token* a, const Token* b) {
   using pattern_prefix_op = NodeMaker<NODE_OPERATOR,
     Ref<match_chars<Ref<match_prefix_op>>>
@@ -742,77 +738,33 @@ const Token* parse_expression_prefix(const Token* a, const Token* b) {
 //    --
 
 const Token* parse_expression_suffix(const Token* a, const Token* b) {
-  if (a[0].is_punct('[')) {
-    auto result = new Node(NODE_ARRAY_SUFFIX);
-    a = skip_punct(a, b, '[');
-    if (auto end = parse_expression(a, b, ']')) {
-      a = end;
-    }
-    result->append(pop_node());
-    a = skip_punct(a, b, ']');
-    push_node(result);
-    return a;
-  }
+  using pattern_array_suffix = NodeMaker<NODE_ARRAY_SUFFIX,
+    Seq<Atom<'['>, Opt<Ref<parse_expression2>>, Atom<']'>>
+  >;
 
-  if (a[0].is_punct('(') && a[1].is_punct(')')) {
-    auto result = new Node(NODE_PARAMETER_LIST);
-    a = skip_punct(a, b, '(');
-    a = skip_punct(a, b, ')');
-    push_node(result);
-    return a;
-  }
+  using pattern_parameter_list = NodeMaker<NODE_PARAMETER_LIST,
+    Seq<Atom<'('>, Opt<Ref<parse_expression2>>, Atom<')'>>
+  >;
 
-  if (a[0].is_punct('(')) {
-    auto result = new Node(NODE_PARAMETER_LIST);
-    a = skip_punct(a, b, '(');
-    if (auto end = parse_expression(a, b, ')')) {
-      a = end;
-    }
-    result->append(pop_node());
-    a = skip_punct(a, b, ')');
-    push_node(result);
-    return a;
-  }
+  using pattern_inc = NodeMaker<NODE_OPERATOR, Seq<Atom<'+'>, Atom<'+'>>>;
 
-  if (a[0].is_punct('+') && a[1].is_punct('+')) {
-    //return take_lexemes(NODE_OPERATOR, 2);
-    if (auto end = take_lexemes(a, b, NODE_OPERATOR, 2)) {
-      a = end;
-      return a;
-    }
-    else {
-      return nullptr;
-    }
-  }
+  using pattern_dec = NodeMaker<NODE_OPERATOR, Seq<Atom<'-'>, Atom<'-'>>>;
 
-  if (a[0].is_punct('-') && a[1].is_punct('-')) {
-    //return take_lexemes(NODE_OPERATOR, 2);
-    if (auto end = take_lexemes(a, b, NODE_OPERATOR, 2)) {
-      a = end;
-      return a;
-    }
-    else {
-      return nullptr;
-    }
-  }
+  using pattern = Oneof<
+    pattern_array_suffix,
+    pattern_parameter_list,
+    pattern_inc,
+    pattern_dec
+  >;
 
-  return nullptr;
+  return pattern::match(a, b);
 }
 
 //----------------------------------------
 
-const Token* take_infix_op(const Token* a, const Token* b) {
-  using pattern = Ref<match_infix_op>;
-
-  if (auto end = match_chars<pattern>(a, b)) {
-    auto result = new Node(NODE_OPERATOR, a, end);
-    push_node(result);
-    return end;
-  }
-  else {
-    return nullptr;
-  }
-}
+using pattern_infix_op = NodeMaker<NODE_OPERATOR,
+  Ref<match_chars<Ref<match_infix_op>>>
+>;
 
 //----------------------------------------
 
@@ -901,7 +853,7 @@ const Token* parse_expression(const Token* a, const Token* b, const char rdelim)
     return a;
   }
 
-  if (auto end = take_infix_op(a, b)) {
+  if (auto end = pattern_infix_op::match(a, b)) {
     a = end;
     auto op = pop_node();
     auto lhs = pop_node();
