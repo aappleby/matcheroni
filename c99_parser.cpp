@@ -293,21 +293,16 @@ const Token* take_any_identifier(const Token* a, const Token* b) {
   return pattern::match(a, b);
 }
 
-const Token* take_constant(const Token* a, const Token* b) {
-  using pattern = NodeMaker<NODE_CONSTANT, Oneof<
-    Atom<TOK_FLOAT>,
-    Atom<TOK_INT>,
-    Atom<TOK_CHAR>,
-    Atom<TOK_STRING>
-  >>;
-
-  return pattern::match(a, b);
-}
+using pattern_constant = NodeMaker<NODE_CONSTANT, Oneof<
+  Atom<TOK_FLOAT>,
+  Atom<TOK_INT>,
+  Atom<TOK_CHAR>,
+  Atom<TOK_STRING>
+>>;
 
 //----------------------------------------
 
-using pattern_access_specifier = NodeMaker<
-  NODE_ACCESS_SPECIFIER,
+using pattern_access_specifier = NodeMaker<NODE_ACCESS_SPECIFIER,
   Seq<
     Oneof<AtomLit<"public">, AtomLit<"private">>,
     Atom<':'>
@@ -316,12 +311,14 @@ using pattern_access_specifier = NodeMaker<
 
 //----------------------------------------
 
-using pattern_initializer_list = NodeMaker<NODE_INITIALIZER_LIST, Seq<
-  Atom<':'>,
-  Ref<parse_expression2>,
-  Any<Seq<Atom<','>, Ref<parse_expression2>>>,
-  And<Atom<'{'>>
->>;
+using pattern_initializer_list = NodeMaker<NODE_INITIALIZER_LIST,
+  Seq<
+    Atom<':'>,
+    Ref<parse_expression2>,
+    Any<Seq<Atom<','>, Ref<parse_expression2>>>,
+    And<Atom<'{'>>
+  >
+>;
 
 //----------------------------------------
 
@@ -815,7 +812,7 @@ const Token* parse_expression_lhs(const Token* a, const Token* b, const char rde
 
   using pattern = Oneof<
     Ref<parse_parenthesized_expression>,
-    Ref<take_constant>,
+    pattern_constant,
     Ref<parse_function_call>,
     Ref<take_any_identifier>
   >;
