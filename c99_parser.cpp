@@ -611,7 +611,7 @@ const Token* parse_compound_statement(const Token* a, const Token* b) {
 
 //----------------------------------------
 
-const Token* parse_specifiers(const Token* a, const Token* b) {
+const Token* match_specifier(const Token* a, const Token* b) {
   const char* keywords[] = {
     "extern",
     "static",
@@ -633,35 +633,25 @@ const Token* parse_specifiers(const Token* a, const Token* b) {
   };
   auto keyword_count = sizeof(keywords)/sizeof(keywords[0]);
 
-  std::vector<Node*> specifiers;
-
-  while(a < b) {
-    bool match = false;
-    for (auto i = 0; i < keyword_count; i++) {
-      if (a->is_identifier(keywords[i])) {
-        match = true;
-        a = take_identifier(a, b);
-        specifiers.push_back(pop_node());
-        break;
-      }
+  for (auto i = 0; i < keyword_count; i++) {
+    if (a->is_identifier(keywords[i])) {
+      return a + 1;
     }
-    if (auto end = NodeMaker<NODE_PUNCT, Atom<'*'>>::match(a, b)) {
-      a = end;
-      specifiers.push_back(pop_node());
-      match = true;
-    }
-    if (!match) break;
   }
+  return nullptr;
+}
 
-  if (specifiers.size()) {
-    auto result = new Node(NODE_SPECIFIER_LIST);
-    for (auto n : specifiers) result->append(n);
-    push_node(result);
-    return a;
-  }
-  else {
-    return nullptr;
-  }
+//----------------------------------------
+
+const Token* parse_specifiers(const Token* a, const Token* b) {
+  using pattern = NodeMaker<NODE_SPECIFIER_LIST,
+    Some<Oneof<
+      NodeMaker<NODE_IDENTIFIER, Ref<match_specifier>>,
+      NodeMaker<NODE_PUNCT, Atom<'*'>>
+    >>
+  >;
+
+  return pattern::match(a, b);
 }
 
 //----------------------------------------
@@ -716,30 +706,29 @@ const Token* parse_decltype(const Token* a, const Token* b) {
 
 //----------------------------------------
 
-const Token* parse_expression_prefix(const Token* a, const Token* b) {
-  auto span_a = a->lex->span_a;
-  auto span_b = b->lex->span_a;
+const Token* match_prefix_token(const Token* a, const Token* b) {
+  return match_chars<Ref<match_prefix_op>>(a, b);
+}
 
-  if (auto end = match_prefix_op(span_a, span_b)) {
-    auto match_lex_a = a;
-    auto match_lex_b = a;
-    while(match_lex_b->lex->span_a < end) match_lex_b++;
-    auto result = new Node(NODE_OPERATOR, match_lex_a, match_lex_b);
-    a = match_lex_b;
-    push_node(result);
-    return a;
-  }
+const Token* parse_expression_prefix(const Token* a, const Token* b) {
+  using pattern_prefix_op = NodeMaker<NODE_OPERATOR,
+    Ref<match_chars<Ref<match_prefix_op>>>
+  >;
 
   using pattern_typecast = NodeMaker<
     NODE_TYPECAST,
     Seq<Atom<'('>, Atom<LEX_IDENTIFIER>, Atom<')'> >
   >;
-  if (auto end = pattern_typecast::match(a, b)) return end;
 
   using pattern_sizeof = NodeMaker<NODE_OPERATOR, AtomLit<"sizeof">>;
-  if (auto end = pattern_sizeof::match(a, b)) return end;
 
-  return nullptr;
+  using pattern = Oneof<
+    pattern_prefix_op,
+    pattern_typecast,
+    pattern_sizeof
+  >;
+
+  return pattern::match(a, b);
 }
 
 //----------------------------------------
