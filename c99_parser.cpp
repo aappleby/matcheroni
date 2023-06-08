@@ -47,6 +47,22 @@ bool atom_eq(const Token& a, const matcheroni::StringParam<N>& b) {
   return true;
 }
 
+//----------------------------------------
+
+template<typename CharMatcher>
+const Token* match_chars(const Token* a, const Token* b) {
+  auto span_a = a->lex->span_a;
+  auto span_b = b->lex->span_a;
+
+  auto end = CharMatcher::match(span_a, span_b);
+  if (!end) return nullptr;
+
+  auto match_lex_a = a;
+  auto match_lex_b = a;
+  while(match_lex_b->lex->span_a < end) match_lex_b++;
+  return match_lex_b;
+}
+
 //------------------------------------------------------------------------------
 
 const char* text = R"(
@@ -273,14 +289,19 @@ const Token* take_identifier(const Token* a, const Token* b, const char* identif
 }
 
 const Token* take_any_identifier(const Token* a, const Token* b) {
-  if (!a->is_identifier()) return nullptr;
-  push_node( new Node(NODE_IDENTIFIER, a, a + 1) );
-  return a + 1;
+  using pattern = NodeMaker<NODE_IDENTIFIER, Atom<LEX_IDENTIFIER>>;
+  return pattern::match(a, b);
 }
 
 const Token* take_constant(const Token* a, const Token* b) {
-  if (!a->is_constant()) return nullptr;
-  return take_lexemes(a, b, NODE_CONSTANT, 1);
+  using pattern = NodeMaker<NODE_CONSTANT, Oneof<
+    Atom<TOK_FLOAT>,
+    Atom<TOK_INT>,
+    Atom<TOK_CHAR>,
+    Atom<TOK_STRING>
+  >>;
+
+  return pattern::match(a, b);
 }
 
 //----------------------------------------
@@ -787,23 +808,6 @@ const Token* parse_expression_suffix(const Token* a, const Token* b) {
   }
 
   return nullptr;
-}
-
-
-//----------------------------------------
-
-template<typename CharMatcher>
-const Token* match_chars(const Token* a, const Token* b) {
-  auto span_a = a->lex->span_a;
-  auto span_b = b->lex->span_a;
-
-  auto end = CharMatcher::match(span_a, span_b);
-  if (!end) return nullptr;
-
-  auto match_lex_a = a;
-  auto match_lex_b = a;
-  while(match_lex_b->lex->span_a < end) match_lex_b++;
-  return match_lex_b;
 }
 
 //----------------------------------------
