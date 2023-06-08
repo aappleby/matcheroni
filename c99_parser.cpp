@@ -143,7 +143,7 @@ Node* parse_expression_list(NodeType type, const char ldelim, const char spacer,
 const Token* parse_expression(const char rdelim);
 Node* parse_function_call();
 const Token* parse_identifier();
-Node* parse_initializer_list();
+const Token* parse_initializer_list();
 Node* parse_parameter_list();
 Node* parse_parenthesized_expression();
 Node* parse_specifiers();
@@ -358,7 +358,9 @@ Node* parse_declaration(const char rdelim) {
 
     //result->append(parse_specifiers());
     if (is_constructor) {
-      result->append(parse_initializer_list());
+      if (parse_initializer_list()) {
+        result->append(pop_node());
+      }
     }
 
     // grab that const after the param list
@@ -1339,7 +1341,7 @@ Node* parse_expression_list(NodeType type, const char ldelim, const char spacer,
 
 //----------------------------------------
 
-Node* parse_initializer_list() {
+const Token* parse_initializer_list() {
   char ldelim = ':';
   char spacer = ',';
   char rdelim = '{'; // we don't consume this unlike parse_expression_list
@@ -1352,7 +1354,8 @@ Node* parse_initializer_list() {
 
   while(1) {
     if (token->is_punct(rdelim)) {
-      return result;
+      push_node(result);
+      return token;
     }
 
     if (token->is_punct(spacer)) {
@@ -1364,12 +1367,13 @@ Node* parse_initializer_list() {
     }
   }
 
-  return result;
+  push_node(result);
+  return token;
 }
 
 //----------------------------------------
 
-Node* parse_type_qualifier() {
+const Token* parse_type_qualifier() {
   const char* keywords[] = {
     "const",
     "volatile",
@@ -1382,7 +1386,7 @@ Node* parse_type_qualifier() {
   for (auto i = 0; i < keyword_count; i++) {
     if (token->is_identifier(keywords[i])) {
       take_identifier();
-      return pop_node();
+      return token;
     }
   }
 
@@ -1392,7 +1396,7 @@ Node* parse_type_qualifier() {
 
 //----------------------------------------
 
-Node* parse_translation_unit() {
+const Token* parse_translation_unit() {
   auto result = new TranslationUnit();
 
   while(!token->is_eof()) {
@@ -1412,7 +1416,8 @@ Node* parse_translation_unit() {
     }
   }
 
-  return result;
+  push_node(result);
+  return token;
 }
 
 
@@ -1550,7 +1555,8 @@ int test_c99_peg(int argc, char** argv) {
     token = tokens.data();
     token_eof = tokens.data() + tokens.size() - 1;
 
-    auto root = parse_translation_unit();
+    parse_translation_unit();
+    auto root = pop_node();
     printf("\n");
     root->dump_tree();
     printf("\n");
