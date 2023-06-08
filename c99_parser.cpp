@@ -1571,9 +1571,9 @@ int test_c99_peg(int argc, char** argv) {
 
     parse_translation_unit();
     auto root = pop_node();
-    printf("\n");
-    root->dump_tree();
-    printf("\n");
+    //printf("\n");
+    //root->dump_tree();
+    //printf("\n");
     delete root;
 
   }
