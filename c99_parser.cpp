@@ -711,7 +711,7 @@ const Token* parse_decltype() {
 
 //----------------------------------------
 
-Node* parse_expression_prefix() {
+const Token* parse_expression_prefix() {
   auto span_a = token->lex->span_a;
   auto span_b = token_eof->lex->span_a;
 
@@ -721,7 +721,8 @@ Node* parse_expression_prefix() {
     while(match_lex_b->lex->span_a < end) match_lex_b++;
     auto result = new Node(NODE_OPERATOR, match_lex_a, match_lex_b);
     token = match_lex_b;
-    return result;
+    push_node(result);
+    return token;
   }
 
   if (token[0].is_punct('(') &&
@@ -732,14 +733,16 @@ Node* parse_expression_prefix() {
     take_identifier();
     result->append(pop_node());
     skip_punct(')');
-    return result;
+    push_node(result);
+    return token;
   }
 
   if (token[0].is_identifier("sizeof")) {
     auto result = new Node(NODE_OPERATOR);
     take_identifier("sizeof");
     result->append(pop_node());
-    return result;
+    push_node(result);
+    return token;
   }
 
   return nullptr;
@@ -911,7 +914,8 @@ Node* parse_expression_lhs(const char rdelim) {
     return result;
   }
 
-  if (auto op = parse_expression_prefix()) {
+  if (parse_expression_prefix()) {
+    auto op = pop_node();
     auto result = new Node(NODE_PREFIX_EXPRESSION);
     result->append(op);
     result->append(parse_expression_lhs(rdelim));
