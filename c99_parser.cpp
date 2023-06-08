@@ -891,18 +891,12 @@ const Token* parse_expression2(const Token* a, const Token* b) {
 
 //----------------------------------------
 
-const Token* parse_external_declaration(const Token* a, const Token* b) {
-  if (a->is_eof()) return nullptr;
-
-  using pattern = Oneof<
-    Ref<parse_namespace_specifier>,
-    Ref<parse_class_specifier>,
-    Ref<parse_struct_specifier>,
-    Seq<Ref<parse_declaration2>, Atom<';'>>
-  >;
-
-  return pattern::match(a, b);
-}
+using pattern_external_declaration = Oneof<
+  Ref<parse_namespace_specifier>,
+  Ref<parse_class_specifier>,
+  Ref<parse_struct_specifier>,
+  Seq<Ref<parse_declaration2>, Atom<';'>>
+>;
 
 //----------------------------------------
 
@@ -1096,18 +1090,8 @@ const Token* parse_parenthesized_expression(const Token* a, const Token* b) {
 
 //----------------------------------------
 
-const Token* parse_preproc(const Token* a, const Token* b) {
-  using pattern = Atom<TOK_PREPROC>;
+using pattern_preproc = NodeMaker<NODE_PREPROC, Atom<TOK_PREPROC>>;
 
-  if (auto end = pattern::match(a, b)) {
-    auto result = new Node(NODE_PREPROC, a, end);
-    a = end;
-    push_node(result);
-    return a;
-  }
-
-  return nullptr;
-}
 
 //----------------------------------------
 
@@ -1421,49 +1405,14 @@ const Token* parse_expression_list(const Token* a, const Token* b, NodeType type
 
 const Token* parse_initializer_list(const Token* a, const Token* b) {
 
-  using pattern = Seq<
+  using pattern = NodeMaker<NODE_INITIALIZER_LIST, Seq<
     Atom<':'>,
     Ref<parse_expression2>,
     Any<Seq<Atom<','>, Ref<parse_expression2>>>,
     And<Atom<'{'>>
-  >;
+  >>;
 
-  auto old_top = node_top;
-
-  if (auto end = pattern::match(a, b)) {
-    auto result = new Node(NODE_INITIALIZER_LIST);
-    for (auto i = old_top; i < node_top; i++) {
-      result->append(node_stack[i]);
-    }
-    node_top = old_top;
-
-    push_node(result);
-    return end;
-  }
-  else {
-    return nullptr;
-  }
-
-  /*
-  char ldelim = ':';
-  char spacer = ',';
-  char rdelim = '{'; // we don't consume this unlike parse_expression_list
-
-  if (!a[0].is_punct(ldelim)) return nullptr;
-
-  a = skip_punct(a, b, ldelim);
-
-
-  while(!a->is_punct(rdelim)) {
-
-    if (a->is_punct(spacer)) {
-      a = skip_punct(a, b, spacer);
-    }
-    else {
-      a = parse_expression(a, b, rdelim);
-    }
-  }
-  */
+  return pattern::match(a, b);
 }
 
 //----------------------------------------
@@ -1494,8 +1443,8 @@ const Token* parse_translation_unit(const Token* a, const Token* b) {
 
   using pattern = Oneof<
     Ref<parse_template_decl>,
-    Ref<parse_preproc>,
-    Ref<parse_external_declaration>
+    pattern_preproc,
+    pattern_external_declaration
   >;
 
   auto old_top = node_top;
