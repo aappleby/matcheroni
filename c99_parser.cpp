@@ -220,14 +220,17 @@ const Token* skip_punct(const Token* a, const Token* b, const char punct) {
 }
 
 
+const Token* skip_identifier(const Token* a, const Token* b, const char* identifier = nullptr) {
+  if (a->is_identifier(identifier)) {
+    return a + 1;
+  }
+  else {
+    return nullptr;
+  }
+}
+
 const Token* token;
 const Token* token_eof;
-
-const Token* skip_identifier(const char* identifier = nullptr) {
-  assert(token->is_identifier(identifier));
-  token++;
-  return token;
-}
 
 //----------------------------------------
 
@@ -444,7 +447,7 @@ const Token* parse_class_specifier() {
   using decl = Seq<AtomLit<"class">, Atom<LEX_IDENTIFIER>, Atom<';'>>;
 
   if (auto end = decl::match(token, token_eof)) {
-    skip_identifier("class");
+    token = skip_identifier(token, token_eof, "class");
     take_identifier();
     auto name = pop_node();
     token = skip_punct(token, token_eof, ';');
@@ -453,7 +456,7 @@ const Token* parse_class_specifier() {
     return token;
   }
   else {
-    skip_identifier("class");
+    token = skip_identifier(token, token_eof, "class");
     take_identifier();
     auto name = pop_node();
     parse_field_declaration_list();
@@ -473,7 +476,7 @@ const Token* parse_struct_specifier() {
   using decl = Seq<AtomLit<"struct">, Atom<LEX_IDENTIFIER>, Atom<';'>>;
 
   if (auto end = decl::match(token, token_eof)) {
-    skip_identifier("struct");
+    token = skip_identifier(token, token_eof, "struct");
     take_identifier();
     auto name = pop_node();
     token = skip_punct(token, token_eof, ';');
@@ -482,7 +485,7 @@ const Token* parse_struct_specifier() {
     return token;
   }
   else {
-    skip_identifier("struct");
+    token = skip_identifier(token, token_eof, "struct");
     take_identifier();
     auto name = pop_node();
     parse_field_declaration_list();
@@ -499,7 +502,7 @@ const Token* parse_namespace_specifier() {
   using decl = Seq<AtomLit<"namespace">, Atom<LEX_IDENTIFIER>, Atom<';'>>;
 
   if (auto end = decl::match(token, token_eof)) {
-    skip_identifier("namespace");
+    token = skip_identifier(token, token_eof, "namespace");
     take_identifier();
     token = skip_punct(token, token_eof, ';');
     auto result = new Node(NODE_NAMESPACE_DECLARATION);
@@ -508,7 +511,7 @@ const Token* parse_namespace_specifier() {
     return token;
   }
   else {
-    skip_identifier("namespace");
+    token = skip_identifier(token, token_eof, "namespace");
     take_identifier();
     parse_field_declaration_list();
     token = skip_punct(token, token_eof, ';');
@@ -1007,10 +1010,10 @@ const Token* parse_enum_declaration() {
 
   Node* result = new Node(NODE_ENUM_DECLARATION);
 
-  skip_identifier("enum");
+  token = skip_identifier(token, token_eof, "enum");
 
   if (token[0].is_identifier("class")) {
-    skip_identifier("class");
+    token = skip_identifier(token, token_eof, "class");
   }
 
   if (token[0].is_identifier()) {
@@ -1260,7 +1263,7 @@ const Token* parse_for_statement() {
 
   auto old_size = node_top;
 
-  skip_identifier("for");
+  token = skip_identifier(token, token_eof, "for");
   token = skip_punct(token, token_eof, '(');
   parse_declaration_or_expression(';');
   result->append(pop_node());
