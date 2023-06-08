@@ -293,7 +293,7 @@ const Token* parse_access_specifier(const Token* a, const Token* b) {
 
 //----------------------------------------
 
-Node* parse_declaration(const char rdelim) {
+const Token* parse_declaration(const char rdelim) {
   auto result = new Node(NODE_INVALID);
 
   bool is_constructor = false;
@@ -307,7 +307,7 @@ Node* parse_declaration(const char rdelim) {
   }
 
   if (parse_enum_declaration()) {
-    return pop_node();
+    return token;
   }
 
 
@@ -408,7 +408,8 @@ Node* parse_declaration(const char rdelim) {
     result->node_type = NODE_DECLARATION;
   }
 
-  return result;
+  push_node(result);
+  return token;
 }
 
 //----------------------------------------
@@ -424,7 +425,8 @@ const Token* parse_field_declaration_list() {
       token = end;
     }
 
-    else if (auto child = parse_declaration(';')) {
+    else if (parse_declaration(';')) {
+      auto child = pop_node();
       result->append(child);
       result->items.push_back(child);
       if (take_punct(';')) {
@@ -469,7 +471,7 @@ const Token* parse_class_specifier() {
 
 //----------------------------------------
 
-Node* parse_struct_specifier() {
+const Token* parse_struct_specifier() {
 
   using decl = Seq<AtomLit<"struct">, Atom<LEX_IDENTIFIER>, Atom<';'>>;
 
@@ -479,7 +481,8 @@ Node* parse_struct_specifier() {
     auto name = pop_node();
     skip_punct(';');
 
-    return new StructDeclaration(name);
+    push_node(new StructDeclaration(name));
+    return token;
   }
   else {
     skip_identifier("struct");
@@ -488,7 +491,8 @@ Node* parse_struct_specifier() {
     parse_field_declaration_list();
     auto body = pop_node();
     skip_punct(';');
-    return new StructDefinition(name, body);
+    push_node(new StructDefinition(name, body));
+    return token;
   }
 
 }
@@ -975,10 +979,12 @@ Node* parse_external_declaration() {
   }
 
   if (token->is_identifier("struct")) {
-    return parse_struct_specifier();
+    parse_struct_specifier();
+    return pop_node();
   }
 
-  if (auto decl = parse_declaration(';')) {
+  if (parse_declaration(';')) {
+    auto decl = pop_node();
     skip_punct(';');
     return decl;
   }
@@ -1119,7 +1125,8 @@ const Token* parse_parameter_list() {
   skip_punct('(');
 
   while(!token->is_punct(')')) {
-    auto decl = parse_declaration(',');
+    parse_declaration(',');
+    auto decl = pop_node();
     assert(decl);
     result->items.push_back(decl);
     result->append(decl);
@@ -1148,13 +1155,14 @@ const Token* parse_parenthesized_expression() {
 
 //----------------------------------------
 
-Node* parse_preproc() {
+const Token* parse_preproc() {
   using pattern = Atom<TOK_PREPROC>;
 
   if (auto end = pattern::match(token, token_eof)) {
     auto result = new Node(NODE_PREPROC, token, end);
     token = end;
-    return result;
+    push_node(result);
+    return token;
   }
 
   return nullptr;
@@ -1221,7 +1229,8 @@ const Token* parse_switch_statement() {
 //----------------------------------------
 
 Node* parse_declaration_or_expression(char rdelim) {
-  auto result1 = parse_declaration(rdelim);
+  parse_declaration(rdelim);
+  auto result1 = pop_node();
   if (result1) return result1;
   parse_expression(rdelim);
   return pop_node();
@@ -1295,7 +1304,9 @@ const Token* parse_statement() {
 
   if (token[0].is_identifier() && token[1].is_identifier()) {
     auto result = new Node(NODE_DECLARATION_STATEMENT, nullptr, nullptr);
-    result->append(parse_declaration(';'));
+    if (parse_declaration(';')) {
+      result->append(pop_node());
+    }
     skip_punct(';');
     push_node(result);
     return token;
@@ -1308,7 +1319,9 @@ const Token* parse_statement() {
       token[3].is_punct('>') &&
       token[4].is_identifier()) {
     auto result = new Node(NODE_DECLARATION_STATEMENT, nullptr, nullptr);
-    result->append(parse_declaration(';'));
+    if (parse_declaration(';')) {
+      result->append(pop_node());
+    }
     skip_punct(';');
     push_node(result);
     return token;
@@ -1388,7 +1401,8 @@ const Token* parse_declaration_list(NodeType type, const char ldelim, const char
       skip_punct(spacer);
     }
     else {
-      result->append(parse_declaration(rdelim));
+      parse_declaration(rdelim);
+      result->append(pop_node());
     }
   }
 
@@ -1490,8 +1504,8 @@ const Token* parse_translation_unit() {
         result->append(pop_node());
       }
     }
-    else if (auto decl = parse_preproc()) {
-      result->append(decl);
+    else if (parse_preproc()) {
+      result->append(pop_node());
     }
     else if (auto decl = parse_external_declaration()) {
       result->append(decl);
