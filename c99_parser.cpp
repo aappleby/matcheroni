@@ -971,30 +971,29 @@ const Token* parse_expression(const char rdelim) {
 
 //----------------------------------------
 
-Node* parse_external_declaration() {
+const Token* parse_external_declaration() {
   if (token->is_eof()) {
     return nullptr;
   }
 
   if (token->is_identifier("namespace")) {
     parse_namespace_specifier();
-    return pop_node();
+    return token;
   }
 
   if (token->is_identifier("class")) {
     parse_class_specifier();
-    return pop_node();
+    return token;
   }
 
   if (token->is_identifier("struct")) {
     parse_struct_specifier();
-    return pop_node();
+    return token;
   }
 
   if (parse_declaration(';')) {
-    auto decl = pop_node();
     skip_punct(';');
-    return decl;
+    return token;
   }
 
   return nullptr;
@@ -1515,7 +1514,8 @@ const Token* parse_translation_unit() {
     else if (parse_preproc()) {
       result->append(pop_node());
     }
-    else if (auto decl = parse_external_declaration()) {
+    else if (parse_external_declaration()) {
+      auto decl = pop_node();
       result->append(decl);
     }
     else {
