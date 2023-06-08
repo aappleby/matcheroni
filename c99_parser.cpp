@@ -139,7 +139,7 @@ Node* parse_compound_statement();
 Node* parse_declaration_list(NodeType type, const char ldelim, const char spacer, const char rdelim);
 Node* parse_decltype();
 Node* parse_enum_declaration();
-Node* parse_expression_list(NodeType type, const char ldelim, const char spacer, const char rdelim);
+const Token* parse_expression_list(NodeType type, const char ldelim, const char spacer, const char rdelim);
 const Token* parse_expression(const char rdelim);
 Node* parse_function_call();
 const Token* parse_identifier();
@@ -657,7 +657,9 @@ Node* parse_decltype() {
   if (token[0].is_punct('<')) {
     auto result = new Node(NODE_TEMPLATED_TYPE, nullptr, nullptr);
     result->append(type);
-    result->append(parse_expression_list(NODE_ARGUMENT_LIST, '<', ',', '>'));
+    if (parse_expression_list(NODE_ARGUMENT_LIST, '<', ',', '>')) {
+      result->append(pop_node());
+    }
 
     if (token[0].is_punct(':') && token[1].is_punct(':')) {
       auto result2 = new Node(NODE_SCOPED_TYPE);
@@ -868,15 +870,19 @@ Node* parse_expression_lhs(const char rdelim) {
       token[1].is_punct('<') &&
       (token[2].is_identifier() || token[2].is_constant()) &&
       token[3].is_punct('>')) {
-    take_identifier();
-    auto func = pop_node();
-    auto params1 = parse_expression_list(NODE_TEMPLATE_PARAMETER_LIST, '<', ',', '>');
-    auto params2 = parse_expression_list(NODE_ARGUMENT_LIST, '(', ',', ')');
-
     auto result = new Node(NODE_CALL_EXPRESSION, nullptr, nullptr);
-    result->append(func);
-    result->append(params1);
-    result->append(params2);
+
+    if (take_identifier()) {
+      result->append(pop_node());
+    }
+
+    if (parse_expression_list(NODE_TEMPLATE_PARAMETER_LIST, '<', ',', '>')) {
+      result->append(pop_node());
+    }
+
+    if (parse_expression_list(NODE_ARGUMENT_LIST, '(', ',', ')')) {
+      result->append(pop_node());
+    }
     return result;
   }
 
@@ -980,7 +986,9 @@ Node* parse_enum_declaration() {
   }
 
   if (token[0].is_punct('{')) {
-    result->append(parse_expression_list(NODE_ENUMERATOR_LIST, '{', ',', '}'));
+    if (parse_expression_list(NODE_ENUMERATOR_LIST, '{', ',', '}')) {
+      result->append(pop_node());
+    }
   }
 
   // this is the weird enum {} blah;
@@ -1000,13 +1008,14 @@ Node* parse_enum_declaration() {
 Node* parse_function_call() {
   if (!token[0].is_identifier() || !token[1].is_punct('(')) return nullptr;
 
-  take_identifier();
-  auto func = pop_node();
-  auto params = parse_expression_list(NODE_ARGUMENT_LIST, '(', ',', ')');
-
   auto result = new Node(NODE_CALL_EXPRESSION, nullptr, nullptr);
-  result->append(func);
-  result->append(params);
+
+  if (take_identifier()) {
+    result->append(pop_node());
+  }
+  if (parse_expression_list(NODE_ARGUMENT_LIST, '(', ',', ')')) {
+    result->append(pop_node());
+  }
   return result;
 }
 
@@ -1141,9 +1150,13 @@ Node* parse_switch_statement() {
 
   Node* result = new Node(NODE_SWITCH_STATEMENT);
 
-  take_identifier("switch");
-  result->append(pop_node());
-  result->append(parse_expression_list(NODE_ARGUMENT_LIST, '(', ',', ')'));
+  if (take_identifier("switch")) {
+    result->append(pop_node());
+  }
+
+  if (parse_expression_list(NODE_ARGUMENT_LIST, '(', ',', ')')) {
+    result->append(pop_node());
+  }
   skip_punct('{');
 
   while(!token[0].is_punct('}')) {
@@ -1315,7 +1328,7 @@ Node* parse_declaration_list(NodeType type, const char ldelim, const char spacer
 
 //----------------------------------------
 
-Node* parse_expression_list(NodeType type, const char ldelim, const char spacer, const char rdelim) {
+const Token* parse_expression_list(NodeType type, const char ldelim, const char spacer, const char rdelim) {
   if (!token[0].is_punct(ldelim)) return nullptr;
 
   auto result = new NodeList(type);
@@ -1336,7 +1349,8 @@ Node* parse_expression_list(NodeType type, const char ldelim, const char spacer,
     }
   }
 
-  return result;
+  push_node(result);
+  return token;
 }
 
 //----------------------------------------
