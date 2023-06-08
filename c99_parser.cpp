@@ -142,7 +142,7 @@ const Token* parse_function_call();
 const Token* parse_identifier(const Token* a, const Token* b);
 const Token* parse_initializer_list(const Token* a, const Token* b);
 const Token* parse_parameter_list(const Token* a, const Token* b);
-const Token* parse_parenthesized_expression();
+const Token* parse_parenthesized_expression(const Token* a, const Token* b);
 const Token* parse_specifiers(const Token* a, const Token* b);
 const Token* parse_statement();
 
@@ -905,7 +905,7 @@ const Token* parse_expression_lhs(const char rdelim) {
   }
 
   if (token->is_punct('(')) {
-    parse_parenthesized_expression();
+    token = parse_parenthesized_expression(token, token_eof);
     return token;
   }
 
@@ -1104,11 +1104,10 @@ const Token* parse_if_statement(const Token* a, const Token* b) {
     result->append(pop_node());
   }
 
-  token = a;
-  if (parse_parenthesized_expression()) {
+  if (auto end = parse_parenthesized_expression(a, b)) {
+    a = end;
     result->append(pop_node());
   }
-  a = token;
 
   token = a;
   if (parse_statement()) {
@@ -1138,11 +1137,10 @@ const Token* parse_while_statement(const Token* a, const Token* b) {
     result->append(pop_node());
   }
 
-  token = a;
-  if (parse_parenthesized_expression()) {
+  if (auto end = parse_parenthesized_expression(a, b)) {
+    a = end;
     result->append(pop_node());
   }
-  a = token;
 
   token = a;
   if (parse_statement()) {
@@ -1201,14 +1199,18 @@ const Token* parse_parameter_list(const Token* a, const Token* b) {
 
 //----------------------------------------
 
-const Token* parse_parenthesized_expression() {
+const Token* parse_parenthesized_expression(const Token* a, const Token* b) {
   auto result = new Node(NODE_PARENTHESIZED_EXPRESSION);
-  token = skip_punct(token, token_eof, '(');
+  a = skip_punct(a, b, '(');
+
+  token = a;
   parse_expression(')');
+  a = token;
+
   result->append(pop_node());
-  token = skip_punct(token, token_eof, ')');
+  a = skip_punct(a, b, ')');
   push_node(result);
-  return token;
+  return a;
 }
 
 //----------------------------------------
