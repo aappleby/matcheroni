@@ -320,6 +320,15 @@ const Token* parse_access_specifier(const Token* a, const Token* b) {
 
 //----------------------------------------
 
+using pattern_initializer_list = NodeMaker<NODE_INITIALIZER_LIST, Seq<
+  Atom<':'>,
+  Ref<parse_expression2>,
+  Any<Seq<Atom<','>, Ref<parse_expression2>>>,
+  And<Atom<'{'>>
+>>;
+
+//----------------------------------------
+
 const Token* parse_declaration(const Token* a, const Token* b, const char rdelim) {
   auto result = new Node(NODE_INVALID);
 
@@ -406,7 +415,7 @@ const Token* parse_declaration(const Token* a, const Token* b, const char rdelim
     }
 
     if (is_constructor) {
-      if (auto end = parse_initializer_list(a, b)) {
+      if (auto end = pattern_initializer_list::match(a, b)) {
         a = end;
         result->append(pop_node());
       }
@@ -1399,20 +1408,6 @@ const Token* parse_expression_list(const Token* a, const Token* b, NodeType type
 
   push_node(result);
   return a;
-}
-
-//----------------------------------------
-
-const Token* parse_initializer_list(const Token* a, const Token* b) {
-
-  using pattern = NodeMaker<NODE_INITIALIZER_LIST, Seq<
-    Atom<':'>,
-    Ref<parse_expression2>,
-    Any<Seq<Atom<','>, Ref<parse_expression2>>>,
-    And<Atom<'{'>>
-  >>;
-
-  return pattern::match(a, b);
 }
 
 //----------------------------------------
