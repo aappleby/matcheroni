@@ -874,7 +874,7 @@ const Token* parse_expression(const Token* a, const Token* b, const char rdelim)
     result->append(lhs);
     a = skip_punct(a, b, '[');
 
-    a = parse_expression(a, b, ']');
+    a = parse_expression(a, b);
 
     result->append(pop_node());
     a = skip_punct(a, b, ']');
