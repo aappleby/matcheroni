@@ -144,9 +144,9 @@ const Token* parse_expression(const char rdelim);
 const Token* parse_function_call();
 const Token* parse_identifier();
 const Token* parse_initializer_list();
-Node* parse_parameter_list();
+const Token* parse_parameter_list();
 const Token* parse_parenthesized_expression();
-Node* parse_specifiers();
+const Token* parse_specifiers();
 const Token* parse_statement();
 
 //----------------------------------------
@@ -302,10 +302,11 @@ Node* parse_declaration(const char rdelim) {
   bool has_body = false;
   bool has_init = false;
 
-  result->append(parse_specifiers());
+  if (parse_specifiers()) {
+    result->append(pop_node());
+  }
 
-  if (token[0].is_identifier("enum")) {
-    parse_enum_declaration();
+  if (parse_enum_declaration()) {
     return pop_node();
   }
 
@@ -329,15 +330,19 @@ Node* parse_declaration(const char rdelim) {
     else {
       has_type = true;
       result->append(n1);
-      result->append(parse_specifiers());
-      parse_identifier();
-      result->append(pop_node());
+      if (parse_specifiers()) {
+        result->append(pop_node());
+      }
+      if (parse_identifier()) {
+        result->append(pop_node());
+      }
     }
 
     if (take_punct(':')) {
       result->append(pop_node());
-      parse_expression('{');
-      result->append(pop_node());
+      if (parse_expression('{')) {
+        result->append(pop_node());
+      }
     }
   }
 
@@ -346,8 +351,9 @@ Node* parse_declaration(const char rdelim) {
       result->append(pop_node());
     }
 
-    parse_expression(']');
-    result->append(pop_node());
+    if (parse_expression(']')) {
+      result->append(pop_node());
+    }
 
     if (take_punct(']')) {
       result->append(pop_node());
@@ -356,9 +362,10 @@ Node* parse_declaration(const char rdelim) {
 
   if (token[0].is_punct('(')) {
     has_params = true;
-    result->append(parse_parameter_list());
+    if (parse_parameter_list()) {
+      result->append(pop_node());
+    }
 
-    //result->append(parse_specifiers());
     if (is_constructor) {
       if (parse_initializer_list()) {
         result->append(pop_node());
@@ -366,7 +373,9 @@ Node* parse_declaration(const char rdelim) {
     }
 
     // grab that const after the param list
-    result->append(parse_specifiers());
+    if (parse_specifiers()) {
+      result->append(pop_node());
+    }
   }
 
   if (token[0].is_punct('{')) {
@@ -431,7 +440,7 @@ const Token* parse_field_declaration_list() {
 
 //----------------------------------------
 
-Node* parse_class_specifier() {
+const Token* parse_class_specifier() {
 
   using decl = Seq<AtomLit<"class">, Atom<LEX_IDENTIFIER>, Atom<';'>>;
 
@@ -441,7 +450,8 @@ Node* parse_class_specifier() {
     auto name = pop_node();
     skip_punct(';');
 
-    return new ClassDeclaration(name);
+    push_node(new ClassDeclaration(name));
+    return token;
   }
   else {
     skip_identifier("class");
@@ -451,7 +461,8 @@ Node* parse_class_specifier() {
     auto body = pop_node();
     skip_punct(';');
 
-    return new ClassDefinition(name, body);
+    push_node(new ClassDefinition(name, body));
+    return token;
   }
 
 }
@@ -537,7 +548,7 @@ const Token* parse_compound_statement() {
 
 //----------------------------------------
 
-Node* parse_specifiers() {
+const Token* parse_specifiers() {
   const char* keywords[] = {
     "extern",
     "static",
@@ -581,7 +592,8 @@ Node* parse_specifiers() {
   if (specifiers.size()) {
     auto result = new Node(NODE_SPECIFIER_LIST);
     for (auto n : specifiers) result->append(n);
-    return result;
+    push_node(result);
+    return token;
   }
   else {
     return nullptr;
@@ -958,7 +970,8 @@ Node* parse_external_declaration() {
   }
 
   if (token->is_identifier("class")) {
-    return parse_class_specifier();
+    parse_class_specifier();
+    return pop_node();
   }
 
   if (token->is_identifier("struct")) {
@@ -1100,7 +1113,7 @@ const Token* parse_return_statement() {
 
 //----------------------------------------
 
-Node* parse_parameter_list() {
+const Token* parse_parameter_list() {
   auto result = new NodeList(NODE_PARAMETER_LIST);
 
   skip_punct('(');
@@ -1117,7 +1130,8 @@ Node* parse_parameter_list() {
 
   skip_punct(')');
 
-  return result;
+  push_node(result);
+  return token;
 }
 
 //----------------------------------------
@@ -1342,7 +1356,9 @@ const Token* parse_template_decl() {
   if (parse_declaration_list(NODE_TEMPLATE_PARAMETER_LIST, '<', ',', '>')) {
     result->append(pop_node());
   }
-  result->append(parse_class_specifier());
+  if (parse_class_specifier()) {
+    result->append(pop_node());
+  }
 
   result->_keyword = result->child(0);
   result->_params  = result->child(1);
