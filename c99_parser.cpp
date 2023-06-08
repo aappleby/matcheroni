@@ -874,61 +874,67 @@ const Token* parse_infix_op(const Token* a, const Token* b) {
 
 //----------------------------------------
 
-const Token* parse_expression_lhs(const char rdelim) {
+const Token* parse_expression_lhs(const Token* a, const Token* b, const char rdelim) {
 
   // Dirty hackkkkk - explicitly recognize templated function calls as
   // expression atoms
-  if (token[0].is_identifier() &&
-      token[1].is_punct('<') &&
-      (token[2].is_identifier() || token[2].is_constant()) &&
-      token[3].is_punct('>')) {
+  if (a[0].is_identifier() &&
+      a[1].is_punct('<') &&
+      (a[2].is_identifier() || a[2].is_constant()) &&
+      a[3].is_punct('>')) {
     auto result = new Node(NODE_CALL_EXPRESSION, nullptr, nullptr);
 
-    if (token = take_identifier(token, token_eof)) {
+    if (a = take_identifier(a, b)) {
       result->append(pop_node());
     }
 
-    if (auto end = parse_expression_list(token, token_eof, NODE_TEMPLATE_PARAMETER_LIST, '<', ',', '>')) {
-      token = end;
+    if (auto end = parse_expression_list(a, b, NODE_TEMPLATE_PARAMETER_LIST, '<', ',', '>')) {
+      a = end;
       result->append(pop_node());
     }
 
-    if (auto end = parse_expression_list(token, token_eof, NODE_ARGUMENT_LIST, '(', ',', ')')) {
-      token = end;
+    if (auto end = parse_expression_list(a, b, NODE_ARGUMENT_LIST, '(', ',', ')')) {
+      a = end;
       result->append(pop_node());
     }
     push_node(result);
-    return token;
+    return a;
   }
 
+  token = a;
   if (parse_expression_prefix()) {
+    a = token;
     auto op = pop_node();
     auto result = new Node(NODE_PREFIX_EXPRESSION);
     result->append(op);
-    parse_expression_lhs(rdelim);
-    result->append(pop_node());
+    if (auto end = parse_expression_lhs(a, b, rdelim)) {
+      a = end;
+      result->append(pop_node());
+    }
     push_node(result);
-    return token;
+    return a;
   }
 
-  if (token->is_punct('(')) {
-    token = parse_parenthesized_expression(token, token_eof);
-    return token;
+  if (a->is_punct('(')) {
+    a = parse_parenthesized_expression(a, b);
+    return a;
   }
 
-  if (token->is_constant()) {
-    token = take_constant(token, token_eof);
-    return token;
+  if (a->is_constant()) {
+    a = take_constant(a, b);
+    return a;
   }
 
-  if (token[0].is_identifier() && token[1].is_punct('(')) {
+  if (a[0].is_identifier() && a[1].is_punct('(')) {
+    token = a;
     parse_function_call();
-    return token;
+    a = token;
+    return a;
   }
 
-  if (token[0].is_identifier()) {
-    token = take_identifier(token, token_eof);
-    return token;
+  if (a[0].is_identifier()) {
+    a = take_identifier(a, b);
+    return a;
   }
 
   assert(false);
@@ -946,7 +952,9 @@ const Token* parse_expression(const char rdelim) {
   if (token->is_punct(','))    return nullptr;
   if (token->is_punct(rdelim)) return nullptr;
 
-  parse_expression_lhs(rdelim);
+  if (auto end = parse_expression_lhs(token, token_eof, rdelim)) {
+    token = end;
+  }
 
   if (token->is_eof())         { return token; }
   if (token->is_punct(')'))    { return token; }
