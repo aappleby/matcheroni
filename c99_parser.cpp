@@ -141,11 +141,11 @@ Node* parse_decltype();
 const Token* parse_enum_declaration();
 const Token* parse_expression_list(NodeType type, const char ldelim, const char spacer, const char rdelim);
 const Token* parse_expression(const char rdelim);
-Node* parse_function_call();
+const Token* parse_function_call();
 const Token* parse_identifier();
 const Token* parse_initializer_list();
 Node* parse_parameter_list();
-Node* parse_parenthesized_expression();
+const Token* parse_parenthesized_expression();
 Node* parse_specifiers();
 Node* parse_statement();
 
@@ -253,9 +253,9 @@ const Token* take_punct(char punct) {
 }
 
 const Token* take_identifier(const char* identifier = nullptr) {
-  assert(token->is_identifier(identifier));
-  //return take_lexemes(NODE_IDENTIFIER, 1);
-  if (take_lexemes(NODE_IDENTIFIER, 1)) {
+  if (token->is_identifier(identifier)) {
+    push_node( new Node(NODE_IDENTIFIER, token, token + 1) );
+    token = token + 1;
     return token;
   }
   else {
@@ -897,7 +897,8 @@ Node* parse_expression_lhs(const char rdelim) {
   }
 
   if (token->is_punct('(')) {
-    return parse_parenthesized_expression();
+    parse_parenthesized_expression();
+    return pop_node();
   }
 
   if (token->is_constant()) {
@@ -906,7 +907,8 @@ Node* parse_expression_lhs(const char rdelim) {
   }
 
   if (token[0].is_identifier() && token[1].is_punct('(')) {
-    return parse_function_call();
+    parse_function_call();
+    return pop_node();
   }
 
   if (token[0].is_identifier()) {
@@ -1010,7 +1012,7 @@ const Token* parse_enum_declaration() {
 
 //----------------------------------------
 
-Node* parse_function_call() {
+const Token* parse_function_call() {
   if (!token[0].is_identifier() || !token[1].is_punct('(')) return nullptr;
 
   auto result = new Node(NODE_CALL_EXPRESSION, nullptr, nullptr);
@@ -1021,7 +1023,9 @@ Node* parse_function_call() {
   if (parse_expression_list(NODE_ARGUMENT_LIST, '(', ',', ')')) {
     result->append(pop_node());
   }
-  return result;
+
+  push_node(result);
+  return token;
 }
 
 //----------------------------------------
@@ -1036,30 +1040,38 @@ const Token* parse_identifier() {
 
 //----------------------------------------
 
-Node* parse_if_statement() {
+const Token* parse_if_statement() {
   auto result = new Node(NODE_IF_STATEMENT);
-  take_identifier("if");
-  result->append(pop_node());
-  result->append(parse_parenthesized_expression());
+  if (take_identifier("if")) {
+    result->append(pop_node());
+  }
+  if (parse_parenthesized_expression()) {
+    result->append(pop_node());
+  }
   result->append(parse_statement());
   if (token[0].is_identifier("else")) {
     take_identifier("else");
     result->append(pop_node());
     result->append(parse_statement());
   }
-  return result;
+  push_node(result);
+  return token;
 }
 
-Node* parse_while_statement() {
+const Token* parse_while_statement() {
   auto result = new Node(NODE_WHILE_STATEMENT);
-  take_identifier("while");
-  result->append(pop_node());
-  result->append(parse_parenthesized_expression());
+  if (take_identifier("while")) {
+    result->append(pop_node());
+  }
+  if (parse_parenthesized_expression()) {
+    result->append(pop_node());
+  }
   result->append(parse_statement());
-  return result;
+  push_node(result);
+  return token;
 }
 
-Node* parse_return_statement() {
+const Token* parse_return_statement() {
   take_identifier();
   auto ret = pop_node();
   parse_expression(';');
@@ -1068,7 +1080,8 @@ Node* parse_return_statement() {
   auto result = new Node(NODE_RETURN_STATEMENT, nullptr, nullptr);
   result->append(ret);
   result->append(val);
-  return result;
+  push_node(result);
+  return token;
 }
 
 //----------------------------------------
@@ -1095,13 +1108,14 @@ Node* parse_parameter_list() {
 
 //----------------------------------------
 
-Node* parse_parenthesized_expression() {
+const Token* parse_parenthesized_expression() {
   auto result = new Node(NODE_PARENTHESIZED_EXPRESSION);
   skip_punct('(');
   parse_expression(')');
   result->append(pop_node());
   skip_punct(')');
-  return result;
+  push_node(result);
+  return token;
 }
 
 //----------------------------------------
@@ -1150,7 +1164,7 @@ Node* parse_case_statement() {
 
 //----------------------------------------
 
-Node* parse_switch_statement() {
+const Token* parse_switch_statement() {
   if (!token[0].is_identifier("switch")) return nullptr;
 
   Node* result = new Node(NODE_SWITCH_STATEMENT);
@@ -1169,7 +1183,9 @@ Node* parse_switch_statement() {
   }
 
   skip_punct('}');
-  return result;
+
+  push_node(result);
+  return token;
 }
 
 //----------------------------------------
@@ -1183,7 +1199,7 @@ Node* parse_declaration_or_expression(char rdelim) {
 
 //----------------------------------------
 
-Node* parse_for_statement() {
+const Token* parse_for_statement() {
   if (!token[0].is_identifier("for")) return nullptr;
 
   auto result = new Node(NODE_FOR_STATEMENT);
@@ -1208,7 +1224,8 @@ Node* parse_for_statement() {
 
   result->tok_b = token;
 
-  return result;
+  push_node(result);
+  return token;
 }
 
 //----------------------------------------
@@ -1220,23 +1237,28 @@ Node* parse_statement() {
   }
 
   if (token[0].is_identifier("if")) {
-    return parse_if_statement();
+    parse_if_statement();
+    return pop_node();
   }
 
   if (token[0].is_identifier("while")) {
-    return parse_while_statement();
+    parse_while_statement();
+    return pop_node();
   }
 
   if (token[0].is_identifier("for")) {
-    return parse_for_statement();
+    parse_for_statement();
+    return pop_node();
   }
 
   if (token[0].is_identifier("return")) {
-    return parse_return_statement();
+    parse_return_statement();
+    return pop_node();
   }
 
   if (token[0].is_identifier("switch")) {
-    return parse_switch_statement();
+    parse_switch_statement();
+    return pop_node();
   }
 
   if (token[0].is_identifier() && token[1].is_identifier()) {
