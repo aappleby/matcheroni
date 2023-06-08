@@ -759,21 +759,23 @@ const Token* parse_expression_prefix() {
 //    --
 
 
-Node* parse_expression_suffix() {
+const Token* parse_expression_suffix() {
   if (token[0].is_punct('[')) {
     auto result = new Node(NODE_ARRAY_SUFFIX);
     skip_punct('[');
     parse_expression(']');
     result->append(pop_node());
     skip_punct(']');
-    return result;
+    push_node(result);
+    return token;
   }
 
   if (token[0].is_punct('(') && token[1].is_punct(')')) {
     auto result = new Node(NODE_PARAMETER_LIST);
     skip_punct('(');
     skip_punct(')');
-    return result;
+    push_node(result);
+    return token;
   }
 
   if (token[0].is_punct('(')) {
@@ -782,13 +784,14 @@ Node* parse_expression_suffix() {
     parse_expression(')');
     result->append(pop_node());
     skip_punct(')');
-    return result;
+    push_node(result);
+    return token;
   }
 
   if (token[0].is_punct('+') && token[1].is_punct('+')) {
     //return take_lexemes(NODE_OPERATOR, 2);
     if (take_lexemes(NODE_OPERATOR, 2)) {
-      return pop_node();
+      return token;
     }
     else {
       return nullptr;
@@ -798,7 +801,7 @@ Node* parse_expression_suffix() {
   if (token[0].is_punct('-') && token[1].is_punct('-')) {
     //return take_lexemes(NODE_OPERATOR, 2);
     if (take_lexemes(NODE_OPERATOR, 2)) {
-      return pop_node();
+      return token;
     }
     else {
       return nullptr;
@@ -856,7 +859,8 @@ Node* parse_expression_rhs(Node* lhs, const char rdelim) {
   if (token->is_punct(','))    return lhs;
   if (token->is_punct(rdelim)) return lhs;
 
-  if (auto op = parse_expression_suffix()) {
+  if (parse_expression_suffix()) {
+    auto op = pop_node();
     auto result = new Node(NODE_POSTFIX_EXPRESSION);
     result->append(lhs);
     result->append(op);
