@@ -250,6 +250,29 @@ const Token* take_constant(const Token* a, const Token* b) {
 
 //----------------------------------------
 
+template<NodeType n, typename pattern>
+struct NodeMaker {
+  static const Token* match(const Token* a, const Token* b) {
+    auto old_top = node_top;
+    auto end = pattern::match(a, b);
+    if (end) {
+      auto node = new Node(n, a, end);
+      for (auto i = old_top; i < node_top; i++) {
+        node->append(node_stack[i]);
+      }
+      node_top = old_top;
+      push_node(node);
+    }
+    else {
+      for (auto i = old_top; i < node_top; i++) {
+        delete node_stack[i];
+      }
+      node_top = old_top;
+    }
+    return end;
+  }
+};
+
 template<typename pattern, NodeType n>
 const Token* parse_pattern(const Token* a, const Token* b) {
   auto old_top = node_top;
@@ -274,12 +297,15 @@ const Token* parse_pattern(const Token* a, const Token* b) {
 //----------------------------------------
 
 const Token* parse_access_specifier(const Token* a, const Token* b) {
-  using pattern = Seq<
-    Oneof<AtomLit<"public">, AtomLit<"private">>,
-    Atom<':'>
+  using access_specifier = NodeMaker<
+    NODE_ACCESS_SPECIFIER,
+    Seq<
+      Oneof<AtomLit<"public">, AtomLit<"private">>,
+      Atom<':'>
+    >
   >;
 
-  return parse_pattern<pattern, NODE_ACCESS_SPECIFIER>(a, b);
+  return access_specifier::match(a, b);
 }
 
 //----------------------------------------
