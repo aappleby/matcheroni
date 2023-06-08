@@ -140,7 +140,7 @@ Node* parse_declaration_list(NodeType type, const char ldelim, const char spacer
 Node* parse_decltype();
 Node* parse_enum_declaration();
 Node* parse_expression_list(NodeType type, const char ldelim, const char spacer, const char rdelim);
-Node* parse_expression(const char rdelim);
+const Token* parse_expression(const char rdelim);
 Node* parse_function_call();
 const Token* parse_identifier();
 Node* parse_initializer_list();
@@ -334,7 +334,8 @@ Node* parse_declaration(const char rdelim) {
 
     if (take_punct(':')) {
       result->append(pop_node());
-      result->append(parse_expression('{'));
+      parse_expression('{');
+      result->append(pop_node());
     }
   }
 
@@ -343,7 +344,8 @@ Node* parse_declaration(const char rdelim) {
       result->append(pop_node());
     }
 
-    result->append(parse_expression(']'));
+    parse_expression(']');
+    result->append(pop_node());
 
     if (take_punct(']')) {
       result->append(pop_node());
@@ -371,7 +373,8 @@ Node* parse_declaration(const char rdelim) {
   if (take_punct('=')) {
     has_init = true;
     result->append(pop_node());
-    result->append(parse_expression(rdelim));
+    parse_expression(rdelim);
+    result->append(pop_node());
   }
 
   if (!has_type) {
@@ -396,7 +399,7 @@ Node* parse_declaration(const char rdelim) {
 
 //----------------------------------------
 
-Node* parse_field_declaration_list() {
+const Token* parse_field_declaration_list() {
   auto result = new NodeList(NODE_FIELD_DECLARATION_LIST);
   skip_punct('{');
 
@@ -416,8 +419,9 @@ Node* parse_field_declaration_list() {
     }
   }
 
+  push_node(result);
   skip_punct('}');
-  return result;
+  return token;
 }
 
 //----------------------------------------
@@ -438,7 +442,8 @@ Node* parse_class_specifier() {
     skip_identifier("class");
     take_identifier();
     auto name = pop_node();
-    auto body = parse_field_declaration_list();
+    parse_field_declaration_list();
+    auto body = pop_node();
     skip_punct(';');
 
     return new ClassDefinition(name, body);
@@ -464,14 +469,15 @@ Node* parse_struct_specifier() {
     skip_identifier("struct");
     take_identifier();
     auto name = pop_node();
-    auto body = parse_field_declaration_list();
+    parse_field_declaration_list();
+    auto body = pop_node();
     skip_punct(';');
     return new StructDefinition(name, body);
   }
 
 }
 
-Node* parse_namespace_specifier() {
+const Token* parse_namespace_specifier() {
 
   using decl = Seq<AtomLit<"namespace">, Atom<LEX_IDENTIFIER>, Atom<';'>>;
 
@@ -482,18 +488,21 @@ Node* parse_namespace_specifier() {
     skip_punct(';');
     auto result = new Node(NODE_NAMESPACE_DECLARATION);
     result->append(name);
-    return result;
+    push_node(result);
+    return token;
   }
   else {
     skip_identifier("namespace");
     take_identifier();
     auto name = pop_node();
-    auto body = parse_field_declaration_list();
+    parse_field_declaration_list();
+    auto body = pop_node();
     skip_punct(';');
     auto result = new Node(NODE_NAMESPACE_DEFINITION);
     result->append(name);
     result->append(body);
-    return result;
+    push_node(result);
+    return token;
   }
 }
 
@@ -722,7 +731,8 @@ Node* parse_expression_suffix() {
   if (token[0].is_punct('[')) {
     auto result = new Node(NODE_ARRAY_SUFFIX);
     skip_punct('[');
-    result->append(parse_expression(']'));
+    parse_expression(']');
+    result->append(pop_node());
     skip_punct(']');
     return result;
   }
@@ -737,7 +747,8 @@ Node* parse_expression_suffix() {
   if (token[0].is_punct('(')) {
     auto result = new Node(NODE_PARAMETER_LIST);
     skip_punct('(');
-    result->append(parse_expression(')'));
+    parse_expression(')');
+    result->append(pop_node());
     skip_punct(')');
     return result;
   }
@@ -822,7 +833,8 @@ Node* parse_expression_rhs(Node* lhs, const char rdelim) {
 
   if (auto end = parse_infix_op()) {
     auto result = new Node(NODE_INFIX_EXPRESSION);
-    auto rhs = parse_expression(rdelim);
+    parse_expression(rdelim);
+    auto rhs = pop_node();
     result->append(lhs);
     result->append(pop_node());
     result->append(rhs);
@@ -833,7 +845,8 @@ Node* parse_expression_rhs(Node* lhs, const char rdelim) {
     auto result = new Node(NODE_ARRAY_EXPRESSION);
     result->append(lhs);
     skip_punct('[');
-    result->append(parse_expression(']'));
+    parse_expression(']');
+    result->append(pop_node());
     skip_punct(']');
     return parse_expression_rhs(result, rdelim);
   }
@@ -896,7 +909,7 @@ Node* parse_expression_lhs(const char rdelim) {
 
 //----------------------------------------
 
-Node* parse_expression(const char rdelim) {
+const Token* parse_expression(const char rdelim) {
 
   // FIXME there are probably other expression terminators?
   if (token->is_eof())      return nullptr;
@@ -908,7 +921,9 @@ Node* parse_expression(const char rdelim) {
   Node* lhs = parse_expression_lhs(rdelim);
   if (!lhs) return nullptr;
 
-  return parse_expression_rhs(lhs, rdelim);
+  auto result = parse_expression_rhs(lhs, rdelim);
+  push_node(result);
+  return token;
 }
 
 //----------------------------------------
@@ -919,7 +934,8 @@ Node* parse_external_declaration() {
   }
 
   if (token->is_identifier("namespace")) {
-    return parse_namespace_specifier();
+    parse_namespace_specifier();
+    return pop_node();
   }
 
   if (token->is_identifier("class")) {
@@ -1030,7 +1046,8 @@ Node* parse_while_statement() {
 Node* parse_return_statement() {
   take_identifier();
   auto ret = pop_node();
-  auto val = parse_expression(';');
+  parse_expression(';');
+  auto val = pop_node();
   skip_punct(';');
   auto result = new Node(NODE_RETURN_STATEMENT, nullptr, nullptr);
   result->append(ret);
@@ -1065,7 +1082,8 @@ Node* parse_parameter_list() {
 Node* parse_parenthesized_expression() {
   auto result = new Node(NODE_PARENTHESIZED_EXPRESSION);
   skip_punct('(');
-  result->append(parse_expression(')'));
+  parse_expression(')');
+  result->append(pop_node());
   skip_punct(')');
   return result;
 }
@@ -1094,7 +1112,8 @@ Node* parse_case_statement() {
   if (token[0].is_identifier("case")) {
     take_identifier();
     result->append(pop_node());
-    result->append(parse_expression(':'));
+    parse_expression(':');
+    result->append(pop_node());
     skip_punct(':');
   }
   else if (token[0].is_identifier("default")) {
@@ -1138,7 +1157,8 @@ Node* parse_switch_statement() {
 Node* parse_declaration_or_expression(char rdelim) {
   auto result1 = parse_declaration(rdelim);
   if (result1) return result1;
-  return parse_expression(rdelim);
+  parse_expression(rdelim);
+  return pop_node();
 }
 
 //----------------------------------------
@@ -1156,9 +1176,11 @@ Node* parse_for_statement() {
   skip_punct('(');
   result->append(parse_declaration_or_expression(';'));
   skip_punct(';');
-  result->append(parse_expression(';'));
+  parse_expression(';');
+  result->append(pop_node());
   skip_punct(';');
-  result->append(parse_expression(')'));
+  parse_expression(')');
+  result->append(pop_node());
   skip_punct(')');
   result->append(parse_statement());
 
@@ -1216,7 +1238,8 @@ Node* parse_statement() {
   }
 
   // Must be expression statement
-  auto exp = parse_expression(';');
+  parse_expression(';');
+  auto exp = pop_node();
   skip_punct(';');
   auto result = new Node(NODE_EXPRESSION_STATEMENT, nullptr, nullptr);
   result->append(exp);
@@ -1306,7 +1329,8 @@ Node* parse_expression_list(NodeType type, const char ldelim, const char spacer,
       skip_punct(spacer);
     }
     else {
-      result->append(parse_expression(rdelim));
+      parse_expression(rdelim);
+      result->append(pop_node());
     }
   }
 
@@ -1335,7 +1359,8 @@ Node* parse_initializer_list() {
       skip_punct(spacer);
     }
     else {
-      result->append(parse_expression(rdelim));
+      parse_expression(rdelim);
+      result->append(pop_node());
     }
   }
 
