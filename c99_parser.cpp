@@ -416,30 +416,33 @@ const Token* parse_declaration(const char rdelim) {
 
 //----------------------------------------
 
-const Token* parse_field_declaration_list() {
+const Token* parse_field_declaration_list(const Token* a, const Token* b) {
   auto result = new NodeList(NODE_FIELD_DECLARATION_LIST);
-  token = skip_punct(token, token_eof, '{');
+  a = skip_punct(a, b, '{');
 
-  while(token < token_eof && !token->is_punct('}')) {
+  while(a < b && !a->is_punct('}')) {
 
-    if (auto end = parse_access_specifier(token, token_eof)) {
+    if (auto end = parse_access_specifier(a, b)) {
       result->append(pop_node());
-      token = end;
+      a = end;
     }
-
-    else if (parse_declaration(';')) {
-      auto child = pop_node();
-      result->append(child);
-      result->items.push_back(child);
-      if (auto end = skip_punct(token, token_eof, ';')) {
-        token = end;
+    else {
+      token = a;
+      if (parse_declaration(';')) {
+        a = token;
+        auto child = pop_node();
+        result->append(child);
+        result->items.push_back(child);
+        if (auto end = skip_punct(a, b, ';')) {
+          a = end;
+        }
       }
     }
   }
 
   push_node(result);
-  token = skip_punct(token, token_eof, '}');
-  return token;
+  a = skip_punct(a, b, '}');
+  return a;
 }
 
 //----------------------------------------
@@ -462,9 +465,7 @@ const Token* parse_class_specifier(const Token* a, const Token* b) {
     a = take_identifier(a, b);
     auto name = pop_node();
 
-    token = a;
-    parse_field_declaration_list();
-    a = token;
+    a = parse_field_declaration_list(a, b);
 
     auto body = pop_node();
     a = skip_punct(a, b, ';');
@@ -494,7 +495,7 @@ const Token* parse_struct_specifier() {
     token = skip_identifier(token, token_eof, "struct");
     token = take_identifier(token, token_eof);
     auto name = pop_node();
-    parse_field_declaration_list();
+    token = parse_field_declaration_list(token, token_eof);
     auto body = pop_node();
     token = skip_punct(token, token_eof, ';');
     push_node(new StructDefinition(name, body));
@@ -519,7 +520,7 @@ const Token* parse_namespace_specifier() {
   else {
     token = skip_identifier(token, token_eof, "namespace");
     token = take_identifier(token, token_eof);
-    parse_field_declaration_list();
+    token = parse_field_declaration_list(token, token_eof);
     token = skip_punct(token, token_eof, ';');
 
     auto body = pop_node();
