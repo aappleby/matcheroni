@@ -739,28 +739,24 @@ const Token* parse_expression_prefix(const Token* a, const Token* b) {
 //    ++
 //    --
 
-const Token* parse_expression_suffix(const Token* a, const Token* b) {
-  using pattern_array_suffix = NodeMaker<NODE_ARRAY_SUFFIX,
-    Seq<Atom<'['>, Opt<Ref<parse_expression2>>, Atom<']'>>
-  >;
+using pattern_array_suffix = NodeMaker<NODE_ARRAY_SUFFIX,
+  Seq<Atom<'['>, Opt<Ref<parse_expression2>>, Atom<']'>>
+>;
 
-  using pattern_parameter_list = NodeMaker<NODE_PARAMETER_LIST,
-    Seq<Atom<'('>, Opt<Ref<parse_expression2>>, Atom<')'>>
-  >;
+using pattern_parameter_list = NodeMaker<NODE_PARAMETER_LIST,
+  Seq<Atom<'('>, Opt<Ref<parse_expression2>>, Atom<')'>>
+>;
 
-  using pattern_inc = NodeMaker<NODE_OPERATOR, Seq<Atom<'+'>, Atom<'+'>>>;
+using pattern_inc = NodeMaker<NODE_OPERATOR, Seq<Atom<'+'>, Atom<'+'>>>;
 
-  using pattern_dec = NodeMaker<NODE_OPERATOR, Seq<Atom<'-'>, Atom<'-'>>>;
+using pattern_dec = NodeMaker<NODE_OPERATOR, Seq<Atom<'-'>, Atom<'-'>>>;
 
-  using pattern = Oneof<
-    pattern_array_suffix,
-    pattern_parameter_list,
-    pattern_inc,
-    pattern_dec
-  >;
-
-  return pattern::match(a, b);
-}
+using pattern_expression_suffix = Oneof<
+  pattern_array_suffix,
+  pattern_parameter_list,
+  pattern_inc,
+  pattern_dec
+>;
 
 //----------------------------------------
 
@@ -844,7 +840,7 @@ const Token* parse_expression(const Token* a, const Token* b, const char rdelim)
   if (a->is_punct(','))    { return a; }
   if (a->is_punct(rdelim)) { return a; }
 
-  if (auto end = parse_expression_suffix(a, b)) {
+  if (auto end = pattern_expression_suffix::match(a, b)) {
     a = end;
     auto op = pop_node();
     auto lhs = pop_node();
