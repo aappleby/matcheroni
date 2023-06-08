@@ -137,7 +137,7 @@ void  push_node(Node* n) { node_stack[node_top++] = n; }
 
 const Token* parse_compound_statement();
 const Token* parse_declaration_list(NodeType type, const char ldelim, const char spacer, const char rdelim);
-Node* parse_decltype();
+const Token* parse_decltype();
 const Token* parse_enum_declaration();
 const Token* parse_expression_list(NodeType type, const char ldelim, const char spacer, const char rdelim);
 const Token* parse_expression(const char rdelim);
@@ -318,7 +318,8 @@ Node* parse_declaration(const char rdelim) {
   }
   else {
     // Need a better way to handle this
-    auto n1 = parse_decltype();
+    parse_decltype();
+    auto n1 = pop_node();
 
     if (token[0].is_punct('=')) {
       has_type = false;
@@ -643,7 +644,7 @@ Node* parse_declaration(Node* declaration_specifiers, const char rdelim) {
 
 //----------------------------------------
 
-Node* parse_decltype() {
+const Token* parse_decltype() {
   if (token[0].type != TOK_IDENTIFIER) return nullptr;
 
   Node* type = nullptr;
@@ -676,15 +677,19 @@ Node* parse_decltype() {
       else {
       }
 
-      result2->append(parse_decltype());
-      return result2;
+      if (parse_decltype()) {
+        result2->append(pop_node());
+      }
+      push_node(result2);
+      return token;
     }
 
-
-    return result;
+    push_node(result);
+    return token;
   }
   else {
-    return type;
+    push_node(type);
+    return token;
   }
 }
 
@@ -988,7 +993,9 @@ const Token* parse_enum_declaration() {
 
   if (token[0].is_punct(':')) {
     skip_punct(':');
-    result->append(parse_decltype());
+    if (parse_decltype()) {
+      result->append(pop_node());
+    }
   }
 
   if (token[0].is_punct('{')) {
