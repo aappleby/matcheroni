@@ -140,8 +140,8 @@ const Token* parse_expression_list(NodeType type, const char ldelim, const char 
 const Token* parse_expression(const char rdelim);
 const Token* parse_function_call();
 const Token* parse_identifier(const Token* a, const Token* b);
-const Token* parse_initializer_list();
-const Token* parse_parameter_list();
+const Token* parse_initializer_list(const Token* a, const Token* b);
+const Token* parse_parameter_list(const Token* a, const Token* b);
 const Token* parse_parenthesized_expression();
 const Token* parse_specifiers(const Token* a, const Token* b);
 const Token* parse_statement();
@@ -360,12 +360,14 @@ const Token* parse_declaration(const char rdelim) {
 
   if (token[0].is_punct('(')) {
     has_params = true;
-    if (parse_parameter_list()) {
+    if (auto end = parse_parameter_list(token, token_eof)) {
+      token = end;
       result->append(pop_node());
     }
 
     if (is_constructor) {
-      if (parse_initializer_list()) {
+      if (auto end = parse_initializer_list(token, token_eof)) {
+        token = end;
         result->append(pop_node());
       }
     }
@@ -1074,80 +1076,106 @@ const Token* parse_identifier(const Token* a, const Token* b) {
 
 //----------------------------------------
 
-const Token* parse_if_statement() {
+const Token* parse_if_statement(const Token* a, const Token* b) {
   auto result = new Node(NODE_IF_STATEMENT);
-  if (auto end = take_identifier(token, token_eof, "if")) {
-    token = end;
+  if (auto end = take_identifier(a, b, "if")) {
+    a = end;
     result->append(pop_node());
   }
+
+  token = a;
   if (parse_parenthesized_expression()) {
     result->append(pop_node());
   }
+  a = token;
+
+  token = a;
   if (parse_statement()) {
     result->append(pop_node());
   }
-  if (token[0].is_identifier("else")) {
-    token = take_identifier(token, token_eof, "else");
+  a = token;
+
+  if (a[0].is_identifier("else")) {
+    a = take_identifier(a, b, "else");
     result->append(pop_node());
+
+    token = a;
     if (parse_statement()) {
       result->append(pop_node());
     }
+    a = token;
   }
+
   push_node(result);
-  return token;
+  return a;
 }
 
-const Token* parse_while_statement() {
+const Token* parse_while_statement(const Token* a, const Token* b) {
   auto result = new Node(NODE_WHILE_STATEMENT);
-  if (auto end = take_identifier(token, token_eof, "while")) {
-    token = end;
+  if (auto end = take_identifier(a, b, "while")) {
+    a = end;
     result->append(pop_node());
   }
+
+  token = a;
   if (parse_parenthesized_expression()) {
     result->append(pop_node());
   }
+  a = token;
+
+  token = a;
   if (parse_statement()) {
     result->append(pop_node());
   }
+  a = token;
+
   push_node(result);
-  return token;
+  return a;
 }
 
-const Token* parse_return_statement() {
-  token = take_identifier(token, token_eof);
+const Token* parse_return_statement(const Token* a, const Token* b) {
+  a = take_identifier(a, b);
   auto ret = pop_node();
+
+  token = a;
   parse_expression(';');
+  a = token;
+
   auto val = pop_node();
-  token = skip_punct(token, token_eof, ';');
+  a = skip_punct(a, b, ';');
   auto result = new Node(NODE_RETURN_STATEMENT, nullptr, nullptr);
   result->append(ret);
   result->append(val);
   push_node(result);
-  return token;
+  return a;
 }
 
 //----------------------------------------
 
-const Token* parse_parameter_list() {
+const Token* parse_parameter_list(const Token* a, const Token* b) {
   auto result = new NodeList(NODE_PARAMETER_LIST);
 
-  token = skip_punct(token, token_eof, '(');
+  a = skip_punct(a, b, '(');
 
-  while(!token->is_punct(')')) {
+  while(!a->is_punct(')')) {
+
+    token = a;
     parse_declaration(',');
+    a = token;
+
     auto decl = pop_node();
     assert(decl);
     result->items.push_back(decl);
     result->append(decl);
-    if (token->is_punct(',')) {
-      token = skip_punct(token, token_eof, ',');
+    if (a->is_punct(',')) {
+      a = skip_punct(a, b, ',');
     }
   }
 
-  token = skip_punct(token, token_eof, ')');
+  a = skip_punct(a, b, ')');
 
   push_node(result);
-  return token;
+  return a;
 }
 
 //----------------------------------------
@@ -1253,36 +1281,51 @@ const Token* parse_declaration_or_expression(char rdelim) {
 
 //----------------------------------------
 
-const Token* parse_for_statement() {
-  if (!token[0].is_identifier("for")) return nullptr;
+const Token* parse_for_statement(const Token* a, const Token* b) {
+  if (!a[0].is_identifier("for")) return nullptr;
 
   auto result = new Node(NODE_FOR_STATEMENT);
 
-  result->tok_a = token;
+  result->tok_a = a;
 
   auto old_size = node_top;
 
-  token = skip_identifier(token, token_eof, "for");
-  token = skip_punct(token, token_eof, '(');
+  a = skip_identifier(a, b, "for");
+  a = skip_punct(a, b, '(');
+
+  token = a;
   parse_declaration_or_expression(';');
+  a = token;
+
   result->append(pop_node());
-  token = skip_punct(token, token_eof, ';');
+  a = skip_punct(a, b, ';');
+
+  token = a;
   parse_expression(';');
+  a = token;
+
   result->append(pop_node());
-  token = skip_punct(token, token_eof, ';');
+  a = skip_punct(a, b, ';');
+
+  token = a;
   parse_expression(')');
+  a = token;
+
   result->append(pop_node());
-  token = skip_punct(token, token_eof, ')');
+  a = skip_punct(a, b, ')');
+
+  token = a;
   if (parse_statement()) {
     result->append(pop_node());
   }
+  a = token;
 
   auto new_size = node_top;
 
-  result->tok_b = token;
+  result->tok_b = a;
 
   push_node(result);
-  return token;
+  return a;
 }
 
 //----------------------------------------
@@ -1298,22 +1341,22 @@ const Token* parse_statement() {
   }
 
   if (token[0].is_identifier("if")) {
-    parse_if_statement();
+    token = parse_if_statement(token, token_eof);
     return token;
   }
 
   if (token[0].is_identifier("while")) {
-    parse_while_statement();
+    token = parse_while_statement(token, token_eof);
     return token;
   }
 
   if (token[0].is_identifier("for")) {
-    parse_for_statement();
+    token = parse_for_statement(token, token_eof);
     return token;
   }
 
   if (token[0].is_identifier("return")) {
-    parse_return_statement();
+    token = parse_return_statement(token, token_eof);
     return token;
   }
 
@@ -1459,34 +1502,36 @@ const Token* parse_expression_list(NodeType type, const char ldelim, const char 
 
 //----------------------------------------
 
-const Token* parse_initializer_list() {
+const Token* parse_initializer_list(const Token* a, const Token* b) {
   char ldelim = ':';
   char spacer = ',';
   char rdelim = '{'; // we don't consume this unlike parse_expression_list
 
-  if (!token[0].is_punct(ldelim)) return nullptr;
+  if (!a[0].is_punct(ldelim)) return nullptr;
 
   auto result = new Node(NODE_INITIALIZER_LIST);
 
-  token = skip_punct(token, token_eof, ldelim);
+  a = skip_punct(a, b, ldelim);
 
   while(1) {
-    if (token->is_punct(rdelim)) {
+    if (a->is_punct(rdelim)) {
       push_node(result);
-      return token;
+      return a;
     }
 
-    if (token->is_punct(spacer)) {
-      token = skip_punct(token, token_eof, spacer);
+    if (a->is_punct(spacer)) {
+      a = skip_punct(a, b, spacer);
     }
     else {
+      token = a;
       parse_expression(rdelim);
+      a = token;
       result->append(pop_node());
     }
   }
 
   push_node(result);
-  return token;
+  return a;
 }
 
 //----------------------------------------
