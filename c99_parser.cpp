@@ -895,7 +895,7 @@ Node* parse_expression_rhs(Node* lhs, const char rdelim) {
 
 //----------------------------------------
 
-Node* parse_expression_lhs(const char rdelim) {
+const Token* parse_expression_lhs(const char rdelim) {
 
   // Dirty hackkkkk - explicitly recognize templated function calls as
   // expression atoms
@@ -916,35 +916,38 @@ Node* parse_expression_lhs(const char rdelim) {
     if (parse_expression_list(NODE_ARGUMENT_LIST, '(', ',', ')')) {
       result->append(pop_node());
     }
-    return result;
+    push_node(result);
+    return token;
   }
 
   if (parse_expression_prefix()) {
     auto op = pop_node();
     auto result = new Node(NODE_PREFIX_EXPRESSION);
     result->append(op);
-    result->append(parse_expression_lhs(rdelim));
-    return result;
+    parse_expression_lhs(rdelim);
+    result->append(pop_node());
+    push_node(result);
+    return token;
   }
 
   if (token->is_punct('(')) {
     parse_parenthesized_expression();
-    return pop_node();
+    return token;
   }
 
   if (token->is_constant()) {
     take_constant();
-    return pop_node();
+    return token;
   }
 
   if (token[0].is_identifier() && token[1].is_punct('(')) {
     parse_function_call();
-    return pop_node();
+    return token;
   }
 
   if (token[0].is_identifier()) {
     take_identifier();
-    return pop_node();
+    return token;
   }
 
   assert(false);
@@ -962,7 +965,8 @@ const Token* parse_expression(const char rdelim) {
   if (token->is_punct(',')) return nullptr;
   if (token->is_punct(rdelim)) return nullptr;
 
-  Node* lhs = parse_expression_lhs(rdelim);
+  parse_expression_lhs(rdelim);
+  Node* lhs = pop_node();
   if (!lhs) return nullptr;
 
   auto result = parse_expression_rhs(lhs, rdelim);
