@@ -1165,14 +1165,14 @@ const Token* parse_parenthesized_expression() {
 
 //----------------------------------------
 
-const Token* parse_preproc() {
+const Token* parse_preproc(const Token* a, const Token* b) {
   using pattern = Atom<TOK_PREPROC>;
 
-  if (auto end = pattern::match(token, token_eof)) {
-    auto result = new Node(NODE_PREPROC, token, end);
-    token = end;
+  if (auto end = pattern::match(a, b)) {
+    auto result = new Node(NODE_PREPROC, a, end);
+    a = end;
     push_node(result);
-    return token;
+    return a;
   }
 
   return nullptr;
@@ -1360,7 +1360,7 @@ const Token* parse_statement() {
 
 //----------------------------------------
 
-const Token* parse_storage_class_specifier() {
+const Token* parse_storage_class_specifier(const Token* a, const Token* b) {
   const char* keywords[] = {
     "extern",
     "static",
@@ -1370,9 +1370,8 @@ const Token* parse_storage_class_specifier() {
   };
   auto keyword_count = sizeof(keywords)/sizeof(keywords[0]);
   for (auto i = 0; i < keyword_count; i++) {
-    if (token->is_identifier(keywords[i])) {
-      token = take_identifier(token, token_eof);
-      return token;
+    if (a->is_identifier(keywords[i])) {
+      return take_identifier(a, b);
     }
   }
 
@@ -1526,7 +1525,8 @@ const Token* parse_translation_unit() {
         result->append(pop_node());
       }
     }
-    else if (parse_preproc()) {
+    else if (auto end = parse_preproc(token, token_eof)) {
+      token = end;
       result->append(pop_node());
     }
     else if (parse_external_declaration()) {
