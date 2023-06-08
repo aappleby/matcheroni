@@ -1459,18 +1459,22 @@ const Token* parse_storage_class_specifier(const Token* a, const Token* b) {
 
 //----------------------------------------
 
-const Token* parse_template_decl() {
+const Token* parse_template_decl(const Token* a, const Token* b) {
   auto result = new TemplateDeclaration();
 
-  if (auto end = take_identifier(token, token_eof, "template")) {
-    token = end;
+  if (auto end = take_identifier(a, b, "template")) {
+    a = end;
     result->append(pop_node());
   }
+
+  token = a;
   if (parse_declaration_list(NODE_TEMPLATE_PARAMETER_LIST, '<', ',', '>')) {
+    a = token;
     result->append(pop_node());
   }
-  if (auto end = parse_class_specifier(token, token_eof)) {
-    token = end;
+
+  if (auto end = parse_class_specifier(a, b)) {
+    a = end;
     result->append(pop_node());
   }
 
@@ -1479,7 +1483,7 @@ const Token* parse_template_decl() {
   result->_class   = result->child(2);
 
   push_node(result);
-  return token;
+  return a;
 }
 
 //----------------------------------------
@@ -1603,7 +1607,8 @@ const Token* parse_translation_unit() {
   while(!token->is_eof()) {
 
     if (Lit<"template">::match(token->lex->span_a, token_eof->lex->span_a)) {
-      if (parse_template_decl()) {
+      if (auto end = parse_template_decl(token, token_eof)) {
+        token = end;
         result->append(pop_node());
       }
     }
