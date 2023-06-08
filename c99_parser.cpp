@@ -869,11 +869,13 @@ Node* parse_expression_rhs(Node* lhs, const char rdelim) {
   }
 
   if (auto end = parse_infix_op()) {
-    auto result = new Node(NODE_INFIX_EXPRESSION);
+    auto op = pop_node();
     parse_expression(rdelim);
     auto rhs = pop_node();
+
+    auto result = new Node(NODE_INFIX_EXPRESSION);
     result->append(lhs);
-    result->append(pop_node());
+    result->append(op);
     result->append(rhs);
     return parse_expression_rhs(result, rdelim);
   }
@@ -969,7 +971,17 @@ const Token* parse_expression(const char rdelim) {
   Node* lhs = pop_node();
   if (!lhs) return nullptr;
 
+  if (token->is_eof())         { push_node(lhs); return token; }
+  if (token->is_punct(')'))    { push_node(lhs); return token; }
+  if (token->is_punct(';'))    { push_node(lhs); return token; }
+  if (token->is_punct(','))    { push_node(lhs); return token; }
+  if (token->is_punct(rdelim)) { push_node(lhs); return token; }
+
   auto result = parse_expression_rhs(lhs, rdelim);
+
+
+
+
   push_node(result);
   return token;
 }
