@@ -138,7 +138,7 @@ const Token* parse_decltype(const Token* a, const Token* b);
 const Token* parse_enum_declaration(const Token* a, const Token* b);
 const Token* parse_expression_list(const Token* a, const Token* b, NodeType type, const char ldelim, const char spacer, const char rdelim);
 const Token* parse_expression(const Token* a, const Token* b, const char rdelim);
-const Token* parse_function_call();
+const Token* parse_function_call(const Token* a, const Token* b);
 const Token* parse_identifier(const Token* a, const Token* b);
 const Token* parse_initializer_list(const Token* a, const Token* b);
 const Token* parse_parameter_list(const Token* a, const Token* b);
@@ -722,9 +722,6 @@ const Token* parse_expression_prefix(const Token* a, const Token* b) {
 //    ++
 //    --
 
-const Token* token;
-const Token* token_eof;
-
 const Token* parse_expression_suffix(const Token* a, const Token* b) {
   if (a[0].is_punct('[')) {
     auto result = new Node(NODE_ARRAY_SUFFIX);
@@ -785,20 +782,20 @@ const Token* parse_expression_suffix(const Token* a, const Token* b) {
 
 //----------------------------------------
 
-const Token* parse_assignment_op() {
-  auto span_a = token->lex->span_a;
-  auto span_b = token_eof->lex->span_a;
+const Token* parse_assignment_op(const Token* a, const Token* b) {
+  auto span_a = a->lex->span_a;
+  auto span_b = b->lex->span_a;
 
   auto end = match_assign_op(span_a, span_b);
   if (!end) return nullptr;
 
-  auto match_lex_a = token;
-  auto match_lex_b = token;
+  auto match_lex_a = a;
+  auto match_lex_b = a;
   while(match_lex_b->lex->span_a < end) match_lex_b++;
   auto result = new Node(NODE_OPERATOR, match_lex_a, match_lex_b);
-  token = match_lex_b;
+  a = match_lex_b;
   push_node(result);
-  return token;
+  return a;
 }
 
 //----------------------------------------
@@ -820,6 +817,9 @@ const Token* parse_infix_op(const Token* a, const Token* b) {
 }
 
 //----------------------------------------
+
+const Token* token;
+const Token* token_eof;
 
 const Token* parse_expression_lhs(const Token* a, const Token* b, const char rdelim) {
 
@@ -872,9 +872,7 @@ const Token* parse_expression_lhs(const Token* a, const Token* b, const char rde
   }
 
   if (a[0].is_identifier() && a[1].is_punct('(')) {
-    token = a;
-    parse_function_call();
-    a = token;
+    a = parse_function_call(a, b);
     return a;
   }
 
@@ -1034,21 +1032,21 @@ const Token* parse_enum_declaration(const Token* a, const Token* b) {
 
 //----------------------------------------
 
-const Token* parse_function_call() {
-  if (!token[0].is_identifier() || !token[1].is_punct('(')) return nullptr;
+const Token* parse_function_call(const Token* a, const Token* b) {
+  if (!a[0].is_identifier() || !a[1].is_punct('(')) return nullptr;
 
   auto result = new Node(NODE_CALL_EXPRESSION, nullptr, nullptr);
 
-  if (token = take_identifier(token, token_eof)) {
+  if (a = take_identifier(a, b)) {
     result->append(pop_node());
   }
-  if (auto end = parse_expression_list(token, token_eof, NODE_ARGUMENT_LIST, '(', ',', ')')) {
-    token = end;
+  if (auto end = parse_expression_list(a, b, NODE_ARGUMENT_LIST, '(', ',', ')')) {
+    a = end;
     result->append(pop_node());
   }
 
   push_node(result);
-  return token;
+  return a;
 }
 
 //----------------------------------------
