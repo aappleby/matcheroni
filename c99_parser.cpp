@@ -143,7 +143,7 @@ const Token* parse_identifier();
 const Token* parse_initializer_list();
 const Token* parse_parameter_list();
 const Token* parse_parenthesized_expression();
-const Token* parse_specifiers();
+const Token* parse_specifiers(const Token* a, const Token* b);
 const Token* parse_statement();
 
 //----------------------------------------
@@ -259,18 +259,9 @@ const Token* take_identifier(const Token* a, const Token* b, const char* identif
   }
 }
 
-const Token* token;
-const Token* token_eof;
-
-const Token* take_constant() {
-  assert(token->is_constant());
-  if (auto end = take_lexemes(token, token_eof, NODE_CONSTANT, 1)) {
-    token = end;
-    return token;
-  }
-  else {
-    return nullptr;
-  }
+const Token* take_constant(const Token* a, const Token* b) {
+  assert(a->is_constant());
+  return take_lexemes(a, b, NODE_CONSTANT, 1);
 }
 
 //----------------------------------------
@@ -290,6 +281,9 @@ const Token* parse_access_specifier(const Token* a, const Token* b) {
   }
 }
 
+const Token* token;
+const Token* token_eof;
+
 //----------------------------------------
 
 const Token* parse_declaration(const char rdelim) {
@@ -301,7 +295,8 @@ const Token* parse_declaration(const char rdelim) {
   bool has_body = false;
   bool has_init = false;
 
-  if (parse_specifiers()) {
+  if (auto end = parse_specifiers(token, token_eof)) {
+    token = end;
     result->append(pop_node());
   }
 
@@ -329,7 +324,8 @@ const Token* parse_declaration(const char rdelim) {
     else {
       has_type = true;
       result->append(n1);
-      if (parse_specifiers()) {
+      if (auto end = parse_specifiers(token, token_eof)) {
+        token = end;
         result->append(pop_node());
       }
       if (parse_identifier()) {
@@ -372,7 +368,8 @@ const Token* parse_declaration(const char rdelim) {
     }
 
     // grab that const after the param list
-    if (parse_specifiers()) {
+    if (auto end = parse_specifiers(token, token_eof)) {
+      token = end;
       result->append(pop_node());
     }
   }
@@ -552,7 +549,7 @@ const Token* parse_compound_statement() {
 
 //----------------------------------------
 
-const Token* parse_specifiers() {
+const Token* parse_specifiers(const Token* a, const Token* b) {
   const char* keywords[] = {
     "extern",
     "static",
@@ -576,18 +573,18 @@ const Token* parse_specifiers() {
 
   std::vector<Node*> specifiers;
 
-  while(token < token_eof) {
+  while(a < b) {
     bool match = false;
     for (auto i = 0; i < keyword_count; i++) {
-      if (token->is_identifier(keywords[i])) {
+      if (a->is_identifier(keywords[i])) {
         match = true;
-        token = take_identifier(token, token_eof);
+        a = take_identifier(a, b);
         specifiers.push_back(pop_node());
         break;
       }
     }
-    if (auto end = take_punct(token, token_eof, '*')) {
-      token = end;
+    if (auto end = take_punct(a, b, '*')) {
+      a = end;
       specifiers.push_back(pop_node());
       match = true;
     }
@@ -598,7 +595,7 @@ const Token* parse_specifiers() {
     auto result = new Node(NODE_SPECIFIER_LIST);
     for (auto n : specifiers) result->append(n);
     push_node(result);
-    return token;
+    return a;
   }
   else {
     return nullptr;
@@ -896,7 +893,7 @@ const Token* parse_expression_lhs(const char rdelim) {
   }
 
   if (token->is_constant()) {
-    take_constant();
+    token = take_constant(token, token_eof);
     return token;
   }
 
