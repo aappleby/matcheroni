@@ -249,19 +249,18 @@ const Token* take_punct(const Token* a, const Token* b, char punct) {
   }
 }
 
-const Token* token;
-const Token* token_eof;
-
-const Token* take_identifier(const char* identifier = nullptr) {
-  if (token->is_identifier(identifier)) {
-    push_node( new Node(NODE_IDENTIFIER, token, token + 1) );
-    token = token + 1;
-    return token;
+const Token* take_identifier(const Token* a, const Token* b, const char* identifier = nullptr) {
+  if (a->is_identifier(identifier)) {
+    push_node( new Node(NODE_IDENTIFIER, a, a + 1) );
+    return a + 1;
   }
   else {
     return nullptr;
   }
 }
+
+const Token* token;
+const Token* token_eof;
 
 const Token* take_constant() {
   assert(token->is_constant());
@@ -448,7 +447,7 @@ const Token* parse_class_specifier() {
 
   if (auto end = decl::match(token, token_eof)) {
     token = skip_identifier(token, token_eof, "class");
-    take_identifier();
+    token = take_identifier(token, token_eof);
     auto name = pop_node();
     token = skip_punct(token, token_eof, ';');
 
@@ -457,7 +456,7 @@ const Token* parse_class_specifier() {
   }
   else {
     token = skip_identifier(token, token_eof, "class");
-    take_identifier();
+    token = take_identifier(token, token_eof);
     auto name = pop_node();
     parse_field_declaration_list();
     auto body = pop_node();
@@ -477,7 +476,7 @@ const Token* parse_struct_specifier() {
 
   if (auto end = decl::match(token, token_eof)) {
     token = skip_identifier(token, token_eof, "struct");
-    take_identifier();
+    token = take_identifier(token, token_eof);
     auto name = pop_node();
     token = skip_punct(token, token_eof, ';');
 
@@ -486,7 +485,7 @@ const Token* parse_struct_specifier() {
   }
   else {
     token = skip_identifier(token, token_eof, "struct");
-    take_identifier();
+    token = take_identifier(token, token_eof);
     auto name = pop_node();
     parse_field_declaration_list();
     auto body = pop_node();
@@ -503,7 +502,7 @@ const Token* parse_namespace_specifier() {
 
   if (auto end = decl::match(token, token_eof)) {
     token = skip_identifier(token, token_eof, "namespace");
-    take_identifier();
+    token = take_identifier(token, token_eof);
     token = skip_punct(token, token_eof, ';');
     auto result = new Node(NODE_NAMESPACE_DECLARATION);
     result->append(pop_node());
@@ -512,7 +511,7 @@ const Token* parse_namespace_specifier() {
   }
   else {
     token = skip_identifier(token, token_eof, "namespace");
-    take_identifier();
+    token = take_identifier(token, token_eof);
     parse_field_declaration_list();
     token = skip_punct(token, token_eof, ';');
 
@@ -582,7 +581,7 @@ const Token* parse_specifiers() {
     for (auto i = 0; i < keyword_count; i++) {
       if (token->is_identifier(keywords[i])) {
         match = true;
-        take_identifier();
+        token = take_identifier(token, token_eof);
         specifiers.push_back(pop_node());
         break;
       }
@@ -731,7 +730,7 @@ const Token* parse_expression_prefix() {
       token[2].is_punct(')')) {
     auto result = new Node(NODE_TYPECAST);
     token = skip_punct(token, token_eof, '(');
-    take_identifier();
+    token = take_identifier(token, token_eof);
     result->append(pop_node());
     token = skip_punct(token, token_eof, ')');
     push_node(result);
@@ -740,7 +739,7 @@ const Token* parse_expression_prefix() {
 
   if (token[0].is_identifier("sizeof")) {
     auto result = new Node(NODE_OPERATOR);
-    take_identifier("sizeof");
+    token = take_identifier(token, token_eof, "sizeof");
     result->append(pop_node());
     push_node(result);
     return token;
@@ -866,7 +865,7 @@ const Token* parse_expression_lhs(const char rdelim) {
       token[3].is_punct('>')) {
     auto result = new Node(NODE_CALL_EXPRESSION, nullptr, nullptr);
 
-    if (take_identifier()) {
+    if (token = take_identifier(token, token_eof)) {
       result->append(pop_node());
     }
 
@@ -907,7 +906,7 @@ const Token* parse_expression_lhs(const char rdelim) {
   }
 
   if (token[0].is_identifier()) {
-    take_identifier();
+    token = take_identifier(token, token_eof);
     return token;
   }
 
@@ -1018,7 +1017,7 @@ const Token* parse_enum_declaration() {
   }
 
   if (token[0].is_identifier()) {
-    take_identifier();
+    token = take_identifier(token, token_eof);
     result->append(pop_node());
   }
 
@@ -1039,7 +1038,7 @@ const Token* parse_enum_declaration() {
   if (token[0].is_identifier()) {
     auto result2 = new Node(NODE_DECLARATION);
     result2->append(result);
-    take_identifier();
+    token = take_identifier(token, token_eof);
     result2->append(pop_node());
     push_node(result2);
     return token;
@@ -1056,7 +1055,7 @@ const Token* parse_function_call() {
 
   auto result = new Node(NODE_CALL_EXPRESSION, nullptr, nullptr);
 
-  if (take_identifier()) {
+  if (token = take_identifier(token, token_eof)) {
     result->append(pop_node());
   }
   if (parse_expression_list(NODE_ARGUMENT_LIST, '(', ',', ')')) {
@@ -1081,7 +1080,8 @@ const Token* parse_identifier() {
 
 const Token* parse_if_statement() {
   auto result = new Node(NODE_IF_STATEMENT);
-  if (take_identifier("if")) {
+  if (auto end = take_identifier(token, token_eof, "if")) {
+    token = end;
     result->append(pop_node());
   }
   if (parse_parenthesized_expression()) {
@@ -1091,7 +1091,7 @@ const Token* parse_if_statement() {
     result->append(pop_node());
   }
   if (token[0].is_identifier("else")) {
-    take_identifier("else");
+    token = take_identifier(token, token_eof, "else");
     result->append(pop_node());
     if (parse_statement()) {
       result->append(pop_node());
@@ -1103,7 +1103,8 @@ const Token* parse_if_statement() {
 
 const Token* parse_while_statement() {
   auto result = new Node(NODE_WHILE_STATEMENT);
-  if (take_identifier("while")) {
+  if (auto end = take_identifier(token, token_eof, "while")) {
+    token = end;
     result->append(pop_node());
   }
   if (parse_parenthesized_expression()) {
@@ -1117,7 +1118,7 @@ const Token* parse_while_statement() {
 }
 
 const Token* parse_return_statement() {
-  take_identifier();
+  token = take_identifier(token, token_eof);
   auto ret = pop_node();
   parse_expression(';');
   auto val = pop_node();
@@ -1188,14 +1189,14 @@ const Token* parse_case_statement() {
   Node* result = new Node(NODE_CASE_STATEMENT);
 
   if (token[0].is_identifier("case")) {
-    take_identifier();
+    token = take_identifier(token, token_eof);
     result->append(pop_node());
     parse_expression(':');
     result->append(pop_node());
     token = skip_punct(token, token_eof, ':');
   }
   else if (token[0].is_identifier("default")) {
-    take_identifier();
+    token = take_identifier(token, token_eof);
     result->append(pop_node());
     token = skip_punct(token, token_eof, ':');
   }
@@ -1221,7 +1222,8 @@ const Token* parse_switch_statement() {
 
   Node* result = new Node(NODE_SWITCH_STATEMENT);
 
-  if (take_identifier("switch")) {
+  if (auto end = take_identifier(token, token_eof, "switch")) {
+    token = end;
     result->append(pop_node());
   }
 
@@ -1372,7 +1374,7 @@ const Token* parse_storage_class_specifier() {
   auto keyword_count = sizeof(keywords)/sizeof(keywords[0]);
   for (auto i = 0; i < keyword_count; i++) {
     if (token->is_identifier(keywords[i])) {
-      take_identifier();
+      token = take_identifier(token, token_eof);
       return token;
     }
   }
@@ -1385,7 +1387,8 @@ const Token* parse_storage_class_specifier() {
 const Token* parse_template_decl() {
   auto result = new TemplateDeclaration();
 
-  if (take_identifier("template")) {
+  if (auto end = take_identifier(token, token_eof, "template")) {
+    token = end;
     result->append(pop_node());
   }
   if (parse_declaration_list(NODE_TEMPLATE_PARAMETER_LIST, '<', ',', '>')) {
@@ -1505,7 +1508,7 @@ const Token* parse_type_qualifier() {
   auto keyword_count = sizeof(keywords)/sizeof(keywords[0]);
   for (auto i = 0; i < keyword_count; i++) {
     if (token->is_identifier(keywords[i])) {
-      take_identifier();
+      token = take_identifier(token, token_eof);
       return token;
     }
   }
