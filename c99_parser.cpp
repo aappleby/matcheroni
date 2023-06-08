@@ -147,7 +147,7 @@ const Token* parse_initializer_list();
 Node* parse_parameter_list();
 const Token* parse_parenthesized_expression();
 Node* parse_specifiers();
-Node* parse_statement();
+const Token* parse_statement();
 
 //----------------------------------------
 
@@ -521,7 +521,8 @@ const Token* parse_compound_statement() {
 
   while(1) {
     if (token->is_punct('}')) break;
-    auto statement = parse_statement();
+    parse_statement();
+    auto statement = pop_node();
     assert(statement);
     result->statements.push_back(statement);
     result->append(statement);
@@ -1048,11 +1049,15 @@ const Token* parse_if_statement() {
   if (parse_parenthesized_expression()) {
     result->append(pop_node());
   }
-  result->append(parse_statement());
+  if (parse_statement()) {
+    result->append(pop_node());
+  }
   if (token[0].is_identifier("else")) {
     take_identifier("else");
     result->append(pop_node());
-    result->append(parse_statement());
+    if (parse_statement()) {
+      result->append(pop_node());
+    }
   }
   push_node(result);
   return token;
@@ -1066,7 +1071,9 @@ const Token* parse_while_statement() {
   if (parse_parenthesized_expression()) {
     result->append(pop_node());
   }
-  result->append(parse_statement());
+  if (parse_statement()) {
+    result->append(pop_node());
+  }
   push_node(result);
   return token;
 }
@@ -1157,7 +1164,9 @@ Node* parse_case_statement() {
   }
 
   while (!token[0].is_case_label() && !token[0].is_punct('}')) {
-    result->append(parse_statement());
+    if (parse_statement()) {
+      result->append(pop_node());
+    }
   }
   return result;
 }
@@ -1218,7 +1227,9 @@ const Token* parse_for_statement() {
   parse_expression(')');
   result->append(pop_node());
   skip_punct(')');
-  result->append(parse_statement());
+  if (parse_statement()) {
+    result->append(pop_node());
+  }
 
   auto new_size = node_top;
 
@@ -1230,42 +1241,43 @@ const Token* parse_for_statement() {
 
 //----------------------------------------
 
-Node* parse_statement() {
+const Token* parse_statement() {
   if (token[0].is_punct('{')) {
     parse_compound_statement();
-    return pop_node();
+    return token;
   }
 
   if (token[0].is_identifier("if")) {
     parse_if_statement();
-    return pop_node();
+    return token;
   }
 
   if (token[0].is_identifier("while")) {
     parse_while_statement();
-    return pop_node();
+    return token;
   }
 
   if (token[0].is_identifier("for")) {
     parse_for_statement();
-    return pop_node();
+    return token;
   }
 
   if (token[0].is_identifier("return")) {
     parse_return_statement();
-    return pop_node();
+    return token;
   }
 
   if (token[0].is_identifier("switch")) {
     parse_switch_statement();
-    return pop_node();
+    return token;
   }
 
   if (token[0].is_identifier() && token[1].is_identifier()) {
     auto result = new Node(NODE_DECLARATION_STATEMENT, nullptr, nullptr);
     result->append(parse_declaration(';'));
     skip_punct(';');
-    return result;
+    push_node(result);
+    return token;
   }
 
   // Dirty hack
@@ -1277,7 +1289,8 @@ Node* parse_statement() {
     auto result = new Node(NODE_DECLARATION_STATEMENT, nullptr, nullptr);
     result->append(parse_declaration(';'));
     skip_punct(';');
-    return result;
+    push_node(result);
+    return token;
   }
 
   // Must be expression statement
@@ -1286,7 +1299,8 @@ Node* parse_statement() {
   skip_punct(';');
   auto result = new Node(NODE_EXPRESSION_STATEMENT, nullptr, nullptr);
   result->append(exp);
-  return result;
+  push_node(result);
+  return token;
 }
 
 //----------------------------------------
