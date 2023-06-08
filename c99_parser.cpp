@@ -135,10 +135,10 @@ size_t node_top = 0;
 Node* pop_node()         { return node_stack[--node_top]; }
 void  push_node(Node* n) { node_stack[node_top++] = n; }
 
-Node* parse_compound_statement();
-Node* parse_declaration_list(NodeType type, const char ldelim, const char spacer, const char rdelim);
+const Token* parse_compound_statement();
+const Token* parse_declaration_list(NodeType type, const char ldelim, const char spacer, const char rdelim);
 Node* parse_decltype();
-Node* parse_enum_declaration();
+const Token* parse_enum_declaration();
 const Token* parse_expression_list(NodeType type, const char ldelim, const char spacer, const char rdelim);
 const Token* parse_expression(const char rdelim);
 Node* parse_function_call();
@@ -305,7 +305,8 @@ Node* parse_declaration(const char rdelim) {
   result->append(parse_specifiers());
 
   if (token[0].is_identifier("enum")) {
-    return parse_enum_declaration();
+    parse_enum_declaration();
+    return pop_node();
   }
 
 
@@ -369,7 +370,8 @@ Node* parse_declaration(const char rdelim) {
 
   if (token[0].is_punct('{')) {
     has_body = true;
-    result->append(parse_compound_statement());
+    parse_compound_statement();
+    result->append(pop_node());
   }
 
   if (take_punct('=')) {
@@ -510,7 +512,7 @@ const Token* parse_namespace_specifier() {
 
 //----------------------------------------
 
-Node* parse_compound_statement() {
+const Token* parse_compound_statement() {
   if (!token->is_punct('{')) return nullptr;
 
   auto result = new CompoundStatement();
@@ -527,7 +529,8 @@ Node* parse_compound_statement() {
 
   skip_punct('}');
 
-  return result;
+  push_node(result);
+  return token;
 }
 
 //----------------------------------------
@@ -964,7 +967,7 @@ Node* parse_external_declaration() {
 
 //----------------------------------------
 
-Node* parse_enum_declaration() {
+const Token* parse_enum_declaration() {
   if (!token[0].is_identifier("enum")) return nullptr;
 
   Node* result = new Node(NODE_ENUM_DECLARATION);
@@ -997,10 +1000,12 @@ Node* parse_enum_declaration() {
     result2->append(result);
     take_identifier();
     result2->append(pop_node());
-    return result2;
+    push_node(result2);
+    return token;
   }
 
-  return result;
+  push_node(result);
+  return token;
 }
 
 //----------------------------------------
@@ -1210,7 +1215,8 @@ Node* parse_for_statement() {
 
 Node* parse_statement() {
   if (token[0].is_punct('{')) {
-    return parse_compound_statement();
+    parse_compound_statement();
+    return pop_node();
   }
 
   if (token[0].is_identifier("if")) {
@@ -1263,7 +1269,7 @@ Node* parse_statement() {
 
 //----------------------------------------
 
-Node* parse_storage_class_specifier() {
+const Token* parse_storage_class_specifier() {
   const char* keywords[] = {
     "extern",
     "static",
@@ -1275,7 +1281,7 @@ Node* parse_storage_class_specifier() {
   for (auto i = 0; i < keyword_count; i++) {
     if (token->is_identifier(keywords[i])) {
       take_identifier();
-      return pop_node();
+      return token;
     }
   }
 
@@ -1284,24 +1290,28 @@ Node* parse_storage_class_specifier() {
 
 //----------------------------------------
 
-Node* parse_template_decl() {
+const Token* parse_template_decl() {
   auto result = new TemplateDeclaration();
 
-  take_identifier("template");
-  result->append(pop_node());
-  result->append(parse_declaration_list(NODE_TEMPLATE_PARAMETER_LIST, '<', ',', '>'));
+  if (take_identifier("template")) {
+    result->append(pop_node());
+  }
+  if (parse_declaration_list(NODE_TEMPLATE_PARAMETER_LIST, '<', ',', '>')) {
+    result->append(pop_node());
+  }
   result->append(parse_class_specifier());
 
   result->_keyword = result->child(0);
   result->_params  = result->child(1);
   result->_class   = result->child(2);
 
-  return result;
+  push_node(result);
+  return token;
 }
 
 //----------------------------------------
 
-Node* parse_declaration_list(NodeType type, const char ldelim, const char spacer, const char rdelim) {
+const Token* parse_declaration_list(NodeType type, const char ldelim, const char spacer, const char rdelim) {
   if (!token[0].is_punct(ldelim)) return nullptr;
 
   //auto tok_rdelim = find_matching_delim(token, token_eof);
@@ -1323,7 +1333,8 @@ Node* parse_declaration_list(NodeType type, const char ldelim, const char spacer
     }
   }
 
-  return result;
+  push_node(result);
+  return token;
 }
 
 //----------------------------------------
@@ -1416,7 +1427,9 @@ const Token* parse_translation_unit() {
   while(!token->is_eof()) {
 
     if (Lit<"template">::match(token->lex->span_a, token_eof->lex->span_a)) {
-      result->append(parse_template_decl());
+      if (parse_template_decl()) {
+        result->append(pop_node());
+      }
     }
     else if (auto decl = parse_preproc()) {
       result->append(decl);
