@@ -137,7 +137,7 @@ const Token* parse_declaration_list(const Token* a, const Token* b, NodeType typ
 const Token* parse_decltype(const Token* a, const Token* b);
 const Token* parse_enum_declaration(const Token* a, const Token* b);
 const Token* parse_expression_list(const Token* a, const Token* b, NodeType type, const char ldelim, const char spacer, const char rdelim);
-const Token* parse_expression(const char rdelim);
+const Token* parse_expression(const Token* a, const Token* b, const char rdelim);
 const Token* parse_function_call();
 const Token* parse_identifier(const Token* a, const Token* b);
 const Token* parse_initializer_list(const Token* a, const Token* b);
@@ -342,9 +342,8 @@ const Token* parse_declaration(const Token* a, const Token* b, const char rdelim
     if (auto end = skip_punct(a, b, ':')) {
       a = end;
 
-      token = a;
-      if (parse_expression('{')) {
-        a = token;
+      if (auto end = parse_expression(a, b, '{')) {
+        a = end;
         result->append(pop_node());
       }
     }
@@ -355,9 +354,8 @@ const Token* parse_declaration(const Token* a, const Token* b, const char rdelim
       a = end;
     }
 
-    token = a;
-    if (parse_expression(']')) {
-      a = token;
+    if (auto end = parse_expression(a, b, ']')) {
+      a = end;
       result->append(pop_node());
     }
 
@@ -396,9 +394,9 @@ const Token* parse_declaration(const Token* a, const Token* b, const char rdelim
   if (auto end = skip_punct(a, b, '=')) {
     a = end;
     has_init = true;
-    token = a;
-    parse_expression(rdelim);
-    a = token;
+    if (auto end = parse_expression(a, b, rdelim)) {
+      a = end;
+    }
     result->append(pop_node());
   }
 
@@ -786,7 +784,9 @@ const Token* parse_expression_suffix() {
   if (token[0].is_punct('[')) {
     auto result = new Node(NODE_ARRAY_SUFFIX);
     token = skip_punct(token, token_eof, '[');
-    parse_expression(']');
+    if (auto end = parse_expression(token, token_eof, ']')) {
+      token = end;
+    }
     result->append(pop_node());
     token = skip_punct(token, token_eof, ']');
     push_node(result);
@@ -804,7 +804,9 @@ const Token* parse_expression_suffix() {
   if (token[0].is_punct('(')) {
     auto result = new Node(NODE_PARAMETER_LIST);
     token = skip_punct(token, token_eof, '(');
-    parse_expression(')');
+    if (auto end = parse_expression(token, token_eof, ')')) {
+      token = end;
+    }
     result->append(pop_node());
     token = skip_punct(token, token_eof, ')');
     push_node(result);
@@ -943,40 +945,42 @@ const Token* parse_expression_lhs(const Token* a, const Token* b, const char rde
 
 //----------------------------------------
 
-const Token* parse_expression(const char rdelim) {
+const Token* parse_expression(const Token* a, const Token* b, const char rdelim) {
 
   // FIXME there are probably other expression terminators?
-  if (token->is_eof())         return nullptr;
-  if (token->is_punct(')'))    return nullptr;
-  if (token->is_punct(';'))    return nullptr;
-  if (token->is_punct(','))    return nullptr;
-  if (token->is_punct(rdelim)) return nullptr;
+  if (a->is_eof())         return nullptr;
+  if (a->is_punct(')'))    return nullptr;
+  if (a->is_punct(';'))    return nullptr;
+  if (a->is_punct(','))    return nullptr;
+  if (a->is_punct(rdelim)) return nullptr;
 
-  if (auto end = parse_expression_lhs(token, token_eof, rdelim)) {
-    token = end;
+  if (auto end = parse_expression_lhs(a, b, rdelim)) {
+    a = end;
   }
 
-  if (token->is_eof())         { return token; }
-  if (token->is_punct(')'))    { return token; }
-  if (token->is_punct(';'))    { return token; }
-  if (token->is_punct(','))    { return token; }
-  if (token->is_punct(rdelim)) { return token; }
+  if (a->is_eof())         { return a; }
+  if (a->is_punct(')'))    { return a; }
+  if (a->is_punct(';'))    { return a; }
+  if (a->is_punct(','))    { return a; }
+  if (a->is_punct(rdelim)) { return a; }
 
+  token = a;
   if (parse_expression_suffix()) {
+    a = token;
     auto op = pop_node();
     auto lhs = pop_node();
     auto result = new Node(NODE_POSTFIX_EXPRESSION);
     result->append(lhs);
     result->append(op);
     push_node(result);
-    return token;
+    return a;
   }
 
-  if (auto end = parse_infix_op(token, token_eof)) {
-    token = end;
+  if (auto end = parse_infix_op(a, b)) {
+    a = end;
     auto op = pop_node();
     auto lhs = pop_node();
-    parse_expression(rdelim);
+    a = parse_expression(a, b, rdelim);
     auto rhs = pop_node();
 
     auto result = new Node(NODE_INFIX_EXPRESSION);
@@ -984,23 +988,25 @@ const Token* parse_expression(const char rdelim) {
     result->append(op);
     result->append(rhs);
     push_node(result);
-    return token;
+    return a;
   }
 
-  if (token[0].is_punct('[')) {
+  if (a[0].is_punct('[')) {
     auto result = new Node(NODE_ARRAY_EXPRESSION);
     auto lhs = pop_node();
     result->append(lhs);
-    token = skip_punct(token, token_eof, '[');
-    parse_expression(']');
+    a = skip_punct(a, b, '[');
+
+    a = parse_expression(a, b, ']');
+
     result->append(pop_node());
-    token = skip_punct(token, token_eof, ']');
+    a = skip_punct(a, b, ']');
     push_node(result);
-    return token;
+    return a;
   }
 
   assert(false);
-  return token;
+  return a;
 }
 
 //----------------------------------------
@@ -1169,9 +1175,7 @@ const Token* parse_return_statement(const Token* a, const Token* b) {
   a = take_identifier(a, b);
   auto ret = pop_node();
 
-  token = a;
-  parse_expression(';');
-  a = token;
+  a = parse_expression(a, b, ';');
 
   auto val = pop_node();
   a = skip_punct(a, b, ';');
@@ -1216,9 +1220,7 @@ const Token* parse_parenthesized_expression(const Token* a, const Token* b) {
   auto result = new Node(NODE_PARENTHESIZED_EXPRESSION);
   a = skip_punct(a, b, '(');
 
-  token = a;
-  parse_expression(')');
-  a = token;
+  a = parse_expression(a, b, ')');
 
   result->append(pop_node());
   a = skip_punct(a, b, ')');
@@ -1251,7 +1253,7 @@ const Token* parse_case_statement() {
   if (token[0].is_identifier("case")) {
     token = take_identifier(token, token_eof);
     result->append(pop_node());
-    parse_expression(':');
+    token = parse_expression(token, token_eof, ':');
     result->append(pop_node());
     token = skip_punct(token, token_eof, ':');
   }
@@ -1316,7 +1318,8 @@ const Token* parse_declaration_or_expression(char rdelim) {
     token = end;
     return token;
   }
-  if (parse_expression(rdelim)) {
+  if (auto end = parse_expression(token, token_eof, rdelim)) {
+    token = end;
     return token;
   }
   return nullptr;
@@ -1343,16 +1346,12 @@ const Token* parse_for_statement(const Token* a, const Token* b) {
   result->append(pop_node());
   a = skip_punct(a, b, ';');
 
-  token = a;
-  parse_expression(';');
-  a = token;
+  a = parse_expression(a, b, ';');
 
   result->append(pop_node());
   a = skip_punct(a, b, ';');
 
-  token = a;
-  parse_expression(')');
-  a = token;
+  a = parse_expression(a, b, ')');
 
   result->append(pop_node());
   a = skip_punct(a, b, ')');
@@ -1439,9 +1438,7 @@ const Token* parse_statement(const Token* a, const Token* b) {
   }
 
   // Must be expression statement
-  token = a;
-  parse_expression(';');
-  a = token;
+  a = parse_expression(a, b, ';');
 
   auto exp = pop_node();
   a = skip_punct(a, b, ';');
@@ -1546,9 +1543,7 @@ const Token* parse_expression_list(const Token* a, const Token* b, NodeType type
       a = skip_punct(a, b, spacer);
     }
     else {
-      token = a;
-      parse_expression(rdelim);
-      a = token;
+      a = parse_expression(a, b, rdelim);
       result->append(pop_node());
     }
   }
@@ -1580,9 +1575,7 @@ const Token* parse_initializer_list(const Token* a, const Token* b) {
       a = skip_punct(a, b, spacer);
     }
     else {
-      token = a;
-      parse_expression(rdelim);
-      a = token;
+      a = parse_expression(a, b, rdelim);
       result->append(pop_node());
     }
   }
