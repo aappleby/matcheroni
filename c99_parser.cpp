@@ -1580,7 +1580,6 @@ const Token* parse_translation_unit() {
 //==============================================================================
 
 void lex_file(const std::string& path, std::string& text, std::vector<Lexeme>& lexemes, std::vector<Token>& tokens) {
-  printf("Lexing %s\n", path.c_str());
 
   auto size = std::filesystem::file_size(path);
 
@@ -1655,7 +1654,6 @@ int test_c99_peg(int argc, char** argv) {
 
   using rdit = std::filesystem::recursive_directory_iterator;
 
-  auto time_a = timestamp_ms();
   std::vector<std::string> paths;
 
   //const char* base_path = "tests";
@@ -1671,17 +1669,29 @@ int test_c99_peg(int argc, char** argv) {
 
   //paths = { "tests/constructor_arg_passing.h" };
 
+  double lex_accum = 0;
+  double parse_accum = 0;
+
   for (const auto& path : paths) {
     std::string text;
     std::vector<Lexeme> lexemes;
     std::vector<Token> tokens;
 
+    printf("Lexing %s\n", path.c_str());
+
+    lex_accum -= timestamp_ms();
     lex_file(path, text, lexemes, tokens);
+    lex_accum += timestamp_ms();
 
     token = tokens.data();
     token_eof = tokens.data() + tokens.size() - 1;
 
+    printf("Parsing %s\n", path.c_str());
+
+    parse_accum -= timestamp_ms();
     parse_translation_unit();
+    parse_accum += timestamp_ms();
+
     auto root = pop_node();
     //printf("\n");
     //root->dump_tree();
@@ -1690,9 +1700,8 @@ int test_c99_peg(int argc, char** argv) {
 
   }
 
-  auto time_b = timestamp_ms();
-
-  printf("Parsing took %f msec\n", time_b - time_a);
+  printf("Lexing took  %f msec\n", lex_accum);
+  printf("Parsing took %f msec\n", parse_accum);
 
   return 0;
 }
