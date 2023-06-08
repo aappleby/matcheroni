@@ -132,10 +132,10 @@ size_t node_top = 0;
 Node* pop_node()         { return node_stack[--node_top]; }
 void  push_node(Node* n) { node_stack[node_top++] = n; }
 
-const Token* parse_compound_statement();
+const Token* parse_compound_statement(const Token* a, const Token* b);
 const Token* parse_declaration_list(NodeType type, const char ldelim, const char spacer, const char rdelim);
 const Token* parse_decltype();
-const Token* parse_enum_declaration();
+const Token* parse_enum_declaration(const Token* a, const Token* b);
 const Token* parse_expression_list(NodeType type, const char ldelim, const char spacer, const char rdelim);
 const Token* parse_expression(const char rdelim);
 const Token* parse_function_call();
@@ -300,7 +300,8 @@ const Token* parse_declaration(const char rdelim) {
     result->append(pop_node());
   }
 
-  if (parse_enum_declaration()) {
+  if (auto end = parse_enum_declaration(token, token_eof)) {
+    token = end;
     return token;
   }
 
@@ -381,7 +382,7 @@ const Token* parse_declaration(const char rdelim) {
 
   if (token[0].is_punct('{')) {
     has_body = true;
-    parse_compound_statement();
+    token = parse_compound_statement(token, token_eof);
     result->append(pop_node());
   }
 
@@ -443,29 +444,33 @@ const Token* parse_field_declaration_list() {
 
 //----------------------------------------
 
-const Token* parse_class_specifier() {
+const Token* parse_class_specifier(const Token* a, const Token* b) {
 
   using decl = Seq<AtomLit<"class">, Atom<LEX_IDENTIFIER>, Atom<';'>>;
 
-  if (auto end = decl::match(token, token_eof)) {
-    token = skip_identifier(token, token_eof, "class");
-    token = take_identifier(token, token_eof);
+  if (auto end = decl::match(a, b)) {
+    a = skip_identifier(a, b, "class");
+    a = take_identifier(a, b);
     auto name = pop_node();
-    token = skip_punct(token, token_eof, ';');
+    a = skip_punct(a, b, ';');
 
     push_node(new ClassDeclaration(name));
-    return token;
+    return a;
   }
   else {
-    token = skip_identifier(token, token_eof, "class");
-    token = take_identifier(token, token_eof);
+    a = skip_identifier(a, b, "class");
+    a = take_identifier(a, b);
     auto name = pop_node();
+
+    token = a;
     parse_field_declaration_list();
+    a = token;
+
     auto body = pop_node();
-    token = skip_punct(token, token_eof, ';');
+    a = skip_punct(a, b, ';');
 
     push_node(new ClassDefinition(name, body));
-    return token;
+    return a;
   }
 
 }
@@ -530,17 +535,21 @@ const Token* parse_namespace_specifier() {
 
 //----------------------------------------
 
-const Token* parse_compound_statement() {
-  if (!token->is_punct('{')) return nullptr;
+const Token* parse_compound_statement(const Token* a, const Token* b) {
+  if (!a->is_punct('{')) return nullptr;
 
   auto result = new CompoundStatement();
   push_node(result);
 
   auto old_top = node_top;
 
-  token = skip_punct(token, token_eof, '{');
+  a = skip_punct(a, b, '{');
+
+  token = a;
   while(parse_statement());
-  token = skip_punct(token, token_eof, '}');
+  a = token;
+
+  a = skip_punct(a, b, '}');
 
   for (auto c = old_top; c < node_top; c++) {
     result->statements.push_back(node_stack[c]);
@@ -549,7 +558,7 @@ const Token* parse_compound_statement() {
 
   node_top = old_top;
 
-  return token;
+  return a;
 }
 
 //----------------------------------------
@@ -985,7 +994,7 @@ const Token* parse_external_declaration() {
   }
 
   if (token->is_identifier("class")) {
-    parse_class_specifier();
+    token = parse_class_specifier(token, token_eof);
     return token;
   }
 
@@ -1004,47 +1013,53 @@ const Token* parse_external_declaration() {
 
 //----------------------------------------
 
-const Token* parse_enum_declaration() {
-  if (!token[0].is_identifier("enum")) return nullptr;
+const Token* parse_enum_declaration(const Token* a, const Token* b) {
+  if (!a[0].is_identifier("enum")) return nullptr;
 
   Node* result = new Node(NODE_ENUM_DECLARATION);
 
-  token = skip_identifier(token, token_eof, "enum");
+  a = skip_identifier(a, b, "enum");
 
-  if (token[0].is_identifier("class")) {
-    token = skip_identifier(token, token_eof, "class");
+  if (a[0].is_identifier("class")) {
+    a = skip_identifier(a, b, "class");
   }
 
-  if (token[0].is_identifier()) {
-    token = take_identifier(token, token_eof);
+  if (a[0].is_identifier()) {
+    a = take_identifier(a, b);
     result->append(pop_node());
   }
 
-  if (token[0].is_punct(':')) {
-    token = skip_punct(token, token_eof, ':');
+  if (a[0].is_punct(':')) {
+    a = skip_punct(a, b, ':');
+
+    token = a;
     if (parse_decltype()) {
       result->append(pop_node());
     }
+    a = token;
   }
 
-  if (token[0].is_punct('{')) {
+  if (a[0].is_punct('{')) {
+
+    token = a;
     if (parse_expression_list(NODE_ENUMERATOR_LIST, '{', ',', '}')) {
       result->append(pop_node());
     }
+    a = token;
   }
 
   // this is the weird enum {} blah;
-  if (token[0].is_identifier()) {
+  if (a[0].is_identifier()) {
     auto result2 = new Node(NODE_DECLARATION);
     result2->append(result);
-    token = take_identifier(token, token_eof);
+    a = take_identifier(a, b);
     result2->append(pop_node());
     push_node(result2);
-    return token;
+    return a;
   }
 
   push_node(result);
-  return token;
+  return a;
 }
 
 //----------------------------------------
@@ -1241,30 +1256,36 @@ const Token* parse_case_statement() {
 
 //----------------------------------------
 
-const Token* parse_switch_statement() {
-  if (!token[0].is_identifier("switch")) return nullptr;
+const Token* parse_switch_statement(const Token* a, const Token* b) {
+  if (!a[0].is_identifier("switch")) return nullptr;
 
   Node* result = new Node(NODE_SWITCH_STATEMENT);
 
-  if (auto end = take_identifier(token, token_eof, "switch")) {
-    token = end;
+  if (auto end = take_identifier(a, b, "switch")) {
+    a = end;
     result->append(pop_node());
   }
 
+  token = a;
   if (parse_expression_list(NODE_ARGUMENT_LIST, '(', ',', ')')) {
     result->append(pop_node());
   }
-  token = skip_punct(token, token_eof, '{');
+  a = token;
 
-  while(!token[0].is_punct('}')) {
+
+  a = skip_punct(a, b, '{');
+
+  while(!a[0].is_punct('}')) {
+    token = a;
     parse_case_statement();
+    a = token;
     result->append(pop_node());
   }
 
-  token = skip_punct(token, token_eof, '}');
+  a = skip_punct(a, b, '}');
 
   push_node(result);
-  return token;
+  return a;
 }
 
 //----------------------------------------
@@ -1336,7 +1357,7 @@ const Token* parse_statement() {
   }
 
   if (token[0].is_punct('{')) {
-    parse_compound_statement();
+    token = parse_compound_statement(token, token_eof);
     return token;
   }
 
@@ -1361,7 +1382,7 @@ const Token* parse_statement() {
   }
 
   if (token[0].is_identifier("switch")) {
-    parse_switch_statement();
+    token = parse_switch_statement(token, token_eof);
     return token;
   }
 
@@ -1432,7 +1453,8 @@ const Token* parse_template_decl() {
   if (parse_declaration_list(NODE_TEMPLATE_PARAMETER_LIST, '<', ',', '>')) {
     result->append(pop_node());
   }
-  if (parse_class_specifier()) {
+  if (auto end = parse_class_specifier(token, token_eof)) {
+    token = end;
     result->append(pop_node());
   }
 
