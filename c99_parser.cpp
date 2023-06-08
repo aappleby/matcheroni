@@ -60,56 +60,6 @@ int main(int argc, char** argv) {
 
 //------------------------------------------------------------------------------
 
-/*
-Node* fold_nodes(Node* a, Node* b, NodeType tok) {
-  auto parent = a->parent;
-
-  auto n = new Node(tok, a->tok_a, b->tok_b);
-
-  n->parent = nullptr;
-  n->prev = a->prev;
-  n->next = b->next;
-  n->head = a;
-  n->tail = b;
-
-  if (n->prev) n->prev->next = n;
-  if (n->next) n->next->prev = n;
-
-  if (parent->head == a) parent->head = n;
-  if (parent->tail == b) parent->tail = n;
-
-  a->prev = nullptr;
-  b->next = nullptr;
-
-  for (auto c = a; c; c = c->next) c->parent = n;
-
-  return n;
-}
-*/
-
-//------------------------------------------------------------------------------
-
-/*
-void fold_delims(Node* a, Node* b, char ldelim, char rdelim, NodeType block_type) {
-
-  std::stack<Node*> ldelims;
-
-  for (Node* cursor = a; cursor; cursor = cursor->next) {
-    if (cursor->tok_a->lex->type != LEX_PUNCT) continue;
-
-    if (*cursor->tok_a->lex->span_a == ldelim) {
-      ldelims.push(cursor);
-    }
-    else if (*cursor->tok_a->lex->span_a == rdelim) {
-      auto node_ldelim = ldelims.top();
-      auto node_rdelim = cursor;
-      cursor = fold_nodes(node_ldelim, node_rdelim, block_type);
-      ldelims.pop();
-    }
-  }
-}
-*/
-
 const char* c_specifiers[] = {
   "const",
   "constexpr",
@@ -179,7 +129,8 @@ const char* c_structs[] = {
 const Token* token;
 const Token* token_eof;
 
-std::vector<Node*> node_stack;
+Node* node_stack[256] = {0};
+size_t node_top = 0;
 
 Node* parse_compound_statement();
 Node* parse_declaration_list(NodeType type, const char ldelim, const char spacer, const char rdelim);
@@ -194,6 +145,68 @@ Node* parse_parameter_list();
 Node* parse_parenthesized_expression();
 Node* parse_specifiers();
 Node* parse_statement();
+
+//----------------------------------------
+
+const char* find_matching_delim(const char* a, const char* b) {
+  char ldelim = *a++;
+
+  char rdelim;
+  if (ldelim == '<')  rdelim = '>';
+  if (ldelim == '{')  rdelim = '}';
+  if (ldelim == '[')  rdelim = ']';
+  if (ldelim == '"')  rdelim = '"';
+  if (ldelim == '\'') rdelim = '\'';
+
+  while(a && *a && a < b) {
+    if (*a == rdelim) return a;
+
+    if (*a == '<' || *a == '{' || *a == '[' || *a == '"' || *a == '\'') {
+      a = find_matching_delim(a, b);
+      if (!a) return nullptr;
+      a++;
+    }
+    else if (ldelim == '"' && a[0] == '\\' && a[1] == '"') {
+      a += 2;
+    }
+    else if (ldelim == '\'' && a[0] == '\\' && a[1] == '\'') {
+      a += 2;
+    }
+    else {
+      a++;
+    }
+  }
+
+  return nullptr;
+}
+
+//----------------------------------------
+
+const Token* find_matching_delim(const Token* a, const Token* b) {
+  char ldelim = *a->lex->span_a;
+  a++;
+
+  char rdelim;
+  if (ldelim == '<')  rdelim = '>';
+  if (ldelim == '(')  rdelim = ')';
+  if (ldelim == '{')  rdelim = '}';
+  if (ldelim == '[')  rdelim = ']';
+
+  while(a && a < b) {
+    if (a->is_punct(rdelim)) return a;
+
+    if (a->is_punct('<') ||
+        a->is_punct('(') ||
+        a->is_punct('{') ||
+        a->is_punct('[')) {
+      a = find_matching_delim(a, b);
+      if (!a) return nullptr;
+    }
+    a++;
+  }
+
+  return nullptr;
+}
 
 //----------------------------------------
 
@@ -217,25 +230,43 @@ void skip_identifier(const char* identifier = nullptr) {
 
 //----------------------------------------
 
-Node* take_lexemes(NodeType type, int count) {
-  auto result = new Node(type, token, token + count);
+const Token* take_lexemes(NodeType type, int count) {
+  node_stack[node_top++] = new Node(type, token, token + count);
   token = token + count;
-  return result;
+  return token;
 }
 
 Node* take_punct() {
   assert (token->is_punct());
-  return take_lexemes(NODE_PUNCT, 1);
+  //return take_lexemes(NODE_PUNCT, 1);
+  if (take_lexemes(NODE_PUNCT, 1)) {
+    return node_stack[--node_top];
+  }
+  else {
+    return nullptr;
+  }
 }
 
 Node* take_punct(char punct) {
   assert (token->is_punct(punct));
-  return take_lexemes(NODE_PUNCT, 1);
+  //return take_lexemes(NODE_PUNCT, 1);
+  if (take_lexemes(NODE_PUNCT, 1)) {
+    return node_stack[--node_top];
+  }
+  else {
+    return nullptr;
+  }
 }
 
 Node* take_opt_punct(char punct) {
   if (token->is_punct(punct)) {
-    return take_lexemes(NODE_PUNCT, 1);
+    //return take_lexemes(NODE_PUNCT, 1);
+    if (take_lexemes(NODE_PUNCT, 1)) {
+      return node_stack[--node_top];
+    }
+    else {
+      return nullptr;
+    }
   }
   else {
     return nullptr;
@@ -244,12 +275,24 @@ Node* take_opt_punct(char punct) {
 
 Node* take_identifier(const char* identifier = nullptr) {
   assert(token->is_identifier(identifier));
-  return take_lexemes(NODE_IDENTIFIER, 1);
+  //return take_lexemes(NODE_IDENTIFIER, 1);
+  if (take_lexemes(NODE_IDENTIFIER, 1)) {
+    return node_stack[--node_top];
+  }
+  else {
+    return nullptr;
+  }
 }
 
 Node* take_constant() {
   assert(token->is_constant());
-  return take_lexemes(NODE_CONSTANT, 1);
+  //return take_lexemes(NODE_CONSTANT, 1);
+  if (take_lexemes(NODE_CONSTANT, 1)) {
+    return node_stack[--node_top];
+  }
+  else {
+    return nullptr;
+  }
 }
 
 //----------------------------------------
@@ -261,29 +304,13 @@ const Token* parse_access_specifier(const Token* a, const Token* b) {
   >;
 
   if (auto end = pattern::match(a, b)) {
-    node_stack.push_back(new Node(NODE_ACCESS_SPECIFIER, a, end));
+    node_stack[node_top++] = new Node(NODE_ACCESS_SPECIFIER, a, end);
     return end;
   }
   else {
     return nullptr;
   }
 }
-
-/*
-Node* parse_access_specifier() {
-  using pattern = Seq<
-    Oneof<AtomLit<"public">, AtomLit<"private">>,
-    Atom<':'>
-  >;
-
-  if (auto end = pattern::match(token, token_eof)) {
-    Node* result = new Node(NODE_ACCESS_SPECIFIER, token, end);
-    token = end;
-    return result;
-  }
-  return nullptr;
-}
-*/
 
 //----------------------------------------
 
@@ -323,11 +350,11 @@ Node* parse_declaration(const char rdelim) {
       result->append(parse_specifiers());
       result->append(parse_identifier());
     }
-  }
 
-  if (token[0].is_punct(':')) {
-    result->append(take_punct(':'));
-    result->append(parse_expression(';'));
+    if (token[0].is_punct(':')) {
+      result->append(take_punct(':'));
+      result->append(parse_expression('{'));
+    }
   }
 
   while (token[0].is_punct('[')) {
@@ -395,8 +422,7 @@ Node* parse_field_declaration_list() {
     }
     */
     if (auto end = parse_access_specifier(token, token_eof)) {
-      result->append(node_stack.back());
-      node_stack.pop_back();
+      result->append(node_stack[--node_top]);
       token = end;
     }
 
@@ -633,7 +659,14 @@ Node* parse_decltype() {
     if (token[0].is_punct(':') && token[1].is_punct(':')) {
       auto result2 = new Node(NODE_SCOPED_TYPE);
       result2->append(result);
-      result2->append(take_lexemes(NODE_OPERATOR, 2));
+
+      //result2->append(take_lexemes(NODE_OPERATOR, 2));
+      if (take_lexemes(NODE_OPERATOR, 2)) {
+        result2->append(node_stack[--node_top]);
+      }
+      else {
+      }
+
       result2->append(parse_decltype());
       return result2;
     }
@@ -716,11 +749,23 @@ Node* parse_expression_suffix() {
   }
 
   if (token[0].is_punct('+') && token[1].is_punct('+')) {
-    return take_lexemes(NODE_OPERATOR, 2);
+    //return take_lexemes(NODE_OPERATOR, 2);
+    if (take_lexemes(NODE_OPERATOR, 2)) {
+      return node_stack[--node_top];
+    }
+    else {
+      return nullptr;
+    }
   }
 
   if (token[0].is_punct('-') && token[1].is_punct('-')) {
-    return take_lexemes(NODE_OPERATOR, 2);
+    //return take_lexemes(NODE_OPERATOR, 2);
+    if (take_lexemes(NODE_OPERATOR, 2)) {
+      return node_stack[--node_top];
+    }
+    else {
+      return nullptr;
+    }
   }
 
   return nullptr;
@@ -749,7 +794,7 @@ Node* parse_assignment_op() {
 
 //----------------------------------------
 
-Node* parse_infix_op() {
+const Token* parse_infix_op() {
   auto span_a = token->lex->span_a;
   auto span_b = token_eof->lex->span_a;
 
@@ -761,7 +806,8 @@ Node* parse_infix_op() {
   while(match_lex_b->lex->span_a < end) match_lex_b++;
   auto result = new Node(NODE_OPERATOR, match_lex_a, match_lex_b);
   token = match_lex_b;
-  return result;
+  node_stack[node_top++] = result;
+  return token;
 }
 
 //----------------------------------------
@@ -780,7 +826,9 @@ Node* parse_expression_rhs(Node* lhs, const char rdelim) {
     return parse_expression_rhs(result, rdelim);
   }
 
-  if (auto op = parse_infix_op()) {
+  if (auto end = parse_infix_op()) {
+    auto op = node_stack[--node_top];
+
     auto result = new Node(NODE_INFIX_EXPRESSION);
     auto rhs = parse_expression(rdelim);
     result->append(lhs);
@@ -902,10 +950,10 @@ Node* parse_enum_declaration() {
 
   Node* result = new Node(NODE_ENUM_DECLARATION);
 
-  result->append(take_identifier("enum"));
+  skip_identifier("enum");
 
   if (token[0].is_identifier("class")) {
-    result->append(take_identifier("class"));
+    skip_identifier("class");
   }
 
   if (token[0].is_identifier()) {
@@ -913,7 +961,7 @@ Node* parse_enum_declaration() {
   }
 
   if (token[0].is_punct(':')) {
-    result->append(take_punct(':'));
+    skip_punct(':');
     result->append(parse_decltype());
   }
 
@@ -1099,7 +1147,7 @@ Node* parse_for_statement() {
 
   result->tok_a = token;
 
-  auto old_size = node_stack.size();
+  auto old_size = node_top;
 
   skip_identifier("for");
   skip_punct('(');
@@ -1111,7 +1159,7 @@ Node* parse_for_statement() {
   skip_punct(')');
   result->append(parse_statement());
 
-  auto new_size = node_stack.size();
+  auto new_size = node_top;
 
   result->tok_b = token;
 
@@ -1171,67 +1219,9 @@ Node* parse_statement() {
   result->append(exp);
   result->append(semi);
   return result;
-
-#if 0
-  if (token[0].is_identifier()) {
-    auto end = match_assign_op(token[1].lex->span_a, token_eof->lex->span_a, nullptr);
-    if (end) {
-      auto lhs  = take_identifier();
-      auto op   = parse_assignment_op();
-      auto val  = parse_expression(';');
-      auto semi = take_punct(';');
-
-      auto result = new Node(NODE_ASSIGNMENT_STATEMENT, nullptr, nullptr);
-      result->append(lhs);
-      result->append(op);
-      result->append(val);
-      result->append(semi);
-      return result;
-    }
-    else if (token[1].is_identifier()) {
-      auto result = new Node(NODE_DECLARATION_STATEMENT, nullptr, nullptr);
-      result->append(parse_declaration(';'));
-      result->append(take_punct(';'));
-      return result;
-    }
-    else if (token[1].is_punct('(')) {
-      auto call = parse_function_call();
-      auto semi = take_punct(';');
-      auto result = new Node(NODE_EXPRESSION_STATEMENT, nullptr, nullptr);
-      result->append(call);
-      result->append(semi);
-      return result;
-    }
-    else {
-      auto exp = parse_expression(';');
-      auto semi = take_punct(';');
-      auto result = new Node(NODE_EXPRESSION_STATEMENT, nullptr, nullptr);
-      result->append(exp);
-      result->append(semi);
-      return result;
-    }
-  }
-  else {
-    auto exp = parse_expression(';');
-    auto semi = take_punct(';');
-    auto result = new Node(NODE_EXPRESSION_STATEMENT, nullptr, nullptr);
-    result->append(exp);
-    result->append(semi);
-    return result;
-  }
-#endif
 }
 
 //----------------------------------------
-/*
-storage_class_specifier: _ => choice(
-  'extern',
-  'static',
-  'auto',
-  'register',
-  'inline',
-),
-*/
 
 Node* parse_storage_class_specifier() {
   const char* keywords[] = {
@@ -1272,19 +1262,19 @@ Node* parse_template_decl() {
 Node* parse_declaration_list(NodeType type, const char ldelim, const char spacer, const char rdelim) {
   if (!token[0].is_punct(ldelim)) return nullptr;
 
+  //auto tok_rdelim = find_matching_delim(token, token_eof);
+
   auto result = new NodeList(type);
 
-  result->ldelim = take_punct(ldelim);
-  result->append(result->ldelim);
+  skip_punct(ldelim);
 
   while(1) {
     if (token->is_punct(rdelim)) {
-      result->rdelim = take_punct(rdelim);
-      result->append(result->rdelim);
+      skip_punct(rdelim);
       break;
     }
     else if (token->is_punct(spacer)) {
-      result->append(take_punct(spacer));
+      skip_punct(spacer);
     }
     else {
       result->append(parse_declaration(rdelim));
@@ -1294,50 +1284,22 @@ Node* parse_declaration_list(NodeType type, const char ldelim, const char spacer
   return result;
 }
 
+//----------------------------------------
+
 Node* parse_expression_list(NodeType type, const char ldelim, const char spacer, const char rdelim) {
   if (!token[0].is_punct(ldelim)) return nullptr;
 
   auto result = new NodeList(type);
 
-  result->ldelim = take_punct(ldelim);
-  result->append(result->ldelim);
+  skip_punct(ldelim);
 
   while(1) {
     if (token->is_punct(rdelim)) {
-      result->rdelim = take_punct(rdelim);
-      result->append(result->rdelim);
+      skip_punct(rdelim);
       break;
     }
     else if (token->is_punct(spacer)) {
-      result->append(take_punct(spacer));
-    }
-    else {
-      result->append(parse_expression(rdelim));
-    }
-  }
-
-  return result;
-}
-
-
-Node* parse_initializer_list() {
-  char ldelim = ':';
-  char spacer = ',';
-  char rdelim = '{'; // we don't consume this unlike parse_expression_list
-
-  if (!token[0].is_punct(ldelim)) return nullptr;
-
-  auto result = new Node(NODE_INITIALIZER_LIST);
-
-  result->append(take_punct(ldelim));
-
-  while(1) {
-    if (token->is_punct(rdelim)) {
-      return result;
-    }
-
-    if (token->is_punct(spacer)) {
-      result->append(take_punct(spacer));
+      skip_punct(spacer);
     }
     else {
       result->append(parse_expression(rdelim));
@@ -1348,33 +1310,57 @@ Node* parse_initializer_list() {
 }
 
 //----------------------------------------
-/*
-(6.9) translation-unit:
-  external-declaration
-  translation-unit external-declaration
 
-translation_unit: $ => repeat($._top_level_item),
+Node* parse_initializer_list() {
+  char ldelim = ':';
+  char spacer = ',';
+  char rdelim = '{'; // we don't consume this unlike parse_expression_list
 
-_empty_declaration: $ => seq(
-  $._type_specifier,
-  ';',
-),
+  if (!token[0].is_punct(ldelim)) return nullptr;
 
-attributed_statement: $ => seq(
-  repeat1($.attribute_declaration),
-  $._statement,
-),
+  auto result = new Node(NODE_INITIALIZER_LIST);
 
-_top_level_item: $ => choice(
-  $.function_definition,
-  $.linkage_specification,
-  $.declaration,
-  $._statement,
-  $.attributed_statement,
-  $.type_definition,
-  $._empty_declaration,
-),
-*/
+  skip_punct(ldelim);
+
+  while(1) {
+    if (token->is_punct(rdelim)) {
+      return result;
+    }
+
+    if (token->is_punct(spacer)) {
+      skip_punct(spacer);
+    }
+    else {
+      result->append(parse_expression(rdelim));
+    }
+  }
+
+  return result;
+}
+
+//----------------------------------------
+
+Node* parse_type_qualifier() {
+  const char* keywords[] = {
+    "const",
+    "volatile",
+    "restrict",
+    "__restrict__",
+    "_Atomic",
+    "_Noreturn",
+  };
+  auto keyword_count = sizeof(keywords)/sizeof(keywords[0]);
+  for (auto i = 0; i < keyword_count; i++) {
+    if (token->is_identifier(keywords[i])) {
+      return take_identifier();
+    }
+  }
+
+  assert(false);
+  return nullptr;
+}
+
+//----------------------------------------
 
 Node* parse_translation_unit() {
   auto result = new TranslationUnit();
@@ -1399,51 +1385,43 @@ Node* parse_translation_unit() {
   return result;
 }
 
-//----------------------------------------
-/*
-(6.7.3) type-qualifier:
-  const
-  restrict
-  volatile
-  _Atomic
 
-type_qualifier: _ => choice(
-  'const',
-  'volatile',
-  'restrict',
-  '__restrict__',
-  '_Atomic',
-  '_Noreturn',
-),
-*/
 
-Node* parse_type_qualifier() {
-  const char* keywords[] = {
-    "const",
-    "volatile",
-    "restrict",
-    "__restrict__",
-    "_Atomic",
-    "_Noreturn",
-  };
-  auto keyword_count = sizeof(keywords)/sizeof(keywords[0]);
-  for (auto i = 0; i < keyword_count; i++) {
-    if (token->is_identifier(keywords[i])) {
-      return take_identifier();
-    }
-  }
 
-  assert(false);
-  return nullptr;
-}
 
-//------------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//==============================================================================
 
 void lex_file(const std::string& path, std::string& text, std::vector<Lexeme>& lexemes, std::vector<Token>& tokens) {
   printf("Lexing %s\n", path.c_str());
 
   auto size = std::filesystem::file_size(path);
-
 
   text.resize(size + 1);
   memset(text.data(), 0, size + 1);
@@ -1530,7 +1508,7 @@ int test_c99_peg(int argc, char** argv) {
     paths.push_back(f.path().native());
   }
 
-  //paths = { "tests/tock_task.h" };
+  //paths = { "tests/constructor_arg_passing.h" };
 
   for (const auto& path : paths) {
     std::string text;
