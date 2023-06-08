@@ -212,67 +212,63 @@ const Token* find_matching_delim(const Token* a, const Token* b) {
 //------------------------------------------------------------------------------
 
 const Token* skip_punct(const Token* a, const Token* b, const char punct) {
-  if (a->is_punct(punct)) {
-    return a + 1;
-  }
-  else {
-    return nullptr;
-  }
+  return a->is_punct(punct) ? a + 1 : nullptr;
 }
 
-
 const Token* skip_identifier(const Token* a, const Token* b, const char* identifier = nullptr) {
-  if (a->is_identifier(identifier)) {
-    return a + 1;
-  }
-  else {
-    return nullptr;
-  }
+  return a->is_identifier(identifier) ? a + 1 : nullptr;
 }
 
 //----------------------------------------
 
 const Token* take_lexemes(const Token* a, const Token* b, NodeType type, int count) {
   push_node( new Node(type, a, a + count) );
-  a = a + count;
-  return a;
+  return a + count;
 }
 
 const Token* take_punct(const Token* a, const Token* b, char punct) {
   if (!a->is_punct(punct)) return nullptr;
-
-  if (auto end = take_lexemes(a, b, NODE_PUNCT, 1)) {
-    a = end;
-    return a;
-  }
-  else {
-    return nullptr;
-  }
+  return take_lexemes(a, b, NODE_PUNCT, 1);
 }
 
 const Token* take_identifier(const Token* a, const Token* b, const char* identifier = nullptr) {
-  if (a->is_identifier(identifier)) {
-    push_node( new Node(NODE_IDENTIFIER, a, a + 1) );
-    return a + 1;
-  }
-  else {
-    return nullptr;
-  }
+  if (!a->is_identifier(identifier)) return nullptr;
+  push_node( new Node(NODE_IDENTIFIER, a, a + 1) );
+  return a + 1;
 }
 
 const Token* take_identifier2(const Token* a, const Token* b) {
-  if (a->is_identifier()) {
-    push_node( new Node(NODE_IDENTIFIER, a, a + 1) );
-    return a + 1;
-  }
-  else {
-    return nullptr;
-  }
+  if (!a->is_identifier()) return nullptr;
+  push_node( new Node(NODE_IDENTIFIER, a, a + 1) );
+  return a + 1;
 }
 
 const Token* take_constant(const Token* a, const Token* b) {
   if (!a->is_constant()) return nullptr;
   return take_lexemes(a, b, NODE_CONSTANT, 1);
+}
+
+//----------------------------------------
+
+template<typename pattern, NodeType n>
+const Token* parse_pattern(const Token* a, const Token* b) {
+  auto old_top = node_top;
+  auto end = pattern::match(a, b);
+  if (end) {
+    auto node = new Node(n, a, end);
+    for (auto i = old_top; i < node_top; i++) {
+      node->append(node_stack[i]);
+    }
+    node_top = old_top;
+    push_node(node);
+  }
+  else {
+    for (auto i = old_top; i < node_top; i++) {
+      delete node_stack[i];
+    }
+    node_top = old_top;
+  }
+  return end;
 }
 
 //----------------------------------------
@@ -283,13 +279,7 @@ const Token* parse_access_specifier(const Token* a, const Token* b) {
     Atom<':'>
   >;
 
-  if (auto end = pattern::match(a, b)) {
-    push_node(new Node(NODE_ACCESS_SPECIFIER, a, end));
-    return end;
-  }
-  else {
-    return nullptr;
-  }
+  return parse_pattern<pattern, NODE_ACCESS_SPECIFIER>(a, b);
 }
 
 //----------------------------------------
@@ -798,31 +788,15 @@ const Token* parse_expression_suffix(const Token* a, const Token* b) {
   return nullptr;
 }
 
-//----------------------------------------
-
-const Token* parse_assignment_op(const Token* a, const Token* b) {
-  auto span_a = a->lex->span_a;
-  auto span_b = b->lex->span_a;
-
-  auto end = match_assign_op(span_a, span_b);
-  if (!end) return nullptr;
-
-  auto match_lex_a = a;
-  auto match_lex_b = a;
-  while(match_lex_b->lex->span_a < end) match_lex_b++;
-  auto result = new Node(NODE_OPERATOR, match_lex_a, match_lex_b);
-  a = match_lex_b;
-  push_node(result);
-  return a;
-}
 
 //----------------------------------------
 
-const Token* match_infix_op(const Token* a, const Token* b) {
+template<typename CharMatcher>
+const Token* match_chars(const Token* a, const Token* b) {
   auto span_a = a->lex->span_a;
   auto span_b = b->lex->span_a;
 
-  auto end = match_infix_op(span_a, span_b);
+  auto end = CharMatcher::match(span_a, span_b);
   if (!end) return nullptr;
 
   auto match_lex_a = a;
@@ -831,8 +805,12 @@ const Token* match_infix_op(const Token* a, const Token* b) {
   return match_lex_b;
 }
 
+//----------------------------------------
+
 const Token* take_infix_op(const Token* a, const Token* b) {
-  if (auto end = match_infix_op(a, b)) {
+  using pattern = Ref<match_infix_op>;
+
+  if (auto end = match_chars<pattern>(a, b)) {
     auto result = new Node(NODE_OPERATOR, a, end);
     push_node(result);
     return end;
