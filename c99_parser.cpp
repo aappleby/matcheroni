@@ -21,6 +21,10 @@ bool atom_eq(const Token& a, const TokenType& b) {
   return a.type == b;
 }
 
+bool atom_eq(const Token& a, const LexemeType& b) {
+  return a.lex->type == b;
+}
+
 bool atom_eq(const Token& a, const char& b) {
   return a.lex->len() == 1 && (*a.lex->span_a == b);
 }
@@ -221,35 +225,6 @@ const Token* skip_identifier(const Token* a, const Token* b, const char* identif
 
 //----------------------------------------
 
-const Token* take_lexemes(const Token* a, const Token* b, NodeType type, int count) {
-  push_node( new Node(type, a, a + count) );
-  return a + count;
-}
-
-const Token* take_punct(const Token* a, const Token* b, char punct) {
-  if (!a->is_punct(punct)) return nullptr;
-  return take_lexemes(a, b, NODE_PUNCT, 1);
-}
-
-const Token* take_identifier(const Token* a, const Token* b, const char* identifier = nullptr) {
-  if (!a->is_identifier(identifier)) return nullptr;
-  push_node( new Node(NODE_IDENTIFIER, a, a + 1) );
-  return a + 1;
-}
-
-const Token* take_identifier2(const Token* a, const Token* b) {
-  if (!a->is_identifier()) return nullptr;
-  push_node( new Node(NODE_IDENTIFIER, a, a + 1) );
-  return a + 1;
-}
-
-const Token* take_constant(const Token* a, const Token* b) {
-  if (!a->is_constant()) return nullptr;
-  return take_lexemes(a, b, NODE_CONSTANT, 1);
-}
-
-//----------------------------------------
-
 template<NodeType n, typename pattern>
 struct NodeMaker {
   static const Token* match(const Token* a, const Token* b) {
@@ -273,25 +248,39 @@ struct NodeMaker {
   }
 };
 
-template<typename pattern, NodeType n>
-const Token* parse_pattern(const Token* a, const Token* b) {
-  auto old_top = node_top;
-  auto end = pattern::match(a, b);
-  if (end) {
-    auto node = new Node(n, a, end);
-    for (auto i = old_top; i < node_top; i++) {
-      node->append(node_stack[i]);
-    }
-    node_top = old_top;
-    push_node(node);
-  }
-  else {
-    for (auto i = old_top; i < node_top; i++) {
-      delete node_stack[i];
-    }
-    node_top = old_top;
-  }
-  return end;
+//----------------------------------------
+
+const Token* take_lexemes(const Token* a, const Token* b, NodeType type, int count) {
+  push_node( new Node(type, a, a + count) );
+  return a + count;
+}
+
+template<char punct>
+const Token* take_punct2(const Token* a, const Token* b) {
+  using pattern = NodeMaker<NODE_PUNCT, Atom<punct>>;
+  return pattern::match(a, b);
+}
+
+const Token* take_punct(const Token* a, const Token* b, char punct) {
+  if (!a->is_punct(punct)) return nullptr;
+  return take_lexemes(a, b, NODE_PUNCT, 1);
+}
+
+const Token* take_identifier(const Token* a, const Token* b, const char* identifier = nullptr) {
+  if (!a->is_identifier(identifier)) return nullptr;
+  push_node( new Node(NODE_IDENTIFIER, a, a + 1) );
+  return a + 1;
+}
+
+const Token* take_any_identifier(const Token* a, const Token* b) {
+  if (!a->is_identifier()) return nullptr;
+  push_node( new Node(NODE_IDENTIFIER, a, a + 1) );
+  return a + 1;
+}
+
+const Token* take_constant(const Token* a, const Token* b) {
+  if (!a->is_constant()) return nullptr;
+  return take_lexemes(a, b, NODE_CONSTANT, 1);
 }
 
 //----------------------------------------
@@ -635,7 +624,7 @@ const Token* parse_specifiers(const Token* a, const Token* b) {
         break;
       }
     }
-    if (auto end = take_punct(a, b, '*')) {
+    if (auto end = NodeMaker<NODE_PUNCT, Atom<'*'>>::match(a, b)) {
       a = end;
       specifiers.push_back(pop_node());
       match = true;
@@ -684,11 +673,8 @@ const Token* parse_decltype(const Token* a, const Token* b) {
       auto result2 = new Node(NODE_SCOPED_TYPE);
       result2->append(result);
 
-      //result2->append(take_lexemes(NODE_OPERATOR, 2));
-      if (auto end = take_lexemes(a, b, NODE_OPERATOR, 2)) {
-        a = end;
-        result2->append(pop_node());
-      }
+      a = take_lexemes(a, b, NODE_OPERATOR, 2);
+      result2->append(pop_node());
 
       if (auto end = parse_decltype(a, b)) {
         a = end;
@@ -723,25 +709,14 @@ const Token* parse_expression_prefix(const Token* a, const Token* b) {
     return a;
   }
 
-  if (a[0].is_punct('(') &&
-      a[1].is_identifier() &&
-      a[2].is_punct(')')) {
-    auto result = new Node(NODE_TYPECAST);
-    a = skip_punct(a, b, '(');
-    a = take_identifier(a, b);
-    result->append(pop_node());
-    a = skip_punct(a, b, ')');
-    push_node(result);
-    return a;
-  }
+  using pattern_typecast = NodeMaker<
+    NODE_TYPECAST,
+    Seq<Atom<'('>, Atom<LEX_IDENTIFIER>, Atom<')'> >
+  >;
+  if (auto end = pattern_typecast::match(a, b)) return end;
 
-  if (a[0].is_identifier("sizeof")) {
-    auto result = new Node(NODE_OPERATOR);
-    a = take_identifier(a, b, "sizeof");
-    result->append(pop_node());
-    push_node(result);
-    return a;
-  }
+  using pattern_sizeof = NodeMaker<NODE_OPERATOR, AtomLit<"sizeof">>;
+  if (auto end = pattern_sizeof::match(a, b)) return end;
 
   return nullptr;
 }
@@ -892,7 +867,7 @@ const Token* parse_expression_lhs(const Token* a, const Token* b, const char rde
     Ref<parse_parenthesized_expression>,
     Ref<take_constant>,
     Ref<parse_function_call>,
-    Ref<take_identifier2>
+    Ref<take_any_identifier>
   >;
 
   return pattern::match(a, b);
@@ -1715,7 +1690,7 @@ int test_c99_peg(int argc, char** argv) {
     paths.push_back(f.path().native());
   }
 
-  //paths = { "tests/constructor_arg_passing.h" };
+  //paths = { "tests/constructor_args.h" };
 
   double lex_accum = 0;
   double parse_accum = 0;
