@@ -725,55 +725,55 @@ const Token* parse_expression_prefix(const Token* a, const Token* b) {
 const Token* token;
 const Token* token_eof;
 
-const Token* parse_expression_suffix() {
-  if (token[0].is_punct('[')) {
+const Token* parse_expression_suffix(const Token* a, const Token* b) {
+  if (a[0].is_punct('[')) {
     auto result = new Node(NODE_ARRAY_SUFFIX);
-    token = skip_punct(token, token_eof, '[');
-    if (auto end = parse_expression(token, token_eof, ']')) {
-      token = end;
+    a = skip_punct(a, b, '[');
+    if (auto end = parse_expression(a, b, ']')) {
+      a = end;
     }
     result->append(pop_node());
-    token = skip_punct(token, token_eof, ']');
+    a = skip_punct(a, b, ']');
     push_node(result);
-    return token;
+    return a;
   }
 
-  if (token[0].is_punct('(') && token[1].is_punct(')')) {
+  if (a[0].is_punct('(') && a[1].is_punct(')')) {
     auto result = new Node(NODE_PARAMETER_LIST);
-    token = skip_punct(token, token_eof, '(');
-    token = skip_punct(token, token_eof, ')');
+    a = skip_punct(a, b, '(');
+    a = skip_punct(a, b, ')');
     push_node(result);
-    return token;
+    return a;
   }
 
-  if (token[0].is_punct('(')) {
+  if (a[0].is_punct('(')) {
     auto result = new Node(NODE_PARAMETER_LIST);
-    token = skip_punct(token, token_eof, '(');
-    if (auto end = parse_expression(token, token_eof, ')')) {
-      token = end;
+    a = skip_punct(a, b, '(');
+    if (auto end = parse_expression(a, b, ')')) {
+      a = end;
     }
     result->append(pop_node());
-    token = skip_punct(token, token_eof, ')');
+    a = skip_punct(a, b, ')');
     push_node(result);
-    return token;
+    return a;
   }
 
-  if (token[0].is_punct('+') && token[1].is_punct('+')) {
+  if (a[0].is_punct('+') && a[1].is_punct('+')) {
     //return take_lexemes(NODE_OPERATOR, 2);
-    if (auto end = take_lexemes(token, token_eof, NODE_OPERATOR, 2)) {
-      token = end;
-      return token;
+    if (auto end = take_lexemes(a, b, NODE_OPERATOR, 2)) {
+      a = end;
+      return a;
     }
     else {
       return nullptr;
     }
   }
 
-  if (token[0].is_punct('-') && token[1].is_punct('-')) {
+  if (a[0].is_punct('-') && a[1].is_punct('-')) {
     //return take_lexemes(NODE_OPERATOR, 2);
-    if (auto end = take_lexemes(token, token_eof, NODE_OPERATOR, 2)) {
-      token = end;
-      return token;
+    if (auto end = take_lexemes(a, b, NODE_OPERATOR, 2)) {
+      a = end;
+      return a;
     }
     else {
       return nullptr;
@@ -908,9 +908,8 @@ const Token* parse_expression(const Token* a, const Token* b, const char rdelim)
   if (a->is_punct(','))    { return a; }
   if (a->is_punct(rdelim)) { return a; }
 
-  token = a;
-  if (parse_expression_suffix()) {
-    a = token;
+  if (auto end = parse_expression_suffix(a, b)) {
+    a = end;
     auto op = pop_node();
     auto lhs = pop_node();
     auto result = new Node(NODE_POSTFIX_EXPRESSION);
