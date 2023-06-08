@@ -164,7 +164,6 @@ const Token* parse_identifier(const Token* a, const Token* b);
 const Token* parse_initializer_list(const Token* a, const Token* b);
 const Token* parse_parameter_list(const Token* a, const Token* b);
 const Token* parse_parenthesized_expression(const Token* a, const Token* b);
-const Token* parse_specifiers(const Token* a, const Token* b);
 const Token* parse_statement(const Token* a, const Token* b);
 
 //----------------------------------------
@@ -322,6 +321,47 @@ using pattern_initializer_list = NodeMaker<NODE_INITIALIZER_LIST,
 
 //----------------------------------------
 
+const Token* match_specifier(const Token* a, const Token* b) {
+  const char* keywords[] = {
+    "extern",
+    "static",
+    "register",
+    "inline",
+    "thread_local",
+    "const",
+    "volatile",
+    "restrict",
+    "__restrict__",
+    "_Atomic",
+    "_Noreturn",
+    "mutable",
+    "constexpr",
+    "constinit",
+    "consteval",
+    "virtual",
+    "explicit",
+  };
+  auto keyword_count = sizeof(keywords)/sizeof(keywords[0]);
+
+  for (auto i = 0; i < keyword_count; i++) {
+    if (a->is_identifier(keywords[i])) {
+      return a + 1;
+    }
+  }
+  return nullptr;
+}
+
+//----------------------------------------
+
+using pattern_specifier_list = NodeMaker<NODE_SPECIFIER_LIST,
+  Some<Oneof<
+    NodeMaker<NODE_IDENTIFIER, Ref<match_specifier>>,
+    NodeMaker<NODE_PUNCT, Atom<'*'>>
+  >>
+>;
+
+//----------------------------------------
+
 const Token* parse_declaration(const Token* a, const Token* b, const char rdelim) {
   auto result = new Node(NODE_INVALID);
 
@@ -331,7 +371,7 @@ const Token* parse_declaration(const Token* a, const Token* b, const char rdelim
   bool has_body = false;
   bool has_init = false;
 
-  if (auto end = parse_specifiers(a, b)) {
+  if (auto end = pattern_specifier_list::match(a, b)) {
     a = end;
     result->append(pop_node());
   }
@@ -365,7 +405,7 @@ const Token* parse_declaration(const Token* a, const Token* b, const char rdelim
     else {
       has_type = true;
       result->append(n1);
-      if (auto end = parse_specifiers(a, b)) {
+      if (auto end = pattern_specifier_list::match(a, b)) {
         a = end;
         result->append(pop_node());
       }
@@ -415,7 +455,7 @@ const Token* parse_declaration(const Token* a, const Token* b, const char rdelim
     }
 
     // grab that const after the param list
-    if (auto end = parse_specifiers(a, b)) {
+    if (auto end = pattern_specifier_list::match(a, b)) {
       a = end;
       result->append(pop_node());
     }
@@ -609,51 +649,6 @@ const Token* parse_compound_statement(const Token* a, const Token* b) {
   node_top = old_top;
 
   return a;
-}
-
-//----------------------------------------
-
-const Token* match_specifier(const Token* a, const Token* b) {
-  const char* keywords[] = {
-    "extern",
-    "static",
-    "register",
-    "inline",
-    "thread_local",
-    "const",
-    "volatile",
-    "restrict",
-    "__restrict__",
-    "_Atomic",
-    "_Noreturn",
-    "mutable",
-    "constexpr",
-    "constinit",
-    "consteval",
-    "virtual",
-    "explicit",
-  };
-  auto keyword_count = sizeof(keywords)/sizeof(keywords[0]);
-
-  for (auto i = 0; i < keyword_count; i++) {
-    if (a->is_identifier(keywords[i])) {
-      return a + 1;
-    }
-  }
-  return nullptr;
-}
-
-//----------------------------------------
-
-const Token* parse_specifiers(const Token* a, const Token* b) {
-  using pattern = NodeMaker<NODE_SPECIFIER_LIST,
-    Some<Oneof<
-      NodeMaker<NODE_IDENTIFIER, Ref<match_specifier>>,
-      NodeMaker<NODE_PUNCT, Atom<'*'>>
-    >>
-  >;
-
-  return pattern::match(a, b);
 }
 
 //----------------------------------------
