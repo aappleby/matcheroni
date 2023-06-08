@@ -4,41 +4,52 @@
 //------------------------------------------------------------------------------
 
 struct ClassDeclaration : public Node {
-  ClassDeclaration(Node* _keyword, Node* _name, Node* _semi)
+  ClassDeclaration(Node* _name)
   : Node(NODE_CLASS_DECLARATION, nullptr, nullptr) {
-    append(_keyword);
     append(_name);
-    append(_semi);
-    this->_keyword = _keyword;
     this->_name    = _name;
-    this->_semi    = _semi;
   }
 
-  Node* _keyword;
   Node* _name;
-  Node* _semi;
+};
+
+struct ClassDefinition : public Node {
+  ClassDefinition(Node* _name, Node* _decls = nullptr)
+  : Node(NODE_CLASS_DEFINITION, nullptr, nullptr) {
+    append(_name);
+    append(_decls);
+    this->_name    = _name;
+    this->_decls   = _decls;
+  }
+
+  Node* _name;
+  Node* _decls;
 };
 
 //------------------------------------------------------------------------------
-// Clang's CXXRecordDecl
 
-struct ClassDefinition : public Node {
-  ClassDefinition(Node* _keyword, Node* _name, Node* _decls, Node* _semi)
-  : Node(NODE_CLASS_DEFINITION, nullptr, nullptr) {
-    append(_keyword);
+struct StructDeclaration : public Node {
+  StructDeclaration (Node* _name)
+  : Node(NODE_CLASS_DECLARATION, nullptr, nullptr) {
     append(_name);
-    append(_decls);
-    append(_semi);
-    this->_keyword = _keyword;
     this->_name    = _name;
-    this->_decls   = _decls;
-    this->_semi    = _semi;
   }
 
-  Node* _keyword;
+  Node* _name;
+};
+
+
+struct StructDefinition : public Node {
+  StructDefinition(Node* _name, Node* _decls = nullptr)
+  : Node(NODE_STRUCT_DEFINITION, nullptr, nullptr) {
+    append(_name);
+    append(_decls);
+    this->_name    = _name;
+    this->_decls   = _decls;
+  }
+
   Node* _name;
   Node* _decls;
-  Node* _semi;
 };
 
 //------------------------------------------------------------------------------
@@ -46,9 +57,7 @@ struct ClassDefinition : public Node {
 struct CompoundStatement : public Node {
   CompoundStatement() : Node(NODE_COMPOUND_STATEMENT, nullptr, nullptr) {}
 
-  Node* ldelim = nullptr;
   std::vector<Node*> statements;
-  Node* rdelim = nullptr;
 };
 
 //------------------------------------------------------------------------------
@@ -56,9 +65,7 @@ struct CompoundStatement : public Node {
 struct NodeList : public Node {
   NodeList(NodeType type) : Node(type, nullptr, nullptr) {}
 
-  Node* ldelim = nullptr;
   std::vector<Node*> items;
-  Node* rdelim = nullptr;
 };
 
 //------------------------------------------------------------------------------

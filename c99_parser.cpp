@@ -132,6 +132,9 @@ const Token* token_eof;
 Node* node_stack[256] = {0};
 size_t node_top = 0;
 
+Node* pop_node()         { return node_stack[--node_top]; }
+void  push_node(Node* n) { node_stack[node_top++] = n; }
+
 Node* parse_compound_statement();
 Node* parse_declaration_list(NodeType type, const char ldelim, const char spacer, const char rdelim);
 Node* parse_decltype();
@@ -210,48 +213,39 @@ const Token* find_matching_delim(const Token* a, const Token* b) {
 
 //----------------------------------------
 
-void skip_lexemes(int count) {
+const Token* skip_lexemes(int count) {
   token = token + count;
+  return token;
 }
 
-void skip_punct(const char punct) {
+const Token* skip_punct(const char punct) {
   assert (token->is_punct());
   token++;
+  return token;
 }
 
-void skip_opt_punct(const char punct) {
+const Token* skip_opt_punct(const char punct) {
   if (token->is_punct(punct)) token++;
+  return token;
 }
 
-void skip_identifier(const char* identifier = nullptr) {
+const Token* skip_identifier(const char* identifier = nullptr) {
   assert(token->is_identifier(identifier));
   token++;
+  return token;
 }
 
 //----------------------------------------
 
 const Token* take_lexemes(NodeType type, int count) {
-  node_stack[node_top++] = new Node(type, token, token + count);
+  push_node( new Node(type, token, token + count) );
   token = token + count;
   return token;
 }
 
-Node* take_punct() {
-  assert (token->is_punct());
-  //return take_lexemes(NODE_PUNCT, 1);
-  if (take_lexemes(NODE_PUNCT, 1)) {
-    return node_stack[--node_top];
-  }
-  else {
-    return nullptr;
-  }
-}
-
-Node* take_punct(char punct) {
-  assert (token->is_punct(punct));
-  //return take_lexemes(NODE_PUNCT, 1);
-  if (take_lexemes(NODE_PUNCT, 1)) {
-    return node_stack[--node_top];
+const Token* take_punct(char punct) {
+  if (token->is_punct(punct)) {
+    return take_lexemes(NODE_PUNCT, 1);
   }
   else {
     return nullptr;
@@ -262,7 +256,7 @@ Node* take_opt_punct(char punct) {
   if (token->is_punct(punct)) {
     //return take_lexemes(NODE_PUNCT, 1);
     if (take_lexemes(NODE_PUNCT, 1)) {
-      return node_stack[--node_top];
+      return pop_node();
     }
     else {
       return nullptr;
@@ -277,7 +271,7 @@ Node* take_identifier(const char* identifier = nullptr) {
   assert(token->is_identifier(identifier));
   //return take_lexemes(NODE_IDENTIFIER, 1);
   if (take_lexemes(NODE_IDENTIFIER, 1)) {
-    return node_stack[--node_top];
+    return pop_node();
   }
   else {
     return nullptr;
@@ -288,7 +282,7 @@ Node* take_constant() {
   assert(token->is_constant());
   //return take_lexemes(NODE_CONSTANT, 1);
   if (take_lexemes(NODE_CONSTANT, 1)) {
-    return node_stack[--node_top];
+    return pop_node();
   }
   else {
     return nullptr;
@@ -304,7 +298,7 @@ const Token* parse_access_specifier(const Token* a, const Token* b) {
   >;
 
   if (auto end = pattern::match(a, b)) {
-    node_stack[node_top++] = new Node(NODE_ACCESS_SPECIFIER, a, end);
+    push_node(new Node(NODE_ACCESS_SPECIFIER, a, end));
     return end;
   }
   else {
@@ -351,16 +345,22 @@ Node* parse_declaration(const char rdelim) {
       result->append(parse_identifier());
     }
 
-    if (token[0].is_punct(':')) {
-      result->append(take_punct(':'));
+    if (take_punct(':')) {
+      result->append(pop_node());
       result->append(parse_expression('{'));
     }
   }
 
   while (token[0].is_punct('[')) {
-    result->append(take_punct('['));
+    if (take_punct('[')) {
+      result->append(pop_node());
+    }
+
     result->append(parse_expression(']'));
-    result->append(take_punct(']'));
+
+    if (take_punct(']')) {
+      result->append(pop_node());
+    }
   }
 
   if (token[0].is_punct('(')) {
@@ -381,9 +381,9 @@ Node* parse_declaration(const char rdelim) {
     result->append(parse_compound_statement());
   }
 
-  if (token[0].is_punct('=')) {
+  if (take_punct('=')) {
     has_init = true;
-    result->append(take_punct('='));
+    result->append(pop_node());
     result->append(parse_expression(rdelim));
   }
 
@@ -411,32 +411,25 @@ Node* parse_declaration(const char rdelim) {
 
 Node* parse_field_declaration_list() {
   auto result = new NodeList(NODE_FIELD_DECLARATION_LIST);
-  result->ldelim = take_punct('{');
-  result->append(result->ldelim);
+  skip_punct('{');
 
   while(token < token_eof && !token->is_punct('}')) {
 
-    /*
-    if (auto child = parse_access_specifier()) {
-      result->append(child);
-    }
-    */
     if (auto end = parse_access_specifier(token, token_eof)) {
-      result->append(node_stack[--node_top]);
+      result->append(pop_node());
       token = end;
     }
 
     else if (auto child = parse_declaration(';')) {
       result->append(child);
       result->items.push_back(child);
-      if (token[0].is_punct(';')) {
-        result->append(take_punct(';'));
+      if (take_punct(';')) {
+        result->append(pop_node());
       }
     }
   }
 
-  result->rdelim = take_punct('}');
-  result->append(result->rdelim);
+  skip_punct('}');
   return result;
 }
 
@@ -447,19 +440,21 @@ Node* parse_class_specifier() {
   using decl = Seq<AtomLit<"class">, Atom<LEX_IDENTIFIER>, Atom<';'>>;
 
   if (auto end = decl::match(token, token_eof)) {
-    return new ClassDeclaration(
-      take_identifier("class"),
-      take_identifier(),
-      take_punct(';')
-    );
+    skip_identifier("class");
+    auto name = take_identifier();
+    skip_punct(';');
+
+    return new ClassDeclaration(name);
+  }
+  else {
+    skip_identifier("class");
+    auto name = take_identifier();
+    auto body = parse_field_declaration_list();
+    skip_punct(';');
+
+    return new ClassDefinition(name, body);
   }
 
-  return new ClassDefinition(
-    take_identifier("class"),
-    take_identifier(),
-    parse_field_declaration_list(),
-    take_punct(';')
-  );
 }
 
 //----------------------------------------
@@ -469,19 +464,20 @@ Node* parse_struct_specifier() {
   using decl = Seq<AtomLit<"struct">, Atom<LEX_IDENTIFIER>, Atom<';'>>;
 
   if (auto end = decl::match(token, token_eof)) {
-    return new ClassDeclaration(
-      take_identifier("struct"),
-      take_identifier(),
-      take_punct(';')
-    );
+    skip_identifier("struct");
+    auto name = take_identifier();
+    skip_punct(';');
+
+    return new StructDeclaration(name);
+  }
+  else {
+    skip_identifier("struct");
+    auto name = take_identifier();
+    auto body = parse_field_declaration_list();
+    skip_punct(';');
+    return new StructDefinition(name, body);
   }
 
-  return new ClassDefinition(
-    take_identifier("struct"),
-    take_identifier(),
-    parse_field_declaration_list(),
-    take_punct(';')
-  );
 }
 
 Node* parse_namespace_specifier() {
@@ -489,19 +485,23 @@ Node* parse_namespace_specifier() {
   using decl = Seq<AtomLit<"namespace">, Atom<LEX_IDENTIFIER>, Atom<';'>>;
 
   if (auto end = decl::match(token, token_eof)) {
-    return new ClassDeclaration(
-      take_identifier("namespace"),
-      take_identifier(),
-      take_punct(';')
-    );
+    skip_identifier("namespace");
+    auto name = take_identifier();
+    skip_punct(';');
+    auto result = new Node(NODE_NAMESPACE_DECLARATION);
+    result->append(name);
+    return result;
   }
-
-  return new ClassDefinition(
-    take_identifier("namespace"),
-    take_identifier(),
-    parse_field_declaration_list(),
-    take_punct(';')
-  );
+  else {
+    skip_identifier("namespace");
+    auto name = take_identifier();
+    auto body = parse_field_declaration_list();
+    skip_punct(';');
+    auto result = new Node(NODE_NAMESPACE_DEFINITION);
+    result->append(name);
+    result->append(body);
+    return result;
+  }
 }
 
 //----------------------------------------
@@ -511,8 +511,7 @@ Node* parse_compound_statement() {
 
   auto result = new CompoundStatement();
 
-  result->ldelim = take_punct('{');
-  result->append(result->ldelim);
+  skip_punct('{');
 
   while(1) {
     if (token->is_punct('}')) break;
@@ -522,8 +521,7 @@ Node* parse_compound_statement() {
     result->append(statement);
   }
 
-  result->rdelim = take_punct('}');
-  result->append(result->rdelim);
+  skip_punct('}');
 
   return result;
 }
@@ -563,8 +561,8 @@ Node* parse_specifiers() {
         break;
       }
     }
-    if (token->is_punct('*')) {
-      specifiers.push_back(take_punct('*'));
+    if (take_punct('*')) {
+      specifiers.push_back(pop_node());
       match = true;
     }
     if (!match) break;
@@ -662,7 +660,7 @@ Node* parse_decltype() {
 
       //result2->append(take_lexemes(NODE_OPERATOR, 2));
       if (take_lexemes(NODE_OPERATOR, 2)) {
-        result2->append(node_stack[--node_top]);
+        result2->append(pop_node());
       }
       else {
       }
@@ -698,9 +696,9 @@ Node* parse_expression_prefix() {
       token[1].is_identifier() &&
       token[2].is_punct(')')) {
     auto result = new Node(NODE_TYPECAST);
-    result->append(take_punct('('));
+    skip_punct('(');
     result->append(take_identifier());
-    result->append(take_punct(')'));
+    skip_punct(')');
     return result;
   }
 
@@ -727,31 +725,31 @@ Node* parse_expression_prefix() {
 Node* parse_expression_suffix() {
   if (token[0].is_punct('[')) {
     auto result = new Node(NODE_ARRAY_SUFFIX);
-    result->append(take_punct('['));
+    skip_punct('[');
     result->append(parse_expression(']'));
-    result->append(take_punct(']'));
+    skip_punct(']');
     return result;
   }
 
   if (token[0].is_punct('(') && token[1].is_punct(')')) {
     auto result = new Node(NODE_PARAMETER_LIST);
-    result->append(take_punct('('));
-    result->append(take_punct(')'));
+    skip_punct('(');
+    skip_punct(')');
     return result;
   }
 
   if (token[0].is_punct('(')) {
     auto result = new Node(NODE_PARAMETER_LIST);
-    result->append(take_punct('('));
+    skip_punct('(');
     result->append(parse_expression(')'));
-    result->append(take_punct(')'));
+    skip_punct(')');
     return result;
   }
 
   if (token[0].is_punct('+') && token[1].is_punct('+')) {
     //return take_lexemes(NODE_OPERATOR, 2);
     if (take_lexemes(NODE_OPERATOR, 2)) {
-      return node_stack[--node_top];
+      return pop_node();
     }
     else {
       return nullptr;
@@ -761,7 +759,7 @@ Node* parse_expression_suffix() {
   if (token[0].is_punct('-') && token[1].is_punct('-')) {
     //return take_lexemes(NODE_OPERATOR, 2);
     if (take_lexemes(NODE_OPERATOR, 2)) {
-      return node_stack[--node_top];
+      return pop_node();
     }
     else {
       return nullptr;
@@ -806,7 +804,7 @@ const Token* parse_infix_op() {
   while(match_lex_b->lex->span_a < end) match_lex_b++;
   auto result = new Node(NODE_OPERATOR, match_lex_a, match_lex_b);
   token = match_lex_b;
-  node_stack[node_top++] = result;
+  push_node(result);
   return token;
 }
 
@@ -827,12 +825,10 @@ Node* parse_expression_rhs(Node* lhs, const char rdelim) {
   }
 
   if (auto end = parse_infix_op()) {
-    auto op = node_stack[--node_top];
-
     auto result = new Node(NODE_INFIX_EXPRESSION);
     auto rhs = parse_expression(rdelim);
     result->append(lhs);
-    result->append(op);
+    result->append(pop_node());
     result->append(rhs);
     return parse_expression_rhs(result, rdelim);
   }
@@ -840,9 +836,9 @@ Node* parse_expression_rhs(Node* lhs, const char rdelim) {
   if (token[0].is_punct('[')) {
     auto result = new Node(NODE_ARRAY_EXPRESSION);
     result->append(lhs);
-    result->append(take_punct('['));
+    skip_punct('[');
     result->append(parse_expression(']'));
-    result->append(take_punct(']'));
+    skip_punct(']');
     return parse_expression_rhs(result, rdelim);
   }
 
@@ -936,7 +932,7 @@ Node* parse_external_declaration() {
   }
 
   if (auto decl = parse_declaration(';')) {
-    decl->append(take_punct(';'));
+    skip_punct(';');
     return decl;
   }
 
@@ -1028,11 +1024,10 @@ Node* parse_while_statement() {
 Node* parse_return_statement() {
   auto ret = take_identifier();
   auto val = parse_expression(';');
-  auto semi = take_punct(';');
+  skip_punct(';');
   auto result = new Node(NODE_RETURN_STATEMENT, nullptr, nullptr);
   result->append(ret);
   result->append(val);
-  result->append(semi);
   return result;
 }
 
@@ -1041,8 +1036,7 @@ Node* parse_return_statement() {
 Node* parse_parameter_list() {
   auto result = new NodeList(NODE_PARAMETER_LIST);
 
-  result->ldelim = take_punct('(');
-  result->append(result->ldelim);
+  skip_punct('(');
 
   while(!token->is_punct(')')) {
     auto decl = parse_declaration(',');
@@ -1050,12 +1044,11 @@ Node* parse_parameter_list() {
     result->items.push_back(decl);
     result->append(decl);
     if (token->is_punct(',')) {
-      result->append(take_punct(','));
+      skip_punct(',');
     }
   }
 
-  result->rdelim = take_punct(')');
-  result->append(result->rdelim);
+  skip_punct(')');
 
   return result;
 }
@@ -1064,9 +1057,9 @@ Node* parse_parameter_list() {
 
 Node* parse_parenthesized_expression() {
   auto result = new Node(NODE_PARENTHESIZED_EXPRESSION);
-  result->append(take_punct('('));
+  skip_punct('(');
   result->append(parse_expression(')'));
-  result->append(take_punct(')'));
+  skip_punct(')');
   return result;
 }
 
@@ -1094,11 +1087,11 @@ Node* parse_case_statement() {
   if (token[0].is_identifier("case")) {
     result->append(take_identifier());
     result->append(parse_expression(':'));
-    result->append(take_punct(':'));
+    skip_punct(':');
   }
   else if (token[0].is_identifier("default")) {
     result->append(take_identifier());
-    result->append(take_punct(':'));
+    skip_punct(':');
   }
   else {
     assert(false);
@@ -1120,13 +1113,13 @@ Node* parse_switch_statement() {
 
   result->append(take_identifier("switch"));
   result->append(parse_expression_list(NODE_ARGUMENT_LIST, '(', ',', ')'));
-  result->append(take_punct('{'));
+  skip_punct('{');
 
   while(!token[0].is_punct('}')) {
     result->append(parse_case_statement());
   }
 
-  result->append(take_punct('}'));
+  skip_punct('}');
   return result;
 }
 
@@ -1196,7 +1189,7 @@ Node* parse_statement() {
   if (token[0].is_identifier() && token[1].is_identifier()) {
     auto result = new Node(NODE_DECLARATION_STATEMENT, nullptr, nullptr);
     result->append(parse_declaration(';'));
-    result->append(take_punct(';'));
+    skip_punct(';');
     return result;
   }
 
@@ -1208,16 +1201,15 @@ Node* parse_statement() {
       token[4].is_identifier()) {
     auto result = new Node(NODE_DECLARATION_STATEMENT, nullptr, nullptr);
     result->append(parse_declaration(';'));
-    result->append(take_punct(';'));
+    skip_punct(';');
     return result;
   }
 
   // Must be expression statement
   auto exp = parse_expression(';');
-  auto semi = take_punct(';');
+  skip_punct(';');
   auto result = new Node(NODE_EXPRESSION_STATEMENT, nullptr, nullptr);
   result->append(exp);
-  result->append(semi);
   return result;
 }
 
