@@ -137,7 +137,8 @@ const Token* parse_declaration_list(const Token* a, const Token* b, NodeType typ
 const Token* parse_decltype(const Token* a, const Token* b);
 const Token* parse_enum_declaration(const Token* a, const Token* b);
 const Token* parse_expression_list(const Token* a, const Token* b, NodeType type, const char ldelim, const char spacer, const char rdelim);
-const Token* parse_expression(const Token* a, const Token* b, const char rdelim);
+const Token* parse_expression2(const Token* a, const Token* b);
+const Token* parse_expression(const Token* a, const Token* b, const char rdelim = 0);
 const Token* parse_function_call(const Token* a, const Token* b);
 const Token* parse_identifier(const Token* a, const Token* b);
 const Token* parse_initializer_list(const Token* a, const Token* b);
@@ -418,6 +419,10 @@ const Token* parse_declaration(const Token* a, const Token* b, const char rdelim
   return a;
 }
 
+const Token* parse_declaration2(const Token* a, const Token* b) {
+  return parse_declaration(a, b, ';');
+}
+
 //----------------------------------------
 
 const Token* parse_field_declaration_list(const Token* a, const Token* b) {
@@ -451,6 +456,7 @@ const Token* parse_field_declaration_list(const Token* a, const Token* b) {
 //----------------------------------------
 
 const Token* parse_class_specifier(const Token* a, const Token* b) {
+  if (!a->is_identifier("class")) return nullptr;
 
   using decl = Seq<AtomLit<"class">, Atom<LEX_IDENTIFIER>, Atom<';'>>;
 
@@ -482,6 +488,7 @@ const Token* parse_class_specifier(const Token* a, const Token* b) {
 //----------------------------------------
 
 const Token* parse_struct_specifier(const Token* a, const Token* b) {
+  if (!a->is_identifier("struct")) return nullptr;
 
   using decl = Seq<AtomLit<"struct">, Atom<LEX_IDENTIFIER>, Atom<';'>>;
 
@@ -508,6 +515,7 @@ const Token* parse_struct_specifier(const Token* a, const Token* b) {
 }
 
 const Token* parse_namespace_specifier(const Token* a, const Token* b) {
+  if (!a->is_identifier("namespace")) return nullptr;
 
   using decl = Seq<AtomLit<"namespace">, Atom<LEX_IDENTIFIER>, Atom<';'>>;
 
@@ -896,6 +904,9 @@ const Token* parse_expression(const Token* a, const Token* b, const char rdelim)
   if (auto end = parse_expression_lhs(a, b, rdelim)) {
     a = end;
   }
+  else {
+    return nullptr;
+  }
 
   if (a->is_eof())         { return a; }
   if (a->is_punct(')'))    { return a; }
@@ -943,39 +954,26 @@ const Token* parse_expression(const Token* a, const Token* b, const char rdelim)
     return a;
   }
 
-  assert(false);
   return a;
+}
+
+const Token* parse_expression2(const Token* a, const Token* b) {
+  return parse_expression(a, b, 0);
 }
 
 //----------------------------------------
 
 const Token* parse_external_declaration(const Token* a, const Token* b) {
-  if (a->is_eof()) {
-    return nullptr;
-  }
+  if (a->is_eof()) return nullptr;
 
-  if (a->is_identifier("namespace")) {
-    a = parse_namespace_specifier(a, b);
-    return a;
-  }
+  using pattern = Oneof<
+    Ref<parse_namespace_specifier>,
+    Ref<parse_class_specifier>,
+    Ref<parse_struct_specifier>,
+    Seq<Ref<parse_declaration2>, Atom<';'>>
+  >;
 
-  if (a->is_identifier("class")) {
-    a = parse_class_specifier(a, b);
-    return a;
-  }
-
-  if (a->is_identifier("struct")) {
-    a = parse_struct_specifier(a, b);
-    return a;
-  }
-
-  if (auto end = parse_declaration(a, b, ';')) {
-    a = end;
-    a = skip_punct(a, b, ';');
-    return a;
-  }
-
-  return nullptr;
+  return pattern::match(a, b);
 }
 
 //----------------------------------------
@@ -1492,33 +1490,50 @@ const Token* parse_expression_list(const Token* a, const Token* b, NodeType type
 //----------------------------------------
 
 const Token* parse_initializer_list(const Token* a, const Token* b) {
+
+  using pattern = Seq<
+    Atom<':'>,
+    Ref<parse_expression2>,
+    Any<Seq<Atom<','>, Ref<parse_expression2>>>,
+    And<Atom<'{'>>
+  >;
+
+  auto old_top = node_top;
+
+  if (auto end = pattern::match(a, b)) {
+    auto result = new Node(NODE_INITIALIZER_LIST);
+    for (auto i = old_top; i < node_top; i++) {
+      result->append(node_stack[i]);
+    }
+    node_top = old_top;
+
+    push_node(result);
+    return end;
+  }
+  else {
+    return nullptr;
+  }
+
+  /*
   char ldelim = ':';
   char spacer = ',';
   char rdelim = '{'; // we don't consume this unlike parse_expression_list
 
   if (!a[0].is_punct(ldelim)) return nullptr;
 
-  auto result = new Node(NODE_INITIALIZER_LIST);
-
   a = skip_punct(a, b, ldelim);
 
-  while(1) {
-    if (a->is_punct(rdelim)) {
-      push_node(result);
-      return a;
-    }
+
+  while(!a->is_punct(rdelim)) {
 
     if (a->is_punct(spacer)) {
       a = skip_punct(a, b, spacer);
     }
     else {
       a = parse_expression(a, b, rdelim);
-      result->append(pop_node());
     }
   }
-
-  push_node(result);
-  return a;
+  */
 }
 
 //----------------------------------------
@@ -1546,9 +1561,6 @@ const Token* parse_type_qualifier(const Token* a, const Token* b) {
 //----------------------------------------
 
 const Token* parse_translation_unit(const Token* a, const Token* b) {
-  auto result = new TranslationUnit();
-
-  auto old_top = node_top;
 
   using pattern = Oneof<
     Ref<parse_template_decl>,
@@ -1556,11 +1568,13 @@ const Token* parse_translation_unit(const Token* a, const Token* b) {
     Ref<parse_external_declaration>
   >;
 
+  auto old_top = node_top;
   while(!a->is_eof()) {
     a = pattern::match(a, b);
     assert(a);
   }
 
+  auto result = new TranslationUnit();
   for (auto i = old_top; i < node_top; i++) {
     result->append(node_stack[i]);
   }
