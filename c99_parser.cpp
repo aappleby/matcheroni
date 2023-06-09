@@ -453,31 +453,26 @@ using pattern_declaration_list = NodeMaker<
 
 //----------------------------------------
 
-const Token* parse_constructor(const Token* a, const Token* b) {
-  using pattern = NodeMaker<
-    NODE_CONSTRUCTOR,
-    Seq<
-      pattern_any_identifier,
-      pattern_declaration_list,
-      pattern_initializer_list,
-      pattern_specifier_list,
-      Opt<pattern_compound_statement>
+using pattern_constructor = NodeMaker<
+  NODE_CONSTRUCTOR,
+  Seq<
+    pattern_any_identifier,
+    pattern_declaration_list,
+    Opt<pattern_initializer_list>,
+    Opt<pattern_specifier_list>,
+    Oneof<
+      pattern_compound_statement,
+      Atom<';'>
     >
-  >;
-
-  auto end = pattern::match(a, b);
-  if (end) dump_top();
-  return end;
-}
+  >
+>;
 
 //----------------------------------------
 
 const Token* parse_declaration(const Token* a, const Token* b, const char rdelim) {
-  /*
-  if (auto end = parse_constructor(a, b)) {
+  if (auto end = pattern_constructor::match(a, b)) {
     return end;
   }
-  */
 
   auto result = new Node(NODE_INVALID);
 
