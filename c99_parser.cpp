@@ -968,36 +968,18 @@ const Token* parse_function_call(const Token* a, const Token* b) {
 
 //----------------------------------------
 
-const Token* parse_if_statement(const Token* a, const Token* b) {
-  auto result = new Node(NODE_IF_STATEMENT);
-  if (auto end = pattern_identifier<"if">::match(a, b)) {
-    a = end;
-    result->append(pop_node());
-  }
-
-  if (auto end = pattern_parenthesized_expression::match(a, b)) {
-    a = end;
-    result->append(pop_node());
-  }
-
-  if (auto end = parse_statement(a, b)) {
-    a = end;
-    result->append(pop_node());
-  }
-
-  if (auto end = pattern_identifier<"else">::match(a, b)) {
-    a = end;
-    result->append(pop_node());
-
-    if (auto end = parse_statement(a, b)) {
-      a = end;
-      result->append(pop_node());
-    }
-  }
-
-  push_node(result);
-  return a;
-}
+using pattern_if_statement = NodeMaker<
+  NODE_IF_STATEMENT,
+  Seq<
+    AtomLit<"if">,
+    pattern_parenthesized_expression,
+    Ref<parse_statement>,
+    Opt<Seq<
+      AtomLit<"else">,
+      Ref<parse_statement>
+    >>
+  >
+>;
 
 //----------------------------------------
 
@@ -1020,23 +1002,6 @@ using pattern_return_statement = NodeMaker<
     Atom<';'>
   >
 >;
-
-/*
-const Token* parse_return_statement(const Token* a, const Token* b) {
-  a = take_identifier(a, b);
-  auto ret = pop_node();
-
-  a = parse_expression(a, b, ';');
-
-  auto val = pop_node();
-  a = skip_punct(a, b, ';');
-  auto result = new Node(NODE_RETURN_STATEMENT, nullptr, nullptr);
-  result->append(ret);
-  result->append(val);
-  push_node(result);
-  return a;
-}
-*/
 
 //----------------------------------------
 
@@ -1073,38 +1038,38 @@ using pattern_preproc = NodeMaker<NODE_PREPROC, Atom<TOK_PREPROC>>;
 
 //----------------------------------------
 
-const Token* parse_case_statement(const Token* a, const Token* b) {
-  if (!a[0].is_case_label()) return nullptr;
 
-  Node* result = new Node(NODE_CASE_STATEMENT);
+using pattern_case_body =
+Any<Seq<
+  Not<AtomLit<"case">>,
+  Not<AtomLit<"default">>,
+  Ref<parse_statement>
+>>;
 
-  if (a[0].is_identifier("case")) {
-    a = take_identifier(a, b);
-    result->append(pop_node());
-    a = parse_expression(a, b, ':');
-    result->append(pop_node());
-    a = skip_punct(a, b, ':');
-  }
-  else if (a[0].is_identifier("default")) {
-    a = take_identifier(a, b);
-    result->append(pop_node());
-    a = skip_punct(a, b, ':');
-  }
-  else {
-    assert(false);
-    return nullptr;
-  }
+using pattern_case_statement = NodeMaker<
+  NODE_CASE_STATEMENT,
+  Seq<
+    AtomLit<"case">,
+    Ref<parse_expression2>,
+    Atom<':'>,
+    pattern_case_body
+  >
+>;
 
-  while (!a[0].is_case_label() && !a[0].is_punct('}')) {
-    if (auto end = parse_statement(a, b)) {
-      a = end;
-      result->append(pop_node());
-    }
-  }
+using pattern_default_statement = NodeMaker<
+  NODE_DEFAULT_STATEMENT,
+  Seq<
+    AtomLit<"default">,
+    Atom<':'>,
+    pattern_case_body
+  >
+>;
 
-  push_node(result);
-  return a;
-}
+using pattern_case_or_default =
+Oneof<
+  pattern_case_statement,
+  pattern_default_statement
+>;
 
 //----------------------------------------
 
@@ -1118,16 +1083,15 @@ const Token* parse_switch_statement(const Token* a, const Token* b) {
     result->append(pop_node());
   }
 
-  if (auto end = parse_expression_list(a, b, NODE_ARGUMENT_LIST, '(', ',', ')')) {
+  if (auto end = parse_parameter_list(a, b)) {
     a = end;
     result->append(pop_node());
   }
 
-
   a = skip_punct(a, b, '{');
 
   while(!a[0].is_punct('}')) {
-    a = parse_case_statement(a, b);
+    a = pattern_case_or_default::match(a, b);
     result->append(pop_node());
   }
 
@@ -1194,6 +1158,13 @@ const Token* parse_for_statement(const Token* a, const Token* b) {
 }
 
 //----------------------------------------
+
+using pattern_expression_statement = NodeMaker<
+  NODE_EXPRESSION_STATEMENT,
+  Seq<Ref<parse_expression2>, Atom<';'>>
+>;
+
+//----------------------------------------
 // _Does_ include the semicolon for single-line statements
 
 const Token* parse_statement(const Token* a, const Token* b) {
@@ -1205,14 +1176,12 @@ const Token* parse_statement(const Token* a, const Token* b) {
     return end;
   }
 
-  if (a[0].is_identifier("if")) {
-    a = parse_if_statement(a, b);
-    return a;
+  if (auto end = pattern_if_statement::match(a, b)) {
+    return end;
   }
 
   if (auto end = pattern_while_statement::match(a, b)) {
-    a = end;
-    return a;
+    return end;
   }
 
   if (a[0].is_identifier("for")) {
@@ -1262,14 +1231,11 @@ const Token* parse_statement(const Token* a, const Token* b) {
   }
 
   // Must be expression statement
-  a = parse_expression(a, b, ';');
+  if (auto end = pattern_expression_statement::match(a, b)) {
+    return end;
+  }
 
-  auto exp = pop_node();
-  a = skip_punct(a, b, ';');
-  auto result = new Node(NODE_EXPRESSION_STATEMENT, nullptr, nullptr);
-  result->append(exp);
-  push_node(result);
-  return a;
+  return nullptr;
 }
 
 //----------------------------------------
