@@ -74,9 +74,3 @@ struct TemplateParameterList : public Node {
 };
 
 //------------------------------------------------------------------------------
-
-struct TranslationUnit : public Node {
-  TranslationUnit() : Node(NODE_TRANSLATION_UNIT, nullptr, nullptr) {}
-};
-
-//------------------------------------------------------------------------------

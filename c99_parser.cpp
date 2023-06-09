@@ -1084,65 +1084,46 @@ using pattern_switch_statement = NodeMaker<
 
 //----------------------------------------
 
-const Token* parse_declaration_or_expression(const Token* a, const Token* b, char rdelim) {
-  if (auto end = parse_declaration(a, b, rdelim)) {
-    a = end;
-    return a;
-  }
-  if (auto end = parse_expression(a, b, rdelim)) {
-    a = end;
-    return a;
-  }
-  return nullptr;
-}
+using pattern_declaration_or_expression = Oneof<
+  Ref<parse_declaration2>,
+  Ref<parse_expression2>
+>;
 
 //----------------------------------------
 
-const Token* parse_for_statement(const Token* a, const Token* b) {
-  if (!a[0].is_identifier("for")) return nullptr;
-
-  auto result = new Node(NODE_FOR_STATEMENT);
-
-  result->tok_a = a;
-
-  auto old_size = node_top;
-
-  a = skip_identifier(a, b, "for");
-  a = skip_punct(a, b, '(');
-
-  a = parse_declaration_or_expression(a, b, ';');
-
-  result->append(pop_node());
-  a = skip_punct(a, b, ';');
-
-  a = parse_expression(a, b, ';');
-
-  result->append(pop_node());
-  a = skip_punct(a, b, ';');
-
-  a = parse_expression(a, b, ')');
-
-  result->append(pop_node());
-  a = skip_punct(a, b, ')');
-
-  if (auto end = parse_statement(a, b)) {
-    a = end;
-    result->append(pop_node());
-  }
-
-  auto new_size = node_top;
-
-  result->tok_b = a;
-
-  push_node(result);
-  return a;
-}
+using pattern_for_statement = NodeMaker<
+  NODE_FOR_STATEMENT,
+  Seq<
+    AtomLit<"for">,
+    Atom<'('>,
+    Opt<pattern_declaration_or_expression>,
+    Atom<';'>,
+    Opt<Ref<parse_expression2>>,
+    Atom<';'>,
+    Opt<Ref<parse_expression2>>,
+    Atom<')'>,
+    Ref<parse_statement>
+  >
+>;
 
 //----------------------------------------
 
 using pattern_expression_statement = NodeMaker<
   NODE_EXPRESSION_STATEMENT,
   Seq<Ref<parse_expression2>, Atom<';'>>
+>;
+
+//----------------------------------------
+// FIXME this is not nearly general enough
+
+using pattern_declaration_statement = NodeMaker<
+  NODE_DECLARATION_STATEMENT,
+  Seq<
+    // FIXME why did we need this?
+    And<Seq<Atom<TOK_IDENTIFIER>, Atom<TOK_IDENTIFIER>>>,
+    Ref<parse_declaration2>,
+    Atom<';'>
+  >
 >;
 
 //----------------------------------------
@@ -1165,9 +1146,8 @@ const Token* parse_statement(const Token* a, const Token* b) {
     return end;
   }
 
-  if (a[0].is_identifier("for")) {
-    a = parse_for_statement(a, b);
-    return a;
+  if (auto end = pattern_for_statement::match(a, b)) {
+    return end;
   }
 
   if (auto end = pattern_return_statement::match(a, b)) {
@@ -1178,17 +1158,8 @@ const Token* parse_statement(const Token* a, const Token* b) {
     return end;
   }
 
-  if (a[0].is_identifier() && a[1].is_identifier()) {
-    auto result = new Node(NODE_DECLARATION_STATEMENT, nullptr, nullptr);
-
-    if (auto end = parse_declaration(a, b, ';')) {
-      a = end;
-      result->append(pop_node());
-    }
-
-    a = skip_punct(a, b, ';');
-    push_node(result);
-    return a;
+  if (auto end = pattern_declaration_statement::match(a, b)) {
+    return end;
   }
 
   // Dirty hack
@@ -1205,6 +1176,7 @@ const Token* parse_statement(const Token* a, const Token* b) {
     }
 
     a = skip_punct(a, b, ';');
+    //result->dump_tree();
     push_node(result);
     return a;
   }
@@ -1348,29 +1320,54 @@ const Token* parse_type_qualifier(const Token* a, const Token* b) {
 
 //----------------------------------------
 
-const Token* parse_translation_unit(const Token* a, const Token* b) {
-
-  using pattern = Oneof<
+using pattern_translation_unit = NodeMaker<
+  NODE_TRANSLATION_UNIT,
+  Any<Oneof<
     Ref<parse_template_decl>,
     pattern_preproc,
     pattern_external_declaration
-  >;
+  >>
+>;
 
-  auto old_top = node_top;
-  while(!a->is_eof()) {
-    a = pattern::match(a, b);
-    assert(a);
-  }
 
-  auto result = new TranslationUnit();
-  for (auto i = old_top; i < node_top; i++) {
-    result->append(node_stack[i]);
-  }
-  node_top = old_top;
 
-  push_node(result);
-  return a;
-}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1515,7 +1512,7 @@ int test_c99_peg(int argc, char** argv) {
     printf("Parsing %s\n", path.c_str());
 
     parse_accum -= timestamp_ms();
-    parse_translation_unit(token, token_eof);
+    pattern_translation_unit::match(token, token_eof);
     parse_accum += timestamp_ms();
 
     //dump_top();
