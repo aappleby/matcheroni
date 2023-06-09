@@ -60,21 +60,6 @@ const Token* match_chars(const Token* a, const Token* b) {
 
 //------------------------------------------------------------------------------
 
-const char* text = R"(
-#include <stdio.h>
-
-// This is a comment.
-
-int main(int argc, char** argv) {
-  // Another comment
-  printf("Hello () World %d %p!\n", 12345, argv);
-  return 0;
-}
-
-)";
-
-//------------------------------------------------------------------------------
-
 const char* c_specifiers[] = {
   "const",
   "constexpr",
@@ -173,7 +158,7 @@ const Token* parse_declaration_list(const Token* a, const Token* b, NodeType typ
 const Token* parse_decltype(const Token* a, const Token* b);
 const Token* parse_expression_list(const Token* a, const Token* b, NodeType type, const char ldelim, const char spacer, const char rdelim);
 const Token* parse_expression2(const Token* a, const Token* b);
-const Token* parse_expression(const Token* a, const Token* b, const char rdelim = 0);
+const Token* parse_expression(const Token* a, const Token* b);
 const Token* parse_function_call(const Token* a, const Token* b);
 const Token* parse_initializer_list(const Token* a, const Token* b);
 const Token* parse_statement(const Token* a, const Token* b);
@@ -183,12 +168,13 @@ const Token* parse_statement(const Token* a, const Token* b);
 const char* find_matching_delim(const char* a, const char* b) {
   char ldelim = *a++;
 
-  char rdelim;
+  char rdelim = 0;
   if (ldelim == '<')  rdelim = '>';
   if (ldelim == '{')  rdelim = '}';
   if (ldelim == '[')  rdelim = ']';
   if (ldelim == '"')  rdelim = '"';
   if (ldelim == '\'') rdelim = '\'';
+  if (!rdelim) return nullptr;
 
   while(a && *a && a < b) {
     if (*a == rdelim) return a;
@@ -218,11 +204,12 @@ const Token* find_matching_delim(const Token* a, const Token* b) {
   char ldelim = *a->lex->span_a;
   a++;
 
-  char rdelim;
+  char rdelim = 0;
   if (ldelim == '<')  rdelim = '>';
   if (ldelim == '(')  rdelim = ')';
   if (ldelim == '{')  rdelim = '}';
   if (ldelim == '[')  rdelim = ']';
+  if (!rdelim) return nullptr;
 
   while(a && a < b) {
     if (a->is_punct(rdelim)) return a;
@@ -239,6 +226,23 @@ const Token* find_matching_delim(const Token* a, const Token* b) {
 
   return nullptr;
 }
+
+//----------------------------------------
+
+template<typename P>
+struct Delimited {
+  static const Token* match(const Token* a, const Token* b) {
+    auto rdelim = find_matching_delim(a, b);
+    if (!rdelim) return nullptr;
+    if (auto end = P::match(a + 1, rdelim)) {
+      assert(end == rdelim);
+      return rdelim + 1;
+    }
+    else {
+      return nullptr;
+    }
+  }
+};
 
 //------------------------------------------------------------------------------
 
@@ -503,7 +507,31 @@ using pattern_function_definition = NodeMaker<
 
 //----------------------------------------
 
-const Token* parse_declaration(const Token* a, const Token* b, const char rdelim) {
+using pattern_declaration = NodeMaker<
+  NODE_DECLARATION,
+  Seq<
+    Opt<pattern_specifier_list>,
+    Ref<parse_decltype>,
+    pattern_any_identifier,
+    Opt<Seq<
+      Atom<'='>,
+      Ref<parse_expression2>
+    >>
+  >
+>;
+
+using pattern_assignment = NodeMaker<
+  NODE_ASSIGNMENT_EXPRESSION,
+  Seq<
+    pattern_any_identifier,
+    Ref<match_chars<Ref<match_assign_op>>>,
+    Ref<parse_expression2>
+  >
+>;
+
+//----------------------------------------
+
+const Token* parse_declaration(const Token* a, const Token* b) {
   if (auto end = pattern_constructor::match(a, b)) {
     return end;
   }
@@ -516,11 +544,17 @@ const Token* parse_declaration(const Token* a, const Token* b, const char rdelim
     return end;
   }
 
+  if (auto end = pattern_declaration::match(a, b)) {
+    return end;
+  }
+
+  if (auto end = pattern_assignment::match(a, b)) {
+    return end;
+  }
+
   auto result = new Node(NODE_INVALID);
 
   bool has_type = false;
-  bool has_params = false;
-  bool has_body = false;
   bool has_init = false;
 
   if (auto end = pattern_specifier_list::match(a, b)) {
@@ -559,31 +593,10 @@ const Token* parse_declaration(const Token* a, const Token* b, const char rdelim
     }
   }
 
-
-  if (a[0].is_punct('(')) {
-    has_params = true;
-    if (auto end = pattern_declaration_list::match(a, b)) {
-      a = end;
-      result->append(pop_node());
-    }
-
-    // grab that const after the param list
-    if (auto end = pattern_specifier_list::match(a, b)) {
-      a = end;
-      result->append(pop_node());
-    }
-  }
-
-  if (a[0].is_punct('{')) {
-    has_body = true;
-    a = pattern_compound_statement::match(a, b);
-    result->append(pop_node());
-  }
-
   if (auto end = skip_punct(a, b, '=')) {
     a = end;
     has_init = true;
-    if (auto end = parse_expression(a, b, rdelim)) {
+    if (auto end = parse_expression(a, b)) {
       a = end;
     }
     result->append(pop_node());
@@ -592,14 +605,7 @@ const Token* parse_declaration(const Token* a, const Token* b, const char rdelim
   if (!has_type) {
     result->node_type = NODE_INFIX_EXPRESSION;
   }
-  else if (has_params && has_body) {
-    result->node_type = NODE_FUNCTION_DEFINITION;
-  }
-  else if (has_params) {
-    result->node_type = NODE_FUNCTION_DECLARATION;
-  }
   else {
-    assert(!has_body);
     result->node_type = NODE_DECLARATION;
   }
 
@@ -608,7 +614,7 @@ const Token* parse_declaration(const Token* a, const Token* b, const char rdelim
 }
 
 const Token* parse_declaration2(const Token* a, const Token* b) {
-  return parse_declaration(a, b, 0);
+  return parse_declaration(a, b);
 }
 
 //----------------------------------------
@@ -766,7 +772,10 @@ const Token* parse_decltype(const Token* a, const Token* b) {
     auto result = new Node(NODE_TEMPLATED_TYPE, nullptr, nullptr);
     result->append(type);
 
-    if (auto end = parse_expression_list(a, b, NODE_ARGUMENT_LIST, '<', ',', '>')) {
+    auto list_end = find_matching_delim(a, b);
+
+
+    if (auto end = parse_expression_list(a, list_end, NODE_ARGUMENT_LIST, '<', ',', '>')) {
       a = end;
       result->append(pop_node());
     }
@@ -863,7 +872,7 @@ using pattern_parenthesized_expression = NodeMaker<
 
 //----------------------------------------
 
-const Token* parse_expression_lhs(const Token* a, const Token* b, const char rdelim) {
+const Token* parse_expression_lhs(const Token* a, const Token* b) {
 
   // Dirty hackkkkk - explicitly recognize templated function calls as
   // expression atoms
@@ -877,7 +886,9 @@ const Token* parse_expression_lhs(const Token* a, const Token* b, const char rde
       result->append(pop_node());
     }
 
-    if (auto end = parse_expression_list(a, b, NODE_TEMPLATE_PARAMETER_LIST, '<', ',', '>')) {
+    auto list_end = find_matching_delim(a, b);
+
+    if (auto end = parse_expression_list(a, list_end, NODE_TEMPLATE_PARAMETER_LIST, '<', ',', '>')) {
       a = end;
       result->append(pop_node());
     }
@@ -895,7 +906,7 @@ const Token* parse_expression_lhs(const Token* a, const Token* b, const char rde
     auto op = pop_node();
     auto result = new Node(NODE_PREFIX_EXPRESSION);
     result->append(op);
-    if (auto end = parse_expression_lhs(a, b, rdelim)) {
+    if (auto end = parse_expression_lhs(a, b)) {
       a = end;
       result->append(pop_node());
     }
@@ -915,16 +926,15 @@ const Token* parse_expression_lhs(const Token* a, const Token* b, const char rde
 
 //----------------------------------------
 
-const Token* parse_expression(const Token* a, const Token* b, const char rdelim) {
+const Token* parse_expression(const Token* a, const Token* b) {
 
   // FIXME there are probably other expression terminators?
   if (a->is_eof())         return nullptr;
   if (a->is_punct(')'))    return nullptr;
   if (a->is_punct(';'))    return nullptr;
   if (a->is_punct(','))    return nullptr;
-  if (a->is_punct(rdelim)) return nullptr;
 
-  if (auto end = parse_expression_lhs(a, b, rdelim)) {
+  if (auto end = parse_expression_lhs(a, b)) {
     a = end;
   }
   else {
@@ -935,7 +945,6 @@ const Token* parse_expression(const Token* a, const Token* b, const char rdelim)
   if (a->is_punct(')'))    { return a; }
   if (a->is_punct(';'))    { return a; }
   if (a->is_punct(','))    { return a; }
-  if (a->is_punct(rdelim)) { return a; }
 
   if (auto end = pattern_expression_suffix::match(a, b)) {
     a = end;
@@ -952,7 +961,7 @@ const Token* parse_expression(const Token* a, const Token* b, const char rdelim)
     a = end;
     auto op = pop_node();
     auto lhs = pop_node();
-    a = parse_expression(a, b, rdelim);
+    a = parse_expression(a, b);
     auto rhs = pop_node();
 
     auto result = new Node(NODE_INFIX_EXPRESSION);
@@ -981,7 +990,7 @@ const Token* parse_expression(const Token* a, const Token* b, const char rdelim)
 }
 
 const Token* parse_expression2(const Token* a, const Token* b) {
-  return parse_expression(a, b, 0);
+  return parse_expression(a, b);
 }
 
 //----------------------------------------
@@ -1227,34 +1236,24 @@ const Token* parse_storage_class_specifier(const Token* a, const Token* b) {
 
 //----------------------------------------
 
-const Token* parse_template_decl(const Token* a, const Token* b) {
-  auto result = new TemplateDeclaration();
+using pattern_template_params = NodeMaker<
+  NODE_TEMPLATE_PARAMETER_LIST,
+  Seq<
+    Ref<parse_declaration>,
+    Any<Seq<Atom<','>, Ref<parse_declaration>>>
+  >
+>;
 
-  if (auto end = take_identifier(a, b, "template")) {
-    a = end;
-    result->append(pop_node());
-  }
-  else {
-    return nullptr;
-  }
+//----------------------------------------
 
-  if (auto end = parse_declaration_list(a, b, NODE_TEMPLATE_PARAMETER_LIST, '<', ',', '>')) {
-    a = end;
-    result->append(pop_node());
-  }
-
-  if (auto end = parse_class_specifier(a, b)) {
-    a = end;
-    result->append(pop_node());
-  }
-
-  result->_keyword = result->child(0);
-  result->_params  = result->child(1);
-  result->_class   = result->child(2);
-
-  push_node(result);
-  return a;
-}
+using pattern_template_decl = NodeMaker<
+  NODE_TEMPLATE_DECLARATION,
+  Seq<
+    AtomLit<"template">,
+    Delimited<pattern_template_params>,
+    Ref<parse_class_specifier>
+  >
+>;
 
 //----------------------------------------
 
@@ -1274,7 +1273,7 @@ const Token* parse_declaration_list(const Token* a, const Token* b, NodeType typ
       a = skip_punct(a, b, spacer);
     }
     else {
-      if (auto end = parse_declaration(a, b, rdelim)) {
+      if (auto end = parse_declaration(a, b)) {
         a = end;
       }
       result->append(pop_node());
@@ -1294,16 +1293,21 @@ const Token* parse_expression_list(const Token* a, const Token* b, NodeType type
 
   a = skip_punct(a, b, ldelim);
 
+  auto old_a = a;
+
   while(1) {
     if (a->is_punct(rdelim)) {
+      old_a = a;
       a = skip_punct(a, b, rdelim);
       break;
     }
     else if (a->is_punct(spacer)) {
+      old_a = a;
       a = skip_punct(a, b, spacer);
     }
     else {
-      a = parse_expression(a, b, rdelim);
+      old_a = a;
+      a = parse_expression(a, b);
       result->append(pop_node());
     }
   }
@@ -1317,7 +1321,7 @@ const Token* parse_expression_list(const Token* a, const Token* b, NodeType type
 using pattern_translation_unit = NodeMaker<
   NODE_TRANSLATION_UNIT,
   Any<Oneof<
-    Ref<parse_template_decl>,
+    pattern_template_decl,
     pattern_preproc,
     pattern_external_declaration
   >>
