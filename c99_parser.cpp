@@ -240,21 +240,22 @@ struct NodeMaker {
   static const Token* match(const Token* a, const Token* b) {
     auto old_top = node_top;
     auto end = pattern::match(a, b);
-    if (end) {
+    if (end && end != a) {
       auto node = new Node(n, a, end);
       for (auto i = old_top; i < node_top; i++) {
         node->append(node_stack[i]);
       }
       node_top = old_top;
       push_node(node);
+      return end;
     }
     else {
       for (auto i = old_top; i < node_top; i++) {
         delete node_stack[i];
       }
       node_top = old_top;
+      return nullptr;
     }
-    return end;
   }
 };
 
@@ -324,7 +325,7 @@ using pattern_initializer_list = NodeMaker<NODE_INITIALIZER_LIST,
 
 //----------------------------------------
 
-struct pattern_specifier {
+struct match_specifier {
   static const Token* match(const Token* a, const Token* b) {
     const char* keywords[] = {
       "extern",
@@ -358,10 +359,32 @@ struct pattern_specifier {
 
 //----------------------------------------
 
+struct match_qualifier {
+  static const Token* match(const Token* a, const Token* b) {
+    const char* keywords[] = {
+      "const",
+      "volatile",
+      "restrict",
+      "__restrict__",
+      "_Atomic",
+      "_Noreturn",
+    };
+    auto keyword_count = sizeof(keywords)/sizeof(keywords[0]);
+    for (auto i = 0; i < keyword_count; i++) {
+      if (a->is_identifier(keywords[i])) {
+        return a + 1;
+      }
+    }
+    return nullptr;
+  }
+};
+
+//----------------------------------------
+
 using pattern_specifier_list = NodeMaker<
   NODE_SPECIFIER_LIST,
-  Some<Oneof<
-    NodeMaker<NODE_IDENTIFIER, pattern_specifier>,
+  Any<Oneof<
+    NodeMaker<NODE_IDENTIFIER, match_specifier>,
     NodeMaker<NODE_PUNCT, Atom<'*'>>
   >>
 >;
@@ -417,7 +440,32 @@ using pattern_array_expression = NodeMaker<
 
 //----------------------------------------
 
+const Token* parse_constructor(const Token* a, const Token* b) {
+  using pattern = NodeMaker<
+    NODE_CONSTRUCTOR,
+    Seq<
+      pattern_any_identifier,
+      Ref<parse_parameter_list>,
+      pattern_initializer_list,
+      pattern_specifier_list,
+      Opt<pattern_compound_statement>
+    >
+  >;
+
+  auto end = pattern::match(a, b);
+  if (end) dump_top();
+  return end;
+}
+
+//----------------------------------------
+
 const Token* parse_declaration(const Token* a, const Token* b, const char rdelim) {
+  /*
+  if (auto end = parse_constructor(a, b)) {
+    return end;
+  }
+  */
+
   auto result = new Node(NODE_INVALID);
 
   bool is_constructor = false;
@@ -547,7 +595,7 @@ const Token* parse_declaration(const Token* a, const Token* b, const char rdelim
 }
 
 const Token* parse_declaration2(const Token* a, const Token* b) {
-  return parse_declaration(a, b, ';');
+  return parse_declaration(a, b, 0);
 }
 
 //----------------------------------------
@@ -997,7 +1045,7 @@ const Token* parse_parameter_list(const Token* a, const Token* b) {
 
   while(!a->is_punct(')')) {
 
-    if (auto end = parse_declaration(a, b, ',')) {
+    if (auto end = parse_declaration2(a, b)) {
       a = end;
     }
 
@@ -1155,13 +1203,12 @@ const Token* parse_statement(const Token* a, const Token* b) {
       a[4].is_identifier()) {
     auto result = new Node(NODE_DECLARATION_STATEMENT, nullptr, nullptr);
 
-    if (auto end = parse_declaration(a, b, ';')) {
+    if (auto end = parse_declaration2(a, b)) {
       a = end;
       result->append(pop_node());
     }
 
     a = skip_punct(a, b, ';');
-    //result->dump_tree();
     push_node(result);
     return a;
   }
@@ -1279,28 +1326,6 @@ const Token* parse_expression_list(const Token* a, const Token* b, NodeType type
 
   push_node(result);
   return a;
-}
-
-//----------------------------------------
-
-const Token* parse_type_qualifier(const Token* a, const Token* b) {
-  const char* keywords[] = {
-    "const",
-    "volatile",
-    "restrict",
-    "__restrict__",
-    "_Atomic",
-    "_Noreturn",
-  };
-  auto keyword_count = sizeof(keywords)/sizeof(keywords[0]);
-  for (auto i = 0; i < keyword_count; i++) {
-    if (a->is_identifier(keywords[i])) {
-      return take_identifier(a, b);
-    }
-  }
-
-  assert(false);
-  return nullptr;
 }
 
 //----------------------------------------
