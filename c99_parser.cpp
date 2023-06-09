@@ -400,7 +400,7 @@ struct match_qualifier {
 
 using pattern_specifier_list = NodeMaker<
   NODE_SPECIFIER_LIST,
-  Any<Oneof<
+  Some<Oneof<
     NodeMaker<NODE_IDENTIFIER, match_specifier>,
     NodeMaker<NODE_PUNCT, Atom<'*'>>
   >>
@@ -493,6 +493,7 @@ using pattern_function_definition = NodeMaker<
     Ref<parse_decltype>,
     pattern_any_identifier,
     pattern_declaration_list,
+    Opt<AtomLit<"const">>,
     Oneof<
       pattern_compound_statement,
       Atom<';'>
