@@ -1,17 +1,12 @@
 #include "Matcheroni.h"
 
-#include "c_lexer.h"
 #include "Lexemes.h"
 #include "Node.h"
 #include "NodeTypes.h"
 #include "Tokens.h"
 
-#include <assert.h>
 #include <filesystem>
 #include <memory.h>
-#include <stack>
-#include <stdio.h>
-#include <vector>
 
 double timestamp_ms();
 
@@ -160,7 +155,6 @@ const Token* parse_expression_list(const Token* a, const Token* b, NodeType type
 const Token* parse_expression2(const Token* a, const Token* b);
 const Token* parse_expression(const Token* a, const Token* b, const char rdelim = 0);
 const Token* parse_function_call(const Token* a, const Token* b);
-const Token* parse_identifier(const Token* a, const Token* b);
 const Token* parse_initializer_list(const Token* a, const Token* b);
 const Token* parse_parameter_list(const Token* a, const Token* b);
 const Token* parse_parenthesized_expression(const Token* a, const Token* b);
@@ -263,6 +257,15 @@ struct NodeMaker {
   }
 };
 
+using pattern_any_identifier = NodeMaker<NODE_IDENTIFIER, Atom<TOK_IDENTIFIER>>;
+
+using pattern_constant = NodeMaker<NODE_CONSTANT, Oneof<
+  Atom<TOK_FLOAT>,
+  Atom<TOK_INT>,
+  Atom<TOK_CHAR>,
+  Atom<TOK_STRING>
+>>;
+
 //----------------------------------------
 
 const Token* take_lexemes(const Token* a, const Token* b, NodeType type, int count) {
@@ -286,18 +289,6 @@ const Token* take_identifier(const Token* a, const Token* b, const char* identif
   push_node( new Node(NODE_IDENTIFIER, a, a + 1) );
   return a + 1;
 }
-
-const Token* take_any_identifier(const Token* a, const Token* b) {
-  using pattern = NodeMaker<NODE_IDENTIFIER, Atom<LEX_IDENTIFIER>>;
-  return pattern::match(a, b);
-}
-
-using pattern_constant = NodeMaker<NODE_CONSTANT, Oneof<
-  Atom<TOK_FLOAT>,
-  Atom<TOK_INT>,
-  Atom<TOK_CHAR>,
-  Atom<TOK_STRING>
->>;
 
 //----------------------------------------
 
@@ -378,6 +369,7 @@ const Token* parse_declaration(const Token* a, const Token* b, const char rdelim
 
   if (auto end = parse_enum_declaration(a, b)) {
     a = end;
+
     return a;
   }
 
@@ -385,7 +377,7 @@ const Token* parse_declaration(const Token* a, const Token* b, const char rdelim
   if (a[0].is_identifier() && a[1].is_punct('(')) {
     is_constructor = true;
     has_type = false;
-    if (auto end = parse_identifier(a, b)) {
+    if (auto end = pattern_any_identifier::match(a, b)) {
       a = end;
     }
     result->append(pop_node());
@@ -409,7 +401,7 @@ const Token* parse_declaration(const Token* a, const Token* b, const char rdelim
         a = end;
         result->append(pop_node());
       }
-      if (auto end = parse_identifier(a, b)) {
+      if (auto end = pattern_any_identifier::match(a, b)) {
         a = end;
         result->append(pop_node());
       }
@@ -802,7 +794,7 @@ const Token* parse_expression_lhs(const Token* a, const Token* b, const char rde
     Ref<parse_parenthesized_expression>,
     pattern_constant,
     Ref<parse_function_call>,
-    Ref<take_any_identifier>
+    pattern_any_identifier
   >;
 
   return pattern::match(a, b);
@@ -902,6 +894,16 @@ using pattern_enum_body = NodeMaker<NODE_ENUMERATOR_LIST,
 //----------------------------------------
 
 const Token* parse_enum_declaration(const Token* a, const Token* b) {
+  /*
+  using pattern = NodeMaker<NODE_ENUM_DECLARATION,
+    Seq<
+      AtomLit<"enum">
+      Opt<AtomLit<"class">>,
+
+    >
+  >;
+  */
+
   if (!a[0].is_identifier("enum")) return nullptr;
 
   Node* result = new Node(NODE_ENUM_DECLARATION);
@@ -965,15 +967,6 @@ const Token* parse_function_call(const Token* a, const Token* b) {
 
   push_node(result);
   return a;
-}
-
-//----------------------------------------
-
-const Token* parse_identifier(const Token* a, const Token* b) {
-  if (a->type != TOK_IDENTIFIER) return nullptr;
-  auto result = new Node(NODE_IDENTIFIER, a, a + 1);
-  push_node(result);
-  return a + 1;
 }
 
 //----------------------------------------

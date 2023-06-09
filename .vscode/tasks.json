@@ -6,8 +6,7 @@
     {
       "type": "shell",
       "label": "build_matcheroni",
-      "command": "./build.sh",
-      "args": ["~/projects/gcc"],
+      "command": "ninja",
       "problemMatcher": "$gcc",
       "group": {
         "kind": "build",
