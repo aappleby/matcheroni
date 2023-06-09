@@ -144,6 +144,10 @@ const char* c_structs[] = {
 Node* node_stack[256] = {0};
 size_t node_top = 0;
 
+void dump_top() {
+  node_stack[node_top-1]->dump_tree();
+}
+
 Node* pop_node()         { return node_stack[--node_top]; }
 void  push_node(Node* n) { node_stack[node_top++] = n; }
 
@@ -659,8 +663,6 @@ const Token* parse_struct_specifier(const Token* a, const Token* b) {
     a = parse_field_declaration_list(a, b);
     a = skip_punct(a, b, ';');
     push_node(new StructDefinition(old_a, a));
-
-    //node_stack[node_top-1]->dump_tree();
     return a;
   }
 
@@ -997,27 +999,29 @@ const Token* parse_if_statement(const Token* a, const Token* b) {
   return a;
 }
 
-const Token* parse_while_statement(const Token* a, const Token* b) {
-  auto result = new Node(NODE_WHILE_STATEMENT);
-  if (auto end = take_identifier(a, b, "while")) {
-    a = end;
-    result->append(pop_node());
-  }
+//----------------------------------------
 
-  if (auto end = pattern_parenthesized_expression::match(a, b)) {
-    a = end;
-    result->append(pop_node());
-  }
+using pattern_while_statement = NodeMaker<
+  NODE_WHILE_STATEMENT,
+  Seq<
+    AtomLit<"while">,
+    pattern_parenthesized_expression,
+    Ref<parse_statement>
+  >
+>;
 
-  if (auto end = parse_statement(a, b)) {
-    a = end;
-    result->append(pop_node());
-  }
+//----------------------------------------
 
-  push_node(result);
-  return a;
-}
+using pattern_return_statement = NodeMaker<
+  NODE_RETURN_STATEMENT,
+  Seq<
+    AtomLit<"return">,
+    Ref<parse_expression2>,
+    Atom<';'>
+  >
+>;
 
+/*
 const Token* parse_return_statement(const Token* a, const Token* b) {
   a = take_identifier(a, b);
   auto ret = pop_node();
@@ -1032,6 +1036,7 @@ const Token* parse_return_statement(const Token* a, const Token* b) {
   push_node(result);
   return a;
 }
+*/
 
 //----------------------------------------
 
@@ -1189,6 +1194,7 @@ const Token* parse_for_statement(const Token* a, const Token* b) {
 }
 
 //----------------------------------------
+// _Does_ include the semicolon for single-line statements
 
 const Token* parse_statement(const Token* a, const Token* b) {
   if (a[0].is_punct('}')) {
@@ -1204,8 +1210,8 @@ const Token* parse_statement(const Token* a, const Token* b) {
     return a;
   }
 
-  if (a[0].is_identifier("while")) {
-    a = parse_while_statement(a, b);
+  if (auto end = pattern_while_statement::match(a, b)) {
+    a = end;
     return a;
   }
 
@@ -1214,8 +1220,8 @@ const Token* parse_statement(const Token* a, const Token* b) {
     return a;
   }
 
-  if (a[0].is_identifier("return")) {
-    a = parse_return_statement(a, b);
+  if (auto end = pattern_return_statement::match(a, b)) {
+    a = end;
     return a;
   }
 
@@ -1567,10 +1573,8 @@ int test_c99_peg(int argc, char** argv) {
     parse_translation_unit(token, token_eof);
     parse_accum += timestamp_ms();
 
+    //dump_top();
     auto root = pop_node();
-    //printf("\n");
-    //root->dump_tree();
-    //printf("\n");
     delete root;
 
   }
