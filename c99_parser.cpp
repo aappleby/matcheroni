@@ -158,7 +158,6 @@ const Token* parse_expression2(const Token* a, const Token* b);
 const Token* parse_expression(const Token* a, const Token* b, const char rdelim = 0);
 const Token* parse_function_call(const Token* a, const Token* b);
 const Token* parse_initializer_list(const Token* a, const Token* b);
-const Token* parse_parameter_list(const Token* a, const Token* b);
 const Token* parse_statement(const Token* a, const Token* b);
 
 //----------------------------------------
@@ -440,12 +439,26 @@ using pattern_array_expression = NodeMaker<
 
 //----------------------------------------
 
+const Token* parse_declaration2(const Token* a, const Token* b);
+
+using pattern_declaration_list = NodeMaker<
+  NODE_PARAMETER_LIST,
+  Seq<
+    Atom<'('>,
+    Ref<parse_declaration2>,
+    Any<Seq<Atom<','>, Ref<parse_declaration2>>>,
+    Atom<')'>
+  >
+>;
+
+//----------------------------------------
+
 const Token* parse_constructor(const Token* a, const Token* b) {
   using pattern = NodeMaker<
     NODE_CONSTRUCTOR,
     Seq<
       pattern_any_identifier,
-      Ref<parse_parameter_list>,
+      pattern_declaration_list,
       pattern_initializer_list,
       pattern_specifier_list,
       Opt<pattern_compound_statement>
@@ -539,7 +552,7 @@ const Token* parse_declaration(const Token* a, const Token* b, const char rdelim
 
   if (a[0].is_punct('(')) {
     has_params = true;
-    if (auto end = parse_parameter_list(a, b)) {
+    if (auto end = pattern_declaration_list::match(a, b)) {
       a = end;
       result->append(pop_node());
     }
@@ -1038,36 +1051,7 @@ using pattern_return_statement = NodeMaker<
 
 //----------------------------------------
 
-const Token* parse_parameter_list(const Token* a, const Token* b) {
-  auto result = new NodeList(NODE_PARAMETER_LIST);
-
-  a = skip_punct(a, b, '(');
-
-  while(!a->is_punct(')')) {
-
-    if (auto end = parse_declaration2(a, b)) {
-      a = end;
-    }
-
-    auto decl = pop_node();
-    assert(decl);
-    result->items.push_back(decl);
-    result->append(decl);
-    if (a->is_punct(',')) {
-      a = skip_punct(a, b, ',');
-    }
-  }
-
-  a = skip_punct(a, b, ')');
-
-  push_node(result);
-  return a;
-}
-
-//----------------------------------------
-
 using pattern_preproc = NodeMaker<NODE_PREPROC, Atom<TOK_PREPROC>>;
-
 
 //----------------------------------------
 
@@ -1108,7 +1092,7 @@ using pattern_switch_statement = NodeMaker<
   NODE_SWITCH_STATEMENT,
   Seq<
     AtomLit<"switch">,
-    Ref<parse_parameter_list>,
+    pattern_parenthesized_expression,
     Atom<'{'>,
     Any<pattern_case_or_default>,
     Atom<'}'>
