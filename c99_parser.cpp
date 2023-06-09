@@ -890,6 +890,17 @@ using pattern_external_declaration = Oneof<
 
 //----------------------------------------
 
+using pattern_enum_body = NodeMaker<NODE_ENUMERATOR_LIST,
+  Seq<
+    Atom<'{'>,
+    Ref<parse_expression2>,
+    Any<Seq<Atom<','>, Ref<parse_expression2>>>,
+    Atom<'}'>
+  >
+>;
+
+//----------------------------------------
+
 const Token* parse_enum_declaration(const Token* a, const Token* b) {
   if (!a[0].is_identifier("enum")) return nullptr;
 
@@ -917,7 +928,7 @@ const Token* parse_enum_declaration(const Token* a, const Token* b) {
 
   if (a[0].is_punct('{')) {
 
-    if (auto end = parse_expression_list(a, b, NODE_ENUMERATOR_LIST, '{', ',', '}')) {
+    if (auto end = pattern_enum_body::match(a, b)) {
       a = end;
       result->append(pop_node());
     }

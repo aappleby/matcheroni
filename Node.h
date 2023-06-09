@@ -219,23 +219,39 @@ struct Node {
 
   //----------------------------------------
 
-  void dump_span() {
+  std::string escape_span() {
     if (!tok_a || !tok_b) {
-      printf("<bad span>");
+      return "<bad span>";
     }
     auto lex_a = tok_a->lex;
     auto lex_b = (tok_b - 1)->lex;
-
     auto len = lex_b->span_b - lex_a->span_a;
-    if (len > 40) len = 40;
 
+    std::string result;
     for (auto i = 0; i < len; i++) {
-      putc(lex_a->span_a[i], stdout);
+      auto c = lex_a->span_a[i];
+      if (c == '\n') {
+        result.push_back('\\');
+        result.push_back('n');
+      }
+      else if (c == '\r') {
+        result.push_back('\\');
+        result.push_back('r');
+      }
+      else if (c == '\t') {
+        result.push_back('\\');
+        result.push_back('t');
+      }
+      else {
+        result.push_back(c);
+      }
+      if (result.size() >= 40) break;
     }
-    set_color(0);
 
-    fflush(stdout);
+    return result;
   }
+
+  //----------------------------------------
 
   virtual void dump_tree(int max_depth = 0, int indentation = 0) {
     if (max_depth && indentation == max_depth) return;
@@ -246,13 +262,8 @@ struct Node {
     if (!field.empty()) printf("%-10.10s : ", field.c_str());
     printf("%s", node_to_str(node_type));
 
-    if (tok_a && tok_b) {
-      printf(" '");
-      dump_span();
-      printf("' ");
-    }
+    printf(" '%s'\n", escape_span().c_str());
 
-    printf("\n");
     if (tok_a) set_color(0);
 
     for (auto c = head; c; c = c->next) {
