@@ -1071,35 +1071,16 @@ Oneof<
   pattern_default_statement
 >;
 
-//----------------------------------------
-
-const Token* parse_switch_statement(const Token* a, const Token* b) {
-  if (!a[0].is_identifier("switch")) return nullptr;
-
-  Node* result = new Node(NODE_SWITCH_STATEMENT);
-
-  if (auto end = take_identifier(a, b, "switch")) {
-    a = end;
-    result->append(pop_node());
-  }
-
-  if (auto end = parse_parameter_list(a, b)) {
-    a = end;
-    result->append(pop_node());
-  }
-
-  a = skip_punct(a, b, '{');
-
-  while(!a[0].is_punct('}')) {
-    a = pattern_case_or_default::match(a, b);
-    result->append(pop_node());
-  }
-
-  a = skip_punct(a, b, '}');
-
-  push_node(result);
-  return a;
-}
+using pattern_switch_statement = NodeMaker<
+  NODE_SWITCH_STATEMENT,
+  Seq<
+    AtomLit<"switch">,
+    Ref<parse_parameter_list>,
+    Atom<'{'>,
+    Any<pattern_case_or_default>,
+    Atom<'}'>
+  >
+>;
 
 //----------------------------------------
 
@@ -1190,13 +1171,11 @@ const Token* parse_statement(const Token* a, const Token* b) {
   }
 
   if (auto end = pattern_return_statement::match(a, b)) {
-    a = end;
-    return a;
+    return end;
   }
 
-  if (a[0].is_identifier("switch")) {
-    a = parse_switch_statement(a, b);
-    return a;
+  if (auto end = pattern_switch_statement::match(a, b)) {
+    return end;
   }
 
   if (a[0].is_identifier() && a[1].is_identifier()) {
