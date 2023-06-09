@@ -1,5 +1,6 @@
 #include "Node.h"
 #include <vector>
+#include "Matcheroni.h"
 
 //------------------------------------------------------------------------------
 
@@ -29,27 +30,15 @@ struct ClassDefinition : public Node {
 //------------------------------------------------------------------------------
 
 struct StructDeclaration : public Node {
-  StructDeclaration (Node* _name)
-  : Node(NODE_CLASS_DECLARATION, nullptr, nullptr) {
-    append(_name);
-    this->_name    = _name;
+  StructDeclaration(const Token* tok_a, const Token* tok_b)
+  : Node(NODE_STRUCT_DECLARATION, tok_a, tok_b) {
   }
-
-  Node* _name;
 };
 
-
 struct StructDefinition : public Node {
-  StructDefinition(Node* _name, Node* _decls = nullptr)
-  : Node(NODE_STRUCT_DEFINITION, nullptr, nullptr) {
-    append(_name);
-    append(_decls);
-    this->_name    = _name;
-    this->_decls   = _decls;
+  StructDefinition(const Token* tok_a, const Token* tok_b)
+  : Node(NODE_STRUCT_DEFINITION, tok_a, tok_b) {
   }
-
-  Node* _name;
-  Node* _decls;
 };
 
 //------------------------------------------------------------------------------

@@ -147,7 +147,6 @@ size_t node_top = 0;
 Node* pop_node()         { return node_stack[--node_top]; }
 void  push_node(Node* n) { node_stack[node_top++] = n; }
 
-const Token* parse_compound_statement(const Token* a, const Token* b);
 const Token* parse_declaration_list(const Token* a, const Token* b, NodeType type, const char ldelim, const char spacer, const char rdelim);
 const Token* parse_decltype(const Token* a, const Token* b);
 const Token* parse_enum_declaration(const Token* a, const Token* b);
@@ -241,6 +240,29 @@ struct NodeMaker {
     auto end = pattern::match(a, b);
     if (end) {
       auto node = new Node(n, a, end);
+      for (auto i = old_top; i < node_top; i++) {
+        node->append(node_stack[i]);
+      }
+      node_top = old_top;
+      push_node(node);
+    }
+    else {
+      for (auto i = old_top; i < node_top; i++) {
+        delete node_stack[i];
+      }
+      node_top = old_top;
+    }
+    return end;
+  }
+};
+
+template<typename NodeClass, typename pattern>
+struct NodeMaker2 {
+  static const Token* match(const Token* a, const Token* b) {
+    auto old_top = node_top;
+    auto end = pattern::match(a, b);
+    if (end) {
+      auto node = new NodeClass(a, end);
       for (auto i = old_top; i < node_top; i++) {
         node->append(node_stack[i]);
       }
@@ -353,6 +375,16 @@ using pattern_specifier_list = NodeMaker<NODE_SPECIFIER_LIST,
 
 //----------------------------------------
 
+using pattern_compound_statement = NodeMaker<NODE_COMPOUND_STATEMENT,
+  Seq<
+    Atom<'{'>,
+    Any<Ref<parse_statement>>,
+    Atom<'}'>
+  >
+>;
+
+//----------------------------------------
+
 const Token* parse_declaration(const Token* a, const Token* b, const char rdelim) {
   auto result = new Node(NODE_INVALID);
 
@@ -417,20 +449,21 @@ const Token* parse_declaration(const Token* a, const Token* b, const char rdelim
     }
   }
 
-  while (a[0].is_punct('[')) {
-    if (auto end = skip_punct(a, b, '[')) {
-      a = end;
-    }
+  {
+    using pattern_array_expression = NodeMaker<NODE_ARRAY_EXPRESSION,
+      Seq<
+        Atom<'['>,
+        Ref<parse_expression2>,
+        Atom<']'>
+      >
+    >;
 
-    if (auto end = parse_expression(a, b, ']')) {
-      a = end;
+    if (auto end = pattern_array_expression::match(a, b)) {
       result->append(pop_node());
-    }
-
-    if (auto end = skip_punct(a, b, ']')) {
       a = end;
     }
   }
+
 
   if (a[0].is_punct('(')) {
     has_params = true;
@@ -455,7 +488,7 @@ const Token* parse_declaration(const Token* a, const Token* b, const char rdelim
 
   if (a[0].is_punct('{')) {
     has_body = true;
-    a = parse_compound_statement(a, b);
+    a = pattern_compound_statement::match(a, b);
     result->append(pop_node());
   }
 
@@ -496,6 +529,22 @@ const Token* parse_declaration2(const Token* a, const Token* b) {
 //----------------------------------------
 
 const Token* parse_field_declaration_list(const Token* a, const Token* b) {
+
+  /*
+  using pattern = NodeMaker<NODE_FIELD_DECLARATION_LIST,
+    Seq<
+      Atom<'{'>,
+      Any<Oneof<
+        pattern_access_specifier,
+        Seq<Ref<parse_declaration2>,Atom<';'>>
+      >>,
+      Atom<'}'>
+    >
+  >;
+
+  return pattern::match(a, b);
+  */
+
   auto result = new NodeList(NODE_FIELD_DECLARATION_LIST);
   a = skip_punct(a, b, '{');
 
@@ -506,7 +555,7 @@ const Token* parse_field_declaration_list(const Token* a, const Token* b) {
       a = end;
     }
     else {
-      if (auto end = parse_declaration(a, b, ';')) {
+      if (auto end = parse_declaration2(a, b)) {
         a = end;
         auto child = pop_node();
         result->append(child);
@@ -560,25 +609,23 @@ const Token* parse_class_specifier(const Token* a, const Token* b) {
 const Token* parse_struct_specifier(const Token* a, const Token* b) {
   if (!a->is_identifier("struct")) return nullptr;
 
-  using decl = Seq<AtomLit<"struct">, Atom<LEX_IDENTIFIER>, Atom<';'>>;
+  auto old_a = a;
+
+  using decl = NodeMaker<NODE_STRUCT_DECLARATION,
+    Seq<AtomLit<"struct">, Atom<LEX_IDENTIFIER>, Atom<';'>>
+  >;
 
   if (auto end = decl::match(a, b)) {
-    a = skip_identifier(a, b, "struct");
-    a = take_identifier(a, b);
-    auto name = pop_node();
-    a = skip_punct(a, b, ';');
-
-    push_node(new StructDeclaration(name));
-    return a;
+    return end;
   }
   else {
     a = skip_identifier(a, b, "struct");
     a = take_identifier(a, b);
-    auto name = pop_node();
     a = parse_field_declaration_list(a, b);
-    auto body = pop_node();
     a = skip_punct(a, b, ';');
-    push_node(new StructDefinition(name, body));
+    push_node(new StructDefinition(old_a, a));
+
+    //node_stack[node_top-1]->dump_tree();
     return a;
   }
 
@@ -613,34 +660,6 @@ const Token* parse_namespace_specifier(const Token* a, const Token* b) {
     push_node(result);
     return a;
   }
-}
-
-//----------------------------------------
-
-const Token* parse_compound_statement(const Token* a, const Token* b) {
-  if (!a->is_punct('{')) return nullptr;
-
-  auto result = new CompoundStatement();
-  push_node(result);
-
-  auto old_top = node_top;
-
-  a = skip_punct(a, b, '{');
-
-  while(auto end = parse_statement(a, b)) {
-    a = end;
-  }
-
-  a = skip_punct(a, b, '}');
-
-  for (auto c = old_top; c < node_top; c++) {
-    result->statements.push_back(node_stack[c]);
-    result->append(node_stack[c]);
-  }
-
-  node_top = old_top;
-
-  return a;
 }
 
 //----------------------------------------
@@ -1216,9 +1235,8 @@ const Token* parse_statement(const Token* a, const Token* b) {
     return nullptr;
   }
 
-  if (a[0].is_punct('{')) {
-    a = parse_compound_statement(a, b);
-    return a;
+  if (auto end = pattern_compound_statement::match(a, b)) {
+    return end;
   }
 
   if (a[0].is_identifier("if")) {
