@@ -149,7 +149,6 @@ void  push_node(Node* n) { node_stack[node_top++] = n; }
 
 const Token* parse_declaration_list(const Token* a, const Token* b, NodeType type, const char ldelim, const char spacer, const char rdelim);
 const Token* parse_decltype(const Token* a, const Token* b);
-const Token* parse_enum_declaration(const Token* a, const Token* b);
 const Token* parse_expression_list(const Token* a, const Token* b, NodeType type, const char ldelim, const char spacer, const char rdelim);
 const Token* parse_expression2(const Token* a, const Token* b);
 const Token* parse_expression(const Token* a, const Token* b, const char rdelim = 0);
@@ -385,6 +384,31 @@ using pattern_compound_statement = NodeMaker<NODE_COMPOUND_STATEMENT,
 
 //----------------------------------------
 
+using pattern_enum_body = NodeMaker<NODE_ENUMERATOR_LIST,
+  Seq<
+    Atom<'{'>,
+    Ref<parse_expression2>,
+    Any<Seq<Atom<','>, Ref<parse_expression2>>>,
+    Atom<'}'>
+  >
+>;
+
+//----------------------------------------
+// FIXME should probably have a few diffeerent versions instead of all the opts
+
+using pattern_enum_declaration = NodeMaker<NODE_ENUM_DECLARATION,
+  Seq<
+    AtomLit<"enum">,
+    Opt<AtomLit<"class">>,
+    Opt<pattern_any_identifier>,
+    Opt<Seq<Atom<':'>, Ref<parse_decltype>>>,
+    Opt<pattern_enum_body>,
+    Opt<pattern_any_identifier>
+  >
+>;
+
+//----------------------------------------
+
 const Token* parse_declaration(const Token* a, const Token* b, const char rdelim) {
   auto result = new Node(NODE_INVALID);
 
@@ -399,7 +423,7 @@ const Token* parse_declaration(const Token* a, const Token* b, const char rdelim
     result->append(pop_node());
   }
 
-  if (auto end = parse_enum_declaration(a, b)) {
+  if (auto end = pattern_enum_declaration::match(a, b)) {
     a = end;
 
     return a;
@@ -898,76 +922,6 @@ using pattern_external_declaration = Oneof<
   Ref<parse_struct_specifier>,
   Seq<Ref<parse_declaration2>, Atom<';'>>
 >;
-
-//----------------------------------------
-
-using pattern_enum_body = NodeMaker<NODE_ENUMERATOR_LIST,
-  Seq<
-    Atom<'{'>,
-    Ref<parse_expression2>,
-    Any<Seq<Atom<','>, Ref<parse_expression2>>>,
-    Atom<'}'>
-  >
->;
-
-//----------------------------------------
-
-const Token* parse_enum_declaration(const Token* a, const Token* b) {
-  /*
-  using pattern = NodeMaker<NODE_ENUM_DECLARATION,
-    Seq<
-      AtomLit<"enum">
-      Opt<AtomLit<"class">>,
-
-    >
-  >;
-  */
-
-  if (!a[0].is_identifier("enum")) return nullptr;
-
-  Node* result = new Node(NODE_ENUM_DECLARATION);
-
-  a = skip_identifier(a, b, "enum");
-
-  if (a[0].is_identifier("class")) {
-    a = skip_identifier(a, b, "class");
-  }
-
-  if (a[0].is_identifier()) {
-    a = take_identifier(a, b);
-    result->append(pop_node());
-  }
-
-  if (a[0].is_punct(':')) {
-    a = skip_punct(a, b, ':');
-
-    if (auto end = parse_decltype(a, b)) {
-      a = end;
-      result->append(pop_node());
-    }
-  }
-
-  if (a[0].is_punct('{')) {
-
-    if (auto end = pattern_enum_body::match(a, b)) {
-      a = end;
-      result->append(pop_node());
-    }
-  }
-
-  // this is the weird enum {} blah;
-  if (a[0].is_identifier()) {
-    auto result2 = new Node(NODE_DECLARATION);
-    result2->append(result);
-    a = take_identifier(a, b);
-    result2->append(pop_node());
-    push_node(result2);
-    return a;
-  }
-
-  push_node(result);
-  return a;
-}
 
 //----------------------------------------
 
