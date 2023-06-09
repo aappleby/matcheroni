@@ -258,37 +258,22 @@ struct NodeMaker {
   }
 };
 
-template<typename NodeClass, typename pattern>
-struct NodeMaker2 {
-  static const Token* match(const Token* a, const Token* b) {
-    auto old_top = node_top;
-    auto end = pattern::match(a, b);
-    if (end) {
-      auto node = new NodeClass(a, end);
-      for (auto i = old_top; i < node_top; i++) {
-        node->append(node_stack[i]);
-      }
-      node_top = old_top;
-      push_node(node);
-    }
-    else {
-      for (auto i = old_top; i < node_top; i++) {
-        delete node_stack[i];
-      }
-      node_top = old_top;
-    }
-    return end;
-  }
-};
+//----------------------------------------
 
-using pattern_any_identifier = NodeMaker<NODE_IDENTIFIER, Atom<TOK_IDENTIFIER>>;
+using pattern_any_identifier = NodeMaker<
+  NODE_IDENTIFIER,
+  Atom<TOK_IDENTIFIER>
+>;
 
-using pattern_constant = NodeMaker<NODE_CONSTANT, Oneof<
-  Atom<TOK_FLOAT>,
-  Atom<TOK_INT>,
-  Atom<TOK_CHAR>,
-  Atom<TOK_STRING>
->>;
+using pattern_constant = NodeMaker<
+  NODE_CONSTANT,
+  Oneof<
+    Atom<TOK_FLOAT>,
+    Atom<TOK_INT>,
+    Atom<TOK_CHAR>,
+    Atom<TOK_STRING>
+  >
+>;
 
 //----------------------------------------
 
