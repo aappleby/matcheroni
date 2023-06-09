@@ -144,12 +144,30 @@ const char* c_structs[] = {
 Node* node_stack[256] = {0};
 size_t node_top = 0;
 
+Node* pop_node() {
+  return node_stack[--node_top];
+}
+
+void push_node(Node* n) {
+  node_stack[node_top++] = n;
+}
+
 void dump_top() {
   node_stack[node_top-1]->dump_tree();
 }
 
-Node* pop_node()         { return node_stack[--node_top]; }
-void  push_node(Node* n) { node_stack[node_top++] = n; }
+//----------------------------------------
+
+template<typename pattern>
+struct Dump {
+  static const Token* match(const Token* a, const Token* b) {
+    auto end = pattern::match(a, b);
+    if (end) dump_top();
+    return end;
+  }
+};
+
+//----------------------------------------
 
 const Token* parse_declaration_list(const Token* a, const Token* b, NodeType type, const char ldelim, const char spacer, const char rdelim);
 const Token* parse_decltype(const Token* a, const Token* b);
@@ -469,14 +487,36 @@ using pattern_constructor = NodeMaker<
 
 //----------------------------------------
 
+using pattern_function_definition = NodeMaker<
+  NODE_FUNCTION_DEFINITION,
+  Seq<
+    Ref<parse_decltype>,
+    pattern_any_identifier,
+    pattern_declaration_list,
+    Oneof<
+      pattern_compound_statement,
+      Atom<';'>
+    >
+  >
+>;
+
+//----------------------------------------
+
 const Token* parse_declaration(const Token* a, const Token* b, const char rdelim) {
   if (auto end = pattern_constructor::match(a, b)) {
     return end;
   }
 
+  if (auto end = pattern_enum_declaration::match(a, b)) {
+    return end;
+  }
+
+  if (auto end = pattern_function_definition::match(a, b)) {
+    return end;
+  }
+
   auto result = new Node(NODE_INVALID);
 
-  bool is_constructor = false;
   bool has_type = false;
   bool has_params = false;
   bool has_body = false;
@@ -487,53 +527,27 @@ const Token* parse_declaration(const Token* a, const Token* b, const char rdelim
     result->append(pop_node());
   }
 
-  if (auto end = pattern_enum_declaration::match(a, b)) {
+  // Need a better way to handle this
+  if (auto end = parse_decltype(a, b)) {
     a = end;
-
-    return a;
   }
+  auto n1 = pop_node();
 
-
-  if (a[0].is_identifier() && a[1].is_punct('(')) {
-    is_constructor = true;
+  if (a[0].is_punct('=')) {
     has_type = false;
-    if (auto end = pattern_any_identifier::match(a, b)) {
-      a = end;
-    }
-    result->append(pop_node());
+    n1->node_type = NODE_IDENTIFIER;
+    result->append(n1);
   }
   else {
-    // Need a better way to handle this
-    if (auto end = parse_decltype(a, b)) {
+    has_type = true;
+    result->append(n1);
+    if (auto end = pattern_specifier_list::match(a, b)) {
       a = end;
+      result->append(pop_node());
     }
-    auto n1 = pop_node();
-
-    if (a[0].is_punct('=')) {
-      has_type = false;
-      n1->node_type = NODE_IDENTIFIER;
-      result->append(n1);
-    }
-    else {
-      has_type = true;
-      result->append(n1);
-      if (auto end = pattern_specifier_list::match(a, b)) {
-        a = end;
-        result->append(pop_node());
-      }
-      if (auto end = pattern_any_identifier::match(a, b)) {
-        a = end;
-        result->append(pop_node());
-      }
-    }
-
-    if (auto end = skip_punct(a, b, ':')) {
+    if (auto end = pattern_any_identifier::match(a, b)) {
       a = end;
-
-      if (auto end = parse_expression(a, b, '{')) {
-        a = end;
-        result->append(pop_node());
-      }
+      result->append(pop_node());
     }
   }
 
@@ -550,13 +564,6 @@ const Token* parse_declaration(const Token* a, const Token* b, const char rdelim
     if (auto end = pattern_declaration_list::match(a, b)) {
       a = end;
       result->append(pop_node());
-    }
-
-    if (is_constructor) {
-      if (auto end = pattern_initializer_list::match(a, b)) {
-        a = end;
-        result->append(pop_node());
-      }
     }
 
     // grab that const after the param list
@@ -583,9 +590,6 @@ const Token* parse_declaration(const Token* a, const Token* b, const char rdelim
 
   if (!has_type) {
     result->node_type = NODE_INFIX_EXPRESSION;
-  }
-  else if (is_constructor) {
-    result->node_type = NODE_CONSTRUCTOR;
   }
   else if (has_params && has_body) {
     result->node_type = NODE_FUNCTION_DEFINITION;
