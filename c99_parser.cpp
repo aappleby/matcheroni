@@ -154,7 +154,6 @@ struct Dump {
 
 //----------------------------------------
 
-const Token* parse_decltype(const Token* a, const Token* b);
 const Token* parse_expression_list(const Token* a, const Token* b, NodeType type, const char ldelim, const char spacer, const char rdelim);
 const Token* parse_expression2(const Token* a, const Token* b);
 const Token* parse_expression(const Token* a, const Token* b);
@@ -435,6 +434,32 @@ using pattern_enum_body = NodeMaker<
 >;
 
 //----------------------------------------
+
+using pattern_argument_list = NodeMaker<
+  NODE_ARGUMENT_LIST,
+  Delimited<'<', '>', Seq<
+    Ref<parse_expression>,
+    Any<Seq<Atom<','>, Ref<parse_expression>>>
+  >>
+>;
+
+//----------------------------------------
+
+using pattern_decltype = NodeMaker<
+  NODE_DECLTYPE,
+  Seq<
+    pattern_any_identifier,
+    Opt<pattern_argument_list>,
+    Opt<Seq<
+      Atom<':'>,
+      Atom<':'>,
+      pattern_any_identifier
+    >>,
+    Opt<Atom<'*'>>
+  >
+>;
+
+//----------------------------------------
 // FIXME should probably have a few diffeerent versions instead of all the opts
 
 using pattern_enum_declaration = NodeMaker<
@@ -443,7 +468,7 @@ using pattern_enum_declaration = NodeMaker<
     AtomLit<"enum">,
     Opt<AtomLit<"class">>,
     Opt<pattern_any_identifier>,
-    Opt<Seq<Atom<':'>, Ref<parse_decltype>>>,
+    Opt<Seq<Atom<':'>, pattern_decltype>>,
     Opt<pattern_enum_body>,
     Opt<pattern_any_identifier>
   >
@@ -495,7 +520,7 @@ using pattern_constructor = NodeMaker<
 using pattern_function_definition = NodeMaker<
   NODE_FUNCTION_DEFINITION,
   Seq<
-    Ref<parse_decltype>,
+    pattern_decltype,
     pattern_any_identifier,
     pattern_declaration_list,
     Opt<AtomLit<"const">>,
@@ -512,7 +537,7 @@ using pattern_declaration = NodeMaker<
   NODE_DECLARATION,
   Seq<
     Opt<pattern_specifier_list>,
-    Ref<parse_decltype>,
+    pattern_decltype,
     pattern_any_identifier,
     Opt<Seq<
       Atom<'='>,
@@ -564,7 +589,7 @@ const Token* parse_declaration(const Token* a, const Token* b) {
   }
 
   // Need a better way to handle this
-  if (auto end = parse_decltype(a, b)) {
+  if (auto end = pattern_decltype::match(a, b)) {
     a = end;
   }
   auto n1 = pop_node();
@@ -754,93 +779,19 @@ const Token* parse_namespace_specifier(const Token* a, const Token* b) {
 
 //----------------------------------------
 
-using pattern_argument_list = NodeMaker<
-  NODE_ARGUMENT_LIST,
-  Delimited<'<', '>', Seq<
-    Ref<parse_expression>,
-    Any<Seq<Atom<','>, Ref<parse_expression>>>
-  >>
+using pattern_decltype = NodeMaker<
+  NODE_DECLTYPE,
+  Seq<
+    pattern_any_identifier,
+    Opt<pattern_argument_list>,
+    Opt<Seq<
+      Atom<':'>,
+      Atom<':'>,
+      pattern_any_identifier
+    >>,
+    Opt<Atom<'*'>>
+  >
 >;
-
-//----------------------------------------
-
-const Token* parse_decltype1(const Token* a, const Token* b) {
-  if (a[0].type != TOK_IDENTIFIER) return nullptr;
-
-  Node* type = nullptr;
-
-  // FIXME do some proper type parsing here
-  if (a[1].is_punct('*')) {
-    type = new Node(NODE_DECLTYPE, &a[0], &a[2]);
-    a += 2;
-  }
-  else {
-    type = new Node(NODE_DECLTYPE, &a[0], &a[1]);
-    a += 1;
-  }
-
-  if (a[0].is_punct('<')) {
-    auto result = new Node(NODE_TEMPLATED_TYPE, nullptr, nullptr);
-    result->append(type);
-
-    if (auto end = pattern_argument_list::match(a, b)) {
-      a = end;
-      result->append(pop_node());
-    }
-
-    if (a[0].is_punct(':') && a[1].is_punct(':')) {
-      auto result2 = new Node(NODE_SCOPED_TYPE);
-      result2->append(result);
-
-      a = take_lexemes(a, b, NODE_OPERATOR, 2);
-      result2->append(pop_node());
-
-      if (auto end = pattern_any_identifier::match(a, b)) {
-        a = end;
-        result2->append(pop_node());
-      }
-      push_node(result2);
-      return a;
-    }
-
-    push_node(result);
-    return a;
-  }
-  else {
-    push_node(type);
-    return a;
-  }
-}
-
-const Token* parse_decltype2(const Token* a, const Token* b) {
-  using pattern = NodeMaker<
-    NODE_DECLTYPE,
-    Seq<
-      pattern_any_identifier,
-      Opt<pattern_argument_list>,
-      Opt<Seq<
-        Atom<':'>,
-        Atom<':'>,
-        pattern_any_identifier
-      >>,
-      Opt<Atom<'*'>>
-    >
-  >;
-
-  return pattern::match(a, b);
-}
-
-const Token* parse_decltype(const Token* a, const Token* b) {
-  auto end1 = parse_decltype1(a, b);
-  auto end2 = parse_decltype2(a, b);
-
-  if (end1 != end2) {
-    printf("!!!!!!! bad decltype parse @ {%.20s}\n", a->lex->span_a);
-    //assert(false);
-  }
-
-  return end1;
-}
 
 //----------------------------------------
 
@@ -1052,27 +1003,6 @@ using pattern_external_declaration = Oneof<
   Ref<parse_struct_specifier>,
   Seq<Ref<parse_declaration2>, Atom<';'>>
 >;
-
-//----------------------------------------
-
-/*
-const Token* parse_function_call(const Token* a, const Token* b) {
-  if (!a[0].is_identifier() || !a[1].is_punct('(')) return nullptr;
-
-  auto result = new Node(NODE_CALL_EXPRESSION, nullptr, nullptr);
-
-  if (a = pattern_any_identifier::match(a, b)) {
-    result->append(pop_node());
-  }
-  if (auto end = parse_expression_list(a, b, NODE_ARGUMENT_LIST, '(', ',', ')')) {
-    a = end;
-    result->append(pop_node());
-  }
-
-  push_node(result);
-  return a;
-}
-*/
 
 //----------------------------------------
 
