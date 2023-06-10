@@ -151,18 +151,35 @@ inline const char* node_to_str(NodeType t) {
 
 struct Node {
 
-  Node(NodeType node_type, const Token* tok_a = nullptr, const Token* tok_b = nullptr) {
+  Node(NodeType type, const Token* a = nullptr, const Token* b = nullptr) {
     //assert(node_type != NODE_INVALID);
-    if (tok_a == nullptr && tok_b == nullptr) {
+    if (a == nullptr && b == nullptr) {
     }
     else {
-      assert(tok_b > tok_a);
+      assert(b > a);
     }
 
-    this->node_type = node_type;
-    this->tok_a = tok_a;
-    this->tok_b = tok_b;
+    this->node_type = type;
+    this->tok_a = a;
+    this->tok_b = b;
   };
+
+  Node(NodeType type, const Token* a, const Token* b, Node** children, size_t child_count) {
+    if (a == nullptr && b == nullptr) {
+    }
+    else {
+      assert(b > a);
+    }
+
+    this->node_type = type;
+    this->tok_a = a;
+    this->tok_b = b;
+
+    for (auto i = 0; i < child_count; i++) {
+      append(children[i]);
+    }
+  }
+
 
   ~Node() {
     auto cursor = head;

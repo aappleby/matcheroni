@@ -46,19 +46,21 @@ bool atom_eq(const Token& a, const StringParam<N>& b) {
 
 //----------------------------------------
 
-template<typename CharMatcher>
-const Token* match_chars(const Token* a, const Token* b) {
-  auto span_a = a->lex->span_a;
-  auto span_b = b->lex->span_a;
+template<typename P>
+struct match_chars_as_tokens {
+  static const Token* match(const Token* a, const Token* b) {
+    auto span_a = a->lex->span_a;
+    auto span_b = b->lex->span_a;
 
-  auto end = CharMatcher::match(span_a, span_b);
-  if (!end) return nullptr;
+    auto end = P::match(span_a, span_b);
+    if (!end) return nullptr;
 
-  auto match_lex_a = a;
-  auto match_lex_b = a;
-  while(match_lex_b->lex->span_a < end) match_lex_b++;
-  return match_lex_b;
-}
+    auto match_lex_a = a;
+    auto match_lex_b = a;
+    while(match_lex_b->lex->span_a < end) match_lex_b++;
+    return match_lex_b;
+  }
+};
 
 //------------------------------------------------------------------------------
 
@@ -284,7 +286,30 @@ struct NodeMaker {
   }
 };
 
-//----------------------------------------
+//------------------------------------------------------------------------------
+
+template<typename NT, typename P>
+struct NodeMaker3 {
+  static const Token* match(const Token* a, const Token* b) {
+    auto old_top = node_top;
+    auto end = P::match(a, b);
+    if (end && end != a) {
+      auto node = new NT(a, end, &node_stack[old_top], node_top - old_top);
+      node_top = old_top;
+      push_node(node);
+      return end;
+    }
+    else {
+      for (auto i = old_top; i < node_top; i++) {
+        delete node_stack[i];
+      }
+      node_top = old_top;
+      return nullptr;
+    }
+  }
+};
+
+//------------------------------------------------------------------------------
 
 struct pattern_any_identifier : public NodeMaker<
   NODE_IDENTIFIER,
@@ -304,20 +329,15 @@ struct pattern_constant : public NodeMaker<
 //----------------------------------------
 
 template<char punct>
-struct pattern_punct : public NodeMaker<NODE_PUNCT, Atom<punct>> {};
-
-//----------------------------------------
-
-class pattern_access_specifier : public NodeMaker<NODE_ACCESS_SPECIFIER,
-  Seq<
-    Oneof<AtomLit<"public">, AtomLit<"private">>,
-    Atom<':'>
-  >
+struct pattern_punct : public NodeMaker<
+  NODE_PUNCT,
+  Atom<punct>
 > {};
 
 //----------------------------------------
 
-class pattern_initializer_list : public NodeMaker<NODE_INITIALIZER_LIST,
+class pattern_initializer_list : public NodeMaker<
+  NODE_INITIALIZER_LIST,
   Seq<
     Atom<':'>,
     comma_separated<Ref<parse_expression>>,
@@ -418,9 +438,7 @@ struct pattern_enum_body : public NodeMaker<
 struct pattern_template_argument_list : public NodeMaker<
   NODE_ARGUMENT_LIST,
   Delimited<'<', '>',
-    Seq<
-      opt_comma_separated<Ref<parse_expression>>
-    >
+    opt_comma_separated<Ref<parse_expression>>
   >
 > {};
 
@@ -476,7 +494,7 @@ struct pattern_declaration : public NodeMaker<
     pattern_any_identifier,
     Opt<pattern_array_expression>,
     Opt<Seq<
-      Atom<'='>,
+      NodeMaker<NODE_OPERATOR, Atom<'='>>,
       Ref<parse_expression>
     >>
   >
@@ -502,7 +520,6 @@ struct pattern_constructor : public NodeMaker<
     pattern_any_identifier,
     pattern_parenthesized_declaration_list,
     Opt<pattern_initializer_list>,
-    Opt<pattern_specifier_list>,
     Oneof<
       pattern_compound_statement,
       Atom<';'>
@@ -526,18 +543,18 @@ struct pattern_function_definition : public NodeMaker<
   >
 > {};
 
-//----------------------------------------
+//------------------------------------------------------------------------------
 
 struct pattern_assignment : public NodeMaker<
   NODE_ASSIGNMENT_EXPRESSION,
   Seq<
     pattern_any_identifier,
-    Ref<match_chars<Ref<match_assign_op>>>,
+    match_chars_as_tokens<Ref<match_assign_op>>,
     Ref<parse_expression>
   >
 > {};
 
-//----------------------------------------
+//------------------------------------------------------------------------------
 
 struct pattern_field_declaration : public Oneof<
   pattern_constructor,
@@ -547,13 +564,34 @@ struct pattern_field_declaration : public Oneof<
   pattern_assignment
 > {};
 
-//----------------------------------------
+//------------------------------------------------------------------------------
+
+struct NodeAccessSpecifier : public Node {
+
+  NodeAccessSpecifier(const Token* a, const Token* b, Node** children, size_t child_count)
+  : Node(NODE_ACCESS_SPECIFIER, a, b, children, child_count) {
+  }
+
+  using pattern = Seq<
+    Oneof<
+      AtomLit<"public">,
+      AtomLit<"private">
+    >,
+    Atom<':'>
+  >;
+
+  static const Token* match(const Token* a, const Token* b) {
+    return NodeMaker3<NodeAccessSpecifier, pattern>::match(a, b);
+  }
+};
+
+//------------------------------------------------------------------------------
 
 struct pattern_field_declaration_list : public NodeMaker<NODE_FIELD_DECLARATION_LIST,
   Seq<
     Atom<'{'>,
     Any<Oneof<
-      pattern_access_specifier,
+      NodeAccessSpecifier,
       Seq<pattern_field_declaration,Opt<Atom<';'>>>
     >>,
     Atom<'}'>
@@ -597,7 +635,7 @@ struct pattern_namespace_specifier : NodeMaker<
 
 struct pattern_prefix_op : public NodeMaker<
   NODE_OPERATOR,
-  Ref<match_chars<Ref<match_prefix_op>>>
+  match_chars_as_tokens<Ref<match_prefix_op>>
 > {};
 
 struct pattern_typecast : public NodeMaker<
@@ -650,7 +688,7 @@ struct pattern_expression_suffix : public Oneof<
 //----------------------------------------
 
 struct pattern_infix_op : public NodeMaker<NODE_OPERATOR,
-  Ref<match_chars<Ref<match_infix_op>>>
+  match_chars_as_tokens<Ref<match_infix_op>>
 > {};
 
 //----------------------------------------
@@ -1052,7 +1090,7 @@ int test_c99_peg(int argc, char** argv) {
     paths.push_back(f.path().native());
   }
 
-  //paths = { "tests/bit_casts.h" };
+  //paths = { "tests/constructor_args.h" };
 
   double lex_accum = 0;
   double parse_accum = 0;
