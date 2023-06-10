@@ -258,10 +258,6 @@ Opt<Seq<
 
 //------------------------------------------------------------------------------
 
-const Token* skip_punct(const Token* a, const Token* b, const char punct) {
-  return a->is_punct(punct) ? a + 1 : nullptr;
-}
-
 template<NodeType n, typename pattern>
 struct NodeMaker {
   static const Token* match(const Token* a, const Token* b) {
@@ -466,6 +462,8 @@ struct pattern_array_expression : public NodeMaker<
   >
 > {};
 
+//----------------------------------------
+
 struct pattern_declaration : public NodeMaker<
   NODE_DECLARATION,
   Seq<
@@ -546,33 +544,6 @@ struct pattern_field_declaration : public Oneof<
 > {};
 
 //----------------------------------------
-
-/*
-struct pattern_field_declaration_list {
-  static const Token* match(const Token* a, const Token* b) {
-    a = Atom<'{'>::match(a, b);
-
-    auto end = a;
-    while(end) {
-      if (end = pattern_access_specifier::match(a, b)) {
-        a = end;
-      }
-      else if (end = pattern_field_declaration::match(a, b)) {
-        a = end;
-        if (end = Atom<';'>::match(a, b)) {
-          a = end;
-        }
-      }
-      else {
-        end = nullptr;
-      }
-    }
-
-    a = Atom<'}'>::match(a, b);
-    return a;
-  }
-};
-*/
 
 struct pattern_field_declaration_list : public NodeMaker<NODE_FIELD_DECLARATION_LIST,
   Seq<
@@ -712,86 +683,26 @@ struct pattern_template_parameter_list : public NodeMaker<
 
 //----------------------------------------
 
-const Token* parse_expression_lhs(const Token* a, const Token* b) {
+const Token* parse_expression(const Token* a, const Token* b) {
+  if (!a) return nullptr;
 
-  struct pattern_expression_lhs : public Oneof<
-    pattern_parenthesized_expression,
-    pattern_constant,
-    pattern_function_call,
-    pattern_any_identifier
+  struct pattern_expression_lhs : public Seq<
+    Any<pattern_expression_prefix>,
+    Oneof<
+      pattern_parenthesized_expression,
+      pattern_constant,
+      pattern_function_call,
+      pattern_any_identifier
+    >,
+    Any<pattern_expression_suffix>
+
   > {};
 
-  // Dirty hackkkkk - explicitly recognize templated function calls as
-  // expression atoms
-  if (a[0].is_identifier() &&
-      a[1].is_punct('<') &&
-      (a[2].is_identifier() || a[2].is_constant()) &&
-      a[3].is_punct('>')) {
-    auto result = new Node(NODE_CALL_EXPRESSION, nullptr, nullptr);
-
-    if (a = pattern_any_identifier::match(a, b)) {
-      result->append(pop_node());
-    }
-
-    if (auto end = pattern_template_parameter_list::match(a, b)) {
-      a = end;
-      result->append(pop_node());
-    }
-
-    if (auto end = pattern_parenthesized_expression_list::match(a, b)) {
-      a = end;
-      result->append(pop_node());
-    }
-    push_node(result);
-    return a;
-  }
-
-  if (auto end = pattern_expression_prefix::match(a, b)) {
-    a = end;
-    auto op = pop_node();
-    auto result = new Node(NODE_PREFIX_EXPRESSION);
-    result->append(op);
-    if (auto end = parse_expression_lhs(a, b)) {
-      a = end;
-      result->append(pop_node());
-    }
-    push_node(result);
-    return a;
-  }
-
-  return pattern_expression_lhs::match(a, b);
-}
-
-//----------------------------------------
-
-const Token* parse_expression(const Token* a, const Token* b) {
-
-  // FIXME there are probably other expression terminators?
-  if (a->is_eof())         return nullptr;
-  if (a->is_punct(')'))    return nullptr;
-  if (a->is_punct(';'))    return nullptr;
-  if (a->is_punct(','))    return nullptr;
-
-  if (auto end = parse_expression_lhs(a, b)) {
+  if (auto end = pattern_expression_lhs::match(a, b)) {
     a = end;
   }
   else {
     return nullptr;
-  }
-
-  if (a->is_eof())         { return a; }
-  if (a->is_punct(')'))    { return a; }
-  if (a->is_punct(';'))    { return a; }
-  if (a->is_punct(','))    { return a; }
-
-  while (auto end = pattern_expression_suffix::match(a, b)) {
-    a = end;
-    auto op = pop_node();
-    auto lhs = pop_node();
-    auto result = new Node(NODE_POSTFIX_EXPRESSION);
-    result->append(lhs);
-    result->append(op);
-    push_node(result);
   }
 
   if (auto end = pattern_infix_op::match(a, b)) {
