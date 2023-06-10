@@ -155,10 +155,7 @@ struct Dump {
 
 //----------------------------------------
 
-const Token* parse_expression_list(const Token* a, const Token* b, NodeType type, const char ldelim, const char spacer, const char rdelim);
 const Token* parse_expression(const Token* a, const Token* b);
-const Token* parse_expression(const Token* a, const Token* b);
-const Token* parse_initializer_list(const Token* a, const Token* b);
 const Token* parse_statement(const Token* a, const Token* b);
 
 //----------------------------------------
@@ -251,12 +248,6 @@ const Token* skip_punct(const Token* a, const Token* b, const char punct) {
   return a->is_punct(punct) ? a + 1 : nullptr;
 }
 
-const Token* skip_identifier(const Token* a, const Token* b, const char* identifier = nullptr) {
-  return a->is_identifier(identifier) ? a + 1 : nullptr;
-}
-
-//----------------------------------------
-
 template<NodeType n, typename pattern>
 struct NodeMaker {
   static const Token* match(const Token* a, const Token* b) {
@@ -300,22 +291,8 @@ struct pattern_constant : public NodeMaker<
 
 //----------------------------------------
 
-const Token* take_lexemes(const Token* a, const Token* b, NodeType type, int count) {
-  push_node( new Node(type, a, a + count) );
-  return a + count;
-}
-
 template<char punct>
 struct pattern_punct : public NodeMaker<NODE_PUNCT, Atom<punct>> {};
-
-const Token* take_identifier(const Token* a, const Token* b, const char* identifier = nullptr) {
-  if (!a->is_identifier(identifier)) return nullptr;
-  push_node( new Node(NODE_IDENTIFIER, a, a + 1) );
-  return a + 1;
-}
-
-template<StringParam lit>
-struct pattern_identifier : public NodeMaker<NODE_IDENTIFIER, AtomLit<lit>> {};
 
 //----------------------------------------
 
@@ -428,7 +405,7 @@ struct pattern_enum_body : public NodeMaker<
 
 //----------------------------------------
 
-struct pattern_argument_list : public NodeMaker<
+struct pattern_template_argument_list : public NodeMaker<
   NODE_ARGUMENT_LIST,
   Delimited<'<', '>', Seq<
     Ref<parse_expression>,
@@ -442,7 +419,7 @@ struct pattern_decltype : public NodeMaker<
   NODE_DECLTYPE,
   Seq<
     pattern_any_identifier,
-    Opt<pattern_argument_list>,
+    Opt<pattern_template_argument_list>,
     Opt<Seq<
       Atom<':'>,
       Atom<':'>,
@@ -566,6 +543,32 @@ struct pattern_field_declaration : public Oneof<
 
 //----------------------------------------
 
+struct pattern_field_declaration_list {
+  static const Token* match(const Token* a, const Token* b) {
+    a = Atom<'{'>::match(a, b);
+
+    auto end = a;
+    while(end) {
+      if (end = pattern_access_specifier::match(a, b)) {
+        a = end;
+      }
+      else if (end = pattern_field_declaration::match(a, b)) {
+        a = end;
+        if (end = Atom<';'>::match(a, b)) {
+          a = end;
+        }
+      }
+      else {
+        end = nullptr;
+      }
+    }
+
+    a = Atom<'}'>::match(a, b);
+    return a;
+  }
+};
+
+/*
 struct pattern_field_declaration_list : public NodeMaker<NODE_FIELD_DECLARATION_LIST,
   Seq<
     Atom<'{'>,
@@ -576,11 +579,12 @@ struct pattern_field_declaration_list : public NodeMaker<NODE_FIELD_DECLARATION_
     Atom<'}'>
   >
 > {};
+*/
 
 //----------------------------------------
 
 struct pattern_class_specifier : public NodeMaker<
-  NODE_STRUCT_DECLARATION,
+  NODE_CLASS_DECLARATION,
   Seq<
     AtomLit<"class">,
     pattern_any_identifier,
@@ -602,7 +606,7 @@ struct pattern_struct_specifier : NodeMaker<
 //----------------------------------------
 
 struct pattern_namespace_specifier : NodeMaker<
-  NODE_STRUCT_DECLARATION,
+  NODE_NAMESPACE_DECLARATION,
   Seq<
     AtomLit<"namespace">,
     pattern_any_identifier,
@@ -644,18 +648,21 @@ struct pattern_array_suffix : public NodeMaker<NODE_ARRAY_SUFFIX,
   Seq<Atom<'['>, Opt<Ref<parse_expression>>, Atom<']'>>
 > {};
 
-// FIXME isn't this gonna blow up if there's more than one arg in the list?
-struct pattern_parameter_list : public NodeMaker<NODE_PARAMETER_LIST,
-  Seq<Atom<'('>, Opt<Ref<parse_expression>>, Atom<')'>>
-> {};
-
 struct pattern_inc : public NodeMaker<NODE_OPERATOR, Seq<Atom<'+'>, Atom<'+'>>> {};
 
 struct pattern_dec : public NodeMaker<NODE_OPERATOR, Seq<Atom<'-'>, Atom<'-'>>> {};
 
+struct pattern_parenthesized_expression_list : public NodeMaker<
+  NODE_ARGUMENT_LIST,
+  Delimited<'(', ')',
+    opt_comma_delimited<Ref<parse_expression>>
+  >
+> {};
+
 struct pattern_expression_suffix : public Oneof<
+  pattern_template_argument_list,
+  pattern_parenthesized_expression_list,
   pattern_array_suffix,
-  pattern_parameter_list,
   pattern_inc,
   pattern_dec
 > {};
@@ -679,14 +686,23 @@ struct pattern_parenthesized_expression : public NodeMaker<
 
 //----------------------------------------
 
+/*
+struct pattern_parenthesized_expression_list : public NodeMaker<
+  NODE_ARGUMENT_LIST,
+  Delimited<'(', ')', Seq<
+    Ref<parse_expression>,
+    Any<Seq<Atom<','>, Ref<parse_expression>>>
+  >>
+> {};
+*/
+
+//----------------------------------------
+
 struct pattern_function_call : public NodeMaker<
   NODE_CALL_EXPRESSION,
   Seq<
     pattern_any_identifier,
-    Atom<'('>,
-    Ref<parse_expression>,
-    Any<Seq<Atom<','>, Ref<parse_expression>>>,
-    Atom<')'>
+    pattern_parenthesized_expression_list
   >
 > {};
 
@@ -700,24 +716,16 @@ struct pattern_template_parameter_list : public NodeMaker<
   >>
 > {};
 
-struct pattern_expression_list : public NodeMaker<
-  NODE_ARGUMENT_LIST,
-  Delimited<'(', ')', Seq<
-    pattern_declaration,
-    Any<Seq<Atom<','>, pattern_declaration>>
-  >>
-> {};
-
 //----------------------------------------
 
-struct pattern_expression_lhs : public Oneof<
-  pattern_parenthesized_expression,
-  pattern_constant,
-  pattern_function_call,
-  pattern_any_identifier
-> {};
-
 const Token* parse_expression_lhs(const Token* a, const Token* b) {
+
+  struct pattern_expression_lhs : public Oneof<
+    pattern_parenthesized_expression,
+    pattern_constant,
+    pattern_function_call,
+    pattern_any_identifier
+  > {};
 
   // Dirty hackkkkk - explicitly recognize templated function calls as
   // expression atoms
@@ -736,7 +744,7 @@ const Token* parse_expression_lhs(const Token* a, const Token* b) {
       result->append(pop_node());
     }
 
-    if (auto end = pattern_expression_list::match(a, b)) {
+    if (auto end = pattern_parenthesized_expression_list::match(a, b)) {
       a = end;
       result->append(pop_node());
     }
@@ -782,7 +790,7 @@ const Token* parse_expression(const Token* a, const Token* b) {
   if (a->is_punct(';'))    { return a; }
   if (a->is_punct(','))    { return a; }
 
-  if (auto end = pattern_expression_suffix::match(a, b)) {
+  while (auto end = pattern_expression_suffix::match(a, b)) {
     a = end;
     auto op = pop_node();
     auto lhs = pop_node();
@@ -790,7 +798,6 @@ const Token* parse_expression(const Token* a, const Token* b) {
     result->append(lhs);
     result->append(op);
     push_node(result);
-    return a;
   }
 
   if (auto end = pattern_infix_op::match(a, b)) {
@@ -804,20 +811,6 @@ const Token* parse_expression(const Token* a, const Token* b) {
     result->append(lhs);
     result->append(op);
     result->append(rhs);
-    push_node(result);
-    return a;
-  }
-
-  if (a[0].is_punct('[')) {
-    auto result = new Node(NODE_ARRAY_EXPRESSION);
-    auto lhs = pop_node();
-    result->append(lhs);
-    a = skip_punct(a, b, '[');
-
-    a = parse_expression(a, b);
-
-    result->append(pop_node());
-    a = skip_punct(a, b, ']');
     push_node(result);
     return a;
   }
@@ -963,8 +956,6 @@ struct pattern_expression_statement : public NodeMaker<
 struct pattern_declaration_statement : public NodeMaker<
   NODE_DECLARATION_STATEMENT,
   Seq<
-    // FIXME why did we need this?
-    And<Seq<Atom<TOK_IDENTIFIER>, Atom<TOK_IDENTIFIER>>>,
     pattern_declaration,
     Atom<';'>
   >
@@ -1012,6 +1003,11 @@ const Token* parse_statement(const Token* a, const Token* b) {
       (a[2].is_identifier() || a[2].is_constant()) &&
       a[3].is_punct('>') &&
       a[4].is_identifier()) {
+
+    if (auto end = pattern_declaration_statement::match(a, b)) {
+      return end;
+    }
+
     auto result = new Node(NODE_DECLARATION_STATEMENT, nullptr, nullptr);
 
     if (auto end = pattern_declaration::match(a, b)) {
@@ -1034,28 +1030,6 @@ const Token* parse_statement(const Token* a, const Token* b) {
 
 //----------------------------------------
 
-struct pattern_storage_class_specifier {
-  static const Token* match(const Token* a, const Token* b) {
-    const char* keywords[] = {
-      "extern",
-      "static",
-      "auto",
-      "register",
-      "inline",
-    };
-    auto keyword_count = sizeof(keywords)/sizeof(keywords[0]);
-    for (auto i = 0; i < keyword_count; i++) {
-      if (a->is_identifier(keywords[i])) {
-        return take_identifier(a, b);
-      }
-    }
-
-    return nullptr;
-  }
-};
-
-//----------------------------------------
-
 struct pattern_template_decl : public NodeMaker<
   NODE_TEMPLATE_DECLARATION,
   Seq<
@@ -1064,38 +1038,6 @@ struct pattern_template_decl : public NodeMaker<
     pattern_class_specifier
   >
 > {};
-
-//----------------------------------------
-
-const Token* parse_expression_list(const Token* a, const Token* b, NodeType type, const char ldelim, const char spacer, const char rdelim) {
-  if (!a[0].is_punct(ldelim)) return nullptr;
-
-  auto result = new NodeList(type);
-
-  a = skip_punct(a, b, ldelim);
-
-  auto old_a = a;
-
-  while(1) {
-    if (a->is_punct(rdelim)) {
-      old_a = a;
-      a = skip_punct(a, b, rdelim);
-      break;
-    }
-    else if (a->is_punct(spacer)) {
-      old_a = a;
-      a = skip_punct(a, b, spacer);
-    }
-    else {
-      old_a = a;
-      a = parse_expression(a, b);
-      result->append(pop_node());
-    }
-  }
-
-  push_node(result);
-  return a;
-}
 
 //----------------------------------------
 
@@ -1269,7 +1211,7 @@ int test_c99_peg(int argc, char** argv) {
     paths.push_back(f.path().native());
   }
 
-  //paths = { "tests/enum_simple.h" };
+  paths = { "tests/bit_casts.h" };
 
   double lex_accum = 0;
   double parse_accum = 0;
@@ -1295,7 +1237,7 @@ int test_c99_peg(int argc, char** argv) {
     parse_accum += timestamp_ms();
 
     assert(node_top == 1);
-    //dump_top();
+    dump_top();
 
     auto root = pop_node();
     delete root;
