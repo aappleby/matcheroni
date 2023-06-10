@@ -1,1 +1,5 @@
+obj
 bin
+.vscode/settings.json
+.ninja_deps
+.ninja_log
