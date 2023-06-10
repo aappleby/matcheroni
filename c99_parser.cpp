@@ -1498,7 +1498,7 @@ int test_c99_peg(int argc, char** argv) {
     paths.push_back(f.path().native());
   }
 
-  //paths = { "tests/constructor_args.h" };
+  paths = { "tests/enum_simple.h" };
 
   double lex_accum = 0;
   double parse_accum = 0;
@@ -1523,7 +1523,7 @@ int test_c99_peg(int argc, char** argv) {
     pattern_translation_unit::match(token, token_eof);
     parse_accum += timestamp_ms();
 
-    //dump_top();
+    dump_top();
     auto root = pop_node();
     delete root;
 
