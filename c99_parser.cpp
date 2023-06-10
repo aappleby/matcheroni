@@ -154,7 +154,6 @@ struct Dump {
 
 //----------------------------------------
 
-const Token* parse_declaration_list(const Token* a, const Token* b, NodeType type, const char ldelim, const char spacer, const char rdelim);
 const Token* parse_decltype(const Token* a, const Token* b);
 const Token* parse_expression_list(const Token* a, const Token* b, NodeType type, const char ldelim, const char spacer, const char rdelim);
 const Token* parse_expression2(const Token* a, const Token* b);
@@ -229,14 +228,17 @@ const Token* find_matching_delim(const Token* a, const Token* b) {
 
 //----------------------------------------
 
-template<typename P>
+template<char ldelim, char rdelim, typename P>
 struct Delimited {
   static const Token* match(const Token* a, const Token* b) {
-    auto rdelim = find_matching_delim(a, b);
-    if (!rdelim) return nullptr;
-    if (auto end = P::match(a + 1, rdelim)) {
-      assert(end == rdelim);
-      return rdelim + 1;
+    if (!a || !a->is_punct(ldelim)) return nullptr;
+    auto new_b = find_matching_delim(a, b);
+    if (!new_b || !new_b->is_punct(rdelim)) return nullptr;
+
+    if (!new_b) return nullptr;
+    if (auto end = P::match(a + 1, new_b)) {
+      assert(end == new_b);
+      return new_b + 1;
     }
     else {
       return nullptr;
@@ -753,7 +755,17 @@ const Token* parse_namespace_specifier(const Token* a, const Token* b) {
 
 //----------------------------------------
 
-const Token* parse_decltype(const Token* a, const Token* b) {
+using pattern_argument_list = NodeMaker<
+  NODE_ARGUMENT_LIST,
+  Delimited<'<', '>', Seq<
+    Ref<parse_expression>,
+    Any<Seq<Atom<','>, Ref<parse_expression>>>
+  >>
+>;
+
+//----------------------------------------
+
+const Token* parse_decltype1(const Token* a, const Token* b) {
   if (a[0].type != TOK_IDENTIFIER) return nullptr;
 
   Node* type = nullptr;
@@ -772,10 +784,7 @@ const Token* parse_decltype(const Token* a, const Token* b) {
     auto result = new Node(NODE_TEMPLATED_TYPE, nullptr, nullptr);
     result->append(type);
 
-    auto list_end = find_matching_delim(a, b);
-
-
-    if (auto end = parse_expression_list(a, list_end, NODE_ARGUMENT_LIST, '<', ',', '>')) {
+    if (auto end = pattern_argument_list::match(a, b)) {
       a = end;
       result->append(pop_node());
     }
@@ -787,7 +796,7 @@ const Token* parse_decltype(const Token* a, const Token* b) {
       a = take_lexemes(a, b, NODE_OPERATOR, 2);
       result2->append(pop_node());
 
-      if (auto end = parse_decltype(a, b)) {
+      if (auto end = pattern_any_identifier::match(a, b)) {
         a = end;
         result2->append(pop_node());
       }
@@ -802,6 +811,36 @@ const Token* parse_decltype(const Token* a, const Token* b) {
     push_node(type);
     return a;
   }
+}
+
+const Token* parse_decltype2(const Token* a, const Token* b) {
+  using pattern = NodeMaker<
+    NODE_DECLTYPE,
+    Seq<
+      pattern_any_identifier,
+      Opt<pattern_argument_list>,
+      Opt<Seq<
+        Atom<':'>,
+        Atom<':'>,
+        pattern_any_identifier
+      >>,
+      Opt<Atom<'*'>>
+    >
+  >;
+
+  return pattern::match(a, b);
+}
+
+const Token* parse_decltype(const Token* a, const Token* b) {
+  auto end1 = parse_decltype1(a, b);
+  auto end2 = parse_decltype2(a, b);
+
+  if (end1 != end2) {
+    printf("!!!!!!! bad decltype parse @ {%.20s}\n", a->lex->span_a);
+    //assert(false);
+  }
+
+  return end1;
 }
 
 //----------------------------------------
@@ -1236,12 +1275,12 @@ const Token* parse_storage_class_specifier(const Token* a, const Token* b) {
 
 //----------------------------------------
 
-using pattern_template_params = NodeMaker<
+using pattern_template_parameter_list = NodeMaker<
   NODE_TEMPLATE_PARAMETER_LIST,
-  Seq<
+  Delimited<'<', '>', Seq<
     Ref<parse_declaration>,
     Any<Seq<Atom<','>, Ref<parse_declaration>>>
-  >
+  >>
 >;
 
 //----------------------------------------
@@ -1250,39 +1289,10 @@ using pattern_template_decl = NodeMaker<
   NODE_TEMPLATE_DECLARATION,
   Seq<
     AtomLit<"template">,
-    Delimited<pattern_template_params>,
+    pattern_template_parameter_list,
     Ref<parse_class_specifier>
   >
 >;
-
-//----------------------------------------
-
-const Token* parse_declaration_list(const Token* a, const Token* b, NodeType type, const char ldelim, const char spacer, const char rdelim) {
-  if (!a[0].is_punct(ldelim)) return nullptr;
-
-  auto result = new NodeList(type);
-
-  a = skip_punct(a, b, ldelim);
-
-  while(1) {
-    if (a->is_punct(rdelim)) {
-      a = skip_punct(a, b, rdelim);
-      break;
-    }
-    else if (a->is_punct(spacer)) {
-      a = skip_punct(a, b, spacer);
-    }
-    else {
-      if (auto end = parse_declaration(a, b)) {
-        a = end;
-      }
-      result->append(pop_node());
-    }
-  }
-
-  push_node(result);
-  return a;
-}
 
 //----------------------------------------
 
