@@ -282,12 +282,12 @@ struct NodeMaker {
 
 //----------------------------------------
 
-using pattern_any_identifier = NodeMaker<
+struct pattern_any_identifier : public NodeMaker<
   NODE_IDENTIFIER,
   Atom<TOK_IDENTIFIER>
->;
+> {};
 
-using pattern_constant = NodeMaker<
+struct pattern_constant : public NodeMaker<
   NODE_CONSTANT,
   Oneof<
     Atom<TOK_FLOAT>,
@@ -295,7 +295,7 @@ using pattern_constant = NodeMaker<
     Atom<TOK_CHAR>,
     Atom<TOK_STRING>
   >
->;
+> {};
 
 //----------------------------------------
 
@@ -305,9 +305,11 @@ const Token* take_lexemes(const Token* a, const Token* b, NodeType type, int cou
 }
 
 template<char punct>
+struct pattern_punct : public NodeMaker<NODE_PUNCT, Atom<punct>> {};
+
+template<char punct>
 const Token* take_punct2(const Token* a, const Token* b) {
-  using pattern = NodeMaker<NODE_PUNCT, Atom<punct>>;
-  return pattern::match(a, b);
+  return pattern_punct<punct>::match(a, b);
 }
 
 const Token* take_punct(const Token* a, const Token* b, char punct) {
@@ -322,27 +324,27 @@ const Token* take_identifier(const Token* a, const Token* b, const char* identif
 }
 
 template<StringParam lit>
-using pattern_identifier = NodeMaker<NODE_IDENTIFIER, AtomLit<lit>>;
+struct pattern_identifier : public NodeMaker<NODE_IDENTIFIER, AtomLit<lit>> {};
 
 //----------------------------------------
 
-using pattern_access_specifier = NodeMaker<NODE_ACCESS_SPECIFIER,
+class pattern_access_specifier : public NodeMaker<NODE_ACCESS_SPECIFIER,
   Seq<
     Oneof<AtomLit<"public">, AtomLit<"private">>,
     Atom<':'>
   >
->;
+> {};
 
 //----------------------------------------
 
-using pattern_initializer_list = NodeMaker<NODE_INITIALIZER_LIST,
+class pattern_initializer_list : public NodeMaker<NODE_INITIALIZER_LIST,
   Seq<
     Atom<':'>,
     Ref<parse_expression2>,
     Any<Seq<Atom<','>, Ref<parse_expression2>>>,
     And<Atom<'{'>>
   >
->;
+> {};
 
 //----------------------------------------
 
@@ -402,28 +404,28 @@ struct match_qualifier {
 
 //----------------------------------------
 
-using pattern_specifier_list = NodeMaker<
+struct pattern_specifier_list : public NodeMaker<
   NODE_SPECIFIER_LIST,
   Some<Oneof<
     NodeMaker<NODE_IDENTIFIER, match_specifier>,
     NodeMaker<NODE_PUNCT, Atom<'*'>>
   >>
->;
+> {};
 
 //----------------------------------------
 
-using pattern_compound_statement = NodeMaker<
+struct pattern_compound_statement : public NodeMaker<
   NODE_COMPOUND_STATEMENT,
   Seq<
     Atom<'{'>,
     Any<Ref<parse_statement>>,
     Atom<'}'>
   >
->;
+> {};
 
 //----------------------------------------
 
-using pattern_enum_body = NodeMaker<
+struct pattern_enum_body : public NodeMaker<
   NODE_ENUMERATOR_LIST,
   Seq<
     Atom<'{'>,
@@ -431,21 +433,21 @@ using pattern_enum_body = NodeMaker<
     Any<Seq<Atom<','>, Ref<parse_expression2>>>,
     Atom<'}'>
   >
->;
+> {};
 
 //----------------------------------------
 
-using pattern_argument_list = NodeMaker<
+struct pattern_argument_list : public NodeMaker<
   NODE_ARGUMENT_LIST,
   Delimited<'<', '>', Seq<
     Ref<parse_expression>,
     Any<Seq<Atom<','>, Ref<parse_expression>>>
   >>
->;
+> {};
 
 //----------------------------------------
 
-using pattern_decltype = NodeMaker<
+struct pattern_decltype : public NodeMaker<
   NODE_DECLTYPE,
   Seq<
     pattern_any_identifier,
@@ -457,12 +459,12 @@ using pattern_decltype = NodeMaker<
     >>,
     Opt<Atom<'*'>>
   >
->;
+> {};
 
 //----------------------------------------
 // FIXME should probably have a few diffeerent versions instead of all the opts
 
-using pattern_enum_declaration = NodeMaker<
+struct pattern_enum_declaration : public NodeMaker<
   NODE_ENUM_DECLARATION,
   Seq<
     AtomLit<"enum">,
@@ -472,36 +474,42 @@ using pattern_enum_declaration = NodeMaker<
     Opt<pattern_enum_body>,
     Opt<pattern_any_identifier>
   >
->;
+> {};
 
 //----------------------------------------
 
-using pattern_array_expression = NodeMaker<
+struct pattern_array_expression : public NodeMaker<
   NODE_ARRAY_EXPRESSION,
   Seq<
     Atom<'['>,
     Ref<parse_expression2>,
     Atom<']'>
   >
->;
+> {};
 
 //----------------------------------------
 
 const Token* parse_declaration2(const Token* a, const Token* b);
 
-using pattern_declaration_list = NodeMaker<
+template<typename P>
+struct opt_comma_delimited : public
+Opt<Seq<
+  P,
+  Any<Seq<Atom<','>, P>>
+>> {};
+
+struct pattern_declaration_list : public NodeMaker<
   NODE_PARAMETER_LIST,
   Seq<
     Atom<'('>,
-    Ref<parse_declaration2>,
-    Any<Seq<Atom<','>, Ref<parse_declaration2>>>,
+    opt_comma_delimited<Ref<parse_declaration2>>,
     Atom<')'>
   >
->;
+> {};
 
 //----------------------------------------
 
-using pattern_constructor = NodeMaker<
+struct pattern_constructor : public NodeMaker<
   NODE_CONSTRUCTOR,
   Seq<
     pattern_any_identifier,
@@ -513,11 +521,11 @@ using pattern_constructor = NodeMaker<
       Atom<';'>
     >
   >
->;
+> {};
 
 //----------------------------------------
 
-using pattern_function_definition = NodeMaker<
+struct pattern_function_definition : public NodeMaker<
   NODE_FUNCTION_DEFINITION,
   Seq<
     pattern_decltype,
@@ -529,31 +537,32 @@ using pattern_function_definition = NodeMaker<
       Atom<';'>
     >
   >
->;
+> {};
 
 //----------------------------------------
 
-using pattern_declaration = NodeMaker<
+struct pattern_declaration : public NodeMaker<
   NODE_DECLARATION,
   Seq<
     Opt<pattern_specifier_list>,
     pattern_decltype,
     pattern_any_identifier,
+    Opt<pattern_array_expression>,
     Opt<Seq<
       Atom<'='>,
       Ref<parse_expression2>
     >>
   >
->;
+> {};
 
-using pattern_assignment = NodeMaker<
+struct pattern_assignment : public NodeMaker<
   NODE_ASSIGNMENT_EXPRESSION,
   Seq<
     pattern_any_identifier,
     Ref<match_chars<Ref<match_assign_op>>>,
     Ref<parse_expression2>
   >
->;
+> {};
 
 //----------------------------------------
 
@@ -578,6 +587,11 @@ const Token* parse_declaration(const Token* a, const Token* b) {
     return end;
   }
 
+  int blah;
+
+  blah = 0;
+
+  /*
   auto result = new Node(NODE_INVALID);
 
   bool has_type = false;
@@ -589,10 +603,11 @@ const Token* parse_declaration(const Token* a, const Token* b) {
   }
 
   // Need a better way to handle this
-  if (auto end = pattern_decltype::match(a, b)) {
-    a = end;
-  }
+  auto end = pattern_decltype::match(a, b);
+  if (!end) return nullptr;
+  a = end;
   auto n1 = pop_node();
+  //n1->dump_tree();
 
   if (a[0].is_punct('=')) {
     has_type = false;
@@ -637,6 +652,8 @@ const Token* parse_declaration(const Token* a, const Token* b) {
 
   push_node(result);
   return a;
+  */
+  return nullptr;
 }
 
 const Token* parse_declaration2(const Token* a, const Token* b) {
@@ -648,12 +665,39 @@ const Token* parse_declaration2(const Token* a, const Token* b) {
 const Token* parse_field_declaration_list(const Token* a, const Token* b) {
 
   /*
+  a = Atom<'{'>::match(a, b);
+
+  using pattern = Oneof<
+    Opt<pattern_access_specifier>,
+    Seq<Ref<parse_declaration2>,Opt<Atom<';'>>>
+  >;
+
+  auto end = a;
+  while (end) {
+    if (end = Opt<pattern_access_specifier>::match(a, b)) {
+      a = end;
+    }
+    else if (end = parse_declaration2(a, b)) {
+      if (end = Atom<';'>::match(a, b)) {
+      }
+    }
+    else {
+      a = nullptr;
+    }
+  }
+
+  a = Atom<'{'>::match(a, b);
+
+  return a;
+  */
+
+  /*
   using pattern = NodeMaker<NODE_FIELD_DECLARATION_LIST,
     Seq<
       Atom<'{'>,
       Any<Oneof<
-        pattern_access_specifier,
-        Seq<Ref<parse_declaration2>,Atom<';'>>
+        Opt<pattern_access_specifier>,
+        Seq<Ref<parse_declaration2>,Opt<Atom<';'>>>
       >>,
       Atom<'}'>
     >
@@ -779,38 +823,23 @@ const Token* parse_namespace_specifier(const Token* a, const Token* b) {
 
 //----------------------------------------
 
-using pattern_decltype = NodeMaker<
-  NODE_DECLTYPE,
-  Seq<
-    pattern_any_identifier,
-    Opt<pattern_argument_list>,
-    Opt<Seq<
-      Atom<':'>,
-      Atom<':'>,
-      pattern_any_identifier
-    >>,
-    Opt<Atom<'*'>>
-  >
->;
-
-//----------------------------------------
-
-using pattern_prefix_op = NodeMaker<NODE_OPERATOR,
+struct pattern_prefix_op : public NodeMaker<
+  NODE_OPERATOR,
   Ref<match_chars<Ref<match_prefix_op>>>
->;
+> {};
 
-using pattern_typecast = NodeMaker<
+struct pattern_typecast : public NodeMaker<
   NODE_TYPECAST,
   Seq<Atom<'('>, Atom<LEX_IDENTIFIER>, Atom<')'> >
->;
+> {};
 
-using pattern_sizeof = NodeMaker<NODE_OPERATOR, AtomLit<"sizeof">>;
+struct pattern_sizeof : public NodeMaker<NODE_OPERATOR, AtomLit<"sizeof">> {};
 
-using pattern_expression_prefix = Oneof<
+struct pattern_expression_prefix : public Oneof<
   pattern_prefix_op,
   pattern_typecast,
   pattern_sizeof
->;
+> {};
 
 //----------------------------------------
 // suffix:
@@ -822,46 +851,46 @@ using pattern_expression_prefix = Oneof<
 //    ++
 //    --
 
-using pattern_array_suffix = NodeMaker<NODE_ARRAY_SUFFIX,
+struct pattern_array_suffix : public NodeMaker<NODE_ARRAY_SUFFIX,
   Seq<Atom<'['>, Opt<Ref<parse_expression2>>, Atom<']'>>
->;
+> {};
 
 // FIXME isn't this gonna blow up if there's more than one arg in the list?
-using pattern_parameter_list = NodeMaker<NODE_PARAMETER_LIST,
+struct pattern_parameter_list : public NodeMaker<NODE_PARAMETER_LIST,
   Seq<Atom<'('>, Opt<Ref<parse_expression2>>, Atom<')'>>
->;
+> {};
 
-using pattern_inc = NodeMaker<NODE_OPERATOR, Seq<Atom<'+'>, Atom<'+'>>>;
+struct pattern_inc : public NodeMaker<NODE_OPERATOR, Seq<Atom<'+'>, Atom<'+'>>> {};
 
-using pattern_dec = NodeMaker<NODE_OPERATOR, Seq<Atom<'-'>, Atom<'-'>>>;
+struct pattern_dec : public NodeMaker<NODE_OPERATOR, Seq<Atom<'-'>, Atom<'-'>>> {};
 
-using pattern_expression_suffix = Oneof<
+struct pattern_expression_suffix : public Oneof<
   pattern_array_suffix,
   pattern_parameter_list,
   pattern_inc,
   pattern_dec
->;
+> {};
 
 //----------------------------------------
 
-using pattern_infix_op = NodeMaker<NODE_OPERATOR,
+struct pattern_infix_op : public NodeMaker<NODE_OPERATOR,
   Ref<match_chars<Ref<match_infix_op>>>
->;
+> {};
 
 //----------------------------------------
 
-using pattern_parenthesized_expression = NodeMaker<
+struct pattern_parenthesized_expression : public NodeMaker<
   NODE_PARENTHESIZED_EXPRESSION,
   Seq<
     Atom<'('>,
     Ref<parse_expression2>,
     Atom<')'>
   >
->;
+> {};
 
 //----------------------------------------
 
-using pattern_function_call = NodeMaker<
+struct pattern_function_call : public NodeMaker<
   NODE_CALL_EXPRESSION,
   Seq<
     pattern_any_identifier,
@@ -870,9 +899,16 @@ using pattern_function_call = NodeMaker<
     Any<Seq<Atom<','>, Ref<parse_expression>>>,
     Atom<')'>
   >
->;
+> {};
 
 //----------------------------------------
+
+struct pattern_expression_lhs : public Oneof<
+  pattern_parenthesized_expression,
+  pattern_constant,
+  pattern_function_call,
+  pattern_any_identifier
+> {};
 
 const Token* parse_expression_lhs(const Token* a, const Token* b) {
 
@@ -916,14 +952,7 @@ const Token* parse_expression_lhs(const Token* a, const Token* b) {
     return a;
   }
 
-  using pattern = Oneof<
-    pattern_parenthesized_expression,
-    pattern_constant,
-    pattern_function_call,
-    pattern_any_identifier
-  >;
-
-  return pattern::match(a, b);
+  return pattern_expression_lhs::match(a, b);
 }
 
 //----------------------------------------
@@ -997,16 +1026,16 @@ const Token* parse_expression2(const Token* a, const Token* b) {
 
 //----------------------------------------
 
-using pattern_external_declaration = Oneof<
+struct pattern_external_declaration : public Oneof<
   Ref<parse_namespace_specifier>,
   Ref<parse_class_specifier>,
   Ref<parse_struct_specifier>,
   Seq<Ref<parse_declaration2>, Atom<';'>>
->;
+> {};
 
 //----------------------------------------
 
-using pattern_if_statement = NodeMaker<
+struct pattern_if_statement : public NodeMaker<
   NODE_IF_STATEMENT,
   Seq<
     AtomLit<"if">,
@@ -1017,45 +1046,46 @@ using pattern_if_statement = NodeMaker<
       Ref<parse_statement>
     >>
   >
->;
+> {};
 
 //----------------------------------------
 
-using pattern_while_statement = NodeMaker<
+struct pattern_while_statement : public NodeMaker<
   NODE_WHILE_STATEMENT,
   Seq<
     AtomLit<"while">,
     pattern_parenthesized_expression,
     Ref<parse_statement>
   >
->;
+> {};
 
 //----------------------------------------
 
-using pattern_return_statement = NodeMaker<
+struct pattern_return_statement : public NodeMaker<
   NODE_RETURN_STATEMENT,
   Seq<
     AtomLit<"return">,
     Ref<parse_expression2>,
     Atom<';'>
   >
->;
+> {};
 
 //----------------------------------------
 
-using pattern_preproc = NodeMaker<NODE_PREPROC, Atom<TOK_PREPROC>>;
+struct pattern_preproc : public NodeMaker<NODE_PREPROC, Atom<TOK_PREPROC>> {};
 
 //----------------------------------------
 
 
-using pattern_case_body =
+struct pattern_case_body : public
 Any<Seq<
   Not<AtomLit<"case">>,
   Not<AtomLit<"default">>,
   Ref<parse_statement>
->>;
+>> {};
 
-using pattern_case_statement = NodeMaker<
+struct pattern_case_statement : public
+NodeMaker<
   NODE_CASE_STATEMENT,
   Seq<
     AtomLit<"case">,
@@ -1063,24 +1093,26 @@ using pattern_case_statement = NodeMaker<
     Atom<':'>,
     pattern_case_body
   >
->;
+> {};
 
-using pattern_default_statement = NodeMaker<
+struct pattern_default_statement : public
+NodeMaker<
   NODE_DEFAULT_STATEMENT,
   Seq<
     AtomLit<"default">,
     Atom<':'>,
     pattern_case_body
   >
->;
+> {};
 
-using pattern_case_or_default =
+struct pattern_case_or_default : public
 Oneof<
   pattern_case_statement,
   pattern_default_statement
->;
+> {};
 
-using pattern_switch_statement = NodeMaker<
+struct pattern_switch_statement : public
+NodeMaker<
   NODE_SWITCH_STATEMENT,
   Seq<
     AtomLit<"switch">,
@@ -1089,18 +1121,18 @@ using pattern_switch_statement = NodeMaker<
     Any<pattern_case_or_default>,
     Atom<'}'>
   >
->;
+> {};
 
 //----------------------------------------
 
-using pattern_declaration_or_expression = Oneof<
+struct pattern_declaration_or_expression : public Oneof<
   Ref<parse_declaration2>,
   Ref<parse_expression2>
->;
+> {};
 
 //----------------------------------------
 
-using pattern_for_statement = NodeMaker<
+struct pattern_for_statement : public NodeMaker<
   NODE_FOR_STATEMENT,
   Seq<
     AtomLit<"for">,
@@ -1113,19 +1145,19 @@ using pattern_for_statement = NodeMaker<
     Atom<')'>,
     Ref<parse_statement>
   >
->;
+> {};
 
 //----------------------------------------
 
-using pattern_expression_statement = NodeMaker<
+struct pattern_expression_statement : public NodeMaker<
   NODE_EXPRESSION_STATEMENT,
   Seq<Ref<parse_expression2>, Atom<';'>>
->;
+> {};
 
 //----------------------------------------
 // FIXME this is not nearly general enough
 
-using pattern_declaration_statement = NodeMaker<
+struct pattern_declaration_statement : public NodeMaker<
   NODE_DECLARATION_STATEMENT,
   Seq<
     // FIXME why did we need this?
@@ -1133,7 +1165,7 @@ using pattern_declaration_statement = NodeMaker<
     Ref<parse_declaration2>,
     Atom<';'>
   >
->;
+> {};
 
 //----------------------------------------
 // _Does_ include the semicolon for single-line statements
@@ -1219,24 +1251,24 @@ const Token* parse_storage_class_specifier(const Token* a, const Token* b) {
 
 //----------------------------------------
 
-using pattern_template_parameter_list = NodeMaker<
+struct pattern_template_parameter_list : public NodeMaker<
   NODE_TEMPLATE_PARAMETER_LIST,
   Delimited<'<', '>', Seq<
     Ref<parse_declaration>,
     Any<Seq<Atom<','>, Ref<parse_declaration>>>
   >>
->;
+> {};
 
 //----------------------------------------
 
-using pattern_template_decl = NodeMaker<
+struct pattern_template_decl : public NodeMaker<
   NODE_TEMPLATE_DECLARATION,
   Seq<
     AtomLit<"template">,
     pattern_template_parameter_list,
     Ref<parse_class_specifier>
   >
->;
+> {};
 
 //----------------------------------------
 
@@ -1272,14 +1304,14 @@ const Token* parse_expression_list(const Token* a, const Token* b, NodeType type
 
 //----------------------------------------
 
-using pattern_translation_unit = NodeMaker<
+struct pattern_translation_unit : public NodeMaker<
   NODE_TRANSLATION_UNIT,
   Any<Oneof<
     pattern_template_decl,
     pattern_preproc,
     pattern_external_declaration
   >>
->;
+> {};
 
 
 
