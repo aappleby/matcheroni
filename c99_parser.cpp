@@ -130,6 +130,7 @@ Node* node_stack[256] = {0};
 size_t node_top = 0;
 
 Node* pop_node() {
+  assert(node_top);
   return node_stack[--node_top];
 }
 
@@ -306,16 +307,6 @@ const Token* take_lexemes(const Token* a, const Token* b, NodeType type, int cou
 
 template<char punct>
 struct pattern_punct : public NodeMaker<NODE_PUNCT, Atom<punct>> {};
-
-template<char punct>
-const Token* take_punct2(const Token* a, const Token* b) {
-  return pattern_punct<punct>::match(a, b);
-}
-
-const Token* take_punct(const Token* a, const Token* b, char punct) {
-  if (!a->is_punct(punct)) return nullptr;
-  return take_lexemes(a, b, NODE_PUNCT, 1);
-}
 
 const Token* take_identifier(const Token* a, const Token* b, const char* identifier = nullptr) {
   if (!a->is_identifier(identifier)) return nullptr;
@@ -701,6 +692,24 @@ struct pattern_function_call : public NodeMaker<
 
 //----------------------------------------
 
+struct pattern_template_parameter_list : public NodeMaker<
+  NODE_TEMPLATE_PARAMETER_LIST,
+  Delimited<'<', '>', Seq<
+    pattern_declaration,
+    Any<Seq<Atom<','>, pattern_declaration>>
+  >>
+> {};
+
+struct pattern_expression_list : public NodeMaker<
+  NODE_ARGUMENT_LIST,
+  Delimited<'(', ')', Seq<
+    pattern_declaration,
+    Any<Seq<Atom<','>, pattern_declaration>>
+  >>
+> {};
+
+//----------------------------------------
+
 struct pattern_expression_lhs : public Oneof<
   pattern_parenthesized_expression,
   pattern_constant,
@@ -722,14 +731,12 @@ const Token* parse_expression_lhs(const Token* a, const Token* b) {
       result->append(pop_node());
     }
 
-    auto list_end = find_matching_delim(a, b);
-
-    if (auto end = parse_expression_list(a, list_end, NODE_TEMPLATE_PARAMETER_LIST, '<', ',', '>')) {
+    if (auto end = pattern_template_parameter_list::match(a, b)) {
       a = end;
       result->append(pop_node());
     }
 
-    if (auto end = parse_expression_list(a, b, NODE_ARGUMENT_LIST, '(', ',', ')')) {
+    if (auto end = pattern_expression_list::match(a, b)) {
       a = end;
       result->append(pop_node());
     }
@@ -866,10 +873,12 @@ struct pattern_return_statement : public NodeMaker<
 
 //----------------------------------------
 
-struct pattern_preproc : public NodeMaker<NODE_PREPROC, Atom<TOK_PREPROC>> {};
+struct pattern_preproc : public NodeMaker<
+  NODE_PREPROC,
+  Atom<TOK_PREPROC>
+> {};
 
 //----------------------------------------
-
 
 struct pattern_case_body : public
 Any<Seq<
@@ -1025,33 +1034,25 @@ const Token* parse_statement(const Token* a, const Token* b) {
 
 //----------------------------------------
 
-const Token* parse_storage_class_specifier(const Token* a, const Token* b) {
-  const char* keywords[] = {
-    "extern",
-    "static",
-    "auto",
-    "register",
-    "inline",
-  };
-  auto keyword_count = sizeof(keywords)/sizeof(keywords[0]);
-  for (auto i = 0; i < keyword_count; i++) {
-    if (a->is_identifier(keywords[i])) {
-      return take_identifier(a, b);
+struct pattern_storage_class_specifier {
+  static const Token* match(const Token* a, const Token* b) {
+    const char* keywords[] = {
+      "extern",
+      "static",
+      "auto",
+      "register",
+      "inline",
+    };
+    auto keyword_count = sizeof(keywords)/sizeof(keywords[0]);
+    for (auto i = 0; i < keyword_count; i++) {
+      if (a->is_identifier(keywords[i])) {
+        return take_identifier(a, b);
+      }
     }
+
+    return nullptr;
   }
-
-  return nullptr;
-}
-
-//----------------------------------------
-
-struct pattern_template_parameter_list : public NodeMaker<
-  NODE_TEMPLATE_PARAMETER_LIST,
-  Delimited<'<', '>', Seq<
-    pattern_declaration,
-    Any<Seq<Atom<','>, pattern_declaration>>
-  >>
-> {};
+};
 
 //----------------------------------------
 
@@ -1293,7 +1294,9 @@ int test_c99_peg(int argc, char** argv) {
     pattern_translation_unit::match(token, token_eof);
     parse_accum += timestamp_ms();
 
+    assert(node_top == 1);
     //dump_top();
+
     auto root = pop_node();
     delete root;
 
