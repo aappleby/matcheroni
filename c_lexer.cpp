@@ -5,7 +5,9 @@
 #include <array>
 #include <cstdint>
 
+#ifdef MATCHERONI_USE_NAMESPACE
 using namespace matcheroni;
+#endif
 
 const char* match_lit(const char* a, const char* b, const char* lit) {
   auto c = a;
@@ -29,9 +31,9 @@ using ticked = Seq<Opt<Atom<'\''>>, M>;
 
 struct LexemeTableEntry {
   template<typename atom>
-  using matcher = matcheroni::matcher<atom>;
+  using lex_matcher = matcher<atom>;
 
-  matcher<char> match  = nullptr;
+  lex_matcher<char> match  = nullptr;
   LexemeType    lexeme = LEX_INVALID;
   unsigned int  color  = 0;
   const char*   name   = nullptr;

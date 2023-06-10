@@ -3,7 +3,9 @@
 
 // FIXME minimal push/pop stack for matchers
 
+#ifdef MATCHERONI_USE_NAMESPACE
 namespace matcheroni {
+#endif
 
 //------------------------------------------------------------------------------
 // Matcheroni is based on building trees of "matcher" functions. A matcher takes
@@ -635,6 +637,8 @@ struct Trigraphs {
 
 //------------------------------------------------------------------------------
 
+#ifdef MATCHERONI_USE_NAMESPACE
 }; // namespace Matcheroni
+#endif
 
 #endif // #ifndef __MATCHERONI_H__

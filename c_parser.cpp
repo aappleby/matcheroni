@@ -1,7 +1,9 @@
 #include "Matcheroni.h"
 #include <assert.h>
 
+#ifdef MATCHERONI_USE_NAMESPACE
 using namespace matcheroni;
+#endif
 
 // Helpers
 

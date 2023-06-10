@@ -10,7 +10,9 @@
 
 double timestamp_ms();
 
+#ifdef MATCHERONI_USE_NAMESPACE
 using namespace matcheroni;
+#endif
 
 bool atom_eq(const Token& a, const TokenType& b) {
   return a.type == b;
@@ -33,7 +35,7 @@ bool atom_gte(const Token& a, const char& b) {
 }
 
 template<int N>
-bool atom_eq(const Token& a, const matcheroni::StringParam<N>& b) {
+bool atom_eq(const Token& a, const StringParam<N>& b) {
   if (a.lex->len() != b.len) return false;
   for (auto i = 0; i < b.len; i++) {
     if (a.lex->span_a[i] != b.value[i]) return false;

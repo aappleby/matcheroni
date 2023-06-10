@@ -4,7 +4,9 @@
 #include <chrono>
 #include <string>
 
+#ifdef MATCHERONI_USE_NAMESPACE
 using namespace matcheroni;
+#endif
 
 double timestamp_ms() {
   using clock = std::chrono::high_resolution_clock;

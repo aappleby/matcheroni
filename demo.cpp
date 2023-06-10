@@ -11,7 +11,9 @@
 #include <map>
 #include <type_traits>
 
+#ifdef MATCHERONI_USE_NAMESPACE
 using namespace matcheroni;
+#endif
 
 //------------------------------------------------------------------------------
 
