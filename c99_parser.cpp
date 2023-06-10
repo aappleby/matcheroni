@@ -487,9 +487,22 @@ struct pattern_array_expression : public NodeMaker<
   >
 > {};
 
-//----------------------------------------
+struct pattern_declaration : public NodeMaker<
+  NODE_DECLARATION,
+  Seq<
+    Opt<pattern_specifier_list>,
+    pattern_decltype,
+    pattern_any_identifier,
+    Opt<pattern_array_expression>,
+    Opt<Seq<
+      Atom<'='>,
+      Ref<parse_expression2>
+    >>
+  >
+> {};
 
-const Token* parse_declaration2(const Token* a, const Token* b);
+
+//----------------------------------------
 
 template<typename P>
 struct opt_comma_delimited : public
@@ -502,7 +515,7 @@ struct pattern_declaration_list : public NodeMaker<
   NODE_PARAMETER_LIST,
   Seq<
     Atom<'('>,
-    opt_comma_delimited<Ref<parse_declaration2>>,
+    opt_comma_delimited<pattern_declaration>,
     Atom<')'>
   >
 > {};
@@ -541,20 +554,6 @@ struct pattern_function_definition : public NodeMaker<
 
 //----------------------------------------
 
-struct pattern_declaration : public NodeMaker<
-  NODE_DECLARATION,
-  Seq<
-    Opt<pattern_specifier_list>,
-    pattern_decltype,
-    pattern_any_identifier,
-    Opt<pattern_array_expression>,
-    Opt<Seq<
-      Atom<'='>,
-      Ref<parse_expression2>
-    >>
-  >
-> {};
-
 struct pattern_assignment : public NodeMaker<
   NODE_ASSIGNMENT_EXPRESSION,
   Seq<
@@ -566,259 +565,70 @@ struct pattern_assignment : public NodeMaker<
 
 //----------------------------------------
 
-const Token* parse_declaration(const Token* a, const Token* b) {
-  if (auto end = pattern_constructor::match(a, b)) {
-    return end;
-  }
-
-  if (auto end = pattern_enum_declaration::match(a, b)) {
-    return end;
-  }
-
-  if (auto end = pattern_function_definition::match(a, b)) {
-    return end;
-  }
-
-  if (auto end = pattern_declaration::match(a, b)) {
-    return end;
-  }
-
-  if (auto end = pattern_assignment::match(a, b)) {
-    return end;
-  }
-
-  int blah;
-
-  blah = 0;
-
-  /*
-  auto result = new Node(NODE_INVALID);
-
-  bool has_type = false;
-  bool has_init = false;
-
-  if (auto end = pattern_specifier_list::match(a, b)) {
-    a = end;
-    result->append(pop_node());
-  }
-
-  // Need a better way to handle this
-  auto end = pattern_decltype::match(a, b);
-  if (!end) return nullptr;
-  a = end;
-  auto n1 = pop_node();
-  //n1->dump_tree();
-
-  if (a[0].is_punct('=')) {
-    has_type = false;
-    n1->node_type = NODE_IDENTIFIER;
-    result->append(n1);
-  }
-  else {
-    has_type = true;
-    result->append(n1);
-    if (auto end = pattern_specifier_list::match(a, b)) {
-      a = end;
-      result->append(pop_node());
-    }
-    if (auto end = pattern_any_identifier::match(a, b)) {
-      a = end;
-      result->append(pop_node());
-    }
-  }
-
-  {
-    if (auto end = pattern_array_expression::match(a, b)) {
-      result->append(pop_node());
-      a = end;
-    }
-  }
-
-  if (auto end = skip_punct(a, b, '=')) {
-    a = end;
-    has_init = true;
-    if (auto end = parse_expression(a, b)) {
-      a = end;
-    }
-    result->append(pop_node());
-  }
-
-  if (!has_type) {
-    result->node_type = NODE_INFIX_EXPRESSION;
-  }
-  else {
-    result->node_type = NODE_DECLARATION;
-  }
-
-  push_node(result);
-  return a;
-  */
-  return nullptr;
-}
-
-const Token* parse_declaration2(const Token* a, const Token* b) {
-  return parse_declaration(a, b);
-}
+struct pattern_field_declaration : public Oneof<
+  pattern_constructor,
+  pattern_enum_declaration,
+  pattern_function_definition,
+  pattern_declaration,
+  pattern_assignment
+> {};
 
 //----------------------------------------
 
-const Token* parse_field_declaration_list(const Token* a, const Token* b) {
-
-  /*
-  a = Atom<'{'>::match(a, b);
-
-  using pattern = Oneof<
-    Opt<pattern_access_specifier>,
-    Seq<Ref<parse_declaration2>,Opt<Atom<';'>>>
-  >;
-
-  auto end = a;
-  while (end) {
-    if (end = Opt<pattern_access_specifier>::match(a, b)) {
-      a = end;
-    }
-    else if (end = parse_declaration2(a, b)) {
-      if (end = Atom<';'>::match(a, b)) {
-      }
-    }
-    else {
-      a = nullptr;
-    }
-  }
-
-  a = Atom<'{'>::match(a, b);
-
-  return a;
-  */
-
-  /*
-  using pattern = NodeMaker<NODE_FIELD_DECLARATION_LIST,
-    Seq<
-      Atom<'{'>,
-      Any<Oneof<
-        Opt<pattern_access_specifier>,
-        Seq<Ref<parse_declaration2>,Opt<Atom<';'>>>
-      >>,
-      Atom<'}'>
-    >
-  >;
-
-  return pattern::match(a, b);
-  */
-
-  auto result = new NodeList(NODE_FIELD_DECLARATION_LIST);
-  a = skip_punct(a, b, '{');
-
-  while(a < b && !a->is_punct('}')) {
-
-    if (auto end = pattern_access_specifier::match(a, b)) {
-      result->append(pop_node());
-      a = end;
-    }
-    else {
-      if (auto end = parse_declaration2(a, b)) {
-        a = end;
-        auto child = pop_node();
-        result->append(child);
-        result->items.push_back(child);
-        if (auto end = skip_punct(a, b, ';')) {
-          a = end;
-        }
-      }
-    }
-  }
-
-  push_node(result);
-  a = skip_punct(a, b, '}');
-  return a;
-}
+using pattern_field_declaration_list = NodeMaker<NODE_FIELD_DECLARATION_LIST,
+  Seq<
+    Atom<'{'>,
+    Any<Oneof<
+      pattern_access_specifier,
+      Seq<pattern_field_declaration,Opt<Atom<';'>>>
+    >>,
+    Atom<'}'>
+  >
+>;
 
 //----------------------------------------
 
 const Token* parse_class_specifier(const Token* a, const Token* b) {
-  if (!a->is_identifier("class")) return nullptr;
+  using pattern = NodeMaker<
+    NODE_STRUCT_DECLARATION,
+    Seq<
+      AtomLit<"class">,
+      pattern_any_identifier,
+      Opt<pattern_field_declaration_list>,
+      Atom<';'>>
+  >;
 
-  using decl = Seq<AtomLit<"class">, Atom<LEX_IDENTIFIER>, Atom<';'>>;
-
-  if (auto end = decl::match(a, b)) {
-    a = skip_identifier(a, b, "class");
-    a = pattern_any_identifier::match(a, b);
-    auto name = pop_node();
-    a = skip_punct(a, b, ';');
-
-    push_node(new ClassDeclaration(name));
-    return a;
-  }
-  else {
-    a = skip_identifier(a, b, "class");
-    a = pattern_any_identifier::match(a, b);
-    auto name = pop_node();
-
-    a = parse_field_declaration_list(a, b);
-
-    auto body = pop_node();
-    a = skip_punct(a, b, ';');
-
-    push_node(new ClassDefinition(name, body));
-    return a;
-  }
-
+  return pattern::match(a, b);
 }
 
 //----------------------------------------
 
 const Token* parse_struct_specifier(const Token* a, const Token* b) {
-  if (!a->is_identifier("struct")) return nullptr;
-
-  auto old_a = a;
-
-  using decl = NodeMaker<NODE_STRUCT_DECLARATION,
-    Seq<AtomLit<"struct">, Atom<LEX_IDENTIFIER>, Atom<';'>>
+  using pattern = NodeMaker<
+    NODE_STRUCT_DECLARATION,
+    Seq<
+      AtomLit<"struct">,
+      pattern_any_identifier,
+      Opt<pattern_field_declaration_list>,
+      Atom<';'>>
   >;
 
-  if (auto end = decl::match(a, b)) {
-    return end;
-  }
-  else {
-    a = skip_identifier(a, b, "struct");
-    a = pattern_any_identifier::match(a, b);
-    a = parse_field_declaration_list(a, b);
-    a = skip_punct(a, b, ';');
-    push_node(new StructDefinition(old_a, a));
-    return a;
-  }
-
+  return pattern::match(a, b);
 }
 
+//----------------------------------------
+
 const Token* parse_namespace_specifier(const Token* a, const Token* b) {
-  if (!a->is_identifier("namespace")) return nullptr;
+  using pattern = NodeMaker<
+    NODE_STRUCT_DECLARATION,
+    Seq<
+      AtomLit<"namespace">,
+      pattern_any_identifier,
+      Opt<pattern_field_declaration_list>,
+      Atom<';'>>
+  >;
 
-  using decl = Seq<AtomLit<"namespace">, Atom<LEX_IDENTIFIER>, Atom<';'>>;
-
-  if (auto end = decl::match(a, b)) {
-    a = skip_identifier(a, b, "namespace");
-    a = pattern_any_identifier::match(a, b);
-    a = skip_punct(a, b, ';');
-    auto result = new Node(NODE_NAMESPACE_DECLARATION);
-    result->append(pop_node());
-    push_node(result);
-    return a;
-  }
-  else {
-    a = skip_identifier(a, b, "namespace");
-    a = pattern_any_identifier::match(a, b);
-    a = parse_field_declaration_list(a, b);
-    a = skip_punct(a, b, ';');
-
-    auto body = pop_node();
-    auto name = pop_node();
-
-    auto result = new Node(NODE_NAMESPACE_DEFINITION);
-    result->append(name);
-    result->append(body);
-    push_node(result);
-    return a;
-  }
+  return pattern::match(a, b);
 }
 
 //----------------------------------------
@@ -1030,7 +840,7 @@ struct pattern_external_declaration : public Oneof<
   Ref<parse_namespace_specifier>,
   Ref<parse_class_specifier>,
   Ref<parse_struct_specifier>,
-  Seq<Ref<parse_declaration2>, Atom<';'>>
+  Seq<pattern_field_declaration, Atom<';'>>
 > {};
 
 //----------------------------------------
@@ -1126,7 +936,7 @@ NodeMaker<
 //----------------------------------------
 
 struct pattern_declaration_or_expression : public Oneof<
-  Ref<parse_declaration2>,
+  pattern_field_declaration,
   Ref<parse_expression2>
 > {};
 
@@ -1162,7 +972,7 @@ struct pattern_declaration_statement : public NodeMaker<
   Seq<
     // FIXME why did we need this?
     And<Seq<Atom<TOK_IDENTIFIER>, Atom<TOK_IDENTIFIER>>>,
-    Ref<parse_declaration2>,
+    pattern_field_declaration,
     Atom<';'>
   >
 > {};
@@ -1211,7 +1021,7 @@ const Token* parse_statement(const Token* a, const Token* b) {
       a[4].is_identifier()) {
     auto result = new Node(NODE_DECLARATION_STATEMENT, nullptr, nullptr);
 
-    if (auto end = parse_declaration2(a, b)) {
+    if (auto end = pattern_field_declaration::match(a, b)) {
       a = end;
       result->append(pop_node());
     }
@@ -1254,8 +1064,8 @@ const Token* parse_storage_class_specifier(const Token* a, const Token* b) {
 struct pattern_template_parameter_list : public NodeMaker<
   NODE_TEMPLATE_PARAMETER_LIST,
   Delimited<'<', '>', Seq<
-    Ref<parse_declaration>,
-    Any<Seq<Atom<','>, Ref<parse_declaration>>>
+    pattern_field_declaration,
+    Any<Seq<Atom<','>, pattern_field_declaration>>
   >>
 > {};
 
