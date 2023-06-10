@@ -242,6 +242,20 @@ struct Delimited {
   }
 };
 
+template<typename P>
+struct comma_separated : public
+Seq<
+  P,
+  Any<Seq<Atom<','>, P>>
+> {};
+
+template<typename P>
+struct opt_comma_separated : public
+Opt<Seq<
+  P,
+  Any<Seq<Atom<','>, P>>
+>> {};
+
 //------------------------------------------------------------------------------
 
 const Token* skip_punct(const Token* a, const Token* b, const char punct) {
@@ -308,8 +322,7 @@ class pattern_access_specifier : public NodeMaker<NODE_ACCESS_SPECIFIER,
 class pattern_initializer_list : public NodeMaker<NODE_INITIALIZER_LIST,
   Seq<
     Atom<':'>,
-    Ref<parse_expression>,
-    Any<Seq<Atom<','>, Ref<parse_expression>>>,
+    comma_separated<Ref<parse_expression>>,
     And<Atom<'{'>>
   >
 > {};
@@ -397,8 +410,7 @@ struct pattern_enum_body : public NodeMaker<
   NODE_ENUMERATOR_LIST,
   Seq<
     Atom<'{'>,
-    Ref<parse_expression>,
-    Any<Seq<Atom<','>, Ref<parse_expression>>>,
+    comma_separated<Ref<parse_expression>>,
     Atom<'}'>
   >
 > {};
@@ -408,8 +420,7 @@ struct pattern_enum_body : public NodeMaker<
 struct pattern_template_argument_list : public NodeMaker<
   NODE_ARGUMENT_LIST,
   Delimited<'<', '>', Seq<
-    Ref<parse_expression>,
-    Any<Seq<Atom<','>, Ref<parse_expression>>>
+    opt_comma_separated<Ref<parse_expression>>
   >>
 > {};
 
@@ -472,18 +483,11 @@ struct pattern_declaration : public NodeMaker<
 
 //----------------------------------------
 
-template<typename P>
-struct opt_comma_delimited : public
-Opt<Seq<
-  P,
-  Any<Seq<Atom<','>, P>>
->> {};
-
-struct pattern_declaration_list : public NodeMaker<
+struct pattern_parenthesized_declaration_list : public NodeMaker<
   NODE_PARAMETER_LIST,
   Seq<
     Atom<'('>,
-    opt_comma_delimited<pattern_declaration>,
+    opt_comma_separated<pattern_declaration>,
     Atom<')'>
   >
 > {};
@@ -494,7 +498,7 @@ struct pattern_constructor : public NodeMaker<
   NODE_CONSTRUCTOR,
   Seq<
     pattern_any_identifier,
-    pattern_declaration_list,
+    pattern_parenthesized_declaration_list,
     Opt<pattern_initializer_list>,
     Opt<pattern_specifier_list>,
     Oneof<
@@ -511,7 +515,7 @@ struct pattern_function_definition : public NodeMaker<
   Seq<
     pattern_decltype,
     pattern_any_identifier,
-    pattern_declaration_list,
+    pattern_parenthesized_declaration_list,
     Opt<AtomLit<"const">>,
     Oneof<
       pattern_compound_statement,
@@ -543,6 +547,7 @@ struct pattern_field_declaration : public Oneof<
 
 //----------------------------------------
 
+/*
 struct pattern_field_declaration_list {
   static const Token* match(const Token* a, const Token* b) {
     a = Atom<'{'>::match(a, b);
@@ -567,8 +572,8 @@ struct pattern_field_declaration_list {
     return a;
   }
 };
+*/
 
-/*
 struct pattern_field_declaration_list : public NodeMaker<NODE_FIELD_DECLARATION_LIST,
   Seq<
     Atom<'{'>,
@@ -579,7 +584,6 @@ struct pattern_field_declaration_list : public NodeMaker<NODE_FIELD_DECLARATION_
     Atom<'}'>
   >
 > {};
-*/
 
 //----------------------------------------
 
@@ -626,7 +630,10 @@ struct pattern_typecast : public NodeMaker<
   Seq<Atom<'('>, Atom<LEX_IDENTIFIER>, Atom<')'> >
 > {};
 
-struct pattern_sizeof : public NodeMaker<NODE_OPERATOR, AtomLit<"sizeof">> {};
+struct pattern_sizeof : public NodeMaker<
+  NODE_OPERATOR,
+  AtomLit<"sizeof">
+> {};
 
 struct pattern_expression_prefix : public Oneof<
   pattern_prefix_op,
@@ -635,28 +642,26 @@ struct pattern_expression_prefix : public Oneof<
 > {};
 
 //----------------------------------------
-// suffix:
-//    [ expression ]
-//    ( )
-//    ( expression )
-//    . identifier
-//    -> identifier
-//    ++
-//    --
+
+struct pattern_parenthesized_expression_list : public NodeMaker<
+  NODE_ARGUMENT_LIST,
+  Delimited<'(', ')',
+    opt_comma_separated<Ref<parse_expression>>
+  >
+> {};
 
 struct pattern_array_suffix : public NodeMaker<NODE_ARRAY_SUFFIX,
   Seq<Atom<'['>, Opt<Ref<parse_expression>>, Atom<']'>>
 > {};
 
-struct pattern_inc : public NodeMaker<NODE_OPERATOR, Seq<Atom<'+'>, Atom<'+'>>> {};
+struct pattern_inc : public NodeMaker<
+  NODE_OPERATOR,
+  Seq<Atom<'+'>, Atom<'+'>>
+> {};
 
-struct pattern_dec : public NodeMaker<NODE_OPERATOR, Seq<Atom<'-'>, Atom<'-'>>> {};
-
-struct pattern_parenthesized_expression_list : public NodeMaker<
-  NODE_ARGUMENT_LIST,
-  Delimited<'(', ')',
-    opt_comma_delimited<Ref<parse_expression>>
-  >
+struct pattern_dec : public NodeMaker<
+  NODE_OPERATOR,
+  Seq<Atom<'-'>, Atom<'-'>>
 > {};
 
 struct pattern_expression_suffix : public Oneof<
@@ -686,22 +691,11 @@ struct pattern_parenthesized_expression : public NodeMaker<
 
 //----------------------------------------
 
-/*
-struct pattern_parenthesized_expression_list : public NodeMaker<
-  NODE_ARGUMENT_LIST,
-  Delimited<'(', ')', Seq<
-    Ref<parse_expression>,
-    Any<Seq<Atom<','>, Ref<parse_expression>>>
-  >>
-> {};
-*/
-
-//----------------------------------------
-
 struct pattern_function_call : public NodeMaker<
   NODE_CALL_EXPRESSION,
   Seq<
     pattern_any_identifier,
+    Opt<pattern_template_argument_list>,
     pattern_parenthesized_expression_list
   >
 > {};
@@ -945,14 +939,6 @@ struct pattern_for_statement : public NodeMaker<
 
 //----------------------------------------
 
-struct pattern_expression_statement : public NodeMaker<
-  NODE_EXPRESSION_STATEMENT,
-  Seq<Ref<parse_expression>, Atom<';'>>
-> {};
-
-//----------------------------------------
-// FIXME this is not nearly general enough
-
 struct pattern_declaration_statement : public NodeMaker<
   NODE_DECLARATION_STATEMENT,
   Seq<
@@ -962,70 +948,31 @@ struct pattern_declaration_statement : public NodeMaker<
 > {};
 
 //----------------------------------------
+
+struct pattern_expression_statement : public NodeMaker<
+  NODE_EXPRESSION_STATEMENT,
+  Seq<
+    Ref<parse_expression>,
+    Atom<';'>
+  >
+> {};
+
+//----------------------------------------
 // _Does_ include the semicolon for single-line statements
 
+struct pattern_statement : public Oneof<
+  pattern_compound_statement,
+  pattern_if_statement,
+  pattern_while_statement,
+  pattern_for_statement,
+  pattern_return_statement,
+  pattern_switch_statement,
+  pattern_declaration_statement,
+  pattern_expression_statement
+> {};
+
 const Token* parse_statement(const Token* a, const Token* b) {
-  if (a[0].is_punct('}')) {
-    return nullptr;
-  }
-
-  if (auto end = pattern_compound_statement::match(a, b)) {
-    return end;
-  }
-
-  if (auto end = pattern_if_statement::match(a, b)) {
-    return end;
-  }
-
-  if (auto end = pattern_while_statement::match(a, b)) {
-    return end;
-  }
-
-  if (auto end = pattern_for_statement::match(a, b)) {
-    return end;
-  }
-
-  if (auto end = pattern_return_statement::match(a, b)) {
-    return end;
-  }
-
-  if (auto end = pattern_switch_statement::match(a, b)) {
-    return end;
-  }
-
-  if (auto end = pattern_declaration_statement::match(a, b)) {
-    return end;
-  }
-
-  // Dirty hack
-  if (a[0].is_identifier() &&
-      a[1].is_punct('<') &&
-      (a[2].is_identifier() || a[2].is_constant()) &&
-      a[3].is_punct('>') &&
-      a[4].is_identifier()) {
-
-    if (auto end = pattern_declaration_statement::match(a, b)) {
-      return end;
-    }
-
-    auto result = new Node(NODE_DECLARATION_STATEMENT, nullptr, nullptr);
-
-    if (auto end = pattern_declaration::match(a, b)) {
-      a = end;
-      result->append(pop_node());
-    }
-
-    a = skip_punct(a, b, ';');
-    push_node(result);
-    return a;
-  }
-
-  // Must be expression statement
-  if (auto end = pattern_expression_statement::match(a, b)) {
-    return end;
-  }
-
-  return nullptr;
+  return pattern_statement::match(a, b);
 }
 
 //----------------------------------------
@@ -1211,7 +1158,7 @@ int test_c99_peg(int argc, char** argv) {
     paths.push_back(f.path().native());
   }
 
-  paths = { "tests/bit_casts.h" };
+  //paths = { "tests/bit_casts.h" };
 
   double lex_accum = 0;
   double parse_accum = 0;
@@ -1237,7 +1184,7 @@ int test_c99_peg(int argc, char** argv) {
     parse_accum += timestamp_ms();
 
     assert(node_top == 1);
-    dump_top();
+    //dump_top();
 
     auto root = pop_node();
     delete root;
