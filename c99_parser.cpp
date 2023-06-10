@@ -417,9 +417,11 @@ struct pattern_enum_body : public NodeMaker<
 
 struct pattern_template_argument_list : public NodeMaker<
   NODE_ARGUMENT_LIST,
-  Delimited<'<', '>', Seq<
-    opt_comma_separated<Ref<parse_expression>>
-  >>
+  Delimited<'<', '>',
+    Seq<
+      opt_comma_separated<Ref<parse_expression>>
+    >
+  >
 > {};
 
 //----------------------------------------
