@@ -824,7 +824,7 @@ struct pattern_external_declaration : public Oneof<
   pattern_namespace_specifier,
   pattern_class_specifier,
   pattern_struct_specifier,
-  Seq<pattern_field_declaration, Atom<';'>>
+  Seq<pattern_declaration, Atom<';'>>
 > {};
 
 //----------------------------------------
@@ -920,7 +920,7 @@ NodeMaker<
 //----------------------------------------
 
 struct pattern_declaration_or_expression : public Oneof<
-  pattern_field_declaration,
+  pattern_declaration,
   Ref<parse_expression>
 > {};
 
@@ -956,7 +956,7 @@ struct pattern_declaration_statement : public NodeMaker<
   Seq<
     // FIXME why did we need this?
     And<Seq<Atom<TOK_IDENTIFIER>, Atom<TOK_IDENTIFIER>>>,
-    pattern_field_declaration,
+    pattern_declaration,
     Atom<';'>
   >
 > {};
@@ -1005,7 +1005,7 @@ const Token* parse_statement(const Token* a, const Token* b) {
       a[4].is_identifier()) {
     auto result = new Node(NODE_DECLARATION_STATEMENT, nullptr, nullptr);
 
-    if (auto end = pattern_field_declaration::match(a, b)) {
+    if (auto end = pattern_declaration::match(a, b)) {
       a = end;
       result->append(pop_node());
     }
@@ -1048,8 +1048,8 @@ const Token* parse_storage_class_specifier(const Token* a, const Token* b) {
 struct pattern_template_parameter_list : public NodeMaker<
   NODE_TEMPLATE_PARAMETER_LIST,
   Delimited<'<', '>', Seq<
-    pattern_field_declaration,
-    Any<Seq<Atom<','>, pattern_field_declaration>>
+    pattern_declaration,
+    Any<Seq<Atom<','>, pattern_declaration>>
   >>
 > {};
 
