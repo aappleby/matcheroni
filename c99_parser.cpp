@@ -158,7 +158,6 @@ const Token* parse_decltype(const Token* a, const Token* b);
 const Token* parse_expression_list(const Token* a, const Token* b, NodeType type, const char ldelim, const char spacer, const char rdelim);
 const Token* parse_expression2(const Token* a, const Token* b);
 const Token* parse_expression(const Token* a, const Token* b);
-const Token* parse_function_call(const Token* a, const Token* b);
 const Token* parse_initializer_list(const Token* a, const Token* b);
 const Token* parse_statement(const Token* a, const Token* b);
 
@@ -911,6 +910,19 @@ using pattern_parenthesized_expression = NodeMaker<
 
 //----------------------------------------
 
+using pattern_function_call = NodeMaker<
+  NODE_CALL_EXPRESSION,
+  Seq<
+    pattern_any_identifier,
+    Atom<'('>,
+    Ref<parse_expression>,
+    Any<Seq<Atom<','>, Ref<parse_expression>>>,
+    Atom<')'>
+  >
+>;
+
+//----------------------------------------
+
 const Token* parse_expression_lhs(const Token* a, const Token* b) {
 
   // Dirty hackkkkk - explicitly recognize templated function calls as
@@ -956,7 +968,7 @@ const Token* parse_expression_lhs(const Token* a, const Token* b) {
   using pattern = Oneof<
     pattern_parenthesized_expression,
     pattern_constant,
-    Ref<parse_function_call>,
+    pattern_function_call,
     pattern_any_identifier
   >;
 
@@ -1043,6 +1055,7 @@ using pattern_external_declaration = Oneof<
 
 //----------------------------------------
 
+/*
 const Token* parse_function_call(const Token* a, const Token* b) {
   if (!a[0].is_identifier() || !a[1].is_punct('(')) return nullptr;
 
@@ -1059,6 +1072,7 @@ const Token* parse_function_call(const Token* a, const Token* b) {
   push_node(result);
   return a;
 }
+*/
 
 //----------------------------------------
 
@@ -1498,7 +1512,7 @@ int test_c99_peg(int argc, char** argv) {
     paths.push_back(f.path().native());
   }
 
-  paths = { "tests/enum_simple.h" };
+  //paths = { "tests/enum_simple.h" };
 
   double lex_accum = 0;
   double parse_accum = 0;
@@ -1523,7 +1537,7 @@ int test_c99_peg(int argc, char** argv) {
     pattern_translation_unit::match(token, token_eof);
     parse_accum += timestamp_ms();
 
-    dump_top();
+    //dump_top();
     auto root = pop_node();
     delete root;
 
