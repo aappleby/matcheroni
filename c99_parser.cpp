@@ -683,44 +683,23 @@ struct pattern_template_parameter_list : public NodeMaker<
 
 //----------------------------------------
 
+struct pattern_expression : public Seq<
+  Any<pattern_expression_prefix>,
+  Oneof<
+    pattern_parenthesized_expression,
+    pattern_constant,
+    pattern_function_call,
+    pattern_any_identifier
+  >,
+  Any<pattern_expression_suffix>,
+  Opt<Seq<
+    pattern_infix_op,
+    Ref<parse_expression>
+  >>
+> {};
+
 const Token* parse_expression(const Token* a, const Token* b) {
-  if (!a) return nullptr;
-
-  struct pattern_expression_lhs : public Seq<
-    Any<pattern_expression_prefix>,
-    Oneof<
-      pattern_parenthesized_expression,
-      pattern_constant,
-      pattern_function_call,
-      pattern_any_identifier
-    >,
-    Any<pattern_expression_suffix>
-
-  > {};
-
-  if (auto end = pattern_expression_lhs::match(a, b)) {
-    a = end;
-  }
-  else {
-    return nullptr;
-  }
-
-  if (auto end = pattern_infix_op::match(a, b)) {
-    a = end;
-    auto op = pop_node();
-    auto lhs = pop_node();
-    a = parse_expression(a, b);
-    auto rhs = pop_node();
-
-    auto result = new Node(NODE_INFIX_EXPRESSION);
-    result->append(lhs);
-    result->append(op);
-    result->append(rhs);
-    push_node(result);
-    return a;
-  }
-
-  return a;
+  return pattern_expression::match(a, b);
 }
 
 //----------------------------------------
@@ -764,7 +743,7 @@ struct pattern_return_statement : public NodeMaker<
   NODE_RETURN_STATEMENT,
   Seq<
     AtomLit<"return">,
-    Ref<parse_expression>,
+    pattern_expression,
     Atom<';'>
   >
 > {};
@@ -790,7 +769,7 @@ NodeMaker<
   NODE_CASE_STATEMENT,
   Seq<
     AtomLit<"case">,
-    Ref<parse_expression>,
+    pattern_expression,
     Atom<':'>,
     pattern_case_body
   >
@@ -828,7 +807,7 @@ NodeMaker<
 
 struct pattern_declaration_or_expression : public Oneof<
   pattern_declaration,
-  Ref<parse_expression>
+  pattern_expression
 > {};
 
 //----------------------------------------
@@ -840,9 +819,9 @@ struct pattern_for_statement : public NodeMaker<
     Atom<'('>,
     Opt<pattern_declaration_or_expression>,
     Atom<';'>,
-    Opt<Ref<parse_expression>>,
+    Opt<pattern_expression>,
     Atom<';'>,
-    Opt<Ref<parse_expression>>,
+    Opt<pattern_expression>,
     Atom<')'>,
     Ref<parse_statement>
   >
@@ -863,7 +842,7 @@ struct pattern_declaration_statement : public NodeMaker<
 struct pattern_expression_statement : public NodeMaker<
   NODE_EXPRESSION_STATEMENT,
   Seq<
-    Ref<parse_expression>,
+    pattern_expression,
     Atom<';'>
   >
 > {};
