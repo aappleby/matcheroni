@@ -826,53 +826,52 @@ Any<Seq<
   Ref<parse_statement>
 >> {};
 
-struct pattern_case_statement : public
-NodeMaker<
-  NODE_CASE_STATEMENT,
-  Seq<
+//------------------------------------------------------------------------------
+
+struct NodeCaseStatement : public NodeBase<NodeCaseStatement> {
+  using NodeBase::NodeBase;
+  static const NodeType node_type = NODE_CASE_STATEMENT;
+
+  using pattern = Seq<
     AtomLit<"case">,
     pattern_expression,
     Atom<':'>,
     pattern_case_body
-  >
-> {};
+  >;
+};
 
-struct pattern_default_statement : public
-NodeMaker<
-  NODE_DEFAULT_STATEMENT,
-  Seq<
+//------------------------------------------------------------------------------
+
+struct NodeDefaultStatement : public NodeBase<NodeDefaultStatement> {
+  using NodeBase::NodeBase;
+  static const NodeType node_type = NODE_DEFAULT_STATEMENT;
+
+  using pattern = Seq<
     AtomLit<"default">,
     Atom<':'>,
     pattern_case_body
-  >
-> {};
+  >;
+};
 
-struct pattern_case_or_default : public
-Oneof<
-  pattern_case_statement,
-  pattern_default_statement
-> {};
+//------------------------------------------------------------------------------
 
-struct pattern_switch_statement : public
-NodeMaker<
-  NODE_SWITCH_STATEMENT,
-  Seq<
+struct NodeSwitchStatement : public NodeBase<NodeSwitchStatement> {
+  using NodeBase::NodeBase;
+  static const NodeType node_type = NODE_SWITCH_STATEMENT;
+
+  using pattern = Seq<
     AtomLit<"switch">,
     pattern_parenthesized_expression,
     Atom<'{'>,
-    Any<pattern_case_or_default>,
+    Any<Oneof<
+      NodeCaseStatement,
+      NodeDefaultStatement
+    >>,
     Atom<'}'>
-  >
-> {};
+  >;
+};
 
-//----------------------------------------
-
-struct pattern_declaration_or_expression : public Oneof<
-  NodeDeclaration,
-  pattern_expression
-> {};
-
-//----------------------------------------
+//------------------------------------------------------------------------------
 
 struct NodeForStatement : public NodeBase<NodeForStatement> {
   using NodeBase::NodeBase;
@@ -881,7 +880,10 @@ struct NodeForStatement : public NodeBase<NodeForStatement> {
   using pattern = Seq<
     AtomLit<"for">,
     Atom<'('>,
-    Opt<pattern_declaration_or_expression>,
+    Opt<Oneof<
+      NodeDeclaration,
+      pattern_expression
+    >>,
     Atom<';'>,
     Opt<pattern_expression>,
     Atom<';'>,
@@ -893,23 +895,27 @@ struct NodeForStatement : public NodeBase<NodeForStatement> {
 
 //----------------------------------------
 
-struct pattern_declaration_statement : public NodeMaker<
-  NODE_DECLARATION_STATEMENT,
-  Seq<
+struct NodeDeclarationStatement : public NodeBase<NodeDeclarationStatement> {
+  using NodeBase::NodeBase;
+  static const NodeType node_type = NODE_DECLARATION_STATEMENT;
+
+  using pattern = Seq<
     NodeDeclaration,
     Atom<';'>
-  >
-> {};
+  >;
+};
 
 //----------------------------------------
 
-struct pattern_expression_statement : public NodeMaker<
-  NODE_EXPRESSION_STATEMENT,
-  Seq<
+struct NodeExpressionStatement : public NodeBase<NodeExpressionStatement> {
+  using NodeBase::NodeBase;
+  static const NodeType node_type = NODE_EXPRESSION_STATEMENT;
+
+  using pattern = Seq<
     pattern_expression,
     Atom<';'>
-  >
-> {};
+  >;
+};
 
 //----------------------------------------
 // _Does_ include the semicolon for single-line statements
@@ -920,9 +926,9 @@ struct pattern_statement : public Oneof<
   pattern_while_statement,
   NodeForStatement,
   pattern_return_statement,
-  pattern_switch_statement,
-  pattern_declaration_statement,
-  pattern_expression_statement
+  NodeSwitchStatement,
+  NodeDeclarationStatement,
+  NodeExpressionStatement
 > {};
 
 const Token* parse_statement(const Token* a, const Token* b) {
