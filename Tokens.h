@@ -60,10 +60,6 @@ struct Token {
 
   //----------------------------------------
 
-  bool is_eof() const {
-    return type == TOK_EOF;
-  }
-
   bool is_valid() const {
     return type != TOK_INVALID;
   }

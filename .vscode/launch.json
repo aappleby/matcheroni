@@ -10,9 +10,8 @@
       "type": "cppdbg",
       "request": "launch",
       "program": "${workspaceFolder}/bin/matcheroni_demo",
-      //"program": "${workspaceFolder}/bin/cgen",
       "cwd": "${workspaceFolder}",
-      //"args" : ["../gcc/gcc"],
+      //"args" : ["mini_tests"],
       "args" : ["tests"],
       "setupCommands": [
         {

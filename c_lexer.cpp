@@ -216,15 +216,20 @@ const char* match_int(const char* a, const char* b) {
   using long_long_suffix       = Oneof<Lit<"ll">, Lit<"LL">>;
   using bit_precise_int_suffix = Oneof<Lit<"wb">, Lit<"WB">>;
 
+  // This is a little odd because we have to match in longest-suffix-first order
+  // to ensure we capture the entire suffix
   using integer_suffix = Oneof<
-    Seq<unsigned_suffix,  Opt<long_long_suffix>>,
-    Seq<unsigned_suffix,  Opt<long_suffix>>,
-    Seq<long_long_suffix, Opt<unsigned_suffix>>,
-    Seq<long_suffix,      Opt<unsigned_suffix>>,
+    Seq<unsigned_suffix,  long_long_suffix>,
+    Seq<unsigned_suffix,  long_suffix>,
+    Seq<unsigned_suffix,  bit_precise_int_suffix>,
+    Seq<unsigned_suffix>,
 
-    Seq<unsigned_suffix, bit_precise_int_suffix>,
+    Seq<long_long_suffix,       Opt<unsigned_suffix>>,
+    Seq<long_suffix,            Opt<unsigned_suffix>>,
     Seq<bit_precise_int_suffix, Opt<unsigned_suffix>>
   >;
+
+
 
   // Octal has to be _after_ bin/hex so we don't prematurely match the prefix
   using integer_constant = Oneof<

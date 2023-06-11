@@ -320,7 +320,9 @@ struct NodeDecltype : public NodeMaker<NodeDecltype> {
   static constexpr NodeType node_type = NODE_DECLTYPE;
 
   using pattern = Seq<
+    Opt<NodeSpecifierList>,
     NodeIdentifier,
+    Opt<NodeSpecifierList>,
     Opt<NodeTemplateArgs>,
     Opt<Seq<
       Atom<':'>,
@@ -348,7 +350,8 @@ struct NodeEnum : public NodeMaker<NodeEnum> {
       comma_separated<Ref<parse_expression>>,
       Atom<'}'>
     >>,
-    Opt<NodeIdentifier>
+    Opt<NodeIdentifier>,
+    Atom<';'>
   >;
 };
 
@@ -371,7 +374,22 @@ struct NodeInitializer : public NodeMaker<NodeInitializer> {
   using NodeMaker::NodeMaker;
   static constexpr NodeType node_type = NODE_INITIALIZER;
 
-  using pattern = Seq<Atom<'='>, Ref<parse_expression>>;
+  using pattern = Seq<
+    Atom<'='>,
+    Ref<parse_expression>
+  >;
+};
+
+//------------------------------------------------------------------------------
+
+struct NodeBitsize : public NodeMaker<NodeBitsize> {
+  using NodeMaker::NodeMaker;
+  static constexpr NodeType node_type = NODE_BITSIZE;
+
+  using pattern = Seq<
+    Atom<':'>,
+    Ref<parse_expression>
+  >;
 };
 
 //------------------------------------------------------------------------------
@@ -392,10 +410,10 @@ struct NodeDeclaration : public NodeMaker<NodeDeclaration> {
   static constexpr NodeType node_type = NODE_DECLARATION;
 
   using pattern = Seq<
-    Opt<NodeSpecifierList>,
     NodeDecltype,
     NodeIdentifier,
-    Opt<NodeArrayExpression>,
+    Opt<NodeBitsize>,
+    Any<NodeArrayExpression>,
     Opt<NodeInitializer>
   >;
 
@@ -614,10 +632,13 @@ struct NodeExpressionList : public NodeMaker<NodeExpressionList> {
   using NodeMaker::NodeMaker;
   static const NodeType node_type = NODE_EXPRESSION_LIST;
 
-  using pattern = Seq<
-    Atom<'('>,
-    opt_comma_separated<Ref<parse_expression>>,
-    Atom<')'>
+  using pattern = Oneof<
+    Seq<
+      Atom<'('>,
+      opt_comma_separated<Ref<parse_expression>>,
+      Atom<')'>
+    >,
+    Delimited<'{', '}', comma_separated<Ref<parse_expression>>>
   >;
 };
 
@@ -878,18 +899,32 @@ struct NodeTemplateDeclaration : public NodeMaker<NodeTemplateDeclaration> {
 
 //------------------------------------------------------------------------------
 
+template<typename P>
+struct ProgressBar {
+  static const Token* match(const Token* a, const Token* b) {
+    printf("%.40s\n", a->lex->span_a);
+    return P::match(a, b);
+  }
+};
+
 struct NodeTranslationUnit : public NodeMaker<NodeTranslationUnit> {
   using NodeMaker::NodeMaker;
   static const NodeType node_type = NODE_TRANSLATION_UNIT;
 
-  using pattern = Any<Oneof<
-    NodePreproc,
-    NodeNamespace,
-    NodeTemplateDeclaration,
-    NodeClass,
-    NodeStruct,
-    NodeDeclarationStatement
-  >>;
+  using pattern = Any<
+    ProgressBar<
+      Oneof<
+        NodePreproc,
+        NodeNamespace,
+        NodeEnum,
+        NodeTemplateDeclaration,
+        NodeClass,
+        NodeStruct,
+        NodeFunction,
+        NodeDeclarationStatement
+      >
+    >
+  >;
 };
 
 //------------------------------------------------------------------------------
@@ -984,12 +1019,9 @@ void lex_file(const std::string& path, std::string& text, std::vector<Lexeme>& l
   const char* cursor = text_a;
   while(cursor) {
     auto lex = next_lexeme(cursor, text_b);
+    lexemes.push_back(lex);
     if (lex.type == LEX_EOF) {
-      for (int i = 0; i < 10; i++) lexemes.push_back(lex);
       break;
-    }
-    else {
-      lexemes.push_back(lex);
     }
     cursor = lex.span_b;
   }
@@ -1039,22 +1071,19 @@ void dump_lexemes(const std::string& path, int size, std::string& text, std::vec
 int test_c99_peg(int argc, char** argv) {
   printf("Parseroni Demo\n");
 
-  using rdit = std::filesystem::recursive_directory_iterator;
 
   std::vector<std::string> paths;
-
-  //const char* base_path = "tests";
-  //const char* base_path = "mini_tests";
   const char* base_path = argc > 1 ? argv[1] : "tests";
 
-
   printf("Parsing source files in %s\n", base_path);
+  using rdit = std::filesystem::recursive_directory_iterator;
   for (const auto& f : rdit(base_path)) {
     if (!f.is_regular_file()) continue;
     paths.push_back(f.path().native());
   }
 
-  //paths = { "tests/nested_submod_calls.h" };
+  paths = { "tests/scratch.h" };
+  //paths = { "mini_tests/csmith.cpp" };
 
   double lex_accum = 0;
   double parse_accum = 0;
@@ -1070,19 +1099,30 @@ int test_c99_peg(int argc, char** argv) {
     lex_file(path, text, lexemes, tokens);
     lex_accum += timestamp_ms();
 
-    const Token* token = tokens.data();
-    const Token* token_eof = tokens.data() + tokens.size() - 1;
+    const Token* token_a = tokens.data();
+    const Token* token_b = tokens.data() + tokens.size() - 1;
 
     printf("Parsing %s\n", path.c_str());
 
     parse_accum -= timestamp_ms();
-    NodeTranslationUnit::match(token, token_eof);
+    NodeTranslationUnit::match(token_a, token_b);
     parse_accum += timestamp_ms();
 
-    assert(node_stack.top() == 1);
-    //node_stack.dump_top();
+    if (node_stack.top() != 1) {
+      printf("Node stack wrong size %ld\n", node_stack._top);
+      return -1;
+    }
 
     auto root = node_stack.pop();
+
+    if (root->tok_a != token_a) {
+      printf("Root's first token is not token_a!\n");
+    }
+    if (root->tok_b != token_b) {
+      printf("Root's last token is not token_b!\n");
+    }
+
+    root->dump_tree();
     delete root;
 
   }
