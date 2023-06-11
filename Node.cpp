@@ -34,7 +34,7 @@ void dump_span(int max_len, const char* a, const char* b) {
 
 //------------------------------------------------------------------------------
 
-void dump_node(Node* n) {
+void dump_node(NodeBase* n) {
   //printf("%-15s", lex_to_str(n->lexeme));
   printf("%-15s", node_to_str(n->node_type));
   /*
@@ -54,7 +54,7 @@ void dump_node(Node* n) {
 
 //------------------------------------------------------------------------------
 
-void dump_gap(Node* n, int indentation) {
+void dump_gap(NodeBase* n, int indentation) {
   /*
   if (!n) {
     printf("dump_gap got nullptr\n");
@@ -98,7 +98,7 @@ void dump_gap(Node* n, int indentation) {
 
 //------------------------------------------------------------------------------
 
-void dump_tree(Node* head, int max_depth, int indentation) {
+void dump_tree(NodeBase* head, int max_depth, int indentation) {
   if (indentation > max_depth) return;
 
   for (auto cursor = head; cursor; cursor = cursor->next) {

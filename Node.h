@@ -156,9 +156,9 @@ inline const char* node_to_str(NodeType t) {
 
 //------------------------------------------------------------------------------
 
-struct Node {
+struct NodeBase {
 
-  Node(NodeType type, const Token* a = nullptr, const Token* b = nullptr) {
+  NodeBase(NodeType type, const Token* a = nullptr, const Token* b = nullptr) {
     //assert(node_type != NODE_INVALID);
     if (a == nullptr && b == nullptr) {
     }
@@ -171,7 +171,7 @@ struct Node {
     this->tok_b = b;
   };
 
-  Node(NodeType type, const Token* a, const Token* b, Node** children, size_t child_count) {
+  NodeBase(NodeType type, const Token* a, const Token* b, NodeBase** children, size_t child_count) {
     if (a == nullptr && b == nullptr) {
     }
     else {
@@ -187,7 +187,7 @@ struct Node {
     }
   }
 
-  virtual ~Node() {
+  virtual ~NodeBase() {
     auto cursor = head;
     while(cursor) {
       auto next = cursor->next;
@@ -198,12 +198,13 @@ struct Node {
 
   template<typename P>
   bool isa() const {
+    //if (this == nullptr) return false;
     return typeid(*this) == typeid(P);
   }
 
   template<typename P>
   P* as() {
-    if (this == nullptr) return nullptr;
+    //if (this == nullptr) return nullptr;
     if (typeid(*this) == typeid(P)) {
       return dynamic_cast<P*>(this);
     }
@@ -215,7 +216,7 @@ struct Node {
 
   //----------------------------------------
 
-  Node* child(int index) {
+  NodeBase* child(int index) {
     auto cursor = head;
     for (auto i = 0; i < index; i++) {
       if (cursor) cursor = cursor->next;
@@ -225,7 +226,7 @@ struct Node {
 
   //----------------------------------------
 
-  void append(Node* node) {
+  void append(NodeBase* node) {
     if (!node) return;
 
     node->parent = this;
@@ -253,7 +254,7 @@ struct Node {
     assert(!next || next->prev == this);
     assert(!prev || prev->next == this);
 
-    Node* cursor = nullptr;
+    NodeBase* cursor = nullptr;
 
     // Check node chain
     for (cursor = head; cursor && cursor != tail; cursor = cursor->next);
@@ -330,11 +331,11 @@ struct Node {
 
   std::string field;
 
-  Node* parent = nullptr;
-  Node* prev   = nullptr;
-  Node* next   = nullptr;
-  Node* head   = nullptr;
-  Node* tail   = nullptr;
+  NodeBase* parent = nullptr;
+  NodeBase* prev   = nullptr;
+  NodeBase* next   = nullptr;
+  NodeBase* head   = nullptr;
+  NodeBase* tail   = nullptr;
 };
 
 //------------------------------------------------------------------------------

@@ -605,23 +605,23 @@ using inclusive_or_expression    = delimited_list<exclusive_or_expression,   Ato
 using logical_and_expression     = delimited_list<inclusive_or_expression,   Lit<"&&"> >;
 using logical_or_expression      = delimited_list<logical_and_expression,    Lit<"||"> >;
 
-struct ParenExpression : public Node {
+struct ParenExpression : public NodeBase {
   PunctNode* lparen;
   Expresson* exp;
   PunctNode* rparen;
 };
 
-struct PostfixExpression : public Node {
+struct PostfixExpression : public NodeBase {
   Expression*      lhs;
   PostfixOperator* op;
 };
 
-struct PrefixExpression : public Node {
+struct PrefixExpression : public NodeBase {
   PrefixOperator* op;
   Expression*     rhs;
 };
 
-struct BinaryExpression : public Node {
+struct BinaryExpression : public NodeBase {
   Expression*     lhs;
   BinaryOperator* op;
   Expression*     rhs;
