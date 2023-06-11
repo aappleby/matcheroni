@@ -318,37 +318,17 @@ struct match_specifier {
   }
 };
 
-//----------------------------------------
+//------------------------------------------------------------------------------
 
-struct match_qualifier {
-  static const Token* match(const Token* a, const Token* b) {
-    const char* keywords[] = {
-      "const",
-      "volatile",
-      "restrict",
-      "__restrict__",
-      "_Atomic",
-      "_Noreturn",
-    };
-    auto keyword_count = sizeof(keywords)/sizeof(keywords[0]);
-    for (auto i = 0; i < keyword_count; i++) {
-      if (a->is_identifier(keywords[i])) {
-        return a + 1;
-      }
-    }
-    return nullptr;
-  }
-};
+struct NodeSpecifierList : public NodeBase<NodeSpecifierList> {
+  using NodeBase::NodeBase;
+  static const NodeType node_type = NODE_SPECIFIER_LIST;
 
-//----------------------------------------
-
-struct pattern_specifier_list : public NodeMaker<
-  NODE_SPECIFIER_LIST,
-  Some<Oneof<
+  using pattern = Some<Oneof<
     NodeMaker<NODE_IDENTIFIER, match_specifier>,
     NodeMaker<NODE_PUNCT, Atom<'*'>>
-  >>
-> {};
+  >>;
+};
 
 //------------------------------------------------------------------------------
 
@@ -365,25 +345,16 @@ struct NodeCompoundStatement : public NodeBase<NodeCompoundStatement> {
 
 //------------------------------------------------------------------------------
 
-struct pattern_enum_body : public NodeMaker<
-  NODE_ENUMERATOR_LIST,
-  Seq<
-    Atom<'{'>,
-    comma_separated<Ref<parse_expression>>,
-    Atom<'}'>
-  >
-> {};
+struct NodeTemplateArgs : public NodeBase<NodeTemplateArgs> {
+  using NodeBase::NodeBase;
+  static constexpr NodeType node_type = NODE_ARGUMENT_LIST;
 
-//----------------------------------------
-
-struct pattern_template_argument_list : public NodeMaker<
-  NODE_ARGUMENT_LIST,
-  Delimited<'<', '>',
+  using pattern = Delimited<'<', '>',
     opt_comma_separated<Ref<parse_expression>>
-  >
-> {};
+  >;
+};
 
-//----------------------------------------
+//------------------------------------------------------------------------------
 
 struct NodeDecltype : public NodeBase<NodeDecltype> {
   using NodeBase::NodeBase;
@@ -391,7 +362,7 @@ struct NodeDecltype : public NodeBase<NodeDecltype> {
 
   using pattern = Seq<
     NodeIdentifier,
-    Opt<pattern_template_argument_list>,
+    Opt<NodeTemplateArgs>,
     Opt<Seq<
       Atom<':'>,
       Atom<':'>,
@@ -401,8 +372,17 @@ struct NodeDecltype : public NodeBase<NodeDecltype> {
   >;
 };
 
-//----------------------------------------
+//------------------------------------------------------------------------------
 // FIXME should probably have a few diffeerent versions instead of all the opts
+
+struct pattern_enum_body : public NodeMaker<
+  NODE_ENUMERATOR_LIST,
+  Seq<
+    Atom<'{'>,
+    comma_separated<Ref<parse_expression>>,
+    Atom<'}'>
+  >
+> {};
 
 struct NodeEnum : public NodeBase<NodeEnum> {
   using NodeBase::NodeBase;
@@ -418,7 +398,7 @@ struct NodeEnum : public NodeBase<NodeEnum> {
   >;
 };
 
-//----------------------------------------
+//------------------------------------------------------------------------------
 
 struct pattern_array_expression : public NodeMaker<
   NODE_ARRAY_EXPRESSION,
@@ -436,7 +416,7 @@ struct NodeDeclaration : public NodeBase<NodeDeclaration> {
   static constexpr NodeType node_type = NODE_DECLARATION;
 
   using pattern = Seq<
-    Opt<pattern_specifier_list>,
+    Opt<NodeSpecifierList>,
     NodeDecltype,
     NodeIdentifier,
     Opt<pattern_array_expression>,
@@ -637,7 +617,7 @@ struct pattern_dec : public NodeMaker<
 > {};
 
 struct pattern_expression_suffix : public Oneof<
-  pattern_template_argument_list,
+  NodeTemplateArgs,
   pattern_parenthesized_expression_list,
   pattern_array_suffix,
   pattern_inc,
@@ -674,7 +654,7 @@ struct NodeCallExpression : public NodeBase<NodeCallExpression> {
 
   using pattern = Seq<
     NodeIdentifier,
-    Opt<pattern_template_argument_list>,
+    Opt<NodeTemplateArgs>,
     pattern_parenthesized_expression_list
   >;
 };
