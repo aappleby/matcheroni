@@ -288,6 +288,10 @@ struct NodeInitializerList : public NodeBase<NodeInitializerList> {
 
 struct match_specifier {
   static const Token* match(const Token* a, const Token* b) {
+    if (auto end = Atom<'*'>::match(a, b)) {
+      return end;
+    }
+
     const char* keywords[] = {
       "extern",
       "static",
@@ -318,16 +322,20 @@ struct match_specifier {
   }
 };
 
+struct NodeSpecifier : public NodeBase<NodeSpecifier> {
+  using NodeBase::NodeBase;
+  static const NodeType node_type = NODE_SPECIFIER;
+
+  using pattern = match_specifier;
+};
+
 //------------------------------------------------------------------------------
 
 struct NodeSpecifierList : public NodeBase<NodeSpecifierList> {
   using NodeBase::NodeBase;
   static const NodeType node_type = NODE_SPECIFIER_LIST;
 
-  using pattern = Some<Oneof<
-    NodeMaker<NODE_IDENTIFIER, match_specifier>,
-    NodeMaker<NODE_PUNCT, Atom<'*'>>
-  >>;
+  using pattern = Some<NodeSpecifier>;
 };
 
 //------------------------------------------------------------------------------
@@ -375,15 +383,6 @@ struct NodeDecltype : public NodeBase<NodeDecltype> {
 //------------------------------------------------------------------------------
 // FIXME should probably have a few diffeerent versions instead of all the opts
 
-struct pattern_enum_body : public NodeMaker<
-  NODE_ENUMERATOR_LIST,
-  Seq<
-    Atom<'{'>,
-    comma_separated<Ref<parse_expression>>,
-    Atom<'}'>
-  >
-> {};
-
 struct NodeEnum : public NodeBase<NodeEnum> {
   using NodeBase::NodeBase;
   static constexpr NodeType node_type = NODE_ENUM_DECLARATION;
@@ -393,21 +392,28 @@ struct NodeEnum : public NodeBase<NodeEnum> {
     Opt<Keyword<"class">>,
     Opt<NodeIdentifier>,
     Opt<Seq<Atom<':'>, NodeDecltype>>,
-    Opt<pattern_enum_body>,
+    //Opt<pattern_enum_body>,
+    Opt<Seq<
+      Atom<'{'>,
+      comma_separated<Ref<parse_expression>>,
+      Atom<'}'>
+    >>,
     Opt<NodeIdentifier>
   >;
 };
 
 //------------------------------------------------------------------------------
 
-struct pattern_array_expression : public NodeMaker<
-  NODE_ARRAY_EXPRESSION,
-  Seq<
+struct NodeArrayExpression : public NodeBase<NodeArrayExpression> {
+  using NodeBase::NodeBase;
+  static constexpr NodeType node_type = NODE_ARRAY_EXPRESSION;
+
+  using pattern = Seq<
     Atom<'['>,
     Ref<parse_expression>,
     Atom<']'>
-  >
-> {};
+  >;
+};
 
 //----------------------------------------
 
@@ -419,7 +425,7 @@ struct NodeDeclaration : public NodeBase<NodeDeclaration> {
     Opt<NodeSpecifierList>,
     NodeDecltype,
     NodeIdentifier,
-    Opt<pattern_array_expression>,
+    Opt<NodeArrayExpression>,
     Opt<Seq<
       NodeMaker<NODE_OPERATOR, Atom<'='>>,
       Ref<parse_expression>
