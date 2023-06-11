@@ -710,31 +710,38 @@ struct pattern_expression_suffix : public Oneof<
 
 //----------------------------------------
 
-struct pattern_infix_op : public NodeMaker<NODE_OPERATOR,
-  match_chars_as_tokens<Ref<match_infix_op>>
-> {};
+struct NodeInfixOp : public NodeBase<NodeInfixOp> {
+  using NodeBase::NodeBase;
+  static const NodeType node_type = NODE_OPERATOR;
+
+  using pattern = match_chars_as_tokens<Ref<match_infix_op>>;
+};
 
 //----------------------------------------
 
-struct pattern_parenthesized_expression : public NodeMaker<
-  NODE_PARENTHESIZED_EXPRESSION,
-  Seq<
+struct NodeParenExpression : public NodeBase<NodeParenExpression> {
+  using NodeBase::NodeBase;
+  static const NodeType node_type = NODE_PARENTHESIZED_EXPRESSION;
+
+  using pattern = Seq<
     Atom<'('>,
     Ref<parse_expression>,
     Atom<')'>
-  >
-> {};
+  >;
+};
 
 //----------------------------------------
 
-struct pattern_function_call : public NodeMaker<
-  NODE_CALL_EXPRESSION,
-  Seq<
+struct NodeCallExpression : public NodeBase<NodeCallExpression> {
+  using NodeBase::NodeBase;
+  static const NodeType node_type = NODE_CALL_EXPRESSION;
+
+  using pattern = Seq<
     pattern_any_identifier,
     Opt<pattern_template_argument_list>,
     pattern_parenthesized_expression_list
-  >
-> {};
+  >;
+};
 
 //----------------------------------------
 
@@ -754,14 +761,14 @@ struct NodeExpression : public NodeBase<NodeExpression> {
   using pattern = Seq<
     Any<pattern_expression_prefix>,
     Oneof<
-      pattern_parenthesized_expression,
+      NodeParenExpression,
       pattern_constant,
-      pattern_function_call,
+      NodeCallExpression,
       pattern_any_identifier
     >,
     Any<pattern_expression_suffix>,
     Opt<Seq<
-      pattern_infix_op,
+      NodeInfixOp,
       Ref<parse_expression>
     >>
   >;
@@ -779,7 +786,7 @@ struct NodeIfStatement : public NodeBase<NodeIfStatement> {
 
   using pattern = Seq<
     AtomLit<"if">,
-    pattern_parenthesized_expression,
+    NodeParenExpression,
     Ref<parse_statement>,
     Opt<Seq<
       AtomLit<"else">,
@@ -796,7 +803,7 @@ struct NodeWhileStatement : public NodeBase<NodeWhileStatement> {
 
   using pattern = Seq<
     AtomLit<"while">,
-    pattern_parenthesized_expression,
+    NodeParenExpression,
     Ref<parse_statement>
   >;
 };
@@ -867,7 +874,7 @@ struct NodeSwitchStatement : public NodeBase<NodeSwitchStatement> {
 
   using pattern = Seq<
     AtomLit<"switch">,
-    pattern_parenthesized_expression,
+    NodeParenExpression,
     Atom<'{'>,
     Any<Oneof<
       NodeCaseStatement,
