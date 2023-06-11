@@ -189,11 +189,15 @@ using opt_comma_separated = Opt<comma_separated<P>>;
 
 //------------------------------------------------------------------------------
 
-template<typename NT, typename P>
-struct NodeMaker3 {
+template<typename NT>
+struct NodeBase : public Node {
+  NodeBase(const Token* a, const Token* b, Node** children, size_t child_count)
+  : Node(NT::node_type, a, b, children, child_count) {
+  }
+
   static const Token* match(const Token* a, const Token* b) {
     auto old_top = node_stack.top();
-    auto end = P::match(a, b);
+    auto end = NT::pattern::match(a, b);
     auto new_top = node_stack.top();
 
     if (end && end != a) {
@@ -206,19 +210,6 @@ struct NodeMaker3 {
       for (auto i = old_top; i < new_top; i++) delete node_stack.pop();
       return nullptr;
     }
-  }
-};
-
-//------------------------------------------------------------------------------
-
-template<typename NT>
-struct NodeBase : public Node {
-  NodeBase(const Token* a, const Token* b, Node** children, size_t child_count)
-  : Node(NT::node_type, a, b, children, child_count) {
-  }
-
-  static const Token* match(const Token* a, const Token* b) {
-    return NodeMaker3<NT, typename NT::pattern>::match(a, b);
   }
 };
 
