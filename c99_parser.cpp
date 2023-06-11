@@ -773,9 +773,11 @@ struct pattern_external_declaration : public Oneof<
 
 //----------------------------------------
 
-struct pattern_if_statement : public NodeMaker<
-  NODE_IF_STATEMENT,
-  Seq<
+struct NodeIfStatement : public NodeBase<NodeIfStatement> {
+  using NodeBase::NodeBase;
+  static const NodeType node_type = NODE_IF_STATEMENT;
+
+  using pattern = Seq<
     AtomLit<"if">,
     pattern_parenthesized_expression,
     Ref<parse_statement>,
@@ -783,8 +785,8 @@ struct pattern_if_statement : public NodeMaker<
       AtomLit<"else">,
       Ref<parse_statement>
     >>
-  >
-> {};
+  >;
+};
 
 //----------------------------------------
 
@@ -912,7 +914,7 @@ struct pattern_expression_statement : public NodeMaker<
 
 struct pattern_statement : public Oneof<
   pattern_compound_statement,
-  pattern_if_statement,
+  NodeIfStatement,
   pattern_while_statement,
   pattern_for_statement,
   pattern_return_statement,
