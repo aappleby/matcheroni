@@ -64,72 +64,6 @@ struct match_chars_as_tokens {
 
 //------------------------------------------------------------------------------
 
-const char* c_specifiers[] = {
-  "const",
-  "constexpr",
-  "extern",
-  "inline",
-  "register",
-  "restrict",
-  "signed",
-  "static",
-  "thread_local",
-  "unsigned",
-  "volatile",
-  "_Noreturn",
-};
-
-const char* c_primitives[] = {
-  "auto",
-  "bool",
-  "char",
-  "double",
-  "float",
-  "int",
-  "long",
-  "short",
-  "void",
-};
-
-const char* c_control[] = {
-  "break",
-  "case",
-  "continue",
-  "default",
-  "do",
-  "else",
-  "for",
-  "goto",
-  "if",
-  "return",
-  "switch",
-  "while",
-};
-
-const char* c_constants[] = {
-  "false",
-  "nullptr",
-  "true",
-};
-
-const char* c_intrinsics[] = {
-  "alignas",
-  "alignof",
-  "sizeof",
-  "static_assert",
-  "typeof",
-  "typeof_unqual",
-};
-
-const char* c_structs[] = {
-  "enum",
-  "struct",
-  "typedef",
-  "union",
-};
-
-//------------------------------------------------------------------------------
-
 Node* node_stack[256] = {0};
 size_t node_top = 0;
 
@@ -247,18 +181,10 @@ struct Delimited {
 };
 
 template<typename P>
-struct comma_separated : public
-Seq<
-  P,
-  Any<Seq<Atom<','>, P>>
-> {};
+using comma_separated     =     Seq<P,Any<Seq<Atom<','>, P>>>;
 
 template<typename P>
-struct opt_comma_separated : public
-Opt<Seq<
-  P,
-  Any<Seq<Atom<','>, P>>
->> {};
+using opt_comma_separated = Opt<Seq<P,Any<Seq<Atom<','>, P>>>>;
 
 //------------------------------------------------------------------------------
 
@@ -324,39 +250,39 @@ struct NodeBase : public Node {
 
 //------------------------------------------------------------------------------
 
-struct pattern_any_identifier : public NodeMaker<
-  NODE_IDENTIFIER,
-  Atom<TOK_IDENTIFIER>
-> {};
+struct NodeIdentifier : public NodeBase<NodeIdentifier> {
+  using NodeBase::NodeBase;
+  static const NodeType node_type = NODE_IDENTIFIER;
 
-struct pattern_constant : public NodeMaker<
-  NODE_CONSTANT,
-  Oneof<
+  using pattern = Atom<TOK_IDENTIFIER>;
+};
+
+//------------------------------------------------------------------------------
+
+struct NodeConstant : public NodeBase<NodeConstant> {
+  using NodeBase::NodeBase;
+  static const NodeType node_type = NODE_CONSTANT;
+
+  using pattern = Oneof<
     Atom<TOK_FLOAT>,
     Atom<TOK_INT>,
     Atom<TOK_CHAR>,
     Atom<TOK_STRING>
-  >
-> {};
+  >;
+};
 
 //----------------------------------------
 
-template<char punct>
-struct pattern_punct : public NodeMaker<
-  NODE_PUNCT,
-  Atom<punct>
-> {};
+struct NodeInitializerList : public NodeBase<NodeInitializerList> {
+  using NodeBase::NodeBase;
+  static const NodeType node_type = NODE_INITIALIZER_LIST;
 
-//----------------------------------------
-
-class pattern_initializer_list : public NodeMaker<
-  NODE_INITIALIZER_LIST,
-  Seq<
+  using pattern = Seq<
     Atom<':'>,
     comma_separated<Ref<parse_expression>>,
     And<Atom<'{'>>
-  >
-> {};
+  >;
+};
 
 //----------------------------------------
 
@@ -459,19 +385,21 @@ struct pattern_template_argument_list : public NodeMaker<
 
 //----------------------------------------
 
-struct pattern_decltype : public NodeMaker<
-  NODE_DECLTYPE,
-  Seq<
-    pattern_any_identifier,
+struct NodeDecltype : public NodeBase<NodeDecltype> {
+  using NodeBase::NodeBase;
+  static constexpr NodeType node_type = NODE_DECLTYPE;
+
+  using pattern = Seq<
+    NodeIdentifier,
     Opt<pattern_template_argument_list>,
     Opt<Seq<
       Atom<':'>,
       Atom<':'>,
-      pattern_any_identifier
+      NodeIdentifier
     >>,
     Opt<Atom<'*'>>
-  >
-> {};
+  >;
+};
 
 //----------------------------------------
 // FIXME should probably have a few diffeerent versions instead of all the opts
@@ -481,10 +409,10 @@ struct pattern_enum_declaration : public NodeMaker<
   Seq<
     AtomLit<"enum">,
     Opt<AtomLit<"class">>,
-    Opt<pattern_any_identifier>,
-    Opt<Seq<Atom<':'>, pattern_decltype>>,
+    Opt<NodeIdentifier>,
+    Opt<Seq<Atom<':'>, NodeDecltype>>,
     Opt<pattern_enum_body>,
-    Opt<pattern_any_identifier>
+    Opt<NodeIdentifier>
   >
 > {};
 
@@ -507,8 +435,8 @@ struct NodeDeclaration : public NodeBase<NodeDeclaration> {
 
   using pattern = Seq<
     Opt<pattern_specifier_list>,
-    pattern_decltype,
-    pattern_any_identifier,
+    NodeDecltype,
+    NodeIdentifier,
     Opt<pattern_array_expression>,
     Opt<Seq<
       NodeMaker<NODE_OPERATOR, Atom<'='>>,
@@ -537,9 +465,9 @@ struct NodeConstructor : public NodeBase<NodeConstructor> {
   static constexpr NodeType node_type = NODE_CONSTRUCTOR;
 
   using pattern = Seq<
-    pattern_any_identifier,
+    NodeIdentifier,
     NodeDeclList,
-    Opt<pattern_initializer_list>,
+    Opt<NodeInitializerList>,
     Oneof<
       NodeCompoundStatement,
       Atom<';'>
@@ -554,8 +482,8 @@ struct NodeFunction : public NodeBase<NodeFunction> {
   static constexpr NodeType node_type = NODE_FUNCTION_DEFINITION;
 
   using pattern = Seq<
-    pattern_decltype,
-    pattern_any_identifier,
+    NodeDecltype,
+    NodeIdentifier,
     NodeDeclList,
     Opt<AtomLit<"const">>,
     Oneof<
@@ -572,7 +500,7 @@ struct NodeAssignment : public NodeBase<NodeAssignment> {
   static constexpr NodeType node_type = NODE_ASSIGNMENT_EXPRESSION;
 
   using pattern = Seq<
-    pattern_any_identifier,
+    NodeIdentifier,
     match_chars_as_tokens<Ref<match_assign_op>>,
     Ref<parse_expression>
   >;
@@ -626,7 +554,7 @@ struct NodeClass : public NodeBase<NodeClass> {
 
   using pattern = Seq<
     AtomLit<"class">,
-    pattern_any_identifier,
+    NodeIdentifier,
     Opt<NodeFieldList>,
     Atom<';'>
   >;
@@ -634,25 +562,31 @@ struct NodeClass : public NodeBase<NodeClass> {
 
 //------------------------------------------------------------------------------
 
-struct pattern_struct_specifier : NodeMaker<
-  NODE_STRUCT_DECLARATION,
-  Seq<
+struct NodeStruct : public NodeBase<NodeStruct> {
+  using NodeBase::NodeBase;
+  static const NodeType node_type = NODE_STRUCT_DECLARATION;
+
+  using pattern = Seq<
     AtomLit<"struct">,
-    pattern_any_identifier,
+    NodeIdentifier,
     Opt<NodeFieldList>,
-    Atom<';'>>
-> {};
+    Atom<';'>
+  >;
+};
 
 //----------------------------------------
 
-struct pattern_namespace_specifier : NodeMaker<
-  NODE_NAMESPACE_DECLARATION,
-  Seq<
+struct NodeNamespace : public NodeBase<NodeNamespace> {
+  using NodeBase::NodeBase;
+  static const NodeType node_type = NODE_NAMESPACE_DECLARATION;
+
+  using pattern = Seq<
     AtomLit<"namespace">,
-    pattern_any_identifier,
+    NodeIdentifier,
     Opt<NodeFieldList>,
-    Atom<';'>>
-> {};
+    Atom<';'>
+  >;
+};
 
 //----------------------------------------
 
@@ -737,7 +671,7 @@ struct NodeCallExpression : public NodeBase<NodeCallExpression> {
   static const NodeType node_type = NODE_CALL_EXPRESSION;
 
   using pattern = Seq<
-    pattern_any_identifier,
+    NodeIdentifier,
     Opt<pattern_template_argument_list>,
     pattern_parenthesized_expression_list
   >;
@@ -762,9 +696,9 @@ struct NodeExpression : public NodeBase<NodeExpression> {
     Any<pattern_expression_prefix>,
     Oneof<
       NodeParenExpression,
-      pattern_constant,
+      NodeConstant,
       NodeCallExpression,
-      pattern_any_identifier
+      NodeIdentifier
     >,
     Any<pattern_expression_suffix>,
     Opt<Seq<
@@ -968,11 +902,11 @@ struct NodeTranslationUnit : public NodeBase<NodeTranslationUnit> {
   static const NodeType node_type = NODE_TRANSLATION_UNIT;
 
   using pattern = Any<Oneof<
-    NodeTemplateDeclaration,
     NodePreproc,
-    pattern_namespace_specifier,
+    NodeNamespace,
+    NodeTemplateDeclaration,
     NodeClass,
-    pattern_struct_specifier,
+    NodeStruct,
     NodeDeclarationStatement
   >>;
 };
