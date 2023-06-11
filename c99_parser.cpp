@@ -321,6 +321,7 @@ struct NodeDecltype : public NodeMaker<NodeDecltype> {
 
   using pattern = Seq<
     Opt<NodeSpecifierList>,
+    Opt<Keyword<"struct">>,
     NodeIdentifier,
     Opt<NodeSpecifierList>,
     Opt<NodeTemplateArgs>,
@@ -614,7 +615,7 @@ struct NodeTypecast : public NodeMaker<NodeTypecast> {
   using NodeMaker::NodeMaker;
   static const NodeType node_type = NODE_TYPECAST;
 
-  using pattern = Seq<Atom<'('>, Atom<TOK_IDENTIFIER>, Atom<')'> >;
+  using pattern = Seq<Atom<'('>, NodeDecltype, Atom<')'> >;
 };
 
 //------------------------------------------------------------------------------
@@ -1082,8 +1083,8 @@ int test_c99_peg(int argc, char** argv) {
     paths.push_back(f.path().native());
   }
 
-  paths = { "tests/scratch.h" };
-  //paths = { "mini_tests/csmith.cpp" };
+  //paths = { "tests/scratch.h" };
+  paths = { "mini_tests/csmith.cpp" };
 
   double lex_accum = 0;
   double parse_accum = 0;
@@ -1122,7 +1123,7 @@ int test_c99_peg(int argc, char** argv) {
       printf("Root's last token is not token_b!\n");
     }
 
-    root->dump_tree();
+    //root->dump_tree();
     delete root;
 
   }
