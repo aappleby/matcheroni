@@ -311,6 +311,19 @@ struct NodeMaker3 {
 
 //------------------------------------------------------------------------------
 
+template<typename NT>
+struct NodeBase : public Node {
+  NodeBase(const Token* a, const Token* b, Node** children, size_t child_count)
+  : Node(NT::node_type, a, b, children, child_count) {
+  }
+
+  static const Token* match(const Token* a, const Token* b) {
+    return NodeMaker3<NT, typename NT::pattern>::match(a, b);
+  }
+};
+
+//------------------------------------------------------------------------------
+
 struct pattern_any_identifier : public NodeMaker<
   NODE_IDENTIFIER,
   Atom<TOK_IDENTIFIER>
@@ -486,9 +499,11 @@ struct pattern_array_expression : public NodeMaker<
 
 //----------------------------------------
 
-struct pattern_declaration : public NodeMaker<
-  NODE_DECLARATION,
-  Seq<
+struct NodeDeclaration : public NodeBase<NodeDeclaration> {
+  using NodeBase::NodeBase;
+  static constexpr NodeType node_type = NODE_DECLARATION;
+
+  using pattern = Seq<
     Opt<pattern_specifier_list>,
     pattern_decltype,
     pattern_any_identifier,
@@ -497,80 +512,84 @@ struct pattern_declaration : public NodeMaker<
       NodeMaker<NODE_OPERATOR, Atom<'='>>,
       Ref<parse_expression>
     >>
-  >
-> {};
+  >;
+};
 
+//------------------------------------------------------------------------------
 
-//----------------------------------------
+struct NodeDeclList : public NodeBase<NodeDeclList> {
+  using NodeBase::NodeBase;
+  static constexpr NodeType node_type = NODE_PARAMETER_LIST;
 
-struct pattern_parenthesized_declaration_list : public NodeMaker<
-  NODE_PARAMETER_LIST,
-  Seq<
+  using pattern = Seq<
     Atom<'('>,
-    opt_comma_separated<pattern_declaration>,
+    opt_comma_separated<NodeDeclaration>,
     Atom<')'>
-  >
-> {};
+  >;
+};
 
-//----------------------------------------
+//------------------------------------------------------------------------------
 
-struct pattern_constructor : public NodeMaker<
-  NODE_CONSTRUCTOR,
-  Seq<
+struct NodeConstructor : public NodeBase<NodeConstructor> {
+  using NodeBase::NodeBase;
+  static constexpr NodeType node_type = NODE_CONSTRUCTOR;
+
+  using pattern = Seq<
     pattern_any_identifier,
-    pattern_parenthesized_declaration_list,
+    NodeDeclList,
     Opt<pattern_initializer_list>,
     Oneof<
       pattern_compound_statement,
       Atom<';'>
     >
-  >
-> {};
+  >;
+};
 
-//----------------------------------------
+//------------------------------------------------------------------------------
 
-struct pattern_function_definition : public NodeMaker<
-  NODE_FUNCTION_DEFINITION,
-  Seq<
+struct NodeFunction : public NodeBase<NodeFunction> {
+  using NodeBase::NodeBase;
+  static constexpr NodeType node_type = NODE_FUNCTION_DEFINITION;
+
+  using pattern = Seq<
     pattern_decltype,
     pattern_any_identifier,
-    pattern_parenthesized_declaration_list,
+    NodeDeclList,
     Opt<AtomLit<"const">>,
     Oneof<
       pattern_compound_statement,
       Atom<';'>
     >
-  >
-> {};
+  >;
+};
 
 //------------------------------------------------------------------------------
 
-struct pattern_assignment : public NodeMaker<
-  NODE_ASSIGNMENT_EXPRESSION,
-  Seq<
+struct NodeAssignment : public NodeBase<NodeAssignment> {
+  using NodeBase::NodeBase;
+  static constexpr NodeType node_type = NODE_ASSIGNMENT_EXPRESSION;
+
+  using pattern = Seq<
     pattern_any_identifier,
     match_chars_as_tokens<Ref<match_assign_op>>,
     Ref<parse_expression>
-  >
-> {};
+  >;
+};
 
 //------------------------------------------------------------------------------
 
 struct pattern_field_declaration : public Oneof<
-  pattern_constructor,
+  NodeConstructor,
   pattern_enum_declaration,
-  pattern_function_definition,
-  pattern_declaration,
-  pattern_assignment
+  NodeFunction,
+  NodeDeclaration
 > {};
 
 //------------------------------------------------------------------------------
 
-struct NodeAccessSpecifier : public Node {
-
-  NodeAccessSpecifier(const Token* a, const Token* b, Node** children, size_t child_count)
-  : Node(NODE_ACCESS_SPECIFIER, a, b, children, child_count) {
-  }
+struct NodeAccessSpecifier : public NodeBase<NodeAccessSpecifier> {
+  using NodeBase::NodeBase;
+  static constexpr NodeType node_type = NODE_ACCESS_SPECIFIER;
 
   using pattern = Seq<
     Oneof<
@@ -579,44 +598,46 @@ struct NodeAccessSpecifier : public Node {
     >,
     Atom<':'>
   >;
-
-  static const Token* match(const Token* a, const Token* b) {
-    return NodeMaker3<NodeAccessSpecifier, pattern>::match(a, b);
-  }
 };
 
 //------------------------------------------------------------------------------
 
-struct pattern_field_declaration_list : public NodeMaker<NODE_FIELD_DECLARATION_LIST,
-  Seq<
+struct NodeFieldList : public NodeBase<NodeFieldList> {
+  using NodeBase::NodeBase;
+  static constexpr NodeType node_type = NODE_FIELD_LIST;
+
+  using pattern = Seq<
     Atom<'{'>,
     Any<Oneof<
       NodeAccessSpecifier,
       Seq<pattern_field_declaration,Opt<Atom<';'>>>
     >>,
     Atom<'}'>
-  >
-> {};
+  >;
+};
 
-//----------------------------------------
+//------------------------------------------------------------------------------
 
-struct pattern_class_specifier : public NodeMaker<
-  NODE_CLASS_DECLARATION,
-  Seq<
+struct NodeClass : public NodeBase<NodeClass> {
+  using NodeBase::NodeBase;
+  static constexpr NodeType node_type = NODE_CLASS_DECLARATION;
+
+  using pattern = Seq<
     AtomLit<"class">,
     pattern_any_identifier,
-    Opt<pattern_field_declaration_list>,
-    Atom<';'>>
-> {};
+    Opt<NodeFieldList>,
+    Atom<';'>
+  >;
+};
 
-//----------------------------------------
+//------------------------------------------------------------------------------
 
 struct pattern_struct_specifier : NodeMaker<
   NODE_STRUCT_DECLARATION,
   Seq<
     AtomLit<"struct">,
     pattern_any_identifier,
-    Opt<pattern_field_declaration_list>,
+    Opt<NodeFieldList>,
     Atom<';'>>
 > {};
 
@@ -627,7 +648,7 @@ struct pattern_namespace_specifier : NodeMaker<
   Seq<
     AtomLit<"namespace">,
     pattern_any_identifier,
-    Opt<pattern_field_declaration_list>,
+    Opt<NodeFieldList>,
     Atom<';'>>
 > {};
 
@@ -717,10 +738,7 @@ struct pattern_function_call : public NodeMaker<
 
 struct pattern_template_parameter_list : public NodeMaker<
   NODE_TEMPLATE_PARAMETER_LIST,
-  Delimited<'<', '>', Seq<
-    pattern_declaration,
-    Any<Seq<Atom<','>, pattern_declaration>>
-  >>
+  Delimited<'<', '>', comma_separated<NodeDeclaration>>
 > {};
 
 //----------------------------------------
@@ -748,9 +766,9 @@ const Token* parse_expression(const Token* a, const Token* b) {
 
 struct pattern_external_declaration : public Oneof<
   pattern_namespace_specifier,
-  pattern_class_specifier,
+  NodeClass,
   pattern_struct_specifier,
-  Seq<pattern_declaration, Atom<';'>>
+  Seq<NodeDeclaration, Atom<';'>>
 > {};
 
 //----------------------------------------
@@ -848,7 +866,7 @@ NodeMaker<
 //----------------------------------------
 
 struct pattern_declaration_or_expression : public Oneof<
-  pattern_declaration,
+  NodeDeclaration,
   pattern_expression
 > {};
 
@@ -874,7 +892,7 @@ struct pattern_for_statement : public NodeMaker<
 struct pattern_declaration_statement : public NodeMaker<
   NODE_DECLARATION_STATEMENT,
   Seq<
-    pattern_declaration,
+    NodeDeclaration,
     Atom<';'>
   >
 > {};
@@ -914,7 +932,7 @@ struct pattern_template_decl : public NodeMaker<
   Seq<
     AtomLit<"template">,
     pattern_template_parameter_list,
-    pattern_class_specifier
+    NodeClass
   >
 > {};
 
