@@ -743,33 +743,29 @@ struct pattern_template_parameter_list : public NodeMaker<
 
 //----------------------------------------
 
-struct pattern_expression : public Seq<
-  Any<pattern_expression_prefix>,
-  Oneof<
-    pattern_parenthesized_expression,
-    pattern_constant,
-    pattern_function_call,
-    pattern_any_identifier
-  >,
-  Any<pattern_expression_suffix>,
-  Opt<Seq<
-    pattern_infix_op,
-    Ref<parse_expression>
-  >>
-> {};
+struct NodeExpression : public NodeBase<NodeExpression> {
+  using NodeBase::NodeBase;
+  static const NodeType node_type = NODE_EXPRESSION;
+
+  using pattern = Seq<
+    Any<pattern_expression_prefix>,
+    Oneof<
+      pattern_parenthesized_expression,
+      pattern_constant,
+      pattern_function_call,
+      pattern_any_identifier
+    >,
+    Any<pattern_expression_suffix>,
+    Opt<Seq<
+      pattern_infix_op,
+      Ref<parse_expression>
+    >>
+  >;
+};
 
 const Token* parse_expression(const Token* a, const Token* b) {
-  return pattern_expression::match(a, b);
+  return NodeExpression::match(a, b);
 }
-
-//----------------------------------------
-
-struct pattern_external_declaration : public Oneof<
-  pattern_namespace_specifier,
-  NodeClass,
-  pattern_struct_specifier,
-  Seq<NodeDeclaration, Atom<';'>>
-> {};
 
 //----------------------------------------
 
@@ -805,7 +801,7 @@ struct pattern_return_statement : public NodeMaker<
   NODE_RETURN_STATEMENT,
   Seq<
     AtomLit<"return">,
-    pattern_expression,
+    NodeExpression,
     Atom<';'>
   >
 > {};
@@ -834,7 +830,7 @@ struct NodeCaseStatement : public NodeBase<NodeCaseStatement> {
 
   using pattern = Seq<
     AtomLit<"case">,
-    pattern_expression,
+    NodeExpression,
     Atom<':'>,
     pattern_case_body
   >;
@@ -882,12 +878,12 @@ struct NodeForStatement : public NodeBase<NodeForStatement> {
     Atom<'('>,
     Opt<Oneof<
       NodeDeclaration,
-      pattern_expression
+      NodeExpression
     >>,
     Atom<';'>,
-    Opt<pattern_expression>,
+    Opt<NodeExpression>,
     Atom<';'>,
-    Opt<pattern_expression>,
+    Opt<NodeExpression>,
     Atom<')'>,
     Ref<parse_statement>
   >;
@@ -912,7 +908,7 @@ struct NodeExpressionStatement : public NodeBase<NodeExpressionStatement> {
   static const NodeType node_type = NODE_EXPRESSION_STATEMENT;
 
   using pattern = Seq<
-    pattern_expression,
+    NodeExpression,
     Atom<';'>
   >;
 };
@@ -937,26 +933,34 @@ const Token* parse_statement(const Token* a, const Token* b) {
 
 //----------------------------------------
 
-struct pattern_template_decl : public NodeMaker<
-  NODE_TEMPLATE_DECLARATION,
-  Seq<
+struct NodeTemplateDeclaration : public NodeBase<NodeTemplateDeclaration> {
+  using NodeBase::NodeBase;
+  static const NodeType node_type = NODE_TEMPLATE_DECLARATION;
+
+  using pattern = Seq<
     AtomLit<"template">,
     pattern_template_parameter_list,
     NodeClass
-  >
-> {};
+  >;
+};
 
-//----------------------------------------
+//------------------------------------------------------------------------------
 
-struct pattern_translation_unit : public NodeMaker<
-  NODE_TRANSLATION_UNIT,
-  Any<Oneof<
-    pattern_template_decl,
+struct NodeTranslationUnit : public NodeBase<NodeTranslationUnit> {
+  using NodeBase::NodeBase;
+  static const NodeType node_type = NODE_TRANSLATION_UNIT;
+
+  using pattern = Any<Oneof<
+    NodeTemplateDeclaration,
     pattern_preproc,
-    pattern_external_declaration
-  >>
-> {};
+    pattern_namespace_specifier,
+    NodeClass,
+    pattern_struct_specifier,
+    NodeDeclarationStatement
+  >>;
+};
 
+//------------------------------------------------------------------------------
 
 
 
@@ -1140,7 +1144,7 @@ int test_c99_peg(int argc, char** argv) {
     printf("Parsing %s\n", path.c_str());
 
     parse_accum -= timestamp_ms();
-    pattern_translation_unit::match(token, token_eof);
+    NodeTranslationUnit::match(token, token_eof);
     parse_accum += timestamp_ms();
 
     assert(node_top == 1);
