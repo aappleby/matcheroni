@@ -874,9 +874,11 @@ struct pattern_declaration_or_expression : public Oneof<
 
 //----------------------------------------
 
-struct pattern_for_statement : public NodeMaker<
-  NODE_FOR_STATEMENT,
-  Seq<
+struct NodeForStatement : public NodeBase<NodeForStatement> {
+  using NodeBase::NodeBase;
+  static const NodeType node_type = NODE_FOR_STATEMENT;
+
+  using pattern = Seq<
     AtomLit<"for">,
     Atom<'('>,
     Opt<pattern_declaration_or_expression>,
@@ -886,8 +888,8 @@ struct pattern_for_statement : public NodeMaker<
     Opt<pattern_expression>,
     Atom<')'>,
     Ref<parse_statement>
-  >
-> {};
+  >;
+};
 
 //----------------------------------------
 
@@ -916,7 +918,7 @@ struct pattern_statement : public Oneof<
   pattern_compound_statement,
   NodeIfStatement,
   pattern_while_statement,
-  pattern_for_statement,
+  NodeForStatement,
   pattern_return_statement,
   pattern_switch_statement,
   pattern_declaration_statement,
