@@ -404,17 +404,19 @@ struct NodeDecltype : public NodeBase<NodeDecltype> {
 //----------------------------------------
 // FIXME should probably have a few diffeerent versions instead of all the opts
 
-struct pattern_enum_declaration : public NodeMaker<
-  NODE_ENUM_DECLARATION,
-  Seq<
-    AtomLit<"enum">,
-    Opt<AtomLit<"class">>,
+struct NodeEnum : public NodeBase<NodeEnum> {
+  using NodeBase::NodeBase;
+  static constexpr NodeType node_type = NODE_ENUM_DECLARATION;
+
+  using pattern = Seq<
+    Keyword<"enum">,
+    Opt<Keyword<"class">>,
     Opt<NodeIdentifier>,
     Opt<Seq<Atom<':'>, NodeDecltype>>,
     Opt<pattern_enum_body>,
     Opt<NodeIdentifier>
-  >
-> {};
+  >;
+};
 
 //----------------------------------------
 
@@ -485,7 +487,7 @@ struct NodeFunction : public NodeBase<NodeFunction> {
     NodeDecltype,
     NodeIdentifier,
     NodeDeclList,
-    Opt<AtomLit<"const">>,
+    Opt<Keyword<"const">>,
     Oneof<
       NodeCompoundStatement,
       Atom<';'>
@@ -510,7 +512,7 @@ struct NodeAssignment : public NodeBase<NodeAssignment> {
 
 struct pattern_field_declaration : public Oneof<
   NodeConstructor,
-  pattern_enum_declaration,
+  NodeEnum,
   NodeFunction,
   NodeDeclaration
 > {};
@@ -523,8 +525,8 @@ struct NodeAccessSpecifier : public NodeBase<NodeAccessSpecifier> {
 
   using pattern = Seq<
     Oneof<
-      AtomLit<"public">,
-      AtomLit<"private">
+      Keyword<"public">,
+      Keyword<"private">
     >,
     Atom<':'>
   >;
@@ -553,7 +555,7 @@ struct NodeClass : public NodeBase<NodeClass> {
   static constexpr NodeType node_type = NODE_CLASS_DECLARATION;
 
   using pattern = Seq<
-    AtomLit<"class">,
+    Keyword<"class">,
     NodeIdentifier,
     Opt<NodeFieldList>,
     Atom<';'>
@@ -567,7 +569,7 @@ struct NodeStruct : public NodeBase<NodeStruct> {
   static const NodeType node_type = NODE_STRUCT_DECLARATION;
 
   using pattern = Seq<
-    AtomLit<"struct">,
+    Keyword<"struct">,
     NodeIdentifier,
     Opt<NodeFieldList>,
     Atom<';'>
@@ -581,7 +583,7 @@ struct NodeNamespace : public NodeBase<NodeNamespace> {
   static const NodeType node_type = NODE_NAMESPACE_DECLARATION;
 
   using pattern = Seq<
-    AtomLit<"namespace">,
+    Keyword<"namespace">,
     NodeIdentifier,
     Opt<NodeFieldList>,
     Atom<';'>
@@ -602,7 +604,7 @@ struct pattern_typecast : public NodeMaker<
 
 struct pattern_sizeof : public NodeMaker<
   NODE_OPERATOR,
-  AtomLit<"sizeof">
+  Keyword<"sizeof">
 > {};
 
 struct pattern_expression_prefix : public Oneof<
@@ -719,11 +721,11 @@ struct NodeIfStatement : public NodeBase<NodeIfStatement> {
   static const NodeType node_type = NODE_IF_STATEMENT;
 
   using pattern = Seq<
-    AtomLit<"if">,
+    Keyword<"if">,
     NodeParenExpression,
     Ref<parse_statement>,
     Opt<Seq<
-      AtomLit<"else">,
+      Keyword<"else">,
       Ref<parse_statement>
     >>
   >;
@@ -736,7 +738,7 @@ struct NodeWhileStatement : public NodeBase<NodeWhileStatement> {
   static const NodeType node_type = NODE_WHILE_STATEMENT;
 
   using pattern = Seq<
-    AtomLit<"while">,
+    Keyword<"while">,
     NodeParenExpression,
     Ref<parse_statement>
   >;
@@ -749,7 +751,7 @@ struct NodeReturnStatement : public NodeBase<NodeReturnStatement> {
   static const NodeType node_type = NODE_RETURN_STATEMENT;
 
   using pattern = Seq<
-    AtomLit<"return">,
+    Keyword<"return">,
     NodeExpression,
     Atom<';'>
   >;
@@ -768,8 +770,8 @@ struct NodePreproc : public NodeBase<NodePreproc> {
 
 struct pattern_case_body : public
 Any<Seq<
-  Not<AtomLit<"case">>,
-  Not<AtomLit<"default">>,
+  Not<Keyword<"case">>,
+  Not<Keyword<"default">>,
   Ref<parse_statement>
 >> {};
 
@@ -780,7 +782,7 @@ struct NodeCaseStatement : public NodeBase<NodeCaseStatement> {
   static const NodeType node_type = NODE_CASE_STATEMENT;
 
   using pattern = Seq<
-    AtomLit<"case">,
+    Keyword<"case">,
     NodeExpression,
     Atom<':'>,
     pattern_case_body
@@ -794,7 +796,7 @@ struct NodeDefaultStatement : public NodeBase<NodeDefaultStatement> {
   static const NodeType node_type = NODE_DEFAULT_STATEMENT;
 
   using pattern = Seq<
-    AtomLit<"default">,
+    Keyword<"default">,
     Atom<':'>,
     pattern_case_body
   >;
@@ -807,7 +809,7 @@ struct NodeSwitchStatement : public NodeBase<NodeSwitchStatement> {
   static const NodeType node_type = NODE_SWITCH_STATEMENT;
 
   using pattern = Seq<
-    AtomLit<"switch">,
+    Keyword<"switch">,
     NodeParenExpression,
     Atom<'{'>,
     Any<Oneof<
@@ -825,7 +827,7 @@ struct NodeForStatement : public NodeBase<NodeForStatement> {
   static const NodeType node_type = NODE_FOR_STATEMENT;
 
   using pattern = Seq<
-    AtomLit<"for">,
+    Keyword<"for">,
     Atom<'('>,
     Opt<Oneof<
       NodeDeclaration,
@@ -889,7 +891,7 @@ struct NodeTemplateDeclaration : public NodeBase<NodeTemplateDeclaration> {
   static const NodeType node_type = NODE_TEMPLATE_DECLARATION;
 
   using pattern = Seq<
-    AtomLit<"template">,
+    Keyword<"template">,
     NodeTemplateParams,
     NodeClass
   >;

@@ -506,7 +506,7 @@ struct Lit {
 // trailing null.
 
 template<StringParam lit>
-struct AtomLit {
+struct Keyword {
 
   template<typename atom>
   static const atom* match(const atom* a, const atom* b) {
