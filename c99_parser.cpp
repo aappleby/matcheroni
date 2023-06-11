@@ -424,18 +424,20 @@ struct pattern_specifier_list : public NodeMaker<
   >>
 > {};
 
-//----------------------------------------
+//------------------------------------------------------------------------------
 
-struct pattern_compound_statement : public NodeMaker<
-  NODE_COMPOUND_STATEMENT,
-  Seq<
+struct NodeCompoundStatement : public NodeBase<NodeCompoundStatement> {
+  using NodeBase::NodeBase;
+  static const NodeType node_type = NODE_COMPOUND_STATEMENT;
+
+  using pattern = Seq<
     Atom<'{'>,
     Any<Ref<parse_statement>>,
     Atom<'}'>
-  >
-> {};
+  >;
+};
 
-//----------------------------------------
+//------------------------------------------------------------------------------
 
 struct pattern_enum_body : public NodeMaker<
   NODE_ENUMERATOR_LIST,
@@ -539,7 +541,7 @@ struct NodeConstructor : public NodeBase<NodeConstructor> {
     NodeDeclList,
     Opt<pattern_initializer_list>,
     Oneof<
-      pattern_compound_statement,
+      NodeCompoundStatement,
       Atom<';'>
     >
   >;
@@ -557,7 +559,7 @@ struct NodeFunction : public NodeBase<NodeFunction> {
     NodeDeclList,
     Opt<AtomLit<"const">>,
     Oneof<
-      pattern_compound_statement,
+      NodeCompoundStatement,
       Atom<';'>
     >
   >;
@@ -736,10 +738,12 @@ struct pattern_function_call : public NodeMaker<
 
 //----------------------------------------
 
-struct pattern_template_parameter_list : public NodeMaker<
-  NODE_TEMPLATE_PARAMETER_LIST,
-  Delimited<'<', '>', comma_separated<NodeDeclaration>>
-> {};
+struct NodeTemplateParams : public NodeBase<NodeTemplateParams> {
+  using NodeBase::NodeBase;
+  static const NodeType node_type = NODE_TEMPLATE_PARAMETER_LIST;
+
+  using pattern = Delimited<'<', '>', comma_separated<NodeDeclaration>>;
+};
 
 //----------------------------------------
 
@@ -784,36 +788,42 @@ struct NodeIfStatement : public NodeBase<NodeIfStatement> {
   >;
 };
 
-//----------------------------------------
+//------------------------------------------------------------------------------
 
-struct pattern_while_statement : public NodeMaker<
-  NODE_WHILE_STATEMENT,
-  Seq<
+struct NodeWhileStatement : public NodeBase<NodeWhileStatement> {
+  using NodeBase::NodeBase;
+  static const NodeType node_type = NODE_WHILE_STATEMENT;
+
+  using pattern = Seq<
     AtomLit<"while">,
     pattern_parenthesized_expression,
     Ref<parse_statement>
-  >
-> {};
+  >;
+};
 
-//----------------------------------------
+//------------------------------------------------------------------------------
 
-struct pattern_return_statement : public NodeMaker<
-  NODE_RETURN_STATEMENT,
-  Seq<
+struct NodeReturnStatement : public NodeBase<NodeReturnStatement> {
+  using NodeBase::NodeBase;
+  static const NodeType node_type = NODE_RETURN_STATEMENT;
+
+  using pattern = Seq<
     AtomLit<"return">,
     NodeExpression,
     Atom<';'>
-  >
-> {};
+  >;
+};
 
-//----------------------------------------
+//------------------------------------------------------------------------------
 
-struct pattern_preproc : public NodeMaker<
-  NODE_PREPROC,
-  Atom<TOK_PREPROC>
-> {};
+struct NodePreproc : public NodeBase<NodePreproc> {
+  using NodeBase::NodeBase;
+  static const NodeType node_type = NODE_PREPROC;
 
-//----------------------------------------
+  using pattern = Atom<TOK_PREPROC>;
+};
+
+//------------------------------------------------------------------------------
 
 struct pattern_case_body : public
 Any<Seq<
@@ -917,11 +927,11 @@ struct NodeExpressionStatement : public NodeBase<NodeExpressionStatement> {
 // _Does_ include the semicolon for single-line statements
 
 struct pattern_statement : public Oneof<
-  pattern_compound_statement,
+  NodeCompoundStatement,
   NodeIfStatement,
-  pattern_while_statement,
+  NodeWhileStatement,
   NodeForStatement,
-  pattern_return_statement,
+  NodeReturnStatement,
   NodeSwitchStatement,
   NodeDeclarationStatement,
   NodeExpressionStatement
@@ -939,7 +949,7 @@ struct NodeTemplateDeclaration : public NodeBase<NodeTemplateDeclaration> {
 
   using pattern = Seq<
     AtomLit<"template">,
-    pattern_template_parameter_list,
+    NodeTemplateParams,
     NodeClass
   >;
 };
@@ -952,7 +962,7 @@ struct NodeTranslationUnit : public NodeBase<NodeTranslationUnit> {
 
   using pattern = Any<Oneof<
     NodeTemplateDeclaration,
-    pattern_preproc,
+    NodePreproc,
     pattern_namespace_specifier,
     NodeClass,
     pattern_struct_specifier,
