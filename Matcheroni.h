@@ -504,6 +504,9 @@ struct Lit {
 //------------------------------------------------------------------------------
 // Matches string literals as if they were atoms. Does ___NOT___ include the
 // trailing null.
+// You'll need to define
+// template<int N> bool atom_eq(const Token& a, const StringParam<N>& b)
+// to use this.
 
 template<StringParam lit>
 struct Keyword {
@@ -537,11 +540,11 @@ struct StringParams {
 // Matches arrays of string literals. Does ___NOT___ include the trailing null.
 
 // const char* keywords[] = {"foo", "bar"};
-// Lits<keywords>::match("foobar") == "bar"
+// Keywords<keywords>::match("foobar") == "bar"
 
 //template<const char* const* lits, int N>
 template<StringParams lits>
-struct Lits {
+struct Keywords {
 
   template<typename atom>
   static const atom* match(const atom* a, const atom* b) {

@@ -3,6 +3,7 @@
 #include "c_lexer.h"
 #include <stdio.h>
 #include <string>
+#include <typeinfo>
 
 #include "Tokens.h"
 
@@ -33,6 +34,7 @@ enum NodeType {
   NODE_ENUM_DECLARATION,
   NODE_ENUMERATOR_LIST,
   NODE_EXPRESSION,
+  NODE_EXPRESSION_LIST,
   NODE_EXPRESSION_STATEMENT,
   NODE_FIELD_LIST,
   NODE_FOR_STATEMENT,
@@ -41,6 +43,7 @@ enum NodeType {
   NODE_IDENTIFIER,
   NODE_IF_STATEMENT,
   NODE_INFIX_EXPRESSION,
+  NODE_INITIALIZER,
   NODE_INITIALIZER_LIST,
   NODE_NAMESPACE_DECLARATION,
   NODE_NAMESPACE_DEFINITION,
@@ -111,6 +114,7 @@ inline const char* node_to_str(NodeType t) {
     case NODE_ENUM_DECLARATION: return "NODE_ENUM_DECLARATION";
     case NODE_ENUMERATOR_LIST: return "NODE_ENUMERATOR_LIST";
     case NODE_EXPRESSION: return "NODE_EXPRESSION";
+    case NODE_EXPRESSION_LIST: return "NODE_EXPRESSION_LIST";
     case NODE_EXPRESSION_STATEMENT: return "NODE_EXPRESSION_STATEMENT";
     case NODE_FIELD_LIST: return "NODE_FIELD_LIST";
     case NODE_FOR_STATEMENT: return "NODE_FOR_STATEMENT";
@@ -119,6 +123,7 @@ inline const char* node_to_str(NodeType t) {
     case NODE_IDENTIFIER: return "NODE_IDENTIFIER";
     case NODE_IF_STATEMENT: return "NODE_IF_STATEMENT";
     case NODE_INFIX_EXPRESSION: return "NODE_INFIX_EXPRESSION";
+    case NODE_INITIALIZER: return "NODE_INITIALIZER";
     case NODE_INITIALIZER_LIST: return "NODE_INITIALIZER_LIST";
     case NODE_NAMESPACE_DECLARATION: return "NODE_NAMESPACE_DECLARATION";
     case NODE_NAMESPACE_DEFINITION: return "NODE_NAMESPACE_DEFINITION";
@@ -182,8 +187,7 @@ struct Node {
     }
   }
 
-
-  ~Node() {
+  virtual ~Node() {
     auto cursor = head;
     while(cursor) {
       auto next = cursor->next;
@@ -191,6 +195,23 @@ struct Node {
       cursor = next;
     }
   }
+
+  template<typename P>
+  bool isa() const {
+    return typeid(*this) == typeid(P);
+  }
+
+  template<typename P>
+  P* as() {
+    if (this == nullptr) return nullptr;
+    if (typeid(*this) == typeid(P)) {
+      return dynamic_cast<P*>(this);
+    }
+    else {
+      assert(false);
+      return nullptr;
+    }
+  };
 
   //----------------------------------------
 
@@ -285,7 +306,11 @@ struct Node {
 
     if (tok_a) set_color(tok_a->lex->color());
     if (!field.empty()) printf("%-10.10s : ", field.c_str());
-    printf("%s", node_to_str(node_type));
+    //printf("%s", node_to_str(node_type));
+
+    const char* name = typeid(*this).name();
+    while((*name >= '0') && (*name <= '9')) name++;
+    printf("%s", name);
 
     printf(" '%s'\n", escape_span().c_str());
 
