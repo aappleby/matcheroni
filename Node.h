@@ -339,3 +339,31 @@ struct NodeBase {
 };
 
 //------------------------------------------------------------------------------
+
+struct NodeDispenser {
+
+  NodeDispenser(NodeBase** children, size_t child_count) {
+    this->children = children;
+    this->child_count = child_count;
+  }
+
+  template<typename P>
+  operator P*() {
+    if (child_count == 0) return nullptr;
+    if (children[0] == nullptr) return nullptr;
+    if (children[0]->isa<P>()) {
+      P* result = children[0]->as<P>();
+      children++;
+      child_count--;
+      return result;
+    }
+    else {
+      return nullptr;
+    }
+  }
+
+  NodeBase** children;
+  size_t child_count;
+};
+
+//------------------------------------------------------------------------------

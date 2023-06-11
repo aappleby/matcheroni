@@ -81,8 +81,7 @@ struct NodeStack {
 
 NodeStack node_stack;
 
-
-//----------------------------------------
+//------------------------------------------------------------------------------
 
 template<typename pattern>
 struct Dump {
@@ -377,57 +376,18 @@ struct NodeInitializer : public NodeMaker<NodeInitializer> {
 
 //------------------------------------------------------------------------------
 
-struct NodeDispenser {
-
-  NodeDispenser(NodeBase** children, size_t child_count) {
-    this->children = children;
-    this->child_count = child_count;
-  }
-
-  template<typename P>
-  operator P*() {
-    if (children[0] == nullptr) return nullptr;
-    if (children[0]->isa<P>()) {
-      P* result = children[0]->as<P>();
-      children++;
-      return result;
-    }
-    else {
-      return nullptr;
-    }
-  }
-
-  NodeBase** children;
-  size_t child_count;
-};
-
-//------------------------------------------------------------------------------
-
 struct NodeDeclaration : public NodeMaker<NodeDeclaration> {
-  //using NodeMaker::NodeMaker;
-
+  using NodeMaker::NodeMaker;
+  /*
   NodeDeclaration(const Token* a, const Token* b, NodeDispenser d)
   : NodeMaker(a, b, d.children, d.child_count),
     _specs(d), _decl(d), _name(d), _array(d), _init(d) {
-    /*
-    printf("//----------\n");
-    printf("_specs %p\n", _specs);
-    printf("_decl  %p\n", _decl);
-    printf("_name  %p\n", _name);
-    printf("_array %p\n", _array);
-    printf("_init  %p\n", _init);
-    */
   }
 
   NodeDeclaration(const Token* a, const Token* b, NodeBase** children, size_t child_count)
   : NodeDeclaration(a, b, NodeDispenser(children, child_count)) {
   }
-
-  NodeSpecifierList*   _specs = nullptr;
-  NodeDecltype*        _decl = nullptr;
-  NodeIdentifier*      _name = nullptr;
-  NodeArrayExpression* _array = nullptr;
-  NodeInitializer*     _init = nullptr;
+  */
 
   static constexpr NodeType node_type = NODE_DECLARATION;
 
@@ -438,6 +398,14 @@ struct NodeDeclaration : public NodeMaker<NodeDeclaration> {
     Opt<NodeArrayExpression>,
     Opt<NodeInitializer>
   >;
+
+  /*
+  NodeSpecifierList*   _specs = nullptr;
+  NodeDecltype*        _decl  = nullptr;
+  NodeIdentifier*      _name  = nullptr;
+  NodeArrayExpression* _array = nullptr;
+  NodeInitializer*     _init  = nullptr;
+  */
 };
 
 //------------------------------------------------------------------------------
