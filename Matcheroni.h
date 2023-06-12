@@ -117,6 +117,22 @@ struct AnyAtom {
 
 //------------------------------------------------------------------------------
 
+struct Nothing {
+  template<typename atom>
+  static const atom* match(const atom* a, const atom* b) {
+    return a;
+  }
+};
+
+struct Everything {
+  template<typename atom>
+  static const atom* match(const atom* a, const atom* b) {
+    return b;
+  }
+};
+
+//------------------------------------------------------------------------------
+
 /*
 template<typename P>
 struct Push {

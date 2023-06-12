@@ -36,24 +36,6 @@ bool atom_eq(const Token& a, const StringParam<N>& b) {
 
 //------------------------------------------------------------------------------
 
-template<typename P>
-struct match_chars_as_tokens {
-  static const Token* match(const Token* a, const Token* b) {
-    auto span_a = a->lex->span_a;
-    auto span_b = b->lex->span_a;
-
-    auto end = P::match(span_a, span_b);
-    if (!end) return nullptr;
-
-    auto match_lex_a = a;
-    auto match_lex_b = a;
-    while(match_lex_b->lex->span_a < end) match_lex_b++;
-    return match_lex_b;
-  }
-};
-
-//------------------------------------------------------------------------------
-
 struct NodeStack {
   void push(NodeBase* n) {
     assert(_stack[_top] == nullptr);
@@ -129,45 +111,43 @@ const char* find_matching_delim(const char* a, const char* b) {
 
 //----------------------------------------
 
-const Token* find_matching_delim(const Token* a, const Token* b) {
-  char ldelim = *a->lex->span_a;
+const Token* find_matching_delim(char ldelim, char rdelim, const Token* a, const Token* b) {
+  if (*a->lex->span_a != ldelim) return nullptr;
   a++;
-
-  char rdelim = 0;
-  if (ldelim == '<')  rdelim = '>';
-  if (ldelim == '(')  rdelim = ')';
-  if (ldelim == '{')  rdelim = '}';
-  if (ldelim == '[')  rdelim = ']';
-  if (!rdelim) return nullptr;
 
   while(a && a < b) {
     if (a->is_punct(rdelim)) return a;
 
-    if (a->is_punct('<') ||
-        a->is_punct('(') ||
-        a->is_punct('{') ||
-        a->is_punct('[')) {
-      a = find_matching_delim(a, b);
-      if (!a) return nullptr;
-    }
+    // Note that we _don't_ recurse through <> because they're not guaranteed
+    // to be delimiters. Annoying aspect of C. :/
+
+    if (a && a->is_punct('(')) a = find_matching_delim('(', ')', a, b);
+    if (a && a->is_punct('{')) a = find_matching_delim('{', '}', a, b);
+    if (a && a->is_punct('[')) a = find_matching_delim('[', ']', a, b);
+
+    if (!a) return nullptr;
     a++;
   }
 
   return nullptr;
 }
 
-//----------------------------------------
+//------------------------------------------------------------------------------
+// The Delimited<> modifier constrains a matcher to fit exactly between a pair
+// of matching delimiters.
+// For example, Delimited<'(', ')', NodeConstant> will match "(1)" but not
+// "(1 + 2)".
 
 template<char ldelim, char rdelim, typename P>
 struct Delimited {
   static const Token* match(const Token* a, const Token* b) {
     if (!a || !a->is_punct(ldelim)) return nullptr;
-    auto new_b = find_matching_delim(a, b);
+    auto new_b = find_matching_delim(ldelim, rdelim, a, b);
     if (!new_b || !new_b->is_punct(rdelim)) return nullptr;
 
     if (!new_b) return nullptr;
     if (auto end = P::match(a + 1, new_b)) {
-      assert(end == new_b);
+      if (end != new_b) return nullptr;
       return new_b + 1;
     }
     else {
@@ -175,6 +155,8 @@ struct Delimited {
     }
   }
 };
+
+//------------------------------------------------------------------------------
 
 template<typename P>
 using comma_separated = Seq<P,Any<Seq<Atom<','>, P>>>;
@@ -233,47 +215,29 @@ struct NodeConstant : public NodeMaker<NodeConstant> {
 
 //------------------------------------------------------------------------------
 
-struct match_specifier {
-  static const Token* match(const Token* a, const Token* b) {
-    if (auto end = Atom<'*'>::match(a, b)) {
-      return end;
-    }
-
-    const char* keywords[] = {
-      "extern",
-      "static",
-      "register",
-      "inline",
-      "thread_local",
-      "const",
-      "volatile",
-      "restrict",
-      "__restrict__",
-      "_Atomic",
-      "_Noreturn",
-      "mutable",
-      "constexpr",
-      "constinit",
-      "consteval",
-      "virtual",
-      "explicit",
-    };
-    auto keyword_count = sizeof(keywords)/sizeof(keywords[0]);
-
-    for (auto i = 0; i < keyword_count; i++) {
-      if (a->is_identifier(keywords[i])) {
-        return a + 1;
-      }
-    }
-    return nullptr;
-  }
-};
-
 struct NodeSpecifier : public NodeMaker<NodeSpecifier> {
   using NodeMaker::NodeMaker;
   static const NodeType node_type = NODE_SPECIFIER;
 
-  using pattern = match_specifier;
+  using pattern = Oneof<
+    Keyword<"extern">,
+    Keyword<"static">,
+    Keyword<"register">,
+    Keyword<"inline">,
+    Keyword<"thread_local">,
+    Keyword<"const">,
+    Keyword<"volatile">,
+    Keyword<"restrict">,
+    Keyword<"__restrict__">,
+    Keyword<"_Atomic">,
+    Keyword<"_Noreturn">,
+    Keyword<"mutable">,
+    Keyword<"constexpr">,
+    Keyword<"constinit">,
+    Keyword<"consteval">,
+    Keyword<"virtual">,
+    Keyword<"explicit">
+  >;
 };
 
 //------------------------------------------------------------------------------
@@ -395,6 +359,20 @@ struct NodeBitsize : public NodeMaker<NodeBitsize> {
 
 //------------------------------------------------------------------------------
 
+struct NodeDeclarationAtom : public NodeMaker<NodeDeclarationAtom> {
+  using NodeMaker::NodeMaker;
+  static constexpr NodeType node_type = NODE_DECLARATION_ATOM;
+
+  using pattern = Seq<
+    NodeIdentifier,
+    Opt<NodeBitsize>,
+    Any<NodeArrayExpression>,
+    Opt<NodeInitializer>
+  >;
+};
+
+//------------------------------------------------------------------------------
+
 struct NodeDeclaration : public NodeMaker<NodeDeclaration> {
   using NodeMaker::NodeMaker;
   /*
@@ -412,11 +390,17 @@ struct NodeDeclaration : public NodeMaker<NodeDeclaration> {
 
   using pattern = Seq<
     NodeDecltype,
-    NodeIdentifier,
-    Opt<NodeBitsize>,
-    Any<NodeArrayExpression>,
-    Opt<NodeInitializer>
+    Oneof<
+      comma_separated<NodeDeclarationAtom>,
+      Some<NodeArrayExpression>,
+      Nothing
+    >
   >;
+
+  static const Token* match(const Token* a, const Token* b) {
+    auto end = NodeMaker<NodeDeclaration>::match(a, b);
+    return end;
+  }
 
   /*
   NodeSpecifierList*   _specs = nullptr;
@@ -519,7 +503,19 @@ struct NodeAssignment : public NodeMaker<NodeAssignment> {
 
   using pattern = Seq<
     NodeIdentifier,
-    match_chars_as_tokens<Ref<match_assign_op>>,
+    Oneof<
+      Operator<"<<=">,
+      Operator<">>=">,
+      Operator<"+=">,
+      Operator<"-=">,
+      Operator<"*=">,
+      Operator<"/=">,
+      Operator<"%=">,
+      Operator<"&=">,
+      Operator<"|=">,
+      Operator<"^=">,
+      Operator<"=">
+    >,
     Ref<parse_expression>
   >;
 };
@@ -606,7 +602,16 @@ struct NodePrefixOp : public NodeMaker<NodePrefixOp> {
   using NodeMaker::NodeMaker;
   static const NodeType node_type = NODE_OPERATOR;
 
-  using pattern = match_chars_as_tokens<Ref<match_prefix_op>>;
+  using pattern = Oneof<
+    Operator<"++">,
+    Operator<"--">,
+    Operator<"+">,
+    Operator<"-">,
+    Operator<"!">,
+    Operator<"~">,
+    Operator<"&">,
+    Operator<"*">
+  >;
 };
 
 //------------------------------------------------------------------------------
@@ -633,6 +638,11 @@ struct NodeExpressionList : public NodeMaker<NodeExpressionList> {
   using NodeMaker::NodeMaker;
   static const NodeType node_type = NODE_EXPRESSION_LIST;
 
+  static const Token* match(const Token* a, const Token* b) {
+    auto end = NodeMaker<NodeExpressionList>::match(a, b);
+    return end;
+  }
+
   using pattern = Oneof<
     Seq<
       Atom<'('>,
@@ -649,7 +659,7 @@ struct NodeInc : public NodeMaker<NodeInc> {
   using NodeMaker::NodeMaker;
   static const NodeType node_type = NODE_OPERATOR;
 
-  using pattern = Seq<Atom<'+'>, Atom<'+'>>;
+  using pattern = Operator<"++">;
 };
 
 //------------------------------------------------------------------------------
@@ -658,7 +668,7 @@ struct NodeDec : public NodeMaker<NodeDec> {
   using NodeMaker::NodeMaker;
   static const NodeType node_type = NODE_OPERATOR;
 
-  using pattern = Seq<Atom<'-'>, Atom<'-'>>;
+  using pattern = Operator<"--">;
 };
 
 //------------------------------------------------------------------------------
@@ -667,7 +677,40 @@ struct NodeInfixOp : public NodeMaker<NodeInfixOp> {
   using NodeMaker::NodeMaker;
   static const NodeType node_type = NODE_OPERATOR;
 
-  using pattern = match_chars_as_tokens<Ref<match_infix_op>>;
+  using pattern = Oneof <
+    Operator<"<<=">,
+    Operator<">>=">,
+    Operator<"->">,
+    Operator<"::">,
+    Operator<"==">,
+    Operator<"!=">,
+    Operator<"<=">,
+    Operator<">=">,
+    Operator<"&&">,
+    Operator<"||">,
+    Operator<"<<">,
+    Operator<">>">,
+    Operator<"+=">,
+    Operator<"-=">,
+    Operator<"*=">,
+    Operator<"/=">,
+    Operator<"%=">,
+    Operator<"&=">,
+    Operator<"|=">,
+    Operator<"^=">,
+    Operator<"+">,
+    Operator<"-">,
+    Operator<"*">,
+    Operator<"/">,
+    Operator<"%">,
+    Operator<"<">,
+    Operator<">">,
+    Operator<"&">,
+    Operator<"|">,
+    Operator<"^">,
+    Operator<"=">,
+    Operator<".">
+  >;
 };
 
 //------------------------------------------------------------------------------
@@ -698,6 +741,17 @@ struct NodeTemplateParams : public NodeMaker<NodeTemplateParams> {
 struct NodeExpression : public NodeMaker<NodeExpression> {
   using NodeMaker::NodeMaker;
   static const NodeType node_type = NODE_EXPRESSION;
+
+  static const Token* match(const Token* a, const Token* b) {
+    auto end = NodeMaker<NodeExpression>::match(a, b);
+    return end;
+  }
+
+  // ok we're mistaking (foo) as a typecast
+
+  // prefix_ops = { "++", "--", "+", "-", "!", "~", "&", "*" };
+  // typecast   = Seq<Atom<'('>, NodeDecltype, Atom<')'> >;
+  // sizeof     = Keyword<"sizeof">;
 
   using pattern = Seq<
     Any<Oneof<
@@ -844,8 +898,8 @@ struct NodeForStatement : public NodeMaker<NodeForStatement> {
     Keyword<"for">,
     Atom<'('>,
     Opt<Oneof<
-      NodeDeclaration,
-      NodeExpression
+      NodeExpression,
+      NodeDeclaration
     >>,
     Atom<';'>,
     Opt<NodeExpression>,
@@ -1083,8 +1137,8 @@ int test_c99_peg(int argc, char** argv) {
     paths.push_back(f.path().native());
   }
 
-  //paths = { "tests/scratch.h" };
-  paths = { "mini_tests/csmith.cpp" };
+  paths = { "tests/scratch.h" };
+  //paths = { "mini_tests/csmith.cpp" };
 
   double lex_accum = 0;
   double parse_accum = 0;
@@ -1106,7 +1160,8 @@ int test_c99_peg(int argc, char** argv) {
     printf("Parsing %s\n", path.c_str());
 
     parse_accum -= timestamp_ms();
-    NodeTranslationUnit::match(token_a, token_b);
+    //NodeTranslationUnit::match(token_a, token_b);
+    NodeExpression::match(token_a, token_b);
     parse_accum += timestamp_ms();
 
     if (node_stack.top() != 1) {
@@ -1116,14 +1171,18 @@ int test_c99_peg(int argc, char** argv) {
 
     auto root = node_stack.pop();
 
+    root->dump_tree();
+
     if (root->tok_a != token_a) {
       printf("Root's first token is not token_a!\n");
     }
-    if (root->tok_b != token_b) {
+    else if (root->tok_b != token_b) {
       printf("Root's last token is not token_b!\n");
     }
+    else {
+      printf("Root OK\n");
+    }
 
-    //root->dump_tree();
     delete root;
 
   }
