@@ -2,6 +2,7 @@
 #define __MATCHERONI_H__
 
 // FIXME minimal push/pop stack for matchers
+#include <stdio.h>
 
 #ifdef MATCHERONI_USE_NAMESPACE
 namespace matcheroni {
@@ -191,11 +192,14 @@ struct Seq<P> {
 // Oneof<Atom<'a'>, Atom<'b'>>::match("abcd") == "bcd"
 // Oneof<Atom<'a'>, Atom<'b'>>::match("bcde") == "cde"
 
+extern int oneof_count;
+
 template <typename P, typename... rest>
 struct Oneof {
 
   template<typename atom>
   static const atom* match(const atom* a, const atom* b) {
+    oneof_count++;
     auto c = P::match(a, b);
     return c ? c : Oneof<rest...>::match(a, b);
   }
@@ -207,6 +211,7 @@ struct Oneof<P> {
 
   template<typename atom>
   static const atom* match(const atom* a, const atom* b) {
+    oneof_count++;
     return P::match(a, b);
   }
 };
@@ -317,6 +322,7 @@ struct Not {
 //------------------------------------------------------------------------------
 // Matches EOF, but does not advance past it.
 
+/*
 template <typename C>
 struct EOF {
 
@@ -325,6 +331,7 @@ struct EOF {
     return a == b ? a : nullptr;
   }
 };
+*/
 
 //------------------------------------------------------------------------------
 // Atom-not-in-set matcher, which is a bit faster than using
