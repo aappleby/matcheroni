@@ -23,6 +23,12 @@ struct glarp {
 
 glarp slong;
 
+union qryyy {
+  glarp qiiq;
+  blom qyyrr;
+};
+
+qryyy lililis;
 
 
 
