@@ -8,22 +8,12 @@
 #include <filesystem>
 #include <memory.h>
 
-#include <set>
-#include <string>
-
 double timestamp_ms();
 
 #ifdef MATCHERONI_USE_NAMESPACE
 using namespace matcheroni;
 #endif
 
-typedef std::set<std::string> IdentifierSet;
-
-IdentifierSet global_ids = {};
-IdentifierSet global_types = {
-  "void", "char", "short", "int", "long", "float", "double", "signed",
-  "unsigned",
-};
 
 /*
 Keyword<"_Bool">,
@@ -38,25 +28,6 @@ Keyword<"__m128i">
 
 const Token* parse_statement(const Token* a, const Token* b);
 const Token* parse_expression(const Token* a, const Token* b);
-
-//------------------------------------------------------------------------------
-
-struct NodeIdentifier : public NodeMaker<NodeIdentifier> {
-  using pattern = Atom<TOK_IDENTIFIER>;
-};
-const Token* parse_identifier(const Token* a, const Token* b) { return NodeIdentifier::match(a, b); }
-
-//------------------------------------------------------------------------------
-
-struct NodeConstant : public NodeMaker<NodeConstant> {
-  using pattern = Oneof<
-    Atom<TOK_FLOAT>,
-    Atom<TOK_INT>,
-    Atom<TOK_CHAR>,
-    Atom<TOK_STRING>
-  >;
-};
-const Token* parse_constant(const Token* a, const Token* b) { return NodeConstant::match(a, b); }
 
 //------------------------------------------------------------------------------
 
@@ -104,32 +75,11 @@ const Token* parse_statement_compound(const Token* a, const Token* b) {
 
 //------------------------------------------------------------------------------
 
-
 struct NodeTemplateArgs : public NodeMaker<NodeTemplateArgs> {
   using pattern = Delimited<'<', '>',
     opt_comma_separated<Ref<parse_expression>>
   >;
 };
-
-//------------------------------------------------------------------------------
-
-struct NodeTypeName : public NodeMaker<NodeTypeName> {
-  static const Token* match(const Token* a, const Token* b) {
-    if (!a || !a->is_identifier()) return nullptr;
-
-    for (auto& t : global_types) {
-      if (a->lex->match(t.c_str())) {
-        auto n = new NodeTypeName();
-        n->init(a, a+1, nullptr, 0);
-        node_stack.push(n);
-        //node_stack.push(new NodeTypeName(a, a+1, nullptr, 0));
-        return a + 1;
-      }
-    }
-    return nullptr;
-  }
-};
-const Token* parse_type_name(const Token* a, const Token* b) { return NodeTypeName::match(a, b); }
 
 //------------------------------------------------------------------------------
 
@@ -304,27 +254,6 @@ struct NodeFieldList : public NodeMaker<NodeFieldList> {
 };
 
 //------------------------------------------------------------------------------
-
-template<typename P>
-struct StoreClassTypename {
-  static const Token* match(const Token* a, const Token* b) {
-    if (auto end = P::match(a, b)) {
-      // Poke through the node on the top of the stack to find identifiers
-
-      if (auto n1 = NodeBase::node_stack.back()) {
-        if (auto n2 = n1->child<NodeIdentifier>()) {
-          auto l = n2->tok_a->lex;
-          auto s = std::string(l->span_a, l->span_b);
-          global_types.insert(s);
-        }
-      }
-      return end;
-    }
-    else {
-      return nullptr;
-    }
-  }
-};
 
 struct NodeClass : public NodeMaker<NodeClass> {
   using pattern = Seq<
@@ -718,6 +647,20 @@ struct NodeDeclarationTemplate : public NodeMaker<NodeDeclarationTemplate> {
 
 //------------------------------------------------------------------------------
 
+/*
+ TestPattern 'typedef const int* blep[7];'
+ | declaration 'typedef const int* blep[7];'
+ |  | NodeKeyword 'typedef'
+ |  | typeQualifier 'const'
+ |  | NodeTypeName 'int'
+ |  | declarator '* blep[7]'
+ |  |  | pointer '*'
+ |  |  |  | NodeOperator '*'
+ |  |  | NodeIdentifier 'blep'
+ |  |  | NodeExpressionSoup '7'
+ |  |  |  | NodeConstant '7'
+ */
+
 template<typename P>
 struct StoreTypedef {
   static const Token* match(const Token* a, const Token* b) {
@@ -729,7 +672,7 @@ struct StoreTypedef {
           if (auto n3 = n2->child<NodeIdentifier>()) {
             auto l = n3->tok_a->lex;
             auto s = std::string(l->span_a, l->span_b);
-            global_types.insert(s);
+            NodeBase::global_types.insert(s);
           }
         }
       }

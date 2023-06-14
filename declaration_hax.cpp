@@ -2,15 +2,14 @@
 #include "Node.h"
 
 const Token* parse_expression (const Token* a, const Token* b);
-const Token* parse_identifier (const Token* a, const Token* b);
-const Token* parse_constant   (const Token* a, const Token* b);
-const Token* parse_type_name  (const Token* a, const Token* b);
 
 //------------------------------------------------------------------------------
 
+struct abstractDeclarator;
+struct declarationSpecifiers;
+
 const Token* parse_abstract_declarator       (const Token* a, const Token* b);
 const Token* parse_declarator                (const Token* a, const Token* b);
-const Token* parse_declaration_specifiers    (const Token* a, const Token* b);
 const Token* parse_type_specifier            (const Token* a, const Token* b);
 const Token* parse_initializer               (const Token* a, const Token* b);
 const Token* parse_statement_compound        (const Token* a, const Token* b);
@@ -23,7 +22,7 @@ struct functionSpecifier : public NodeMaker<functionSpecifier> {
     Keyword<"_Noreturn">,
     Keyword<"__inline__">,
     Keyword<"__stdcall">,
-    Seq<Keyword<"__declspec">, Atom<'('>, Ref<parse_identifier>, Atom<')'>>
+    Seq<Keyword<"__declspec">, Atom<'('>, NodeIdentifier, Atom<')'>>
   >;
 };
 
@@ -59,10 +58,10 @@ struct pointer : public NodeMaker<pointer> {
 struct parameterDeclaration : public NodeBase {
   using pattern = Oneof<
     Seq<
-      Ref<parse_declaration_specifiers>,
+      declarationSpecifiers,
       Opt<Oneof<
         Ref<parse_declarator>,
-        Ref<parse_abstract_declarator>
+        abstractDeclarator
       >>
     >,
     NodeOperator<"...">
@@ -110,12 +109,12 @@ struct typeName : public NodeMaker<typeName> {
 //------------------------------------------------------------------------------
 
 using parameterList  = Seq<Atom<'('>, parameterTypeList, Atom<')'>>;
-using identifierList = Seq<Atom<'('>, comma_separated<Ref<parse_identifier>>, Atom<')'>>;
+using identifierList = Seq<Atom<'('>, comma_separated<NodeIdentifier>, Atom<')'>>;
 using emptyList      = Seq<Atom<'('>, Atom<')'>>;
 
 //------------------------------------------------------------------------------
 
-using bit_suffix = Seq<Atom<':'>, Ref<parse_constant>>;
+using bit_suffix = Seq<Atom<':'>, NodeConstant>;
 
 //------------------------------------------------------------------------------
 
@@ -142,7 +141,7 @@ struct abstractDeclarator : public NodeMaker<abstractDeclarator> {
 struct declarator : public NodeMaker<declarator> {
   using pattern = Seq<
     Oneof<
-      Seq<Opt<pointer>, Ref<parse_identifier>, Opt<bit_suffix>>,
+      Seq<Opt<pointer>, NodeIdentifier, Opt<bit_suffix>>,
       Seq<Opt<pointer>, Atom<'('>, Ref<parse_declarator>, Atom<')'>>
     >,
     Any<Oneof<
@@ -188,7 +187,7 @@ struct fieldDeclarationList : public NodeMaker<fieldDeclarationList> {
 struct structSpecifier : public NodeMaker<structSpecifier> {
   using pattern = Seq<
     Keyword<"struct">,
-    Opt<Ref<parse_identifier>>,
+    Opt<LogTypename<NodeIdentifier>>,
     Opt<fieldDeclarationList>
   >;
 };
@@ -198,7 +197,7 @@ struct structSpecifier : public NodeMaker<structSpecifier> {
 struct unionSpecifier : public NodeMaker<unionSpecifier> {
   using pattern = Seq<
     Keyword<"union">,
-    Opt<Ref<parse_identifier>>,
+    Opt<LogTypename<NodeIdentifier>>,
     Opt<fieldDeclarationList>
   >;
 };
@@ -208,7 +207,7 @@ struct unionSpecifier : public NodeMaker<unionSpecifier> {
 struct classSpecifier : public NodeMaker<classSpecifier> {
   using pattern = Seq<
     Keyword<"class">,
-    Opt<Ref<parse_identifier>>,
+    Opt<LogTypename<NodeIdentifier>>,
     Opt<fieldDeclarationList>
   >;
 };
@@ -217,8 +216,8 @@ struct classSpecifier : public NodeMaker<classSpecifier> {
 
 struct enumerator : public NodeMaker<enumerator> {
   using pattern = Seq<
-    Ref<parse_identifier>,
-    Opt<Seq<Atom<'='>, Ref<parse_constant>>>
+    NodeIdentifier,
+    Opt<Seq<Atom<'='>, NodeIdentifier>>
   >;
 };
 
@@ -238,7 +237,7 @@ struct enumeratorList : public NodeMaker<enumeratorList> {
 struct enumSpecifier : public NodeMaker<enumSpecifier> {
   using pattern = Seq<
     Keyword<"enum">,
-    Opt<Ref<parse_identifier>>,
+    Opt<LogTypename<NodeIdentifier>>,
     Opt<enumeratorList>
   >;
 };
@@ -257,7 +256,7 @@ struct atomicTypeSpecifier : public NodeMaker<atomicTypeSpecifier> {
 //------------------------------------------------------------------------------
 
 using typeSpecifier = Oneof<
-  Ref<parse_type_name>,
+  NodeTypeName,
   atomicTypeSpecifier,
   structSpecifier,
   unionSpecifier,
@@ -273,56 +272,34 @@ struct alignmentSpecifier : public NodeMaker<alignmentSpecifier> {
   using pattern = Seq<
     Keyword<"_Alignas">,
     Atom<'('>,
-    Oneof<typeName, Ref<parse_constant>>,
+    Oneof<typeName, NodeConstant>,
     Atom<')'>
   >;
 };
 
 //------------------------------------------------------------------------------
 
-/*
-struct declarationSpecifier : public NodeMaker<declarationSpecifier> {
-  using pattern = Oneof<
-    storageClassSpecifier,
+struct declarationSpecifiers : public Wrapper<declarationSpecifiers> {
+  using pattern = Some<Oneof<
+    NodeKeyword<"typedef">,
+    NodeKeyword<"extern">,
+    NodeKeyword<"static">,
+    NodeKeyword<"_Thread_local">,
+    NodeKeyword<"auto">,
+    NodeKeyword<"register">,
     typeSpecifier,
     typeQualifier,
     functionSpecifier,
     alignmentSpecifier
-  >;
+  >>;
 };
-*/
-
-using declarationSpecifier = Oneof<
-  NodeKeyword<"typedef">,
-  NodeKeyword<"extern">,
-  NodeKeyword<"static">,
-  NodeKeyword<"_Thread_local">,
-  NodeKeyword<"auto">,
-  NodeKeyword<"register">,
-  typeSpecifier,
-  typeQualifier,
-  functionSpecifier,
-  alignmentSpecifier
->;
-
-//------------------------------------------------------------------------------
-
-/*
-struct declarationSpecifiers : public NodeMaker<declarationSpecifiers> {
-  using pattern = Some<declarationSpecifier>;
-};
-*/
-
-using declarationSpecifiers = Some<declarationSpecifier>;
-
-const Token* parse_declaration_specifiers(const Token* a, const Token* b) { return declarationSpecifiers::match(a, b); }
 
 //------------------------------------------------------------------------------
 
 struct designator : public NodeMaker<designator> {
   using pattern = Oneof<
-    Seq<Atom<'['>, Ref<parse_constant>, Atom<']'>>,
-    Seq<Atom<'.'>, Ref<parse_identifier>>
+    Seq<Atom<'['>, NodeConstant, Atom<']'>>,
+    Seq<Atom<'.'>, NodeIdentifier>
   >;
 };
 
@@ -340,28 +317,16 @@ struct designation : public NodeMaker<designation> {
 
 //------------------------------------------------------------------------------
 
-/*
-struct initializerList : public NodeMaker<initializerList> {
-  using pattern = Seq<
-    Opt<designation>,
-    Ref<parse_initializer>,
-    Any<Seq<
-      Atom<','>,
-      Opt<designation>,
-      Ref<parse_initializer>
-    >>
-  >;
-};
-*/
+struct initializer;
 
 using initializerList =
 Seq<
   Opt<designation>,
-  Ref<parse_initializer>,
+  initializer,
   Any<Seq<
     Atom<','>,
     Opt<designation>,
-    Ref<parse_initializer>
+    initializer
   >>
 >;
 
@@ -383,18 +348,6 @@ const Token* parse_initializer(const Token* a, const Token* b) { return initiali
 
 //------------------------------------------------------------------------------
 
-/*
-struct initDeclarator : public NodeMaker<initDeclarator> {
-  using pattern = Seq<
-    declarator,
-    Opt<Seq<
-      Atom<'='>,
-      initializer
-    >>
-  >;
-};
-*/
-
 using initDeclarator = Seq<
   declarator,
   Opt<Seq<
@@ -405,18 +358,6 @@ using initDeclarator = Seq<
 
 //------------------------------------------------------------------------------
 
-/*
-struct initDeclaratorList : public NodeMaker<initDeclaratorList> {
-  using pattern = Seq<
-    initDeclarator,
-    Opt<Seq<
-      Atom<','>,
-      initDeclarator
-    >>
-  >;
-};
-*/
-
 using initDeclaratorList = Seq<
   initDeclarator,
   Opt<Seq<
@@ -424,6 +365,35 @@ using initDeclaratorList = Seq<
     initDeclarator
   >>
 >;
+
+//------------------------------------------------------------------------------
+// this has to go around declaration.... er, how?
+
+template<typename P>
+struct store_typedef2 {
+  static const Token* match(const Token* a, const Token* b) {
+    if (auto end = P::match(a, b)) {
+      // Poke through the node on the top of the stack to find identifiers
+      auto n1 = NodeBase::node_stack.back();
+      if (!n1) return end;
+      if (!n1->child<NodeKeyword<"typedef">>()) {
+        return end;
+      }
+
+      if (auto n2 = n1->child<declarator>()) {
+        if (auto n3 = n2->child<NodeIdentifier>()) {
+          auto l = n3->tok_a->lex;
+          auto s = std::string(l->span_a, l->span_b);
+          NodeBase::global_types.insert(s);
+        }
+      }
+      return end;
+    }
+    else {
+      return nullptr;
+    }
+  }
+};
 
 //------------------------------------------------------------------------------
 
@@ -445,7 +415,7 @@ struct functionDefinition : public NodeMaker<functionDefinition> {
   using pattern = Seq<
     Opt<declarationSpecifiers>,
     declarator,
-    Opt<Some<declaration>>,
+    Opt<Some<Ref<parse_declaration>>>,
     Ref<parse_statement_compound>
   >;
 };
@@ -455,7 +425,7 @@ struct functionDefinition : public NodeMaker<functionDefinition> {
 using externalDeclaration =
 Oneof<
   functionDefinition,
-  declaration,
+  Ref<parse_declaration>,
   Atom<';'>
 >;
 

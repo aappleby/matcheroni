@@ -4,8 +4,12 @@
 #include <stdio.h>
 #include <string>
 #include <typeinfo>
+#include <set>
+#include <string>
 
 #include "Tokens.h"
+
+typedef std::set<std::string> IdentifierSet;
 
 void set_color(uint32_t c);
 
@@ -72,7 +76,7 @@ struct NodeBase {
   }
 
   template<typename P>
-  P* child() {
+  const P* child() const {
     if (this == nullptr) return nullptr;
     for (auto cursor = head; cursor; cursor = cursor->next) {
       if (cursor->isa<P>()) {
@@ -96,7 +100,7 @@ struct NodeBase {
 
   //----------------------------------------
 
-  NodeBase* child(int index) {
+  NodeBase* child_at(int index) {
     auto cursor = head;
     for (auto i = 0; i < index; i++) {
       if (cursor) cursor = cursor->next;
@@ -223,6 +227,28 @@ struct NodeBase {
   NodeBase* tail   = nullptr;
 
   static NodeStack node_stack;
+
+  static inline IdentifierSet global_ids = {};
+  static inline IdentifierSet global_types = {
+    "void", "char", "short", "int", "long", "float", "double", "signed",
+    "unsigned",
+  };
+
+};
+
+//------------------------------------------------------------------------------
+
+template<typename P>
+struct LogTypename {
+  static const Token* match(const Token* a, const Token* b) {
+    auto end = P::match(a, b);
+    if (end) {
+      assert(end == a + 1);
+      auto s = std::string(a->lex->span_a, a->lex->span_b);
+      NodeBase::global_types.insert(s);
+    }
+    return end;
+  }
 };
 
 //------------------------------------------------------------------------------
@@ -247,6 +273,15 @@ struct NodeMaker : public NodeBase {
       node_stack.clear_to(old_top);
       return nullptr;
     }
+  }
+};
+
+//------------------------------------------------------------------------------
+
+template<typename NT>
+struct Wrapper {
+  static const Token* match(const Token* a, const Token* b) {
+    return NT::pattern::match(a, b);
   }
 };
 
@@ -321,6 +356,41 @@ struct NodeDispenser {
 
   NodeBase** children;
   size_t child_count;
+};
+
+//------------------------------------------------------------------------------
+
+struct NodeIdentifier : public NodeMaker<NodeIdentifier> {
+  using pattern = Atom<TOK_IDENTIFIER>;
+};
+
+//------------------------------------------------------------------------------
+
+struct NodeConstant : public NodeMaker<NodeConstant> {
+  using pattern = Oneof<
+    Atom<TOK_FLOAT>,
+    Atom<TOK_INT>,
+    Atom<TOK_CHAR>,
+    Atom<TOK_STRING>
+  >;
+};
+
+//------------------------------------------------------------------------------
+
+struct NodeTypeName : public NodeMaker<NodeTypeName> {
+  static const Token* match(const Token* a, const Token* b) {
+    if (!a || !a->is_identifier()) return nullptr;
+
+    for (auto& t : global_types) {
+      if (a->lex->match(t.c_str())) {
+        auto n = new NodeTypeName();
+        n->init(a, a+1, nullptr, 0);
+        node_stack.push(n);
+        return a + 1;
+      }
+    }
+    return nullptr;
+  }
 };
 
 //------------------------------------------------------------------------------

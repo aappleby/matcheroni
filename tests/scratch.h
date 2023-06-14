@@ -1,4 +1,10 @@
+typedef const int* blep[7];
+
 void foo(const int const const * const);
+
+class blom {
+  int q;
+};
 
 enum frogs {
   BIG_FROG,
