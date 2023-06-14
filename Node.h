@@ -279,7 +279,7 @@ struct NodeMaker : public NodeBase {
 //------------------------------------------------------------------------------
 
 template<typename NT>
-struct Wrapper {
+struct PatternWrapper {
   static const Token* match(const Token* a, const Token* b) {
     return NT::pattern::match(a, b);
   }

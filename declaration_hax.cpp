@@ -2,17 +2,15 @@
 #include "Node.h"
 
 const Token* parse_expression (const Token* a, const Token* b);
+const Token* parse_statement_compound        (const Token* a, const Token* b);
 
 //------------------------------------------------------------------------------
 
 struct abstractDeclarator;
 struct declarationSpecifiers;
-
-const Token* parse_abstract_declarator       (const Token* a, const Token* b);
-const Token* parse_declarator                (const Token* a, const Token* b);
-const Token* parse_type_specifier            (const Token* a, const Token* b);
-const Token* parse_initializer               (const Token* a, const Token* b);
-const Token* parse_statement_compound        (const Token* a, const Token* b);
+struct declarator;
+struct typeSpecifier;
+struct initializer;
 
 //------------------------------------------------------------------------------
 
@@ -60,7 +58,7 @@ struct parameterDeclaration : public NodeBase {
     Seq<
       declarationSpecifiers,
       Opt<Oneof<
-        Ref<parse_declarator>,
+        declarator,
         abstractDeclarator
       >>
     >,
@@ -78,18 +76,20 @@ struct parameterTypeList : public NodeMaker<parameterTypeList> {
 
 //------------------------------------------------------------------------------
 
-using arraySuffix = Oneof<
-  Seq<Atom<'['>, Any<typeQualifier>, Opt<Ref<parse_expression>>, Atom<']'>>,
-  Seq<Atom<'['>, Keyword<"static">, Any<typeQualifier>, Ref<parse_expression>, Atom<']'>>,
-  Seq<Atom<'['>, Some<typeQualifier>, Keyword<"static">, Ref<parse_expression>, Atom<']'>>,
-  Seq<Atom<'['>, Any<typeQualifier>, Atom<'*'>, Atom<']'>>
->;
+struct arraySuffix : public PatternWrapper<arraySuffix> {
+  using pattern = Oneof<
+    Seq<Atom<'['>, Any<typeQualifier>, Opt<Ref<parse_expression>>, Atom<']'>>,
+    Seq<Atom<'['>, Keyword<"static">, Any<typeQualifier>, Ref<parse_expression>, Atom<']'>>,
+    Seq<Atom<'['>, Some<typeQualifier>, Keyword<"static">, Ref<parse_expression>, Atom<']'>>,
+    Seq<Atom<'['>, Any<typeQualifier>, Atom<'*'>, Atom<']'>>
+  >;
+};
 
 //------------------------------------------------------------------------------
 
 struct specifierQualifierList : public NodeMaker<specifierQualifierList> {
   using pattern = Some<Oneof<
-    Ref<parse_type_specifier>,
+    typeSpecifier,
     NodeKeyword<"const">,
     NodeKeyword<"restrict">,
     NodeKeyword<"volatile">,
@@ -102,7 +102,7 @@ struct specifierQualifierList : public NodeMaker<specifierQualifierList> {
 struct typeName : public NodeMaker<typeName> {
   using pattern = Seq<
     specifierQualifierList,
-    Opt<Ref<parse_abstract_declarator>>
+    Opt<abstractDeclarator>
   >;
 };
 
@@ -123,7 +123,7 @@ struct abstractDeclarator : public NodeMaker<abstractDeclarator> {
     pointer,
     Seq<
       Opt<pointer>,
-      Seq<Atom<'('>, Ref<parse_abstract_declarator>, Atom<')'>>
+      Seq<Atom<'('>, abstractDeclarator, Atom<')'>>
     >,
     Seq<
       Opt<pointer>,
@@ -142,7 +142,7 @@ struct declarator : public NodeMaker<declarator> {
   using pattern = Seq<
     Oneof<
       Seq<Opt<pointer>, NodeIdentifier, Opt<bit_suffix>>,
-      Seq<Opt<pointer>, Atom<'('>, Ref<parse_declarator>, Atom<')'>>
+      Seq<Opt<pointer>, Atom<'('>, declarator, Atom<')'>>
     >,
     Any<Oneof<
       arraySuffix,
@@ -152,7 +152,6 @@ struct declarator : public NodeMaker<declarator> {
     >>
   >;
 };
-const Token* parse_declarator(const Token* a, const Token* b) { return declarator::match(a, b); }
 
 //------------------------------------------------------------------------------
 
@@ -255,16 +254,16 @@ struct atomicTypeSpecifier : public NodeMaker<atomicTypeSpecifier> {
 
 //------------------------------------------------------------------------------
 
-using typeSpecifier = Oneof<
-  NodeTypeName,
-  atomicTypeSpecifier,
-  structSpecifier,
-  unionSpecifier,
-  classSpecifier,
-  enumSpecifier
->;
-
-const Token* parse_type_specifier(const Token* a, const Token* b) { return typeSpecifier::match(a, b); }
+struct typeSpecifier : public PatternWrapper<typeSpecifier> {
+  using pattern = Oneof<
+    NodeTypeName,
+    atomicTypeSpecifier,
+    structSpecifier,
+    unionSpecifier,
+    classSpecifier,
+    enumSpecifier
+  >;
+};
 
 //------------------------------------------------------------------------------
 
@@ -279,7 +278,7 @@ struct alignmentSpecifier : public NodeMaker<alignmentSpecifier> {
 
 //------------------------------------------------------------------------------
 
-struct declarationSpecifiers : public Wrapper<declarationSpecifiers> {
+struct declarationSpecifiers : public PatternWrapper<declarationSpecifiers> {
   using pattern = Some<Oneof<
     NodeKeyword<"typedef">,
     NodeKeyword<"extern">,
@@ -319,16 +318,18 @@ struct designation : public NodeMaker<designation> {
 
 struct initializer;
 
-using initializerList =
-Seq<
-  Opt<designation>,
-  initializer,
-  Any<Seq<
-    Atom<','>,
+struct initializerList : public PatternWrapper<initializerList> {
+  using pattern =
+  Seq<
     Opt<designation>,
-    initializer
-  >>
->;
+    initializer,
+    Any<Seq<
+      Atom<','>,
+      Opt<designation>,
+      initializer
+    >>
+  >;
+};
 
 //------------------------------------------------------------------------------
 
@@ -344,30 +345,60 @@ struct initializer : public NodeMaker<initializer> {
   >;
 };
 
-const Token* parse_initializer(const Token* a, const Token* b) { return initializer::match(a, b); }
+//------------------------------------------------------------------------------
+
+struct initDeclarator : public PatternWrapper<initDeclarator> {
+  using pattern = Seq<
+    declarator,
+    Opt<Seq<
+      Atom<'='>,
+      initializer
+    >>
+  >;
+};
 
 //------------------------------------------------------------------------------
 
-using initDeclarator = Seq<
-  declarator,
-  Opt<Seq<
-    Atom<'='>,
-    initializer
-  >>
->;
+struct initDeclaratorList : public PatternWrapper<initDeclaratorList> {
+  using pattern = Seq<
+    initDeclarator,
+    Opt<Seq<
+      Atom<','>,
+      initDeclarator
+    >>
+  >;
+};
 
 //------------------------------------------------------------------------------
 
-using initDeclaratorList = Seq<
-  initDeclarator,
-  Opt<Seq<
-    Atom<','>,
-    initDeclarator
-  >>
->;
+const Token* parse_declaration(const Token* a, const Token* b);
+
+struct functionDefinition : public NodeMaker<functionDefinition> {
+  using pattern = Seq<
+    Opt<declarationSpecifiers>,
+    declarator,
+    Opt<Some<Ref<parse_declaration>>>,
+    Ref<parse_statement_compound>
+  >;
+};
 
 //------------------------------------------------------------------------------
-// this has to go around declaration.... er, how?
+
+struct externalDeclaration : public PatternWrapper<externalDeclaration> {
+  using pattern =
+  Oneof<
+    functionDefinition,
+    Ref<parse_declaration>,
+    Atom<';'>
+  >;
+};
+
+const Token* parse_external_declaration(const Token* a, const Token* b) {
+  return externalDeclaration::match(a, b);
+}
+
+//------------------------------------------------------------------------------
+// this has to go around declaration below
 
 template<typename P>
 struct store_typedef2 {
@@ -406,33 +437,7 @@ struct declaration : public NodeMaker<declaration> {
 };
 
 const Token* parse_declaration(const Token* a, const Token* b) {
-  return declaration::match(a, b);
+  return store_typedef2<declaration>::match(a, b);
 }
 
 //------------------------------------------------------------------------------
-
-struct functionDefinition : public NodeMaker<functionDefinition> {
-  using pattern = Seq<
-    Opt<declarationSpecifiers>,
-    declarator,
-    Opt<Some<Ref<parse_declaration>>>,
-    Ref<parse_statement_compound>
-  >;
-};
-
-//------------------------------------------------------------------------------
-
-using externalDeclaration =
-Oneof<
-  functionDefinition,
-  Ref<parse_declaration>,
-  Atom<';'>
->;
-
-const Token* parse_external_declaration(const Token* a, const Token* b) {
-  return externalDeclaration::match(a, b);
-}
-
-//------------------------------------------------------------------------------
-
-const Token* parse_abstract_declarator(const Token* a, const Token* b) { return abstractDeclarator::match(a, b); }
