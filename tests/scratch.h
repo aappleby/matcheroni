@@ -1,4 +1,4 @@
-void foo(int*);
+void foo(const int const const * const);
 
 enum frogs {
   BIG_FROG,
@@ -9,10 +9,9 @@ enum frogs {
 void glark() {
 }
 
-extern auto static register int flerpbo = 2;
-extern auto static register int flerpbo = {1, 2, 3, sin(7)};
+static int flerpbo = {1, 2, 3, -7.0e12};
 
-static const int* y[7];
+static const int* y[const int 7];
 static const int* x[7] = {1+1*2/3, 2, 3};
 
 struct glarp {

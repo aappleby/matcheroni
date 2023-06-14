@@ -64,10 +64,6 @@ struct Operator {
 
 template<StringParam lit>
 struct NodeOperator : public NodeBase {
-  NodeOperator(const Token* a, const Token* b)
-  : NodeBase(NODE_OPERATOR, a, b) {
-  }
-
   static const Token* match(const Token* a, const Token* b) {
     if (auto end = Operator<lit>::match(a, b)) {
       node_stack.push(new NodeOperator(a, end));
@@ -122,9 +118,6 @@ struct NodeOperator : public NodeBase {
 //------------------------------------------------------------------------------
 
 struct NodeExpressionParenthesized : public NodeMaker<NodeExpressionParenthesized> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_EXPRESSION_PAREN;
-
   using pattern = Seq<
     Atom<'('>,
     Ref<parse_expression>,
@@ -144,9 +137,6 @@ const Token* parse_expression_paren(const Token* a, const Token* b) {
 //------------------------------------------------------------------------------
 
 struct NodeExpressionScope : public NodeMaker<NodeExpressionScope> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_EXPRESSION_SCOPE;
-
   using pattern =
   Seq<
     Ref<parse_expression_paren>,
@@ -168,9 +158,6 @@ const Token* parse_expression_scope(const Token* a, const Token* b) {
 //------------------------------------------------------------------------------
 
 struct NodeExpressionPostIncDec : public NodeMaker<NodeExpressionPostIncDec> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_EXPRESSION_POSTINCDEC;
-
   using pattern =
   Seq<
     Ref<parse_expression_scope>,
@@ -194,9 +181,6 @@ const Token* parse_expression_postincdec(const Token* a, const Token* b) {
 //------------------------------------------------------------------------------
 
 struct NodeExpressionFCast : public NodeMaker<NodeExpressionFCast> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_EXPRESSION_FCAST;
-
   using pattern =
   Seq<
     NodeDecltype,
@@ -217,9 +201,6 @@ const Token* parse_expression_fcast(const Token* a, const Token* b) {
 //------------------------------------------------------------------------------
 
 struct NodeExpressionCall : public NodeMaker<NodeExpressionCall> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_EXPRESSION_CALL;
-
   using pattern =
   Seq<
     Ref<parse_expression_fcast>,
@@ -241,9 +222,6 @@ const Token* parse_expression_call(const Token* a, const Token* b) {
 //------------------------------------------------------------------------------
 
 struct NodeExpressionSubscript : public NodeMaker<NodeExpressionSubscript> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_EXPRESSION_SUBSCRIPT;
-
   using pattern =
   Seq<
     Ref<parse_expression_call>,
@@ -266,9 +244,6 @@ const Token* parse_expression_subscript(const Token* a, const Token* b) {
 //------------------------------------------------------------------------------
 
 struct NodeExpressionMember : public NodeMaker<NodeExpressionMember> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_EXPRESSION_MEMBER;
-
   using pattern =
   Seq<
     Ref<parse_expression_subscript>,
@@ -293,9 +268,6 @@ const Token* parse_expression_member(const Token* a, const Token* b) {
 //------------------------------------------------------------------------------
 
 struct NodeExpressionPreIncDec : public NodeMaker<NodeExpressionPreIncDec> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_EXPRESSION_PREINCDEC;
-
   using pattern =
   Seq<
     Oneof<
@@ -317,9 +289,6 @@ const Token* parse_expression_preincdec(const Token* a, const Token* b) {
 //------------------------------------------------------------------------------
 
 struct NodeExpressionPlusMinus : public NodeMaker<NodeExpressionPlusMinus> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_EXPRESSION_PLUSMINUS;
-
   using pattern =
   Seq<
     Oneof<
@@ -341,9 +310,6 @@ const Token* parse_expression_plusminus(const Token* a, const Token* b) {
 //------------------------------------------------------------------------------
 
 struct NodeExpressionNot : public NodeMaker<NodeExpressionNot> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_EXPRESSION_NOT;
-
   using pattern =
   Seq<
     Oneof<
@@ -365,9 +331,6 @@ const Token* parse_expression_not(const Token* a, const Token* b) {
 //------------------------------------------------------------------------------
 
 struct NodeExpressionCast : public NodeMaker<NodeExpressionCast> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_EXPRESSION_CAST;
-
   using pattern =
   Seq<
     Atom<'('>,
@@ -388,9 +351,6 @@ const Token* parse_expression_cast(const Token* a, const Token* b) {
 //------------------------------------------------------------------------------
 
 struct NodeExpressionDereference : public NodeMaker<NodeExpressionDereference> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_EXPRESSION_DEREFERENCE;
-
   using pattern = Seq<
     NodeOperator<"*">,
     Ref<parse_expression_dereference>
@@ -409,9 +369,6 @@ const Token* parse_expression_dereference(const Token* a, const Token* b) {
 //------------------------------------------------------------------------------
 
 struct NodeExpressionAddressof : public NodeMaker<NodeExpressionAddressof> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_EXPRESSION_ADDRESSOF;
-
   using pattern = Seq<
     NodeOperator<"&">,
     Ref<parse_expression_addressof>
@@ -430,9 +387,6 @@ const Token* parse_expression_addressof(const Token* a, const Token* b) {
 //------------------------------------------------------------------------------
 
 struct NodeExpressionSizeof : public NodeMaker<NodeExpressionSizeof> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_EXPRESSION_SIZEOF;
-
   using pattern = Seq<
     Keyword<"sizeof">,
     Oneof<
@@ -454,9 +408,6 @@ const Token* parse_expression_sizeof(const Token* a, const Token* b) {
 //------------------------------------------------------------------------------
 
 struct NodeExpressionPtrToMember : public NodeMaker<NodeExpressionPtrToMember> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_EXPRESSION_PTRTOMEMBER;
-
   using pattern = Seq<
     Ref<parse_expression_sizeof>,
     Some<Seq<
@@ -482,9 +433,6 @@ const Token* parse_expression_ptrtomember(const Token* a, const Token* b) {
 // FIXME associativity is wrong
 
 struct NodeExpressionMulDivMod : public NodeMaker<NodeExpressionMulDivMod> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_EXPRESSION_MULDIVMOD;
-
   using pattern = Seq<
     Ref<parse_expression_ptrtomember>,
     Some<Seq<
@@ -510,9 +458,6 @@ const Token* parse_expression_muldivmod(const Token* a, const Token* b) {
 //------------------------------------------------------------------------------
 
 struct NodeExpressionAddSub : public NodeMaker<NodeExpressionAddSub> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_EXPRESSION_ADDSUB;
-
   using pattern = Seq<
     Ref<parse_expression_muldivmod>,
     Some<Seq<
@@ -537,9 +482,6 @@ const Token* parse_expression_addsub(const Token* a, const Token* b) {
 //------------------------------------------------------------------------------
 
 struct NodeExpressionShift : public NodeMaker<NodeExpressionShift> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_EXPRESSION_SHIFT;
-
   using pattern = Seq<
     Ref<parse_expression_addsub>,
     Some<Seq<
@@ -564,9 +506,6 @@ const Token* parse_expression_shift(const Token* a, const Token* b) {
 //------------------------------------------------------------------------------
 
 struct NodeExpressionThreeway : public NodeMaker<NodeExpressionThreeway> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_EXPRESSION_THREEWAY;
-
   using pattern = Seq<
     Ref<parse_expression_shift>,
     Some<Seq<
@@ -588,9 +527,6 @@ const Token* parse_expression_threeway(const Token* a, const Token* b) {
 //------------------------------------------------------------------------------
 
 struct NodeExpressionRelational : public NodeMaker<NodeExpressionRelational> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_EXPRESSION_RELATIONAL;
-
   using pattern = Seq<
     Ref<parse_expression_threeway>,
     Some<Seq<
@@ -617,9 +553,6 @@ const Token* parse_expression_relational(const Token* a, const Token* b) {
 //------------------------------------------------------------------------------
 
 struct NodeExpressionEquality : public NodeMaker<NodeExpressionEquality> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_EXPRESSION_EQUALITY;
-
   using pattern = Seq<
     Ref<parse_expression_relational>,
     Some<Seq<
@@ -644,9 +577,6 @@ const Token* parse_expression_equality(const Token* a, const Token* b) {
 //------------------------------------------------------------------------------
 
 struct NodeExpressionBitwiseAnd : public NodeMaker<NodeExpressionBitwiseAnd> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_EXPRESSION_BITWISE_AND;
-
   using pattern = Seq<
     Ref<parse_expression_equality>,
     Some<Seq<
@@ -668,9 +598,6 @@ const Token* parse_expression_bitwise_and(const Token* a, const Token* b) {
 //------------------------------------------------------------------------------
 
 struct NodeExpressionBitwiseXor : public NodeMaker<NodeExpressionBitwiseXor> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_EXPRESSION_BITWISE_XOR;
-
   using pattern = Seq<
     Ref<parse_expression_bitwise_and>,
     Some<Seq<
@@ -692,9 +619,6 @@ const Token* parse_expression_bitwise_xor(const Token* a, const Token* b) {
 //------------------------------------------------------------------------------
 
 struct NodeExpressionBitwiseOr : public NodeMaker<NodeExpressionBitwiseOr> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_EXPRESSION_BITWISE_OR;
-
   using pattern = Seq<
     Ref<parse_expression_bitwise_xor>,
     Some<Seq<
@@ -716,9 +640,6 @@ const Token* parse_expression_bitwise_or(const Token* a, const Token* b) {
 //------------------------------------------------------------------------------
 
 struct NodeExpressionLogicalAnd : public NodeMaker<NodeExpressionLogicalAnd> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_EXPRESSION_LOGICAL_AND;
-
   using pattern = Seq<
     Ref<parse_expression_bitwise_or>,
     Some<Seq<
@@ -740,9 +661,6 @@ const Token* parse_expression_logical_and(const Token* a, const Token* b) {
 //------------------------------------------------------------------------------
 
 struct NodeExpressionLogicalOr : public NodeMaker<NodeExpressionLogicalOr> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_EXPRESSION_LOGICAL_OR;
-
   using pattern = Seq<
     Ref<parse_expression_logical_and>,
     Some<Seq<
@@ -764,9 +682,6 @@ const Token* parse_expression_logical_or(const Token* a, const Token* b) {
 //------------------------------------------------------------------------------
 
 struct NodeExpressionTernary : public NodeMaker<NodeExpressionTernary> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_EXPRESSION_TERNARY;
-
   using pattern = Seq<
     Ref<parse_expression_logical_or>,
     NodeOperator<"?">,
@@ -788,9 +703,6 @@ const Token* parse_expression_ternary(const Token* a, const Token* b) {
 //------------------------------------------------------------------------------
 
 struct NodeExpressionAssignment : public NodeMaker<NodeExpressionAssignment> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_EXPRESSION_ASSIGNMENT;
-
   using pattern =
   Seq<
     Ref<parse_expression_ternary>,
@@ -826,9 +738,6 @@ const Token* parse_expression_assignment(const Token* a, const Token* b) {
 // left-assoc
 
 struct NodeExpressionComma : public NodeMaker<NodeExpressionComma> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_EXPRESSION_COMMA;
-
   using pattern = Seq<
     Ref<parse_expression_assignment>,
     Some<Seq<

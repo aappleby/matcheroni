@@ -12,16 +12,12 @@ const Token* parse_abstract_declarator       (const Token* a, const Token* b);
 const Token* parse_declarator                (const Token* a, const Token* b);
 const Token* parse_declaration_specifiers    (const Token* a, const Token* b);
 const Token* parse_type_specifier            (const Token* a, const Token* b);
-const Token* parse_direct_abstract_declarator(const Token* a, const Token* b);
 const Token* parse_initializer               (const Token* a, const Token* b);
 const Token* parse_statement_compound        (const Token* a, const Token* b);
 
 //------------------------------------------------------------------------------
 
 struct functionSpecifier : public NodeMaker<functionSpecifier> {
-  using NodeMaker::NodeMaker;
-  static constexpr NodeType node_type = NODE_INVALID;
-
   using pattern = Oneof<
     Keyword<"inline">,
     Keyword<"_Noreturn">,
@@ -33,26 +29,7 @@ struct functionSpecifier : public NodeMaker<functionSpecifier> {
 
 //------------------------------------------------------------------------------
 
-struct storageClassSpecifier : public NodeMaker<storageClassSpecifier> {
-  using NodeMaker::NodeMaker;
-  static constexpr NodeType node_type = NODE_INVALID;
-
-  using pattern = Oneof<
-    Keyword<"typedef">,
-    Keyword<"extern">,
-    Keyword<"static">,
-    Keyword<"_Thread_local">,
-    Keyword<"auto">,
-    Keyword<"register">
-  >;
-};
-
-//------------------------------------------------------------------------------
-
 struct typeQualifier : public NodeMaker<typeQualifier> {
-  using NodeMaker::NodeMaker;
-  static constexpr NodeType node_type = NODE_INVALID;
-
   using pattern = Oneof<
     Keyword<"const">,
     Keyword<"restrict">,
@@ -63,358 +40,214 @@ struct typeQualifier : public NodeMaker<typeQualifier> {
 
 //------------------------------------------------------------------------------
 
-struct builtinTypes : public NodeMaker<builtinTypes> {
-  using NodeMaker::NodeMaker;
-  static constexpr NodeType node_type = NODE_INVALID;
-
-  using pattern = Oneof<
-    Keyword<"void">,
-    Keyword<"char">,
-    Keyword<"short">,
-    Keyword<"int">,
-    Keyword<"long">,
-    Keyword<"float">,
-    Keyword<"double">,
-    Keyword<"signed">,
-    Keyword<"unsigned">,
-    Keyword<"_Bool">,
-    Keyword<"_Complex">,
-    Keyword<"__m128">,
-    Keyword<"__m128d">,
-    Keyword<"__m128i">
-  >;
-};
-
-//------------------------------------------------------------------------------
-
-struct typeQualifierList : public NodeMaker<typeQualifierList> {
-  using NodeMaker::NodeMaker;
-  static constexpr NodeType node_type = NODE_INVALID;
-
-  using pattern = Some<typeQualifier>;
-};
-
-//------------------------------------------------------------------------------
-
 struct pointer : public NodeMaker<pointer> {
-  using NodeMaker::NodeMaker;
-  static constexpr NodeType node_type = NODE_INVALID;
-  using pattern = Some<Seq<
-    Atom<'*'>,
-    Opt<typeQualifierList>
-  >>;
+  using pattern =
+  Seq<
+    NodeOperator<"*">,
+    Any<Oneof<
+      NodeOperator<"*">,
+      NodeKeyword<"const">,
+      NodeKeyword<"restrict">,
+      NodeKeyword<"volatile">,
+      NodeKeyword<"_Atomic">
+    >>
+  >;
 };
 
 //------------------------------------------------------------------------------
 
 struct parameterDeclaration : public NodeMaker<parameterDeclaration> {
-  using NodeMaker::NodeMaker;
-  static constexpr NodeType node_type = NODE_INVALID;
   using pattern = Oneof<
-    Seq<Ref<parse_declaration_specifiers>, Ref<parse_declarator>>,
-    Seq<Ref<parse_declaration_specifiers>, Opt<Ref<parse_abstract_declarator>>>
-  >;
-};
-
-//------------------------------------------------------------------------------
-
-struct parameterList : public NodeMaker<parameterList> {
-  using NodeMaker::NodeMaker;
-  static constexpr NodeType node_type = NODE_INVALID;
-  using pattern = Seq<
-    parameterDeclaration,
-    Any<Seq<
-      Atom<','>,
-      parameterDeclaration
-    >>
+    Seq<
+      Ref<parse_declaration_specifiers>,
+      Opt<Oneof<
+        Ref<parse_declarator>,
+        Ref<parse_abstract_declarator>
+      >>
+    >,
+    NodeOperator<"...">
   >;
 };
 
 //------------------------------------------------------------------------------
 
 struct parameterTypeList : public NodeMaker<parameterTypeList> {
-  using NodeMaker::NodeMaker;
-  static constexpr NodeType node_type = NODE_INVALID;
-  using pattern = Seq<
-    parameterList,
-    Opt<Seq<
-      Atom<','>,
-      Operator<"...">
-    >>
-  >;
+  using pattern = comma_separated<parameterDeclaration>;
 };
 
 //------------------------------------------------------------------------------
 
-struct abstractDeclarator : public NodeMaker<abstractDeclarator> {
-  using NodeMaker::NodeMaker;
-  static constexpr NodeType node_type = NODE_INVALID;
-  using pattern = Oneof<
-    pointer,
-    Seq<
-      Opt<pointer>,
-      Ref<parse_direct_abstract_declarator>
-    >
-  >;
-};
-const Token* parse_abstract_declarator(const Token* a, const Token* b) { return abstractDeclarator::match(a, b); }
-
-//------------------------------------------------------------------------------
-
-struct directAbstractDeclarator : public NodeMaker<directAbstractDeclarator> {
-  using NodeMaker::NodeMaker;
-  static constexpr NodeType node_type = NODE_INVALID;
-  using pattern = Oneof<
-    Seq<Atom<'('>, abstractDeclarator, Atom<')'>>,
-    Some<Oneof<
-      Seq<Atom<'['>, Opt<typeQualifierList>, Opt<Ref<parse_expression>>, Atom<']'>>,
-      Seq<Atom<'['>, Keyword<"static">, Opt<typeQualifierList>, Ref<parse_expression>,  Atom<']'>>,
-      Seq<Atom<'['>, typeQualifierList, Keyword<"static">, Ref<parse_expression>, Atom<']'>>,
-      Seq<Atom<'['>, Atom<'*'>, Atom<']'>>,
-      Seq<Atom<'('>, Opt<parameterTypeList>, Atom<')'>>
-    >>
-  >;
-};
-const Token* parse_direct_abstract_declarator(const Token* a, const Token* b) { return directAbstractDeclarator::match(a, b); }
+using arraySuffix = Oneof<
+  Seq<Atom<'['>, Any<typeQualifier>, Opt<Ref<parse_expression>>, Atom<']'>>,
+  Seq<Atom<'['>, Keyword<"static">, Any<typeQualifier>, Ref<parse_expression>, Atom<']'>>,
+  Seq<Atom<'['>, Some<typeQualifier>, Keyword<"static">, Ref<parse_expression>, Atom<']'>>,
+  Seq<Atom<'['>, Any<typeQualifier>, Atom<'*'>, Atom<']'>>
+>;
 
 //------------------------------------------------------------------------------
 
 struct specifierQualifierList : public NodeMaker<specifierQualifierList> {
-  using NodeMaker::NodeMaker;
-  static constexpr NodeType node_type = NODE_INVALID;
-
   using pattern = Some<Oneof<
     Ref<parse_type_specifier>,
-    typeQualifier
+    NodeKeyword<"const">,
+    NodeKeyword<"restrict">,
+    NodeKeyword<"volatile">,
+    NodeKeyword<"_Atomic">
   >>;
 };
 
 //------------------------------------------------------------------------------
 
 struct typeName : public NodeMaker<typeName> {
-  using NodeMaker::NodeMaker;
-  static constexpr NodeType node_type = NODE_INVALID;
   using pattern = Seq<
     specifierQualifierList,
-    Opt<abstractDeclarator>
+    Opt<Ref<parse_abstract_declarator>>
   >;
 };
 
-//------------------------------------------------------------------------------
-
-struct identifierList : public NodeMaker<identifierList> {
-  using NodeMaker::NodeMaker;
-  static constexpr NodeType node_type = NODE_INVALID;
-  using pattern = Seq<
-    Ref<parse_identifier>,
-    Opt<Seq<
-      Atom<','>,
-      Ref<parse_identifier>
-    >>
-  >;
-};
 
 //------------------------------------------------------------------------------
 
-struct directDeclaratorSuffix : public NodeMaker<directDeclaratorSuffix> {
-  using NodeMaker::NodeMaker;
-  static constexpr NodeType node_type = NODE_INVALID;
+using parameterList  = Seq<Atom<'('>, parameterTypeList, Atom<')'>>;
+using identifierList = Seq<Atom<'('>, comma_separated<Ref<parse_identifier>>, Atom<')'>>;
+using emptyList      = Seq<Atom<'('>, Atom<')'>>;
+
+//------------------------------------------------------------------------------
+
+using bit_suffix = Seq<Atom<':'>, Ref<parse_constant>>;
+
+//------------------------------------------------------------------------------
+
+struct abstractDeclarator : public NodeMaker<abstractDeclarator> {
   using pattern = Oneof<
-    Seq<Atom<'['>, Opt<typeQualifierList>, Opt<Ref<parse_expression>>, Atom<']'>>,
-    Seq<Atom<'['>, Keyword<"static">, Opt<typeQualifierList>, Ref<parse_expression>, Atom<']'>>,
-    Seq<Atom<'['>, typeQualifierList, Keyword<"static">, Ref<parse_expression>, Atom<']'>>,
-    Seq<Atom<'['>, Opt<typeQualifierList>, Atom<'*'>, Atom<']'>>,
-    Seq<Atom<'('>, parameterTypeList, Atom<')'>>,
-    Seq<Atom<'('>, Opt<identifierList>, Atom<')'>>
+    pointer,
+    Seq<
+      Opt<pointer>,
+      Oneof<
+        Seq<Atom<'('>, Ref<parse_abstract_declarator>, Atom<')'>>,
+        Some<Oneof<
+          arraySuffix,
+          parameterList,
+          emptyList
+        >>
+      >
+    >
   >;
 };
-
-//------------------------------------------------------------------------------
-
-/*
-struct directDeclarator : public NodeMaker<directDeclarator> {
-  using NodeMaker::NodeMaker;
-  static constexpr NodeType node_type = NODE_INVALID;
-
-  using pattern = Seq<
-    Oneof<
-      Ref<parse_identifier>,
-      Seq<Ref<parse_identifier>, Atom<':'>, Ref<parse_constant>>, // bit field
-      Seq<Atom<'('>, Ref<parse_declarator>, Atom<')'>>
-    >,
-    Any<directDeclaratorSuffix>
-  >;
-};
-*/
-
-using directDeclarator =
-Seq<
-  Oneof<
-    Ref<parse_identifier>,
-    Seq<Ref<parse_identifier>, Atom<':'>, Ref<parse_constant>>, // bit field
-    Seq<Atom<'('>, Ref<parse_declarator>, Atom<')'>>
-  >,
-  Any<directDeclaratorSuffix>
->;
-
 
 //------------------------------------------------------------------------------
 
 struct declarator : public NodeMaker<declarator> {
-  using NodeMaker::NodeMaker;
-  static constexpr NodeType node_type = NODE_INVALID;
-
   using pattern = Seq<
     Opt<pointer>,
-    directDeclarator
+    Oneof<
+      Seq<Ref<parse_identifier>, Opt<bit_suffix>>,
+      Seq<Atom<'('>, Ref<parse_declarator>, Atom<')'>>
+    >,
+    Any<Oneof<
+      arraySuffix,
+      parameterList,
+      identifierList,
+      emptyList
+    >>
   >;
 };
 const Token* parse_declarator(const Token* a, const Token* b) { return declarator::match(a, b); }
 
 //------------------------------------------------------------------------------
 
-struct structOrUnionOrClass : public NodeMaker<structOrUnionOrClass> {
-  using NodeMaker::NodeMaker;
-  static constexpr NodeType node_type = NODE_INVALID;
-
-  using pattern = Oneof<
-    Keyword<"struct">,
-    Keyword<"union">,
-    Keyword<"class">
-  >;
-};
-
-//------------------------------------------------------------------------------
-
-struct structDeclarator : public NodeMaker<structDeclarator> {
-  using NodeMaker::NodeMaker;
-  static constexpr NodeType node_type = NODE_INVALID;
-
-  using pattern = Oneof<
-    declarator,
-    Seq<Opt<declarator>, Atom<':'>, Ref<parse_constant>>
-  >;
-};
-
-//------------------------------------------------------------------------------
-
-/*
-struct structDeclaratorList : public NodeMaker<structDeclaratorList> {
-  using NodeMaker::NodeMaker;
-  static constexpr NodeType node_type = NODE_INVALID;
-
+struct fieldDeclarator : public NodeMaker<fieldDeclarator> {
   using pattern = Seq<
-    structDeclarator,
-    Any<Seq<
-      Atom<','>,
-      structDeclarator
-    >>
-  >;
-};
-*/
-
-using structDeclaratorList = Seq<
-  structDeclarator,
-  Any<Seq<
-    Atom<','>,
-    structDeclarator
-  >>
->;
-
-//------------------------------------------------------------------------------
-
-struct structDeclaration : public NodeMaker<structDeclaration> {
-  using NodeMaker::NodeMaker;
-  static constexpr NodeType node_type = NODE_INVALID;
-
-  using pattern = Oneof<
-    Seq<specifierQualifierList, structDeclaratorList, Atom<';'>>,
-    Seq<specifierQualifierList, Atom<';'>>
+    declarator,
+    Opt<bit_suffix>
   >;
 };
 
 //------------------------------------------------------------------------------
 
-struct structDeclarationList : public NodeMaker<structDeclarationList> {
-  using NodeMaker::NodeMaker;
-  static constexpr NodeType node_type = NODE_INVALID;
-
-  using pattern = Some<structDeclaration>;
-};
-
-//------------------------------------------------------------------------------
-
-struct structOrUnionSpecifier : public NodeMaker<structOrUnionSpecifier> {
-  using NodeMaker::NodeMaker;
-  static constexpr NodeType node_type = NODE_INVALID;
-
-  using pattern = Oneof<
-    Seq<structOrUnionOrClass, Opt<Ref<parse_identifier>>, Atom<'{'>, structDeclarationList, Atom<'}'>>,
-    Seq<structOrUnionOrClass, Ref<parse_identifier>>
+struct fieldDeclaration : public NodeMaker<fieldDeclaration> {
+  using pattern = Seq<
+    specifierQualifierList,
+    Opt<comma_separated<
+      fieldDeclarator
+    >>,
+    Atom<';'>
   >;
 };
 
 //------------------------------------------------------------------------------
 
-/*
-struct enumerationConstant : public NodeMaker<enumerationConstant> {
-  using NodeMaker::NodeMaker;
-  static constexpr NodeType node_type = NODE_INVALID;
-
-  using pattern = Ref<parse_identifier>;
+struct fieldDeclarationList : public NodeMaker<fieldDeclarationList> {
+  using pattern = Seq<
+    Atom<'{'>,
+    Some<fieldDeclaration>,
+    Atom<'}'>
+  >;
 };
-*/
 
-using enumerationConstant = Ref<parse_identifier>;
+//------------------------------------------------------------------------------
+
+struct structSpecifier : public NodeMaker<structSpecifier> {
+  using pattern = Seq<
+    Keyword<"struct">,
+    Opt<Ref<parse_identifier>>,
+    Opt<fieldDeclarationList>
+  >;
+};
+
+//------------------------------------------------------------------------------
+
+struct unionSpecifier : public NodeMaker<unionSpecifier> {
+  using pattern = Seq<
+    Keyword<"union">,
+    Opt<Ref<parse_identifier>>,
+    Opt<fieldDeclarationList>
+  >;
+};
+
+//------------------------------------------------------------------------------
+
+struct classSpecifier : public NodeMaker<classSpecifier> {
+  using pattern = Seq<
+    Keyword<"class">,
+    Opt<Ref<parse_identifier>>,
+    Opt<fieldDeclarationList>
+  >;
+};
 
 //------------------------------------------------------------------------------
 
 struct enumerator : public NodeMaker<enumerator> {
-  using NodeMaker::NodeMaker;
-  static constexpr NodeType node_type = NODE_INVALID;
-
   using pattern = Seq<
-    enumerationConstant,
-    Opt<Seq<
-      Atom<'='>,
-      Ref<parse_constant>
-    >>
+    Ref<parse_identifier>,
+    Opt<Seq<Atom<'='>, Ref<parse_constant>>>
   >;
 };
 
 //------------------------------------------------------------------------------
 
 struct enumeratorList : public NodeMaker<enumeratorList> {
-  using NodeMaker::NodeMaker;
-  static constexpr NodeType node_type = NODE_INVALID;
-
   using pattern = Seq<
-    enumerator,
-    Any<Seq<
-      Atom<','>,
-      enumerator
-    >>
+    Atom<'{'>,
+    comma_separated<enumerator>,
+    Opt<Atom<','>>,
+    Atom<'}'>
   >;
 };
 
 //------------------------------------------------------------------------------
 
 struct enumSpecifier : public NodeMaker<enumSpecifier> {
-  using NodeMaker::NodeMaker;
-  static constexpr NodeType node_type = NODE_INVALID;
-
-  using pattern = Oneof<
-    Seq<Keyword<"enum">, Opt<Ref<parse_identifier>>, Atom<'{'>, enumeratorList, Opt<Atom<','>>, Atom<'}'>>,
-    Seq<Keyword<"enum">, Ref<parse_identifier>>
+  using pattern = Seq<
+    Keyword<"enum">,
+    Opt<Ref<parse_identifier>>,
+    Opt<enumeratorList>
   >;
 };
 
 //------------------------------------------------------------------------------
 
 struct atomicTypeSpecifier : public NodeMaker<atomicTypeSpecifier> {
-  using NodeMaker::NodeMaker;
-  static constexpr NodeType node_type = NODE_INVALID;
-
   using pattern = Seq<
     Keyword<"_Atomic">,
     Atom<'('>,
@@ -425,27 +258,13 @@ struct atomicTypeSpecifier : public NodeMaker<atomicTypeSpecifier> {
 
 //------------------------------------------------------------------------------
 
-/*
-struct typeSpecifier : public NodeMaker<typeSpecifier> {
-  using NodeMaker::NodeMaker;
-  static constexpr NodeType node_type = NODE_INVALID;
-
-  using pattern = Oneof<
-    builtinTypes,
-    atomicTypeSpecifier,
-    structOrUnionSpecifier,
-    enumSpecifier,
-    Ref<parse_type_name>
-  >;
-};
-*/
-
 using typeSpecifier = Oneof<
-  builtinTypes,
+  Ref<parse_type_name>,
   atomicTypeSpecifier,
-  structOrUnionSpecifier,
-  enumSpecifier,
-  Ref<parse_type_name>
+  structSpecifier,
+  unionSpecifier,
+  classSpecifier,
+  enumSpecifier
 >;
 
 const Token* parse_type_specifier(const Token* a, const Token* b) { return typeSpecifier::match(a, b); }
@@ -453,9 +272,6 @@ const Token* parse_type_specifier(const Token* a, const Token* b) { return typeS
 //------------------------------------------------------------------------------
 
 struct alignmentSpecifier : public NodeMaker<alignmentSpecifier> {
-  using NodeMaker::NodeMaker;
-  static constexpr NodeType node_type = NODE_INVALID;
-
   using pattern = Seq<
     Keyword<"_Alignas">,
     Atom<'('>,
@@ -468,9 +284,6 @@ struct alignmentSpecifier : public NodeMaker<alignmentSpecifier> {
 
 /*
 struct declarationSpecifier : public NodeMaker<declarationSpecifier> {
-  using NodeMaker::NodeMaker;
-  static constexpr NodeType node_type = NODE_INVALID;
-
   using pattern = Oneof<
     storageClassSpecifier,
     typeSpecifier,
@@ -482,7 +295,12 @@ struct declarationSpecifier : public NodeMaker<declarationSpecifier> {
 */
 
 using declarationSpecifier = Oneof<
-  storageClassSpecifier,
+  NodeKeyword<"typedef">,
+  NodeKeyword<"extern">,
+  NodeKeyword<"static">,
+  NodeKeyword<"_Thread_local">,
+  NodeKeyword<"auto">,
+  NodeKeyword<"register">,
   typeSpecifier,
   typeQualifier,
   functionSpecifier,
@@ -493,8 +311,6 @@ using declarationSpecifier = Oneof<
 
 /*
 struct declarationSpecifiers : public NodeMaker<declarationSpecifiers> {
-  using NodeMaker::NodeMaker;
-  static constexpr NodeType node_type = NODE_INVALID;
   using pattern = Some<declarationSpecifier>;
 };
 */
@@ -506,8 +322,6 @@ const Token* parse_declaration_specifiers(const Token* a, const Token* b) { retu
 //------------------------------------------------------------------------------
 
 struct designator : public NodeMaker<designator> {
-  using NodeMaker::NodeMaker;
-  static constexpr NodeType node_type = NODE_INVALID;
   using pattern = Oneof<
     Seq<Atom<'['>, Ref<parse_constant>, Atom<']'>>,
     Seq<Atom<'.'>, Ref<parse_identifier>>
@@ -517,16 +331,12 @@ struct designator : public NodeMaker<designator> {
 //------------------------------------------------------------------------------
 
 struct designatorList : public NodeMaker<designatorList> {
-  using NodeMaker::NodeMaker;
-  static constexpr NodeType node_type = NODE_INVALID;
   using pattern = Some<designator>;
 };
 
 //------------------------------------------------------------------------------
 
 struct designation : public NodeMaker<designation> {
-  using NodeMaker::NodeMaker;
-  static constexpr NodeType node_type = NODE_INVALID;
   using pattern = Seq<designatorList, Atom<'='>>;
 };
 
@@ -534,9 +344,6 @@ struct designation : public NodeMaker<designation> {
 
 /*
 struct initializerList : public NodeMaker<initializerList> {
-  using NodeMaker::NodeMaker;
-  static constexpr NodeType node_type = NODE_INVALID;
-
   using pattern = Seq<
     Opt<designation>,
     Ref<parse_initializer>,
@@ -563,9 +370,6 @@ Seq<
 //------------------------------------------------------------------------------
 
 struct initializer : public NodeMaker<initializer> {
-  using NodeMaker::NodeMaker;
-  static constexpr NodeType node_type = NODE_INVALID;
-
   using pattern = Oneof<
     Ref<parse_expression>,
     Seq<
@@ -583,9 +387,6 @@ const Token* parse_initializer(const Token* a, const Token* b) { return initiali
 
 /*
 struct initDeclarator : public NodeMaker<initDeclarator> {
-  using NodeMaker::NodeMaker;
-  static constexpr NodeType node_type = NODE_INVALID;
-
   using pattern = Seq<
     declarator,
     Opt<Seq<
@@ -608,9 +409,6 @@ using initDeclarator = Seq<
 
 /*
 struct initDeclaratorList : public NodeMaker<initDeclaratorList> {
-  using NodeMaker::NodeMaker;
-  static constexpr NodeType node_type = NODE_INVALID;
-
   using pattern = Seq<
     initDeclarator,
     Opt<Seq<
@@ -632,9 +430,6 @@ using initDeclaratorList = Seq<
 //------------------------------------------------------------------------------
 
 struct declaration : public NodeMaker<declaration> {
-  using NodeMaker::NodeMaker;
-  static constexpr NodeType node_type = NODE_INVALID;
-
   using pattern = Seq<
     declarationSpecifiers,
     Opt<initDeclaratorList>,
@@ -646,10 +441,9 @@ const Token* parse_declaration(const Token* a, const Token* b) {
   return declaration::match(a, b);
 }
 
-struct functionDefinition : public NodeMaker<functionDefinition> {
-  using NodeMaker::NodeMaker;
-  static constexpr NodeType node_type = NODE_INVALID;
+//------------------------------------------------------------------------------
 
+struct functionDefinition : public NodeMaker<functionDefinition> {
   using pattern = Seq<
     Opt<declarationSpecifiers>,
     declarator,
@@ -657,6 +451,8 @@ struct functionDefinition : public NodeMaker<functionDefinition> {
     Ref<parse_statement_compound>
   >;
 };
+
+//------------------------------------------------------------------------------
 
 using externalDeclaration =
 Oneof<
@@ -670,3 +466,5 @@ const Token* parse_external_declaration(const Token* a, const Token* b) {
 }
 
 //------------------------------------------------------------------------------
+
+const Token* parse_abstract_declarator(const Token* a, const Token* b) { return abstractDeclarator::match(a, b); }

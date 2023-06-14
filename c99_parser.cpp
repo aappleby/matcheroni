@@ -25,6 +25,14 @@ IdentifierSet global_types = {
   "unsigned",
 };
 
+/*
+Keyword<"_Bool">,
+Keyword<"_Complex">,
+Keyword<"__m128">,
+Keyword<"__m128d">,
+Keyword<"__m128i">
+*/
+
 //------------------------------------------------------------------------------
 // Predecls
 
@@ -34,9 +42,6 @@ const Token* parse_expression(const Token* a, const Token* b);
 //------------------------------------------------------------------------------
 
 struct NodeIdentifier : public NodeMaker<NodeIdentifier> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_IDENTIFIER;
-
   using pattern = Atom<TOK_IDENTIFIER>;
 };
 const Token* parse_identifier(const Token* a, const Token* b) { return NodeIdentifier::match(a, b); }
@@ -44,9 +49,6 @@ const Token* parse_identifier(const Token* a, const Token* b) { return NodeIdent
 //------------------------------------------------------------------------------
 
 struct NodeConstant : public NodeMaker<NodeConstant> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_CONSTANT;
-
   using pattern = Oneof<
     Atom<TOK_FLOAT>,
     Atom<TOK_INT>,
@@ -59,9 +61,6 @@ const Token* parse_constant(const Token* a, const Token* b) { return NodeConstan
 //------------------------------------------------------------------------------
 
 struct NodeSpecifier : public NodeMaker<NodeSpecifier> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_SPECIFIER;
-
   using pattern = Oneof<
     Keyword<"extern">,
     Keyword<"static">,
@@ -86,18 +85,12 @@ struct NodeSpecifier : public NodeMaker<NodeSpecifier> {
 //------------------------------------------------------------------------------
 
 struct NodeSpecifierList : public NodeMaker<NodeSpecifierList> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_LIST_SPECIFIER;
-
   using pattern = Some<NodeSpecifier>;
 };
 
 //------------------------------------------------------------------------------
 
 struct NodeStatementCompound : public NodeMaker<NodeStatementCompound> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_STATEMENT_COMPOUND;
-
   using pattern = Seq<
     Atom<'{'>,
     Any<Ref<parse_statement>>,
@@ -113,9 +106,6 @@ const Token* parse_statement_compound(const Token* a, const Token* b) {
 
 
 struct NodeTemplateArgs : public NodeMaker<NodeTemplateArgs> {
-  using NodeMaker::NodeMaker;
-  static constexpr NodeType node_type = NODE_LIST_ARGUMENT;
-
   using pattern = Delimited<'<', '>',
     opt_comma_separated<Ref<parse_expression>>
   >;
@@ -124,15 +114,15 @@ struct NodeTemplateArgs : public NodeMaker<NodeTemplateArgs> {
 //------------------------------------------------------------------------------
 
 struct NodeTypeName : public NodeMaker<NodeTypeName> {
-  using NodeMaker::NodeMaker;
-  static constexpr NodeType node_type = NODE_TYPE_NAME;
-
   static const Token* match(const Token* a, const Token* b) {
     if (!a || !a->is_identifier()) return nullptr;
 
     for (auto& t : global_types) {
       if (a->lex->match(t.c_str())) {
-        node_stack.push(new NodeTypeName(a, a+1, nullptr, 0));
+        auto n = new NodeTypeName();
+        n->init(a, a+1, nullptr, 0);
+        node_stack.push(n);
+        //node_stack.push(new NodeTypeName(a, a+1, nullptr, 0));
         return a + 1;
       }
     }
@@ -144,9 +134,6 @@ const Token* parse_type_name(const Token* a, const Token* b) { return NodeTypeNa
 //------------------------------------------------------------------------------
 
 struct NodeDecltype : public NodeMaker<NodeDecltype> {
-  using NodeMaker::NodeMaker;
-  static constexpr NodeType node_type = NODE_DECLTYPE;
-
   using pattern = Seq<
     Opt<NodeSpecifierList>,
     Opt<Keyword<"struct">>,
@@ -166,9 +153,6 @@ struct NodeDecltype : public NodeMaker<NodeDecltype> {
 // FIXME should probably have a few diffeerent versions instead of all the opts
 
 struct NodeEnum : public NodeMaker<NodeEnum> {
-  using NodeMaker::NodeMaker;
-  static constexpr NodeType node_type = NODE_DECLARATION_ENUM;
-
   using pattern = Seq<
     Keyword<"enum">,
     Opt<Keyword<"class">>,
@@ -187,9 +171,6 @@ struct NodeEnum : public NodeMaker<NodeEnum> {
 //------------------------------------------------------------------------------
 
 struct NodeArraySuffix : public NodeMaker<NodeArraySuffix> {
-  using NodeMaker::NodeMaker;
-  static constexpr NodeType node_type = NODE_ARRAY_SUFFIX;
-
   using pattern = Seq<
     Atom<'['>,
     Ref<parse_expression>,
@@ -200,9 +181,6 @@ struct NodeArraySuffix : public NodeMaker<NodeArraySuffix> {
 //------------------------------------------------------------------------------
 
 struct NodeBitsizeSuffix : public NodeMaker<NodeBitsizeSuffix> {
-  using NodeMaker::NodeMaker;
-  static constexpr NodeType node_type = NODE_BITSIZE;
-
   using pattern = Seq<
     Atom<':'>,
     Ref<parse_expression>
@@ -212,9 +190,6 @@ struct NodeBitsizeSuffix : public NodeMaker<NodeBitsizeSuffix> {
 //------------------------------------------------------------------------------
 
 struct NodeDeclarationAtom : public NodeMaker<NodeDeclarationAtom> {
-  using NodeMaker::NodeMaker;
-  static constexpr NodeType node_type = NODE_DECLARATION_ATOM;
-
   using pattern = Seq<
     NodeIdentifier,
     Opt<NodeBitsizeSuffix>,
@@ -229,9 +204,6 @@ struct NodeDeclarationAtom : public NodeMaker<NodeDeclarationAtom> {
 //------------------------------------------------------------------------------
 
 struct NodeDeclaration : public NodeMaker<NodeDeclaration> {
-  using NodeMaker::NodeMaker;
-  static constexpr NodeType node_type = NODE_DECLARATION;
-
   using pattern = Seq<
     NodeDecltype,
     Oneof<
@@ -250,9 +222,6 @@ struct NodeDeclaration : public NodeMaker<NodeDeclaration> {
 //------------------------------------------------------------------------------
 
 struct NodeStatementDeclaration : public NodeMaker<NodeStatementDeclaration> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_STATEMENT_DECL;
-
   using pattern = Seq<
     NodeDeclaration,
     Atom<';'>
@@ -262,9 +231,6 @@ struct NodeStatementDeclaration : public NodeMaker<NodeStatementDeclaration> {
 //------------------------------------------------------------------------------
 
 struct NodeDeclList : public NodeMaker<NodeDeclList> {
-  using NodeMaker::NodeMaker;
-  static constexpr NodeType node_type = NODE_LIST_PARAMETER;
-
   using pattern = Seq<
     Atom<'('>,
     opt_comma_separated<NodeDeclaration>,
@@ -275,9 +241,6 @@ struct NodeDeclList : public NodeMaker<NodeDeclList> {
 //------------------------------------------------------------------------------
 
 struct NodeInitializerList : public NodeMaker<NodeInitializerList> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_LIST_INITIALIZER;
-
   using pattern = Seq<
     Atom<':'>,
     comma_separated<Ref<parse_expression>>,
@@ -286,9 +249,6 @@ struct NodeInitializerList : public NodeMaker<NodeInitializerList> {
 };
 
 struct NodeConstructor : public NodeMaker<NodeConstructor> {
-  using NodeMaker::NodeMaker;
-  static constexpr NodeType node_type = NODE_CONSTRUCTOR;
-
   using pattern = Seq<
     NodeIdentifier,
     NodeDeclList,
@@ -303,22 +263,6 @@ struct NodeConstructor : public NodeMaker<NodeConstructor> {
 //------------------------------------------------------------------------------
 
 struct NodeFunction : public NodeMaker<NodeFunction> {
-  //using NodeMaker::NodeMaker;
-  NodeFunction(const Token* a, const Token* b, NodeBase** children, size_t child_count)
-  : NodeMaker(a, b, children, child_count) {
-    _type = children[0]->as<NodeDecltype>();
-    _name = children[1]->as<NodeIdentifier>();
-    _args = children[2]->as<NodeDeclList>();
-    _body = children[3]->as<NodeStatementCompound>();
-  }
-
-  NodeDecltype*   _type = nullptr;
-  NodeIdentifier* _name = nullptr;
-  NodeDeclList*   _args = nullptr;
-  NodeStatementCompound* _body = nullptr;
-
-  static constexpr NodeType node_type = NODE_DEFINITION_FUNCTION;
-
   using pattern = Seq<
     NodeDecltype,
     NodeIdentifier,
@@ -334,9 +278,6 @@ struct NodeFunction : public NodeMaker<NodeFunction> {
 //------------------------------------------------------------------------------
 
 struct NodeAccessSpecifier : public NodeMaker<NodeAccessSpecifier> {
-  using NodeMaker::NodeMaker;
-  static constexpr NodeType node_type = NODE_ACCESS_SPECIFIER;
-
   using pattern = Seq<
     Oneof<
       Keyword<"public">,
@@ -349,9 +290,6 @@ struct NodeAccessSpecifier : public NodeMaker<NodeAccessSpecifier> {
 //------------------------------------------------------------------------------
 
 struct NodeFieldList : public NodeMaker<NodeFieldList> {
-  using NodeMaker::NodeMaker;
-  static constexpr NodeType node_type = NODE_LIST_FIELD;
-
   using pattern = Seq<
     Atom<'{'>,
     Any<Oneof<
@@ -389,9 +327,6 @@ struct StoreClassTypename {
 };
 
 struct NodeClass : public NodeMaker<NodeClass> {
-  using NodeMaker::NodeMaker;
-  static constexpr NodeType node_type = NODE_DECLARATION_CLASS;
-
   using pattern = Seq<
     Keyword<"class">,
     NodeIdentifier,
@@ -403,9 +338,6 @@ struct NodeClass : public NodeMaker<NodeClass> {
 //------------------------------------------------------------------------------
 
 struct NodeStruct : public NodeMaker<NodeStruct> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_DECLARATION_STRUCT;
-
   using pattern = Seq<
     Keyword<"struct">,
     NodeIdentifier,
@@ -417,9 +349,6 @@ struct NodeStruct : public NodeMaker<NodeStruct> {
 //----------------------------------------
 
 struct NodeNamespace : public NodeMaker<NodeNamespace> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_DECLARATION_NAMESPACE;
-
   using pattern = Seq<
     Keyword<"namespace">,
     NodeIdentifier,
@@ -431,9 +360,6 @@ struct NodeNamespace : public NodeMaker<NodeNamespace> {
 //------------------------------------------------------------------------------
 
 struct NodeTemplateParams : public NodeMaker<NodeTemplateParams> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_LIST_TEMPLATE_PARAMETER;
-
   using pattern = Delimited<'<', '>', comma_separated<NodeDeclaration>>;
 };
 
@@ -492,44 +418,7 @@ struct NodeTemplateParams : public NodeMaker<NodeTemplateParams> {
 //==============================================================================
 // EXPRESSION STUFF
 
-template<StringParam lit>
-struct NodeOperator : public NodeBase {
-  NodeOperator(const Token* a, const Token* b)
-  : NodeBase(NODE_OPERATOR, a, b) {
-  }
-
-  static const Token* match(const Token* a, const Token* b) {
-    if (auto end = Operator<lit>::match(a, b)) {
-      node_stack.push(new NodeOperator(a, end));
-      return end;
-    }
-    else {
-      return nullptr;
-    }
-  }
-};
-
-template<StringParam lit>
-struct NodeKeyword : public NodeBase {
-  NodeKeyword(const Token* a, const Token* b)
-  : NodeBase(NODE_KEYWORD, a, b) {
-  }
-
-  static const Token* match(const Token* a, const Token* b) {
-    if (auto end = Keyword<lit>::match(a, b)) {
-      node_stack.push(new NodeKeyword(a, end));
-      return end;
-    }
-    else {
-      return nullptr;
-    }
-  }
-};
-
 struct NodeExpressionParen : public NodeMaker<NodeExpressionParen> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_EXPRESSION_PAREN;
-
   using pattern = Seq<
     Atom<'('>,
     Ref<parse_expression>,
@@ -538,9 +427,6 @@ struct NodeExpressionParen : public NodeMaker<NodeExpressionParen> {
 };
 
 struct NodeExpressionSubscript : public NodeMaker<NodeExpressionSubscript> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_EXPRESSION_SUBSCRIPT;
-
   using pattern = Seq<
     Atom<'['>,
     Ref<parse_expression>,
@@ -549,9 +435,6 @@ struct NodeExpressionSubscript : public NodeMaker<NodeExpressionSubscript> {
 };
 
 struct NodeExpressionSoup : public NodeMaker<NodeExpressionSoup> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_EXPRESSION_UNIT;
-
   using pattern = Seq<
     Any<Oneof<
       NodeConstant,
@@ -689,9 +572,6 @@ const Token* parse_expression(const Token* a, const Token* b) {
 //------------------------------------------------------------------------------
 
 struct NodeStatementIf : public NodeMaker<NodeStatementIf> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_STATEMENT_IFELSE;
-
   using pattern = Seq<
     Keyword<"if">,
     Seq<
@@ -710,9 +590,6 @@ struct NodeStatementIf : public NodeMaker<NodeStatementIf> {
 //------------------------------------------------------------------------------
 
 struct NodeStatementWhile : public NodeMaker<NodeStatementWhile> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_STATEMENT_WHILE;
-
   using pattern = Seq<
     Keyword<"while">,
     Seq<
@@ -727,9 +604,6 @@ struct NodeStatementWhile : public NodeMaker<NodeStatementWhile> {
 //------------------------------------------------------------------------------
 
 struct NodeStatementReturn : public NodeMaker<NodeStatementReturn> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_STATEMENT_RETURN;
-
   using pattern = Seq<
     Keyword<"return">,
     Ref<parse_expression>,
@@ -740,18 +614,12 @@ struct NodeStatementReturn : public NodeMaker<NodeStatementReturn> {
 //------------------------------------------------------------------------------
 
 struct NodePreproc : public NodeMaker<NodePreproc> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_PREPROC;
-
   using pattern = Atom<TOK_PREPROC>;
 };
 
 //------------------------------------------------------------------------------
 
 struct NodeStatementCase : public NodeMaker<NodeStatementCase> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_STATEMENT_CASE;
-
   using pattern = Seq<
     Keyword<"case">,
     Ref<parse_expression>,
@@ -767,9 +635,6 @@ struct NodeStatementCase : public NodeMaker<NodeStatementCase> {
 //------------------------------------------------------------------------------
 
 struct NodeStatementDefault : public NodeMaker<NodeStatementDefault> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_STATEMENT_DEFAULT;
-
   using pattern = Seq<
     Keyword<"default">,
     Atom<':'>,
@@ -784,9 +649,6 @@ struct NodeStatementDefault : public NodeMaker<NodeStatementDefault> {
 //------------------------------------------------------------------------------
 
 struct NodeStatementSwitch : public NodeMaker<NodeStatementSwitch> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_STATEMENT_SWITCH;
-
   using pattern = Seq<
     Keyword<"switch">,
     Ref<parse_expression>,
@@ -802,9 +664,6 @@ struct NodeStatementSwitch : public NodeMaker<NodeStatementSwitch> {
 //------------------------------------------------------------------------------
 
 struct NodeStatementFor : public NodeMaker<NodeStatementFor> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_STATEMENT_FOR;
-
   using pattern = Seq<
     Keyword<"for">,
     Atom<'('>,
@@ -824,9 +683,6 @@ struct NodeStatementFor : public NodeMaker<NodeStatementFor> {
 //----------------------------------------
 
 struct NodeStatementExpression : public NodeMaker<NodeStatementExpression> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_STATEMENT_EXPRESSION;
-
   using pattern = Seq<
     Ref<parse_expression>,
     Atom<';'>
@@ -853,9 +709,6 @@ const Token* parse_statement(const Token* a, const Token* b) {
 //------------------------------------------------------------------------------
 
 struct NodeDeclarationTemplate : public NodeMaker<NodeDeclarationTemplate> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_DECLARATION_TEMPLATE;
-
   using pattern = Seq<
     Keyword<"template">,
     NodeTemplateParams,
@@ -889,11 +742,6 @@ struct StoreTypedef {
 };
 
 struct NodeStatementTypedef : public NodeMaker<NodeStatementTypedef> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_STATEMENT_TYPEDEF;
-
-  // FIXME Add a shim here to store the decl name in global_types
-
   using pattern = StoreTypedef<
     Seq<
       Keyword<"typedef">,
@@ -914,9 +762,6 @@ struct ProgressBar {
 };
 
 struct NodeTranslationUnit : public NodeMaker<NodeTranslationUnit> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_TRANSLATION_UNIT;
-
   using pattern = Any<
     ProgressBar<
       Oneof<
@@ -1079,20 +924,7 @@ const Token* parse_declaration(const Token* a, const Token* b);
 const Token* parse_external_declaration(const Token* a, const Token* b);
 
 struct TestPattern : public NodeMaker<TestPattern> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_TEST;
-
-  //using pattern = Some<NodeStatementDeclaration>;
   using pattern = Some<Ref<parse_external_declaration>>;
-
-  /*
-  using pattern =
-  Some<Oneof<
-    NodeStatementTypedef,
-    StoreClassTypename<NodeClass>,
-    StoreClassTypename<NodeStruct>
-  >>;
-  */
 };
 
 //------------------------------------------------------------------------------
