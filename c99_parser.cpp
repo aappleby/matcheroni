@@ -26,194 +26,6 @@ IdentifierSet global_types = {
 };
 
 //------------------------------------------------------------------------------
-
-bool atom_eq(const Token& a, const TokenType& b) {
-  return a.type == b;
-}
-
-bool atom_eq(const Token& a, const char& b) {
-  return a.lex->len() == 1 && (*a.lex->span_a == b);
-}
-
-template<int N>
-bool atom_eq(const Token& a, const StringParam<N>& b) {
-  if (a.lex->len() != b.len) return false;
-  for (auto i = 0; i < b.len; i++) {
-    if (a.lex->span_a[i] != b.value[i]) return false;
-  }
-
-  return true;
-}
-
-//------------------------------------------------------------------------------
-
-struct NodeStack {
-  void push(NodeBase* n) {
-    assert(_stack[_top] == nullptr);
-    _stack[_top] = n;
-    _top++;
-  }
-
-  NodeBase* pop() {
-    assert(_top);
-    _top--;
-    NodeBase* result = _stack[_top];
-    _stack[_top] = nullptr;
-    return result;
-  }
-
-  NodeBase* back() { return _stack[_top - 1]; }
-
-  size_t top() const { return _top; }
-
-  void dump_top() {
-    _stack[_top-1]->dump_tree();
-  }
-
-  void clear_to(size_t new_top) {
-    while(_top > new_top) {
-      delete pop();
-    }
-  }
-
-  void pop_to(size_t new_top) {
-    while (_top > new_top) pop();
-  }
-
-  NodeBase*  _stack[256] = {0};
-  size_t _top = 0;
-};
-
-NodeStack node_stack;
-
-//------------------------------------------------------------------------------
-
-template<typename pattern>
-struct Dump {
-  static const Token* match(const Token* a, const Token* b) {
-    auto end = pattern::match(a, b);
-    if (end) node_stack.dump_top();
-    return end;
-  }
-};
-
-//----------------------------------------
-
-const char* find_matching_delim(const char* a, const char* b) {
-  char ldelim = *a++;
-
-  char rdelim = 0;
-  if (ldelim == '<')  rdelim = '>';
-  if (ldelim == '{')  rdelim = '}';
-  if (ldelim == '[')  rdelim = ']';
-  if (ldelim == '"')  rdelim = '"';
-  if (ldelim == '\'') rdelim = '\'';
-  if (!rdelim) return nullptr;
-
-  while(a && *a && a < b) {
-    if (*a == rdelim) return a;
-
-    if (*a == '<' || *a == '{' || *a == '[' || *a == '"' || *a == '\'') {
-      a = find_matching_delim(a, b);
-      if (!a) return nullptr;
-      a++;
-    }
-    else if (ldelim == '"' && a[0] == '\\' && a[1] == '"') {
-      a += 2;
-    }
-    else if (ldelim == '\'' && a[0] == '\\' && a[1] == '\'') {
-      a += 2;
-    }
-    else {
-      a++;
-    }
-  }
-
-  return nullptr;
-}
-
-//----------------------------------------
-
-const Token* find_matching_delim(char ldelim, char rdelim, const Token* a, const Token* b) {
-  if (*a->lex->span_a != ldelim) return nullptr;
-  a++;
-
-  while(a && a < b) {
-    if (a->is_punct(rdelim)) return a;
-
-    // Note that we _don't_ recurse through <> because they're not guaranteed
-    // to be delimiters. Annoying aspect of C. :/
-
-    if (a && a->is_punct('(')) a = find_matching_delim('(', ')', a, b);
-    if (a && a->is_punct('{')) a = find_matching_delim('{', '}', a, b);
-    if (a && a->is_punct('[')) a = find_matching_delim('[', ']', a, b);
-
-    if (!a) return nullptr;
-    a++;
-  }
-
-  return nullptr;
-}
-
-//------------------------------------------------------------------------------
-// The Delimited<> modifier constrains a matcher to fit exactly between a pair
-// of matching delimiters.
-// For example, Delimited<'(', ')', NodeConstant> will match "(1)" but not
-// "(1 + 2)".
-
-template<char ldelim, char rdelim, typename P>
-struct Delimited {
-  static const Token* match(const Token* a, const Token* b) {
-    if (!a || !a->is_punct(ldelim)) return nullptr;
-    auto new_b = find_matching_delim(ldelim, rdelim, a, b);
-    if (!new_b || !new_b->is_punct(rdelim)) return nullptr;
-
-    if (!new_b) return nullptr;
-    if (auto end = P::match(a + 1, new_b)) {
-      if (end != new_b) return nullptr;
-      return new_b + 1;
-    }
-    else {
-      return nullptr;
-    }
-  }
-};
-
-//------------------------------------------------------------------------------
-
-template<typename P>
-using comma_separated = Seq<P,Any<Seq<Atom<','>, P>>>;
-
-template<typename P>
-using opt_comma_separated = Opt<comma_separated<P>>;
-
-//------------------------------------------------------------------------------
-
-template<typename NT>
-struct NodeMaker : public NodeBase {
-  NodeMaker(const Token* a, const Token* b, NodeBase** children, size_t child_count)
-  : NodeBase(NT::node_type, a, b, children, child_count) {
-  }
-
-  static const Token* match(const Token* a, const Token* b) {
-    auto old_top = node_stack.top();
-    auto end = NT::pattern::match(a, b);
-    auto new_top = node_stack.top();
-
-    if (end && end != a) {
-      auto node = new NT(a, end, &node_stack._stack[old_top], new_top - old_top);
-      node_stack.pop_to(old_top);
-      node_stack.push(node);
-      return end;
-    }
-    else {
-      node_stack.clear_to(old_top);
-      return nullptr;
-    }
-  }
-};
-
-//------------------------------------------------------------------------------
 // Predecls
 
 const Token* parse_statement(const Token* a, const Token* b);
@@ -557,7 +369,7 @@ struct StoreClassTypename {
     if (auto end = P::match(a, b)) {
       // Poke through the node on the top of the stack to find identifiers
 
-      if (auto n1 = node_stack.back()) {
+      if (auto n1 = NodeBase::node_stack.back()) {
         if (auto n2 = n1->child<NodeIdentifier>()) {
           auto l = n2->tok_a->lex;
           auto s = std::string(l->span_a, l->span_b);
@@ -732,7 +544,7 @@ struct NodeExpressionSubscript : public NodeMaker<NodeExpressionSubscript> {
   >;
 };
 
-struct NodeExpression : public NodeMaker<NodeExpression> {
+struct NodeExpressionSoup : public NodeMaker<NodeExpressionSoup> {
   using NodeMaker::NodeMaker;
   static const NodeType node_type = NODE_EXPRESSION_UNIT;
 
@@ -792,7 +604,7 @@ struct NodeExpression : public NodeMaker<NodeExpression> {
 
 const Token* parse_expression(const Token* a, const Token* b) {
 
-  using pattern = NodeExpression;
+  using pattern = NodeExpressionSoup;
 
   return pattern::match(a, b);
 
@@ -1055,7 +867,7 @@ struct StoreTypedef {
     if (auto end = P::match(a, b)) {
       // Poke through the node on the top of the stack to find identifiers
 
-      if (auto n1 = node_stack.back()) {
+      if (auto n1 = NodeBase::node_stack.back()) {
         if (auto n2 = n1->child<NodeDeclarationAtom>()) {
           if (auto n3 = n2->child<NodeIdentifier>()) {
             auto l = n3->tok_a->lex;
@@ -1259,29 +1071,23 @@ void dump_lexemes(const std::string& path, int size, std::string& text, std::vec
 
 //------------------------------------------------------------------------------
 
-struct ExpressionTest : public NodeMaker<ExpressionTest> {
+const Token* parse_declaration(const Token* a, const Token* b);
+
+struct TestPattern : public NodeMaker<TestPattern> {
   using NodeMaker::NodeMaker;
   static const NodeType node_type = NODE_TEST;
 
-  using pattern =
-  Some<
-    Seq<
-      Ref<parse_expression>,
-      Atom<';'>
-    >
-  >;
-};
+  //using pattern = Some<NodeStatementDeclaration>;
+  using pattern = Some<Ref<parse_declaration>>;
 
-struct TypedefTest : public NodeMaker<TypedefTest> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_TEST;
-
+  /*
   using pattern =
   Some<Oneof<
     NodeStatementTypedef,
     StoreClassTypename<NodeClass>,
     StoreClassTypename<NodeStruct>
   >>;
+  */
 };
 
 //------------------------------------------------------------------------------
@@ -1326,15 +1132,15 @@ int test_c99_peg(int argc, char** argv) {
 
     parse_accum -= timestamp_ms();
     //NodeTranslationUnit::match(token_a, token_b);
-    TypedefTest::match(token_a, token_b);
+    TestPattern::match(token_a, token_b);
     parse_accum += timestamp_ms();
 
-    if (node_stack.top() != 1) {
-      printf("Node stack wrong size %ld\n", node_stack._top);
+    if (NodeBase::node_stack.top() != 1) {
+      printf("Node stack wrong size %ld\n", NodeBase::node_stack._top);
       return -1;
     }
 
-    auto root = node_stack.pop();
+    auto root = NodeBase::node_stack.pop();
 
     root->dump_tree();
 

@@ -128,6 +128,23 @@ inline NodeType tok_to_node(TokenType t) {
 
 //------------------------------------------------------------------------------
 
+struct NodeBase;
+
+struct NodeStack {
+  void push(NodeBase* n);
+  NodeBase* pop();
+  NodeBase* back();
+  size_t top() const;
+  void dump_top();
+  void clear_to(size_t new_top);
+  void pop_to(size_t new_top);
+
+  NodeBase*  _stack[256] = {0};
+  size_t _top = 0;
+};
+
+//------------------------------------------------------------------------------
+
 struct NodeBase {
 
   NodeBase(NodeType type, const Token* a = nullptr, const Token* b = nullptr) {
@@ -326,6 +343,45 @@ struct NodeBase {
   NodeBase* next   = nullptr;
   NodeBase* head   = nullptr;
   NodeBase* tail   = nullptr;
+
+  static NodeStack node_stack;
+};
+
+//------------------------------------------------------------------------------
+
+template<typename NT>
+struct NodeMaker : public NodeBase {
+  NodeMaker(const Token* a, const Token* b, NodeBase** children, size_t child_count)
+  : NodeBase(NT::node_type, a, b, children, child_count) {
+  }
+
+  static const Token* match(const Token* a, const Token* b) {
+    auto old_top = node_stack.top();
+    auto end = NT::pattern::match(a, b);
+    auto new_top = node_stack.top();
+
+    if (end && end != a) {
+      auto node = new NT(a, end, &node_stack._stack[old_top], new_top - old_top);
+      node_stack.pop_to(old_top);
+      node_stack.push(node);
+      return end;
+    }
+    else {
+      node_stack.clear_to(old_top);
+      return nullptr;
+    }
+  }
+};
+
+//------------------------------------------------------------------------------
+
+template<typename pattern>
+struct Dump {
+  static const Token* match(const Token* a, const Token* b) {
+    auto end = pattern::match(a, b);
+    if (end) NodeBase::node_stack.dump_top();
+    return end;
+  }
 };
 
 //------------------------------------------------------------------------------

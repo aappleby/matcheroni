@@ -1,5 +1,1 @@
-class fonk {};
-struct bonk {};
-typedef int* foo1;
-typedef fonk foo2;
-typedef bonk foo3;
+int* x[7] = 7;

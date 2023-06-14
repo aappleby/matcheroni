@@ -16,10 +16,17 @@ build obj/c_parser.o   : compile_cpp c_parser.cpp
 build obj/c99_parser.o : compile_cpp c99_parser.cpp
 build obj/Node.o       : compile_cpp Node.cpp
 build obj/demo.o       : compile_cpp demo.cpp
-
-build bin/matcheroni_demo : link obj/c_lexer.o obj/c99_parser.o obj/demo.o obj/Node.o
-
+build obj/Tokens.o     : compile_cpp Tokens.cpp
 build obj/declaration_hax.o : compile_cpp declaration_hax.cpp
+
+build bin/matcheroni_demo : link $
+  obj/c_lexer.o $
+  obj/c99_parser.o $
+  obj/Node.o $
+  obj/Tokens.o $
+  obj/declaration_hax.o $
+  obj/demo.o
+
 
 #g++ $MODE bin/cgen.o -o bin/cgen
 #g++ $MODE -c test_c_lexer.cpp -o bin/test_c_lexer.o

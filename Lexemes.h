@@ -151,3 +151,38 @@ struct Lexeme {
 };
 
 //------------------------------------------------------------------------------
+
+inline const char* find_matching_delim(const char* a, const char* b) {
+  char ldelim = *a++;
+
+  char rdelim = 0;
+  if (ldelim == '<')  rdelim = '>';
+  if (ldelim == '{')  rdelim = '}';
+  if (ldelim == '[')  rdelim = ']';
+  if (ldelim == '"')  rdelim = '"';
+  if (ldelim == '\'') rdelim = '\'';
+  if (!rdelim) return nullptr;
+
+  while(a && *a && a < b) {
+    if (*a == rdelim) return a;
+
+    if (*a == '<' || *a == '{' || *a == '[' || *a == '"' || *a == '\'') {
+      a = find_matching_delim(a, b);
+      if (!a) return nullptr;
+      a++;
+    }
+    else if (ldelim == '"' && a[0] == '\\' && a[1] == '"') {
+      a += 2;
+    }
+    else if (ldelim == '\'' && a[0] == '\\' && a[1] == '\'') {
+      a += 2;
+    }
+    else {
+      a++;
+    }
+  }
+
+  return nullptr;
+}
+
+//------------------------------------------------------------------------------
