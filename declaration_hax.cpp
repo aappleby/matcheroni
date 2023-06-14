@@ -56,7 +56,7 @@ struct pointer : public NodeMaker<pointer> {
 
 //------------------------------------------------------------------------------
 
-struct parameterDeclaration : public NodeMaker<parameterDeclaration> {
+struct parameterDeclaration : public NodeBase {
   using pattern = Oneof<
     Seq<
       Ref<parse_declaration_specifiers>,
@@ -72,7 +72,9 @@ struct parameterDeclaration : public NodeMaker<parameterDeclaration> {
 //------------------------------------------------------------------------------
 
 struct parameterTypeList : public NodeMaker<parameterTypeList> {
-  using pattern = comma_separated<parameterDeclaration>;
+  using pattern = comma_separated<
+    NodeMaker<parameterDeclaration>
+  >;
 };
 
 //------------------------------------------------------------------------------
@@ -105,7 +107,6 @@ struct typeName : public NodeMaker<typeName> {
   >;
 };
 
-
 //------------------------------------------------------------------------------
 
 using parameterList  = Seq<Atom<'('>, parameterTypeList, Atom<')'>>;
@@ -123,14 +124,15 @@ struct abstractDeclarator : public NodeMaker<abstractDeclarator> {
     pointer,
     Seq<
       Opt<pointer>,
-      Oneof<
-        Seq<Atom<'('>, Ref<parse_abstract_declarator>, Atom<')'>>,
-        Some<Oneof<
-          arraySuffix,
-          parameterList,
-          emptyList
-        >>
-      >
+      Seq<Atom<'('>, Ref<parse_abstract_declarator>, Atom<')'>>
+    >,
+    Seq<
+      Opt<pointer>,
+      Some<Oneof<
+        arraySuffix,
+        parameterList,
+        emptyList
+      >>
     >
   >;
 };
@@ -139,10 +141,9 @@ struct abstractDeclarator : public NodeMaker<abstractDeclarator> {
 
 struct declarator : public NodeMaker<declarator> {
   using pattern = Seq<
-    Opt<pointer>,
     Oneof<
-      Seq<Ref<parse_identifier>, Opt<bit_suffix>>,
-      Seq<Atom<'('>, Ref<parse_declarator>, Atom<')'>>
+      Seq<Opt<pointer>, Ref<parse_identifier>, Opt<bit_suffix>>,
+      Seq<Opt<pointer>, Atom<'('>, Ref<parse_declarator>, Atom<')'>>
     >,
     Any<Oneof<
       arraySuffix,
@@ -157,10 +158,7 @@ const Token* parse_declarator(const Token* a, const Token* b) { return declarato
 //------------------------------------------------------------------------------
 
 struct fieldDeclarator : public NodeMaker<fieldDeclarator> {
-  using pattern = Seq<
-    declarator,
-    Opt<bit_suffix>
-  >;
+  using pattern = Seq< declarator, Opt<bit_suffix> >;
 };
 
 //------------------------------------------------------------------------------

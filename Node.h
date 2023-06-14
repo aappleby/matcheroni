@@ -30,9 +30,6 @@ struct NodeStack {
 
 struct NodeBase {
 
-  NodeBase() {
-  }
-
   void init(const Token* a = nullptr, const Token* b = nullptr) {
     if (a == nullptr && b == nullptr) {
     }
