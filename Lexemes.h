@@ -32,6 +32,17 @@ struct Lexeme {
     this->span_b = span_b;
   }
 
+  const char* match(const char* lit) const {
+    auto c = span_a;
+    for (; c < span_b && (*c == *lit) && *lit; c++, lit++);
+    if (*lit == 0) {
+      return c;
+    }
+    else {
+      return nullptr;
+    }
+  }
+
   bool is_valid() const {
     return type != LEX_INVALID;
   }

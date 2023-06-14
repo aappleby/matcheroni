@@ -19,6 +19,8 @@ build obj/demo.o       : compile_cpp demo.cpp
 
 build bin/matcheroni_demo : link obj/c_lexer.o obj/c99_parser.o obj/demo.o obj/Node.o
 
+build obj/declaration_hax.o : compile_cpp declaration_hax.cpp
+
 #g++ $MODE bin/cgen.o -o bin/cgen
 #g++ $MODE -c test_c_lexer.cpp -o bin/test_c_lexer.o
 #g++ $MODE bin/c_lexer.o bin/test_c_lexer.o -o bin/matcheroni_test

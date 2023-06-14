@@ -98,3 +98,20 @@ struct Token {
 };
 
 //------------------------------------------------------------------------------
+
+template<StringParam lit>
+struct Operator {
+
+  static const Token* match(const Token* a, const Token* b) {
+    if (!a || a == b) return nullptr;
+    if (a + sizeof(lit.value) > b) return nullptr;
+
+    for (auto i = 0; i < lit.len; i++) {
+      if (!a[i].is_punct(lit.value[i])) return nullptr;
+    }
+
+    return a + sizeof(lit.value);
+  }
+};
+
+//------------------------------------------------------------------------------

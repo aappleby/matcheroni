@@ -8,11 +8,22 @@
 #include <filesystem>
 #include <memory.h>
 
+#include <set>
+#include <string>
+
 double timestamp_ms();
 
 #ifdef MATCHERONI_USE_NAMESPACE
 using namespace matcheroni;
 #endif
+
+typedef std::set<std::string> IdentifierSet;
+
+IdentifierSet global_ids = {};
+IdentifierSet global_types = {
+  "void", "char", "short", "int", "long", "float", "double", "signed",
+  "unsigned",
+};
 
 //------------------------------------------------------------------------------
 
@@ -50,6 +61,8 @@ struct NodeStack {
     _stack[_top] = nullptr;
     return result;
   }
+
+  NodeBase* back() { return _stack[_top - 1]; }
 
   size_t top() const { return _top; }
 
@@ -214,6 +227,7 @@ struct NodeIdentifier : public NodeMaker<NodeIdentifier> {
 
   using pattern = Atom<TOK_IDENTIFIER>;
 };
+const Token* parse_identifier(const Token* a, const Token* b) { return NodeIdentifier::match(a, b); }
 
 //------------------------------------------------------------------------------
 
@@ -228,6 +242,7 @@ struct NodeConstant : public NodeMaker<NodeConstant> {
     Atom<TOK_STRING>
   >;
 };
+const Token* parse_constant(const Token* a, const Token* b) { return NodeConstant::match(a, b); }
 
 //------------------------------------------------------------------------------
 
@@ -267,7 +282,7 @@ struct NodeSpecifierList : public NodeMaker<NodeSpecifierList> {
 
 //------------------------------------------------------------------------------
 
-struct NodeCompoundStatement : public NodeMaker<NodeCompoundStatement> {
+struct NodeStatementCompound : public NodeMaker<NodeStatementCompound> {
   using NodeMaker::NodeMaker;
   static const NodeType node_type = NODE_STATEMENT_COMPOUND;
 
@@ -292,6 +307,26 @@ struct NodeTemplateArgs : public NodeMaker<NodeTemplateArgs> {
 
 //------------------------------------------------------------------------------
 
+struct NodeTypeName : public NodeMaker<NodeTypeName> {
+  using NodeMaker::NodeMaker;
+  static constexpr NodeType node_type = NODE_TYPE_NAME;
+
+  static const Token* match(const Token* a, const Token* b) {
+    if (!a || !a->is_identifier()) return nullptr;
+
+    for (auto& t : global_types) {
+      if (a->lex->match(t.c_str())) {
+        node_stack.push(new NodeTypeName(a, a+1, nullptr, 0));
+        return a + 1;
+      }
+    }
+    return nullptr;
+  }
+};
+const Token* parse_type_name(const Token* a, const Token* b) { return NodeTypeName::match(a, b); }
+
+//------------------------------------------------------------------------------
+
 struct NodeDecltype : public NodeMaker<NodeDecltype> {
   using NodeMaker::NodeMaker;
   static constexpr NodeType node_type = NODE_DECLTYPE;
@@ -299,7 +334,7 @@ struct NodeDecltype : public NodeMaker<NodeDecltype> {
   using pattern = Seq<
     Opt<NodeSpecifierList>,
     Opt<Keyword<"struct">>,
-    NodeIdentifier,
+    NodeTypeName,
     Opt<NodeSpecifierList>,
     Opt<NodeTemplateArgs>,
     Opt<Seq<
@@ -398,7 +433,7 @@ struct NodeDeclaration : public NodeMaker<NodeDeclaration> {
 
 //------------------------------------------------------------------------------
 
-struct NodeDeclarationStatement : public NodeMaker<NodeDeclarationStatement> {
+struct NodeStatementDeclaration : public NodeMaker<NodeStatementDeclaration> {
   using NodeMaker::NodeMaker;
   static const NodeType node_type = NODE_STATEMENT_DECL;
 
@@ -443,7 +478,7 @@ struct NodeConstructor : public NodeMaker<NodeConstructor> {
     NodeDeclList,
     Opt<NodeInitializerList>,
     Oneof<
-      NodeCompoundStatement,
+      NodeStatementCompound,
       Atom<';'>
     >
   >;
@@ -458,13 +493,13 @@ struct NodeFunction : public NodeMaker<NodeFunction> {
     _type = children[0]->as<NodeDecltype>();
     _name = children[1]->as<NodeIdentifier>();
     _args = children[2]->as<NodeDeclList>();
-    _body = children[3]->as<NodeCompoundStatement>();
+    _body = children[3]->as<NodeStatementCompound>();
   }
 
   NodeDecltype*   _type = nullptr;
   NodeIdentifier* _name = nullptr;
   NodeDeclList*   _args = nullptr;
-  NodeCompoundStatement* _body = nullptr;
+  NodeStatementCompound* _body = nullptr;
 
   static constexpr NodeType node_type = NODE_DEFINITION_FUNCTION;
 
@@ -474,7 +509,7 @@ struct NodeFunction : public NodeMaker<NodeFunction> {
     NodeDeclList,
     Opt<Keyword<"const">>,
     Oneof<
-      NodeCompoundStatement,
+      NodeStatementCompound,
       Atom<';'>
     >
   >;
@@ -508,13 +543,34 @@ struct NodeFieldList : public NodeMaker<NodeFieldList> {
       NodeConstructor,
       NodeEnum,
       NodeFunction,
-      NodeDeclarationStatement
+      NodeStatementDeclaration
     >>,
     Atom<'}'>
   >;
 };
 
 //------------------------------------------------------------------------------
+
+template<typename P>
+struct StoreClassTypename {
+  static const Token* match(const Token* a, const Token* b) {
+    if (auto end = P::match(a, b)) {
+      // Poke through the node on the top of the stack to find identifiers
+
+      if (auto n1 = node_stack.back()) {
+        if (auto n2 = n1->child<NodeIdentifier>()) {
+          auto l = n2->tok_a->lex;
+          auto s = std::string(l->span_a, l->span_b);
+          global_types.insert(s);
+        }
+      }
+      return end;
+    }
+    else {
+      return nullptr;
+    }
+  }
+};
 
 struct NodeClass : public NodeMaker<NodeClass> {
   using NodeMaker::NodeMaker;
@@ -620,67 +676,6 @@ struct NodeTemplateParams : public NodeMaker<NodeTemplateParams> {
 //==============================================================================
 // EXPRESSION STUFF
 
-// LeftAssocSuffix  ((a++)++)
-// RightAssocPrefix (++(++a))
-// LeftAssocInfix   ((a-b)-c)
-// RightAssocInfix  (a=(b=c))
-
-template<typename N, typename P, typename O>
-struct LeftAssocInfix {
-  static const Token* match(const Token* a, const Token* b) {
-    auto old_top = node_stack.top();
-
-    auto end = P::match(a, b);
-    if (!end) {
-      // No node match, can't do anything.
-      return nullptr;
-    }
-
-    while(1) {
-      end = O::match(end, b);
-      if (!a) {
-        // Node match but no op, return the match.
-        return end;
-      }
-      end = P::match(end, b);
-      if (!end) {
-        // Left node and op match, but no right node match.
-        // Can't proceed, clear the failed match and return.
-        node_stack.clear_to(old_top);
-        return nullptr;
-      }
-
-      // Matched P-O-P, group them together into a N and continue matching.
-      auto new_top = node_stack.top();
-      assert((new_top - old_top) == 3);
-      auto node = new N(a, end, &node_stack._stack[old_top], new_top - old_top);
-      node_stack.pop_to(old_top);
-      node_stack.push(node);
-      a = end;
-    }
-  }
-};
-
-//------------------------------------------------------------------------------
-// Matches strings of punctuation
-
-template<StringParam lit>
-struct Operator {
-
-  static const Token* match(const Token* a, const Token* b) {
-    if (!a || a == b) return nullptr;
-    if (a + sizeof(lit.value) > b) return nullptr;
-
-    for (auto i = 0; i < lit.len; i++) {
-      if (!a[i].is_punct(lit.value[i])) return nullptr;
-    }
-
-    return a + sizeof(lit.value);
-  }
-};
-
-//------------------------------------------------------------------------------
-
 template<StringParam lit>
 struct NodeOperator : public NodeBase {
   NodeOperator(const Token* a, const Token* b)
@@ -698,49 +693,24 @@ struct NodeOperator : public NodeBase {
   }
 };
 
-//------------------------------------------------------------------------------
-// All
+template<StringParam lit>
+struct NodeKeyword : public NodeBase {
+  NodeKeyword(const Token* a, const Token* b)
+  : NodeBase(NODE_KEYWORD, a, b) {
+  }
 
-/* 0  */ const Token* parse_expression_paren       (const Token* a, const Token* b);
-/* 1  */ const Token* parse_expression_scope       (const Token* a, const Token* b);
+  static const Token* match(const Token* a, const Token* b) {
+    if (auto end = Keyword<lit>::match(a, b)) {
+      node_stack.push(new NodeKeyword(a, end));
+      return end;
+    }
+    else {
+      return nullptr;
+    }
+  }
+};
 
-/* 2  */ const Token* parse_expression_postincdec  (const Token* a, const Token* b);
-/* 2  */ const Token* parse_expression_fcast       (const Token* a, const Token* b);
-/* 2  */ const Token* parse_expression_call        (const Token* a, const Token* b);
-/* 2  */ const Token* parse_expression_subscript   (const Token* a, const Token* b);
-/* 2  */ const Token* parse_expression_member      (const Token* a, const Token* b);
-
-/* 3  */ const Token* parse_expression_preincdec   (const Token* a, const Token* b);
-/* 3  */ const Token* parse_expression_plusminus   (const Token* a, const Token* b);
-/* 3  */ const Token* parse_expression_not         (const Token* a, const Token* b);
-/* 3  */ const Token* parse_expression_cast        (const Token* a, const Token* b);
-/* 3  */ const Token* parse_expression_dereference (const Token* a, const Token* b);
-/* 3  */ const Token* parse_expression_addressof   (const Token* a, const Token* b);
-/* 3  */ const Token* parse_expression_sizeof      (const Token* a, const Token* b);
-
-/* 4  */ const Token* parse_expression_ptrtomember (const Token* a, const Token* b);
-/* 5  */ const Token* parse_expression_muldivmod   (const Token* a, const Token* b);
-/* 6  */ const Token* parse_expression_addsub      (const Token* a, const Token* b);
-/* 7  */ const Token* parse_expression_shift       (const Token* a, const Token* b);
-/* 8  */ const Token* parse_expression_threeway    (const Token* a, const Token* b);
-/* 9  */ const Token* parse_expression_relational  (const Token* a, const Token* b);
-/* 10 */ const Token* parse_expression_equality    (const Token* a, const Token* b);
-/* 11 */ const Token* parse_expression_bitwise_and (const Token* a, const Token* b);
-/* 12 */ const Token* parse_expression_bitwise_xor (const Token* a, const Token* b);
-/* 13 */ const Token* parse_expression_bitwise_or  (const Token* a, const Token* b);
-/* 14 */ const Token* parse_expression_logical_and (const Token* a, const Token* b);
-/* 15 */ const Token* parse_expression_logical_or  (const Token* a, const Token* b);
-/* 16 */ const Token* parse_expression_ternary     (const Token* a, const Token* b);
-/* 16 */ const Token* parse_expression_assignment  (const Token* a, const Token* b);
-/* 17 */ const Token* parse_expression_comma       (const Token* a, const Token* b);
-
-
-
-
-
-//------------------------------------------------------------------------------
-
-struct NodeExpressionParenthesized : public NodeMaker<NodeExpressionParenthesized> {
+struct NodeExpressionParen : public NodeMaker<NodeExpressionParen> {
   using NodeMaker::NodeMaker;
   static const NodeType node_type = NODE_EXPRESSION_PAREN;
 
@@ -751,735 +721,83 @@ struct NodeExpressionParenthesized : public NodeMaker<NodeExpressionParenthesize
   >;
 };
 
-const Token* parse_expression_paren(const Token* a, const Token* b) {
-  using pattern = Oneof<
-    NodeExpressionParenthesized,
-    NodeConstant,
-    NodeIdentifier
-  >;
-  return pattern::match(a, b);
-}
-
-//------------------------------------------------------------------------------
-
-struct NodeExpressionScope : public NodeMaker<NodeExpressionScope> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_EXPRESSION_SCOPE;
-
-  using pattern =
-  Seq<
-    Ref<parse_expression_paren>,
-    Some<Seq<
-      NodeOperator<"::">,
-      Ref<parse_expression_paren>
-    >>
-  >;
-};
-
-const Token* parse_expression_scope(const Token* a, const Token* b) {
-  using pattern = Oneof<
-    NodeExpressionScope,
-    Ref<parse_expression_paren>
-  >;
-  return pattern::match(a, b);
-}
-
-//------------------------------------------------------------------------------
-
-struct NodeExpressionPostIncDec : public NodeMaker<NodeExpressionPostIncDec> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_EXPRESSION_POSTINCDEC;
-
-  using pattern =
-  Seq<
-    Ref<parse_expression_scope>,
-    Some<
-      Oneof<
-        NodeOperator<"++">,
-        NodeOperator<"--">
-      >
-    >
-  >;
-};
-
-const Token* parse_expression_postincdec(const Token* a, const Token* b) {
-  using pattern = Oneof<
-    NodeExpressionPostIncDec,
-    Ref<parse_expression_scope>
-  >;
-  return pattern::match(a, b);
-}
-
-//------------------------------------------------------------------------------
-
-struct NodeExpressionFCast : public NodeMaker<NodeExpressionFCast> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_EXPRESSION_FCAST;
-
-  using pattern =
-  Seq<
-    NodeDecltype,
-    Operator<"{">,
-    Ref<parse_expression>,
-    Operator<"}">
-  >;
-};
-
-const Token* parse_expression_fcast(const Token* a, const Token* b) {
-  using pattern = Oneof<
-    NodeExpressionFCast,
-    Ref<parse_expression_postincdec>
-  >;
-  return pattern::match(a, b);
-}
-
-//------------------------------------------------------------------------------
-
-struct NodeExpressionCall : public NodeMaker<NodeExpressionCall> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_EXPRESSION_CALL;
-
-  using pattern =
-  Seq<
-    Ref<parse_expression_fcast>,
-    // FIXME does this need Some<Seq<...>>? Will f()() parse OK?
-    Operator<"(">,
-    Ref<parse_expression>,
-    Operator<")">
-  >;
-};
-
-const Token* parse_expression_call(const Token* a, const Token* b) {
-  using pattern = Oneof<
-    NodeExpressionCall,
-    Ref<parse_expression_fcast>
-  >;
-  return pattern::match(a, b);
-}
-
-//------------------------------------------------------------------------------
-
 struct NodeExpressionSubscript : public NodeMaker<NodeExpressionSubscript> {
   using NodeMaker::NodeMaker;
   static const NodeType node_type = NODE_EXPRESSION_SUBSCRIPT;
 
-  using pattern =
-  Seq<
-    Ref<parse_expression_call>,
-    Some<Seq<
-      Operator<"[">,
-      Ref<parse_expression>,
-      Operator<"]">
-    >>
+  using pattern = Seq<
+    Atom<'['>,
+    Ref<parse_expression>,
+    Atom<']'>
   >;
 };
 
-const Token* parse_expression_subscript(const Token* a, const Token* b) {
-  using pattern = Oneof<
-    NodeExpressionSubscript,
-    Ref<parse_expression_call>
-  >;
-  return pattern::match(a, b);
-}
-
-//------------------------------------------------------------------------------
-
-struct NodeExpressionMember : public NodeMaker<NodeExpressionMember> {
+struct NodeExpression : public NodeMaker<NodeExpression> {
   using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_EXPRESSION_MEMBER;
-
-  using pattern =
-  Seq<
-    Ref<parse_expression_subscript>,
-    Some<Seq<
-      Oneof<
-        NodeOperator<".">,
-        NodeOperator<"->">
-      >,
-      Ref<parse_expression_subscript>
-    >>
-  >;
-};
-
-const Token* parse_expression_member(const Token* a, const Token* b) {
-  using pattern = Oneof<
-    NodeExpressionMember,
-    Ref<parse_expression_subscript>
-  >;
-  return pattern::match(a, b);
-}
-
-//------------------------------------------------------------------------------
-
-struct NodeExpressionPreIncDec : public NodeMaker<NodeExpressionPreIncDec> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_EXPRESSION_PREINCDEC;
-
-  using pattern =
-  Seq<
-    Oneof<
-      NodeOperator<"++">,
-      NodeOperator<"--">
-    >,
-    Ref<parse_expression_preincdec>
-  >;
-};
-
-const Token* parse_expression_preincdec(const Token* a, const Token* b) {
-  using pattern = Oneof<
-    NodeExpressionPreIncDec,
-    Ref<parse_expression_member>
-  >;
-  return pattern::match(a, b);
-}
-
-//------------------------------------------------------------------------------
-
-struct NodeExpressionPlusMinus : public NodeMaker<NodeExpressionPlusMinus> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_EXPRESSION_PLUSMINUS;
-
-  using pattern =
-  Seq<
-    Oneof<
-      NodeOperator<"+">,
-      NodeOperator<"-">
-    >,
-    Ref<parse_expression_plusminus>
-  >;
-};
-
-const Token* parse_expression_plusminus(const Token* a, const Token* b) {
-  using pattern = Oneof<
-    NodeExpressionPlusMinus,
-    Ref<parse_expression_preincdec>
-  >;
-  return pattern::match(a, b);
-}
-
-//------------------------------------------------------------------------------
-
-struct NodeExpressionNot : public NodeMaker<NodeExpressionNot> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_EXPRESSION_NOT;
-
-  using pattern =
-  Seq<
-    Oneof<
-      NodeOperator<"!">,
-      NodeOperator<"~">
-    >,
-    Ref<parse_expression_not>
-  >;
-};
-
-const Token* parse_expression_not(const Token* a, const Token* b) {
-  using pattern = Oneof<
-    NodeExpressionNot,
-    Ref<parse_expression_plusminus>
-  >;
-  return pattern::match(a, b);
-}
-
-//------------------------------------------------------------------------------
-
-struct NodeExpressionCast : public NodeMaker<NodeExpressionCast> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_EXPRESSION_CAST;
-
-  using pattern =
-  Seq<
-    Atom<'('>,
-    NodeDecltype,
-    Atom<')'>,
-    Ref<parse_expression_cast>
-  >;
-};
-
-const Token* parse_expression_cast(const Token* a, const Token* b) {
-  using pattern = Oneof<
-    NodeExpressionCast,
-    Ref<parse_expression_not>
-  >;
-  return pattern::match(a, b);
-}
-
-//------------------------------------------------------------------------------
-
-struct NodeExpressionDereference : public NodeMaker<NodeExpressionDereference> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_EXPRESSION_DEREFERENCE;
+  static const NodeType node_type = NODE_EXPRESSION_UNIT;
 
   using pattern = Seq<
-    NodeOperator<"*">,
-    Ref<parse_expression_dereference>
-  >;
-};
-
-const Token* parse_expression_dereference(const Token* a, const Token* b) {
-  using pattern = Oneof<
-    NodeExpressionDereference,
-    Ref<parse_expression_cast>
-  >;
-
-  return pattern::match(a, b);
-}
-
-//------------------------------------------------------------------------------
-
-struct NodeExpressionAddressof : public NodeMaker<NodeExpressionAddressof> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_EXPRESSION_ADDRESSOF;
-
-  using pattern = Seq<
-    NodeOperator<"&">,
-    Ref<parse_expression_addressof>
-  >;
-};
-
-const Token* parse_expression_addressof(const Token* a, const Token* b) {
-  using pattern = Oneof<
-    NodeExpressionAddressof,
-    Ref<parse_expression_dereference>
-  >;
-
-  return pattern::match(a, b);
-}
-
-//------------------------------------------------------------------------------
-
-struct NodeExpressionSizeof : public NodeMaker<NodeExpressionSizeof> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_EXPRESSION_SIZEOF;
-
-  using pattern = Seq<
-    Keyword<"sizeof">,
-    Oneof<
-      Seq<Atom<'('>, NodeDecltype, Atom<')'>>,
-      Ref<parse_expression_sizeof>
-    >
-  >;
-};
-
-const Token* parse_expression_sizeof(const Token* a, const Token* b) {
-  using pattern = Oneof<
-    NodeExpressionSizeof,
-    Ref<parse_expression_addressof>
-  >;
-
-  return pattern::match(a, b);
-}
-
-//------------------------------------------------------------------------------
-
-struct NodeExpressionPtrToMember : public NodeMaker<NodeExpressionPtrToMember> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_EXPRESSION_PTRTOMEMBER;
-
-  using pattern = Seq<
-    Ref<parse_expression_sizeof>,
-    Some<Seq<
-      Oneof<
-        NodeOperator<"->*">,
-        NodeOperator<".*">
-      >,
-      Ref<parse_expression_sizeof>
-    >>
-  >;
-};
-
-const Token* parse_expression_ptrtomember(const Token* a, const Token* b) {
-  using pattern = Oneof<
-    NodeExpressionPtrToMember,
-    Ref<parse_expression_sizeof>
-  >;
-
-  return pattern::match(a, b);
-}
-
-//------------------------------------------------------------------------------
-// FIXME associativity is wrong
-
-struct NodeExpressionMulDivMod : public NodeMaker<NodeExpressionMulDivMod> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_EXPRESSION_MULDIVMOD;
-
-  using pattern = Seq<
-    Ref<parse_expression_ptrtomember>,
-    Some<Seq<
-      Oneof<
-        NodeOperator<"*">,
-        NodeOperator<"/">,
-        NodeOperator<"%">
-      >,
-      Ref<parse_expression_ptrtomember>
-    >>
-  >;
-};
-
-const Token* parse_expression_muldivmod(const Token* a, const Token* b) {
-  using pattern = Oneof<
-    NodeExpressionMulDivMod,
-    Ref<parse_expression_ptrtomember>
-  >;
-
-  return pattern::match(a, b);
-}
-
-//------------------------------------------------------------------------------
-
-struct NodeExpressionAddSub : public NodeMaker<NodeExpressionAddSub> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_EXPRESSION_ADDSUB;
-
-  using pattern = Seq<
-    Ref<parse_expression_muldivmod>,
-    Some<Seq<
-      Oneof<
-        NodeOperator<"+">,
-        NodeOperator<"-">
-      >,
-      Ref<parse_expression_muldivmod>
-    >>
-  >;
-};
-
-const Token* parse_expression_addsub(const Token* a, const Token* b) {
-  using pattern = Oneof<
-    NodeExpressionAddSub,
-    Ref<parse_expression_muldivmod>
-  >;
-
-  return pattern::match(a, b);
-}
-
-//------------------------------------------------------------------------------
-
-struct NodeExpressionShift : public NodeMaker<NodeExpressionShift> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_EXPRESSION_SHIFT;
-
-  using pattern = Seq<
-    Ref<parse_expression_addsub>,
-    Some<Seq<
-      Oneof<
-        NodeOperator<"<<">,
-        NodeOperator<">>">
-      >,
-      Ref<parse_expression_addsub>
-    >>
-  >;
-};
-
-const Token* parse_expression_shift(const Token* a, const Token* b) {
-  using pattern = Oneof<
-    NodeExpressionShift,
-    Ref<parse_expression_addsub>
-  >;
-
-  return pattern::match(a, b);
-}
-
-//------------------------------------------------------------------------------
-
-struct NodeExpressionThreeway : public NodeMaker<NodeExpressionThreeway> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_EXPRESSION_THREEWAY;
-
-  using pattern = Seq<
-    Ref<parse_expression_shift>,
-    Some<Seq<
+    Any<Oneof<
+      NodeConstant,
+      NodeIdentifier,
+      NodeExpressionParen,
+      NodeExpressionSubscript,
+      NodeKeyword<"sizeof">,
+      NodeOperator<"->*">,
+      NodeOperator<"<<=">,
       NodeOperator<"<=>">,
-      Ref<parse_expression_shift>
-    >>
-  >;
-};
+      NodeOperator<">>=">,
 
-const Token* parse_expression_threeway(const Token* a, const Token* b) {
-  using pattern = Oneof<
-    NodeExpressionThreeway,
-    Ref<parse_expression_shift>
-  >;
-
-  return pattern::match(a, b);
-}
-
-//------------------------------------------------------------------------------
-
-struct NodeExpressionRelational : public NodeMaker<NodeExpressionRelational> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_EXPRESSION_RELATIONAL;
-
-  using pattern = Seq<
-    Ref<parse_expression_threeway>,
-    Some<Seq<
-      Oneof<
-        NodeOperator<"<=">,
-        NodeOperator<">=">,
-        NodeOperator<"<">,
-        NodeOperator<">">
-      >,
-      Ref<parse_expression_threeway>
-    >>
-  >;
-};
-
-const Token* parse_expression_relational(const Token* a, const Token* b) {
-  using pattern = Oneof<
-    NodeExpressionRelational,
-    Ref<parse_expression_threeway>
-  >;
-
-  return pattern::match(a, b);
-}
-
-//------------------------------------------------------------------------------
-
-struct NodeExpressionEquality : public NodeMaker<NodeExpressionEquality> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_EXPRESSION_EQUALITY;
-
-  using pattern = Seq<
-    Ref<parse_expression_relational>,
-    Some<Seq<
-      Oneof<
-        NodeOperator<"==">,
-        NodeOperator<"!=">
-      >,
-      Ref<parse_expression_relational>
-    >>
-  >;
-};
-
-const Token* parse_expression_equality(const Token* a, const Token* b) {
-  using pattern = Oneof<
-    NodeExpressionEquality,
-    Ref<parse_expression_relational>
-  >;
-
-  return pattern::match(a, b);
-}
-
-//------------------------------------------------------------------------------
-
-struct NodeExpressionBitwiseAnd : public NodeMaker<NodeExpressionBitwiseAnd> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_EXPRESSION_BITWISE_AND;
-
-  using pattern = Seq<
-    Ref<parse_expression_equality>,
-    Some<Seq<
-      NodeOperator<"&">,
-      Ref<parse_expression_bitwise_and>
-    >>
-  >;
-};
-
-const Token* parse_expression_bitwise_and(const Token* a, const Token* b) {
-  using pattern = Oneof<
-    NodeExpressionBitwiseAnd,
-    Ref<parse_expression_equality>
-  >;
-
-  return pattern::match(a, b);
-}
-
-//------------------------------------------------------------------------------
-
-struct NodeExpressionBitwiseXor : public NodeMaker<NodeExpressionBitwiseXor> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_EXPRESSION_BITWISE_XOR;
-
-  using pattern = Seq<
-    Ref<parse_expression_bitwise_and>,
-    Some<Seq<
-      NodeOperator<"^">,
-      Ref<parse_expression_bitwise_and>
-    >>
-  >;
-};
-
-const Token* parse_expression_bitwise_xor(const Token* a, const Token* b) {
-  using pattern = Oneof<
-    NodeExpressionBitwiseXor,
-    Ref<parse_expression_bitwise_and>
-  >;
-
-  return pattern::match(a, b);
-}
-
-//------------------------------------------------------------------------------
-
-struct NodeExpressionBitwiseOr : public NodeMaker<NodeExpressionBitwiseOr> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_EXPRESSION_BITWISE_OR;
-
-  using pattern = Seq<
-    Ref<parse_expression_bitwise_xor>,
-    Some<Seq<
-      NodeOperator<"|">,
-      Ref<parse_expression_bitwise_xor>
-    >>
-  >;
-};
-
-const Token* parse_expression_bitwise_or(const Token* a, const Token* b) {
-  using pattern = Oneof<
-    NodeExpressionBitwiseOr,
-    Ref<parse_expression_bitwise_xor>
-  >;
-
-  return pattern::match(a, b);
-}
-
-//------------------------------------------------------------------------------
-
-struct NodeExpressionLogicalAnd : public NodeMaker<NodeExpressionLogicalAnd> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_EXPRESSION_LOGICAL_AND;
-
-  using pattern = Seq<
-    Ref<parse_expression_bitwise_or>,
-    Some<Seq<
+      NodeOperator<"--">,
+      NodeOperator<"-=">,
+      NodeOperator<"->">,
+      NodeOperator<"::">,
+      NodeOperator<"!=">,
+      NodeOperator<".*">,
+      NodeOperator<"*=">,
+      NodeOperator<"/=">,
       NodeOperator<"&&">,
-      Ref<parse_expression_bitwise_or>
-    >>
-  >;
-};
-
-const Token* parse_expression_logical_and(const Token* a, const Token* b) {
-  using pattern = Oneof<
-    NodeExpressionLogicalAnd,
-    Ref<parse_expression_bitwise_or>
-  >;
-
-  return pattern::match(a, b);
-}
-
-//------------------------------------------------------------------------------
-
-struct NodeExpressionLogicalOr : public NodeMaker<NodeExpressionLogicalOr> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_EXPRESSION_LOGICAL_OR;
-
-  using pattern = Seq<
-    Ref<parse_expression_logical_and>,
-    Some<Seq<
+      NodeOperator<"&=">,
+      NodeOperator<"%=">,
+      NodeOperator<"^=">,
+      NodeOperator<"++">,
+      NodeOperator<"+=">,
+      NodeOperator<"<<">,
+      NodeOperator<"<=">,
+      NodeOperator<"==">,
+      NodeOperator<">=">,
+      NodeOperator<">>">,
+      NodeOperator<"|=">,
       NodeOperator<"||">,
-      Ref<parse_expression_logical_and>
+
+      NodeOperator<"-">,
+      NodeOperator<":">,
+      NodeOperator<"!">,
+      NodeOperator<"?">,
+      NodeOperator<".">,
+      NodeOperator<"*">,
+      NodeOperator<"/">,
+      NodeOperator<"&">,
+      NodeOperator<"%">,
+      NodeOperator<"^">,
+      NodeOperator<"+">,
+      NodeOperator<"<">,
+      NodeOperator<"=">,
+      NodeOperator<">">,
+      NodeOperator<"|">,
+      NodeOperator<"~">
     >>
   >;
 };
-
-const Token* parse_expression_logical_or(const Token* a, const Token* b) {
-  using pattern = Oneof<
-    NodeExpressionLogicalOr,
-    Ref<parse_expression_logical_and>
-  >;
-
-  return pattern::match(a, b);
-}
-
-//------------------------------------------------------------------------------
-
-struct NodeExpressionTernary : public NodeMaker<NodeExpressionTernary> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_EXPRESSION_TERNARY;
-
-  using pattern = Seq<
-    Ref<parse_expression_logical_or>,
-    NodeOperator<"?">,
-    Ref<parse_expression_ternary>,
-    NodeOperator<":">,
-    Ref<parse_expression_ternary>
-  >;
-};
-
-const Token* parse_expression_ternary(const Token* a, const Token* b) {
-  using pattern = Oneof<
-    NodeExpressionTernary,
-    Ref<parse_expression_logical_or>
-  >;
-
-  return pattern::match(a, b);
-}
-
-//------------------------------------------------------------------------------
-
-struct NodeExpressionAssignment : public NodeMaker<NodeExpressionAssignment> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_EXPRESSION_ASSIGNMENT;
-
-  using pattern =
-  Seq<
-    Ref<parse_expression_ternary>,
-    Some<Seq<
-      Oneof<
-        NodeOperator<"<<=">,
-        NodeOperator<">>=">,
-        NodeOperator<"+=">,
-        NodeOperator<"-=">,
-        NodeOperator<"*=">,
-        NodeOperator<"/=">,
-        NodeOperator<"%=">,
-        NodeOperator<"&=">,
-        NodeOperator<"|=">,
-        NodeOperator<"^=">,
-        NodeOperator<"=">
-      >,
-      Ref<parse_expression_ternary>
-    >>
-  >;
-};
-
-const Token* parse_expression_assignment(const Token* a, const Token* b) {
-  using pattern = Oneof<
-    NodeExpressionAssignment,
-    Ref<parse_expression_ternary>
-  >;
-
-  return pattern::match(a, b);
-}
-
-//------------------------------------------------------------------------------
-// left-assoc
-
-struct NodeExpressionComma : public NodeMaker<NodeExpressionComma> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_EXPRESSION_COMMA;
-
-  using pattern = Seq<
-    Ref<parse_expression_assignment>,
-    Some<Seq<
-      NodeOperator<",">,
-      Ref<parse_expression_assignment>
-    >>
-  >;
-
-};
-
-const Token* parse_expression_comma(const Token* a, const Token* b) {
-  using pattern = Oneof<
-    NodeExpressionComma,
-    Ref<parse_expression_assignment>
-  >;
-
-  return pattern::match(a, b);
-}
-
-//------------------------------------------------------------------------------
-// We need a shunting yard algorithm....
 
 const Token* parse_expression(const Token* a, const Token* b) {
-  using pattern = Ref<parse_expression_comma>;
+
+  using pattern = NodeExpression;
 
   return pattern::match(a, b);
+
 }
 
-//==============================================================================
-
-
-
 
 
 
@@ -1554,30 +872,7 @@ const Token* parse_expression(const Token* a, const Token* b) {
 
 //------------------------------------------------------------------------------
 
-/*
-struct NodeExpressionList : public NodeMaker<NodeExpressionList> {
-  using NodeMaker::NodeMaker;
-  static const NodeType node_type = NODE_EXPRESSION_LIST;
-
-  static const Token* match(const Token* a, const Token* b) {
-    auto end = NodeMaker<NodeExpressionList>::match(a, b);
-    return end;
-  }
-
-  using pattern = Oneof<
-    Seq<
-      Atom<'('>,
-      opt_comma_separated<Ref<parse_expression>>,
-      Atom<')'>
-    >,
-    Delimited<'{', '}', comma_separated<Ref<parse_expression>>>
-  >;
-};
-*/
-
-//------------------------------------------------------------------------------
-
-struct NodeIfStatement : public NodeMaker<NodeIfStatement> {
+struct NodeStatementIf : public NodeMaker<NodeStatementIf> {
   using NodeMaker::NodeMaker;
   static const NodeType node_type = NODE_STATEMENT_IFELSE;
 
@@ -1598,7 +893,7 @@ struct NodeIfStatement : public NodeMaker<NodeIfStatement> {
 
 //------------------------------------------------------------------------------
 
-struct NodeWhileStatement : public NodeMaker<NodeWhileStatement> {
+struct NodeStatementWhile : public NodeMaker<NodeStatementWhile> {
   using NodeMaker::NodeMaker;
   static const NodeType node_type = NODE_STATEMENT_WHILE;
 
@@ -1615,7 +910,7 @@ struct NodeWhileStatement : public NodeMaker<NodeWhileStatement> {
 
 //------------------------------------------------------------------------------
 
-struct NodeReturnStatement : public NodeMaker<NodeReturnStatement> {
+struct NodeStatementReturn : public NodeMaker<NodeStatementReturn> {
   using NodeMaker::NodeMaker;
   static const NodeType node_type = NODE_STATEMENT_RETURN;
 
@@ -1637,7 +932,7 @@ struct NodePreproc : public NodeMaker<NodePreproc> {
 
 //------------------------------------------------------------------------------
 
-struct NodeCaseStatement : public NodeMaker<NodeCaseStatement> {
+struct NodeStatementCase : public NodeMaker<NodeStatementCase> {
   using NodeMaker::NodeMaker;
   static const NodeType node_type = NODE_STATEMENT_CASE;
 
@@ -1655,7 +950,7 @@ struct NodeCaseStatement : public NodeMaker<NodeCaseStatement> {
 
 //------------------------------------------------------------------------------
 
-struct NodeDefaultStatement : public NodeMaker<NodeDefaultStatement> {
+struct NodeStatementDefault : public NodeMaker<NodeStatementDefault> {
   using NodeMaker::NodeMaker;
   static const NodeType node_type = NODE_STATEMENT_DEFAULT;
 
@@ -1672,7 +967,7 @@ struct NodeDefaultStatement : public NodeMaker<NodeDefaultStatement> {
 
 //------------------------------------------------------------------------------
 
-struct NodeSwitchStatement : public NodeMaker<NodeSwitchStatement> {
+struct NodeStatementSwitch : public NodeMaker<NodeStatementSwitch> {
   using NodeMaker::NodeMaker;
   static const NodeType node_type = NODE_STATEMENT_SWITCH;
 
@@ -1681,8 +976,8 @@ struct NodeSwitchStatement : public NodeMaker<NodeSwitchStatement> {
     Ref<parse_expression>,
     Atom<'{'>,
     Any<Oneof<
-      NodeCaseStatement,
-      NodeDefaultStatement
+      NodeStatementCase,
+      NodeStatementDefault
     >>,
     Atom<'}'>
   >;
@@ -1690,7 +985,7 @@ struct NodeSwitchStatement : public NodeMaker<NodeSwitchStatement> {
 
 //------------------------------------------------------------------------------
 
-struct NodeForStatement : public NodeMaker<NodeForStatement> {
+struct NodeStatementFor : public NodeMaker<NodeStatementFor> {
   using NodeMaker::NodeMaker;
   static const NodeType node_type = NODE_STATEMENT_FOR;
 
@@ -1712,7 +1007,7 @@ struct NodeForStatement : public NodeMaker<NodeForStatement> {
 
 //----------------------------------------
 
-struct NodeExpressionStatement : public NodeMaker<NodeExpressionStatement> {
+struct NodeStatementExpression : public NodeMaker<NodeStatementExpression> {
   using NodeMaker::NodeMaker;
   static const NodeType node_type = NODE_STATEMENT_EXPRESSION;
 
@@ -1726,14 +1021,14 @@ struct NodeExpressionStatement : public NodeMaker<NodeExpressionStatement> {
 
 const Token* parse_statement(const Token* a, const Token* b) {
   using pattern_statement = Oneof<
-    NodeCompoundStatement,
-    NodeIfStatement,
-    NodeWhileStatement,
-    NodeForStatement,
-    NodeReturnStatement,
-    NodeSwitchStatement,
-    NodeDeclarationStatement,
-    NodeExpressionStatement
+    NodeStatementCompound,
+    NodeStatementIf,
+    NodeStatementWhile,
+    NodeStatementFor,
+    NodeStatementReturn,
+    NodeStatementSwitch,
+    NodeStatementDeclaration,
+    NodeStatementExpression
   >;
 
   return pattern_statement::match(a, b);
@@ -1741,7 +1036,7 @@ const Token* parse_statement(const Token* a, const Token* b) {
 
 //------------------------------------------------------------------------------
 
-struct NodeTemplateDeclaration : public NodeMaker<NodeTemplateDeclaration> {
+struct NodeDeclarationTemplate : public NodeMaker<NodeDeclarationTemplate> {
   using NodeMaker::NodeMaker;
   static const NodeType node_type = NODE_DECLARATION_TEMPLATE;
 
@@ -1749,6 +1044,46 @@ struct NodeTemplateDeclaration : public NodeMaker<NodeTemplateDeclaration> {
     Keyword<"template">,
     NodeTemplateParams,
     NodeClass
+  >;
+};
+
+//------------------------------------------------------------------------------
+
+template<typename P>
+struct StoreTypedef {
+  static const Token* match(const Token* a, const Token* b) {
+    if (auto end = P::match(a, b)) {
+      // Poke through the node on the top of the stack to find identifiers
+
+      if (auto n1 = node_stack.back()) {
+        if (auto n2 = n1->child<NodeDeclarationAtom>()) {
+          if (auto n3 = n2->child<NodeIdentifier>()) {
+            auto l = n3->tok_a->lex;
+            auto s = std::string(l->span_a, l->span_b);
+            global_types.insert(s);
+          }
+        }
+      }
+      return end;
+    }
+    else {
+      return nullptr;
+    }
+  }
+};
+
+struct NodeStatementTypedef : public NodeMaker<NodeStatementTypedef> {
+  using NodeMaker::NodeMaker;
+  static const NodeType node_type = NODE_STATEMENT_TYPEDEF;
+
+  // FIXME Add a shim here to store the decl name in global_types
+
+  using pattern = StoreTypedef<
+    Seq<
+      Keyword<"typedef">,
+      NodeDeclaration,
+      Atom<';'>
+    >
   >;
 };
 
@@ -1771,12 +1106,13 @@ struct NodeTranslationUnit : public NodeMaker<NodeTranslationUnit> {
       Oneof<
         NodePreproc,
         NodeNamespace,
+        NodeStatementTypedef,
         NodeEnum,
-        NodeTemplateDeclaration,
+        NodeDeclarationTemplate,
         NodeClass,
         NodeStruct,
         NodeFunction,
-        NodeDeclarationStatement
+        NodeStatementDeclaration
       >
     >
   >;
@@ -1936,6 +1272,18 @@ struct ExpressionTest : public NodeMaker<ExpressionTest> {
   >;
 };
 
+struct TypedefTest : public NodeMaker<TypedefTest> {
+  using NodeMaker::NodeMaker;
+  static const NodeType node_type = NODE_TEST;
+
+  using pattern =
+  Some<Oneof<
+    NodeStatementTypedef,
+    StoreClassTypename<NodeClass>,
+    StoreClassTypename<NodeStruct>
+  >>;
+};
+
 //------------------------------------------------------------------------------
 
 int oneof_count = 0;
@@ -1978,7 +1326,7 @@ int test_c99_peg(int argc, char** argv) {
 
     parse_accum -= timestamp_ms();
     //NodeTranslationUnit::match(token_a, token_b);
-    ExpressionTest::match(token_a, token_b);
+    TypedefTest::match(token_a, token_b);
     parse_accum += timestamp_ms();
 
     if (node_stack.top() != 1) {
@@ -1991,10 +1339,16 @@ int test_c99_peg(int argc, char** argv) {
     root->dump_tree();
 
     if (root->tok_a != token_a) {
-      printf("Root's first token is not token_a!\n");
+      printf("\n");
+      printf("XXXXXX Root's first token is not token_a!\n");
+      printf("XXXXXX Root's first token is not token_a!\n");
+      printf("\n");
     }
     else if (root->tok_b != token_b) {
-      printf("Root's last token is not token_b!\n");
+      printf("\n");
+      printf("XXXXXX Root's last token is not token_b!\n");
+      printf("XXXXXX Root's last token is not token_b!\n");
+      printf("\n");
     }
     else {
       printf("Root OK\n");

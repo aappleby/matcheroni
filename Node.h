@@ -31,10 +31,16 @@ enum NodeType {
   NODE_TEMPLATED_TYPE,
   NODE_TRANSLATION_UNIT,
   NODE_TYPEDEF_NAME,
+  NODE_TYPE_NAME,
   NODE_TYPEOF_SPECIFIER,
   NODE_ARRAY_SUFFIX,
+  NODE_KEYWORD,
 
   NODE_OPERATOR,
+
+  NODE_EXPRESSION_ATOM,
+  NODE_EXPRESSION_UNIT,
+  NODE_EXPRESSION_CHAIN,
 
   // Expression types in precedence order
   NODE_EXPRESSION_PAREN,
@@ -76,6 +82,7 @@ enum NodeType {
   NODE_STATEMENT_IFELSE,
   NODE_STATEMENT_RETURN,
   NODE_STATEMENT_SWITCH,
+  NODE_STATEMENT_TYPEDEF,
   NODE_STATEMENT_WHILE,
   NODE_STATEMENT_COMPOUND,
 
@@ -168,6 +175,17 @@ struct NodeBase {
   }
 
   template<typename P>
+  P* child() {
+    if (this == nullptr) return nullptr;
+    for (auto cursor = head; cursor; cursor = cursor->next) {
+      if (cursor->isa<P>()) {
+        return dynamic_cast<P*>(cursor);
+      }
+    }
+    return nullptr;
+  }
+
+  template<typename P>
   P* as() {
     if (this == nullptr) return nullptr;
     if (typeid(*this) == typeid(P)) {
@@ -222,10 +240,10 @@ struct NodeBase {
     NodeBase* cursor = nullptr;
 
     // Check node chain
-    for (cursor = head; cursor && cursor != tail; cursor = cursor->next);
+    for (cursor = head; cursor && cursor->next; cursor = cursor->next);
     assert(cursor == tail);
 
-    for (cursor = tail; cursor && cursor != head; cursor = cursor->prev);
+    for (cursor = tail; cursor && cursor->prev; cursor = cursor->prev);
     assert(cursor == head);
   }
 
