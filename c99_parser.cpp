@@ -105,6 +105,10 @@ struct NodeStatementCompound : public NodeMaker<NodeStatementCompound> {
   >;
 };
 
+const Token* parse_statement_compound(const Token* a, const Token* b) {
+  return NodeStatementCompound::match(a, b);
+}
+
 //------------------------------------------------------------------------------
 
 
@@ -1072,13 +1076,14 @@ void dump_lexemes(const std::string& path, int size, std::string& text, std::vec
 //------------------------------------------------------------------------------
 
 const Token* parse_declaration(const Token* a, const Token* b);
+const Token* parse_external_declaration(const Token* a, const Token* b);
 
 struct TestPattern : public NodeMaker<TestPattern> {
   using NodeMaker::NodeMaker;
   static const NodeType node_type = NODE_TEST;
 
   //using pattern = Some<NodeStatementDeclaration>;
-  using pattern = Some<Ref<parse_declaration>>;
+  using pattern = Some<Ref<parse_external_declaration>>;
 
   /*
   using pattern =

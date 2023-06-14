@@ -14,6 +14,7 @@ const Token* parse_declaration_specifiers    (const Token* a, const Token* b);
 const Token* parse_type_specifier            (const Token* a, const Token* b);
 const Token* parse_direct_abstract_declarator(const Token* a, const Token* b);
 const Token* parse_initializer               (const Token* a, const Token* b);
+const Token* parse_statement_compound        (const Token* a, const Token* b);
 
 //------------------------------------------------------------------------------
 
@@ -230,6 +231,7 @@ struct directDeclaratorSuffix : public NodeMaker<directDeclaratorSuffix> {
 
 //------------------------------------------------------------------------------
 
+/*
 struct directDeclarator : public NodeMaker<directDeclarator> {
   using NodeMaker::NodeMaker;
   static constexpr NodeType node_type = NODE_INVALID;
@@ -243,6 +245,18 @@ struct directDeclarator : public NodeMaker<directDeclarator> {
     Any<directDeclaratorSuffix>
   >;
 };
+*/
+
+using directDeclarator =
+Seq<
+  Oneof<
+    Ref<parse_identifier>,
+    Seq<Ref<parse_identifier>, Atom<':'>, Ref<parse_constant>>, // bit field
+    Seq<Atom<'('>, Ref<parse_declarator>, Atom<')'>>
+  >,
+  Any<directDeclaratorSuffix>
+>;
+
 
 //------------------------------------------------------------------------------
 
@@ -284,6 +298,7 @@ struct structDeclarator : public NodeMaker<structDeclarator> {
 
 //------------------------------------------------------------------------------
 
+/*
 struct structDeclaratorList : public NodeMaker<structDeclaratorList> {
   using NodeMaker::NodeMaker;
   static constexpr NodeType node_type = NODE_INVALID;
@@ -296,6 +311,15 @@ struct structDeclaratorList : public NodeMaker<structDeclaratorList> {
     >>
   >;
 };
+*/
+
+using structDeclaratorList = Seq<
+  structDeclarator,
+  Any<Seq<
+    Atom<','>,
+    structDeclarator
+  >>
+>;
 
 //------------------------------------------------------------------------------
 
@@ -332,12 +356,16 @@ struct structOrUnionSpecifier : public NodeMaker<structOrUnionSpecifier> {
 
 //------------------------------------------------------------------------------
 
+/*
 struct enumerationConstant : public NodeMaker<enumerationConstant> {
   using NodeMaker::NodeMaker;
   static constexpr NodeType node_type = NODE_INVALID;
 
   using pattern = Ref<parse_identifier>;
 };
+*/
+
+using enumerationConstant = Ref<parse_identifier>;
 
 //------------------------------------------------------------------------------
 
@@ -397,6 +425,7 @@ struct atomicTypeSpecifier : public NodeMaker<atomicTypeSpecifier> {
 
 //------------------------------------------------------------------------------
 
+/*
 struct typeSpecifier : public NodeMaker<typeSpecifier> {
   using NodeMaker::NodeMaker;
   static constexpr NodeType node_type = NODE_INVALID;
@@ -409,6 +438,15 @@ struct typeSpecifier : public NodeMaker<typeSpecifier> {
     Ref<parse_type_name>
   >;
 };
+*/
+
+using typeSpecifier = Oneof<
+  builtinTypes,
+  atomicTypeSpecifier,
+  structOrUnionSpecifier,
+  enumSpecifier,
+  Ref<parse_type_name>
+>;
 
 const Token* parse_type_specifier(const Token* a, const Token* b) { return typeSpecifier::match(a, b); }
 
@@ -428,6 +466,7 @@ struct alignmentSpecifier : public NodeMaker<alignmentSpecifier> {
 
 //------------------------------------------------------------------------------
 
+/*
 struct declarationSpecifier : public NodeMaker<declarationSpecifier> {
   using NodeMaker::NodeMaker;
   static constexpr NodeType node_type = NODE_INVALID;
@@ -440,14 +479,27 @@ struct declarationSpecifier : public NodeMaker<declarationSpecifier> {
     alignmentSpecifier
   >;
 };
+*/
+
+using declarationSpecifier = Oneof<
+  storageClassSpecifier,
+  typeSpecifier,
+  typeQualifier,
+  functionSpecifier,
+  alignmentSpecifier
+>;
 
 //------------------------------------------------------------------------------
 
+/*
 struct declarationSpecifiers : public NodeMaker<declarationSpecifiers> {
   using NodeMaker::NodeMaker;
   static constexpr NodeType node_type = NODE_INVALID;
   using pattern = Some<declarationSpecifier>;
 };
+*/
+
+using declarationSpecifiers = Some<declarationSpecifier>;
 
 const Token* parse_declaration_specifiers(const Token* a, const Token* b) { return declarationSpecifiers::match(a, b); }
 
@@ -480,6 +532,7 @@ struct designation : public NodeMaker<designation> {
 
 //------------------------------------------------------------------------------
 
+/*
 struct initializerList : public NodeMaker<initializerList> {
   using NodeMaker::NodeMaker;
   static constexpr NodeType node_type = NODE_INVALID;
@@ -494,6 +547,18 @@ struct initializerList : public NodeMaker<initializerList> {
     >>
   >;
 };
+*/
+
+using initializerList =
+Seq<
+  Opt<designation>,
+  Ref<parse_initializer>,
+  Any<Seq<
+    Atom<','>,
+    Opt<designation>,
+    Ref<parse_initializer>
+  >>
+>;
 
 //------------------------------------------------------------------------------
 
@@ -511,10 +576,12 @@ struct initializer : public NodeMaker<initializer> {
     >
   >;
 };
+
 const Token* parse_initializer(const Token* a, const Token* b) { return initializer::match(a, b); }
 
 //------------------------------------------------------------------------------
 
+/*
 struct initDeclarator : public NodeMaker<initDeclarator> {
   using NodeMaker::NodeMaker;
   static constexpr NodeType node_type = NODE_INVALID;
@@ -527,9 +594,19 @@ struct initDeclarator : public NodeMaker<initDeclarator> {
     >>
   >;
 };
+*/
+
+using initDeclarator = Seq<
+  declarator,
+  Opt<Seq<
+    Atom<'='>,
+    initializer
+  >>
+>;
 
 //------------------------------------------------------------------------------
 
+/*
 struct initDeclaratorList : public NodeMaker<initDeclaratorList> {
   using NodeMaker::NodeMaker;
   static constexpr NodeType node_type = NODE_INVALID;
@@ -542,6 +619,15 @@ struct initDeclaratorList : public NodeMaker<initDeclaratorList> {
     >>
   >;
 };
+*/
+
+using initDeclaratorList = Seq<
+  initDeclarator,
+  Opt<Seq<
+    Atom<','>,
+    initDeclarator
+  >>
+>;
 
 //------------------------------------------------------------------------------
 
@@ -558,6 +644,29 @@ struct declaration : public NodeMaker<declaration> {
 
 const Token* parse_declaration(const Token* a, const Token* b) {
   return declaration::match(a, b);
+}
+
+struct functionDefinition : public NodeMaker<functionDefinition> {
+  using NodeMaker::NodeMaker;
+  static constexpr NodeType node_type = NODE_INVALID;
+
+  using pattern = Seq<
+    Opt<declarationSpecifiers>,
+    declarator,
+    Opt<Some<declaration>>,
+    Ref<parse_statement_compound>
+  >;
+};
+
+using externalDeclaration =
+Oneof<
+  functionDefinition,
+  declaration,
+  Atom<';'>
+>;
+
+const Token* parse_external_declaration(const Token* a, const Token* b) {
+  return externalDeclaration::match(a, b);
 }
 
 //------------------------------------------------------------------------------
