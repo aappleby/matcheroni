@@ -1,6 +1,7 @@
 #pragma once
 #include <assert.h>
 #include <stdint.h>
+#include <string>
 
 //------------------------------------------------------------------------------
 
@@ -30,6 +31,10 @@ struct Lexeme {
     this->type = type;
     this->span_a = span_a;
     this->span_b = span_b;
+  }
+
+  std::string text() const {
+    return std::string(span_a, span_b);
   }
 
   const char* match(const char* lit) const {

@@ -6,6 +6,8 @@ typedef const int* blep[7];
 blep quar;
 
 class blom {
+public:
+
   _Atomic(int) q;
 };
 
@@ -36,9 +38,14 @@ qryyy lililis;
 
 
 void glark() {
+  int x = 10;
+  printf("snarp skerp %d", x);
 }
 
 static int flerpbo[] = {1, 2, 3, -7.0e12};
 
 static const int* y[7];
 static const int x[7] = {1+1*2/3, 2, 3};
+
+
+char *(*(**foo[][8])())[];

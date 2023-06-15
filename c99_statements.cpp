@@ -11,6 +11,10 @@ struct NodeStatementCompound : public NodeMaker<NodeStatementCompound> {
   >;
 };
 
+const Token* parse_statement_compound(const Token* a, const Token* b) {
+  return NodeStatementCompound::match(a, b);
+}
+
 //------------------------------------------------------------------------------
 
 struct NodeStatementDeclaration : public NodeMaker<NodeStatementDeclaration> {
@@ -132,10 +136,6 @@ struct NodeStatementWhile : public NodeMaker<NodeStatementWhile> {
 };
 
 //------------------------------------------------------------------------------
-
-const Token* parse_statement_compound(const Token* a, const Token* b) {
-  return NodeStatementCompound::match(a, b);
-}
 
 const Token* parse_statement(const Token* a, const Token* b) {
   using pattern_statement = Oneof<
