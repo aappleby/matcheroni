@@ -137,7 +137,11 @@ struct NodeTemplateArgs : public NodeMaker<NodeTemplateArgs> {
 
 struct NodeSpecifier : public NodeMaker<NodeSpecifier> {
   using pattern = Seq<
-    Opt<Keyword<"struct">>,
+    Opt<Oneof<
+      Keyword<"class">,
+      Keyword<"union">,
+      Keyword<"struct">
+    >>,
     Oneof<
       NodeGlobalType,
       NodeAtomicType
@@ -438,8 +442,10 @@ struct NodeVariable : public NodeMaker<NodeVariable> {
     NodeSpecifier,
     Opt<comma_separated<
       Seq<
-        NodeDeclarator,
-        Opt<NodeBitSuffix>,
+        Oneof<
+          NodeDeclarator,
+          Seq<Opt<NodeDeclarator>, NodeBitSuffix>
+        >,
         Opt<
           Seq<
             Atom<'='>,

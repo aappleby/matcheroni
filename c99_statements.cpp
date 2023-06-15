@@ -147,8 +147,18 @@ struct NodeStatementWhile : public NodeMaker<NodeStatementWhile> {
 
 //------------------------------------------------------------------------------
 
+struct NodeStatementLabel: public NodeMaker<NodeStatementLabel> {
+  using pattern = Seq<
+    NodeIdentifier,
+    Atom<':'>
+  >;
+};
+
+//------------------------------------------------------------------------------
+
 const Token* parse_statement(const Token* a, const Token* b) {
   using pattern_statement = Oneof<
+    NodeStatementLabel,
     NodeStatementCompound,
     NodeStatementDeclaration,
     NodeStatementExpression,

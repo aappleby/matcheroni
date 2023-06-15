@@ -26,7 +26,7 @@ struct NodeStack {
   void clear_to(size_t new_top);
   void pop_to(size_t new_top);
 
-  NodeBase*  _stack[256] = {0};
+  NodeBase*  _stack[1024] = {0};
   size_t _top = 0;
 };
 
