@@ -387,6 +387,11 @@ struct NodeFunction : public NodeMaker<NodeFunction> {
       Ref<parse_statement_compound>
     >
   >;
+
+  static const Token* match(const Token* a, const Token* b) {
+    auto end = NodeMaker<NodeFunction>::match(a, b);
+    return end;
+  }
 };
 
 //------------------------------------------------------------------------------

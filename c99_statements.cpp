@@ -31,6 +31,12 @@ struct NodeStatementExpression : public NodeMaker<NodeStatementExpression> {
     Ref<parse_expression>,
     Atom<';'>
   >;
+
+  static const Token* match(const Token* a, const Token* b) {
+    auto end = NodeMaker<NodeStatementExpression>::match(a, b);
+    return end;
+  }
+
 };
 
 //------------------------------------------------------------------------------

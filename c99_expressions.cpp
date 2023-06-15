@@ -4,12 +4,14 @@
 struct NodeExpressionParen;
 struct NodeExpressionSoup;
 struct NodeExpressionSubscript;
+struct NodeExpressionCall;
 
 //------------------------------------------------------------------------------
 
 struct NodeExpressionSoup : public NodeMaker<NodeExpressionSoup> {
   using pattern = Seq<
     Some<Oneof<
+      NodeExpressionCall,
       NodeConstant,
       NodeIdentifier,
       NodeExpressionParen,
@@ -62,12 +64,31 @@ struct NodeExpressionSoup : public NodeMaker<NodeExpressionSoup> {
   >;
 };
 
+struct NodeExpressionCall : public NodeMaker<NodeExpressionCall> {
+  using pattern = Seq<
+    NodeIdentifier,
+    Atom<'('>,
+    Opt<comma_separated<NodeExpressionSoup>>,
+    Atom<')'>
+  >;
+
+  static const Token* match(const Token* a, const Token* b) {
+    auto end = NodeMaker<NodeExpressionCall>::match(a, b);
+    return end;
+  }
+};
+
 struct NodeExpressionParen : public NodeMaker<NodeExpressionParen> {
   using pattern = Seq<
     Atom<'('>,
     NodeExpressionSoup,
     Atom<')'>
   >;
+
+  static const Token* match(const Token* a, const Token* b) {
+    auto end = NodeMaker<NodeExpressionParen>::match(a, b);
+    return end;
+  }
 };
 
 struct NodeExpressionSubscript : public NodeMaker<NodeExpressionSubscript> {
