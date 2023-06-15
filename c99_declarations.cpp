@@ -127,11 +127,23 @@ struct NodeArraySuffix : public NodeMaker<NodeArraySuffix> {
 
 //------------------------------------------------------------------------------
 
+struct NodeTemplateArgs : public NodeMaker<NodeTemplateArgs> {
+  using pattern = Delimited<'<', '>',
+    opt_comma_separated<Ref<parse_expression>>
+  >;
+};
+
+//------------------------------------------------------------------------------
+
 struct NodeSpecifier : public NodeMaker<NodeSpecifier> {
-  using pattern = Oneof<
+  using pattern = Seq<
+    Oneof<
     GlobalTypeName,
     NodeAtomicType
+    >,
+    Opt<NodeTemplateArgs>
   >;
+
 
   static const Token* match(const Token* a, const Token* b) {
     auto end = NodeMaker<NodeSpecifier>::match(a, b);
@@ -267,12 +279,6 @@ struct NodeClass : public NodeMaker<NodeClass> {
 struct NodeTemplateParams : public NodeMaker<NodeTemplateParams> {
   using pattern = Delimited<'<', '>',
     comma_separated<NodeVariable>
-  >;
-};
-
-struct NodeTemplateArgs : public NodeMaker<NodeTemplateArgs> {
-  using pattern = Delimited<'<', '>',
-    opt_comma_separated<Ref<parse_expression>>
   >;
 };
 

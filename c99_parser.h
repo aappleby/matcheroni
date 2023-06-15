@@ -23,12 +23,12 @@ struct ProgressBar {
 
 struct NodeTranslationUnit : public NodeMaker<NodeTranslationUnit> {
   using pattern = Any<
-    ProgressBar<
+    //ProgressBar<
       Oneof<
         NodePreproc,
         Ref<parse_external_declaration>
       >
-    >
+    //>
   >;
 };
 

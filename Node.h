@@ -252,7 +252,9 @@ struct NodeBase {
     "unsigned",
   };
 
-  static inline IdentifierSet declared_types = {};
+  static inline IdentifierSet declared_types = {
+    "logic"
+  };
 
   static inline void add_declared_type(const std::string& t) {
     printf("Adding type %s\n", t.c_str());
