@@ -1,3 +1,6 @@
+int* const a;
+const int* b;
+
 typedef const int* blep[7];
 
 blep quar;

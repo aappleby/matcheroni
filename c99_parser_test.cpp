@@ -1,0 +1,164 @@
+#include <filesystem>
+#include "Node.h"
+
+#include "Lexemes.h"
+#include <vector>
+#include <memory.h>
+
+double timestamp_ms();
+
+//==============================================================================
+
+void lex_file(const std::string& path, std::string& text, std::vector<Lexeme>& lexemes, std::vector<Token>& tokens) {
+
+  auto size = std::filesystem::file_size(path);
+
+  text.resize(size + 1);
+  memset(text.data(), 0, size + 1);
+  FILE* file = fopen(path.c_str(), "rb");
+  if (!file) {
+    printf("Could not open %s!\n", path.c_str());
+  }
+  auto r = fread(text.data(), 1, size, file);
+
+  auto text_a = text.data();
+  auto text_b = text_a + size;
+
+  const char* cursor = text_a;
+  while(cursor) {
+    auto lex = next_lexeme(cursor, text_b);
+    lexemes.push_back(lex);
+    if (lex.type == LEX_EOF) {
+      break;
+    }
+    cursor = lex.span_b;
+  }
+
+  for (auto i = 0; i < lexemes.size(); i++) {
+    auto l = &lexemes[i];
+    if (!l->is_gap()) {
+      tokens.push_back(Token(lex_to_tok(l->type), l));
+    }
+  }
+}
+
+//------------------------------------------------------------------------------
+
+void dump_lexemes(const std::string& path, int size, std::string& text, std::vector<Lexeme>& lexemes) {
+  for(auto& l : lexemes) {
+    printf("%-15s ", l.str());
+
+    int len = l.span_b - l.span_a;
+    if (len > 80) len = 80;
+
+    for (int i = 0; i < len; i++) {
+      auto text_a = text.data();
+      auto text_b = text_a + size;
+      if (l.span_a + i >= text_b) {
+        putc('#', stdout);
+        continue;
+      }
+
+      auto c = l.span_a[i];
+      if (c == '\n' || c == '\t' || c == '\r') {
+        putc('@', stdout);
+      }
+      else {
+        putc(l.span_a[i], stdout);
+      }
+    }
+    //printf("%-.40s", l.span_a);
+    printf("\n");
+
+    if (l.is_eof()) break;
+  }
+}
+
+//------------------------------------------------------------------------------
+
+const Token* parse_declaration(const Token* a, const Token* b);
+const Token* parse_external_declaration(const Token* a, const Token* b);
+
+struct TestPattern : public NodeMaker<TestPattern> {
+  using pattern = Some<Ref<parse_external_declaration>>;
+};
+
+//------------------------------------------------------------------------------
+
+int test_c99_peg(int argc, char** argv) {
+  printf("Parseroni Demo\n");
+
+
+  std::vector<std::string> paths;
+  const char* base_path = argc > 1 ? argv[1] : "tests";
+
+  printf("Parsing source files in %s\n", base_path);
+  using rdit = std::filesystem::recursive_directory_iterator;
+  for (const auto& f : rdit(base_path)) {
+    if (!f.is_regular_file()) continue;
+    paths.push_back(f.path().native());
+  }
+
+  paths = { "tests/scratch.h" };
+  //paths = { "mini_tests/csmith.cpp" };
+
+  double lex_accum = 0;
+  double parse_accum = 0;
+
+  for (const auto& path : paths) {
+    std::string text;
+    std::vector<Lexeme> lexemes;
+    std::vector<Token> tokens;
+
+    printf("Lexing %s\n", path.c_str());
+
+    lex_accum -= timestamp_ms();
+    lex_file(path, text, lexemes, tokens);
+    lex_accum += timestamp_ms();
+
+    const Token* token_a = tokens.data();
+    const Token* token_b = tokens.data() + tokens.size() - 1;
+
+    printf("Parsing %s\n", path.c_str());
+
+    parse_accum -= timestamp_ms();
+    //NodeTranslationUnit::match(token_a, token_b);
+    TestPattern::match(token_a, token_b);
+    parse_accum += timestamp_ms();
+
+    if (NodeBase::node_stack.top() != 1) {
+      printf("Node stack wrong size %ld\n", NodeBase::node_stack._top);
+      return -1;
+    }
+
+    auto root = NodeBase::node_stack.pop();
+
+    root->dump_tree();
+
+    if (root->tok_a != token_a) {
+      printf("\n");
+      printf("XXXXXX Root's first token is not token_a!\n");
+      printf("XXXXXX Root's first token is not token_a!\n");
+      printf("\n");
+    }
+    else if (root->tok_b != token_b) {
+      printf("\n");
+      printf("XXXXXX Root's last token is not token_b!\n");
+      printf("XXXXXX Root's last token is not token_b!\n");
+      printf("\n");
+    }
+    else {
+      printf("Root OK\n");
+    }
+
+    delete root;
+
+  }
+
+  printf("Lexing took  %f msec\n", lex_accum);
+  printf("Parsing took %f msec\n", parse_accum);
+
+  return 0;
+}
+
+//------------------------------------------------------------------------------
