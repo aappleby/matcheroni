@@ -142,7 +142,7 @@ static uint8_t  func_105(uint32_t  p_106, uint32_t  p_107, uint64_t  p_108, cons
 
 /* --- FUNCTIONS --- */
 /* ------------------------------------------ */
-/* 
+/*
  * reads : g_5 g_24 g_11 g_25 g_3 g_34 g_37 g_155 g_156
  * writes: g_5 g_10 g_11 g_3 g_34
  */
@@ -227,7 +227,7 @@ static int32_t  func_1(void)
 
 
 /* ------------------------------------------ */
-/* 
+/*
  * reads : g_5
  * writes:
  */
@@ -244,7 +244,7 @@ static uint32_t  func_12(const int32_t * p_13)
 
 
 /* ------------------------------------------ */
-/* 
+/*
  * reads : g_24 g_25 g_3 g_37 g_16 g_5 g_64 g_155 g_203 g_204 g_196 g_465 g_352 g_10 g_877 g_102 g_887 g_221 g_166 g_163 g_894 g_901 g_732 g_33 g_906 g_912 g_914 g_662 g_512 g_513 g_220 g_511 g_304 g_305 g_918 g_715 g_695 g_290 g_62 g_907
  * writes: g_64 g_68 g_62 g_10 g_156 g_163 g_102 g_166 g_3 g_733 g_906 g_912 g_914 g_695 g_196 g_290 g_612
  */
@@ -335,7 +335,7 @@ lbl_925:
 
 
 /* ------------------------------------------ */
-/* 
+/*
  * reads : g_10 g_204 g_196
  * writes: g_10
  */
@@ -351,7 +351,7 @@ static uint32_t  func_49(int16_t  p_50, uint32_t  p_51, int32_t  p_52, const int
 
 
 /* ------------------------------------------ */
-/* 
+/*
  * reads : g_64 g_155 g_203 g_204 g_196
  * writes: g_68 g_64 g_62 g_10 g_156
  */
@@ -400,7 +400,7 @@ static uint32_t  func_56(int16_t  p_57)
 
 
 /* ------------------------------------------ */
-/* 
+/*
  * reads : g_129 g_352 g_221 g_166 g_220 g_203 g_204 g_196 g_660 g_155 g_156
  * writes: g_129 g_102
  */
@@ -439,7 +439,7 @@ static int32_t * func_82(uint8_t  p_83)
 
 
 /* ------------------------------------------ */
-/* 
+/*
  * reads :
  * writes:
  */
@@ -519,7 +519,7 @@ static uint32_t  func_86(int32_t * p_87, uint16_t  p_88, int32_t * p_89, const u
 
 
 /* ------------------------------------------ */
-/* 
+/*
  * reads :
  * writes:
  */
@@ -533,7 +533,7 @@ static int32_t * func_91(int32_t *** p_92, uint32_t  p_93, uint32_t  p_94)
 
 
 /* ------------------------------------------ */
-/* 
+/*
  * reads : g_5 g_64 g_10 g_16 g_33 g_68 g_121
  * writes: g_68 g_121
  */
@@ -555,7 +555,7 @@ static int16_t  func_97(uint32_t  p_98, uint32_t  p_99, int16_t  p_100, int64_t 
 
 
 /* ------------------------------------------ */
-/* 
+/*
  * reads : g_68 g_33
  * writes: g_68
  */
@@ -871,4 +871,3 @@ XXX percentage an existing variable is used: 80
 FYI: the random generator makes assumptions about the integer size. See platform.info for more details.
 XXX total OOB instances added: 0
 ********************* end of statistics **********************/
-

@@ -103,7 +103,7 @@ int test_c99_peg(int argc, char** argv) {
 
   //paths = { "tests/scratch.h" };
   //paths = { "tests/basic_inputs.h" };
-  //paths = { "mini_tests/csmith.cpp" };
+  paths = { "mini_tests/csmith.cpp" };
 
   double lex_accum = 0;
   double parse_accum = 0;

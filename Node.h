@@ -249,7 +249,8 @@ struct NodeBase {
 
   static inline IdentifierSet builtin_types = {
     "void", "char", "short", "int", "long", "float", "double", "signed",
-    "unsigned",
+    "unsigned", "uint8_t", "uint16_t", "uint32_t", "uint64_t", "int8_t",
+    "int16_t", "int32_t", "int64_t"
   };
 
   static inline IdentifierSet declared_types = {
@@ -420,14 +421,14 @@ struct NodeConstant : public NodeMaker<NodeConstant> {
 
 //------------------------------------------------------------------------------
 
-struct BuiltinTypeName : public NodeMaker<BuiltinTypeName> {
+struct NodeBuiltinType : public NodeMaker<NodeBuiltinType> {
   static const Token* match(const Token* a, const Token* b) {
     if (!a || !a->is_identifier()) return nullptr;
 
     auto name = a->lex->text();
 
     if (builtin_types.contains(name)) {
-      auto n = new BuiltinTypeName();
+      auto n = new NodeBuiltinType();
       n->init(a, a+1, nullptr, 0);
       node_stack.push(n);
       return a + 1;
@@ -437,14 +438,14 @@ struct BuiltinTypeName : public NodeMaker<BuiltinTypeName> {
   }
 };
 
-struct GlobalTypeName : public NodeMaker<GlobalTypeName> {
+struct NodeGlobalType : public NodeMaker<NodeGlobalType> {
   static const Token* match(const Token* a, const Token* b) {
     if (!a || !a->is_identifier()) return nullptr;
 
     auto name = a->lex->text();
 
     if (builtin_types.contains(name) || declared_types.contains(name)) {
-      auto n = new GlobalTypeName();
+      auto n = new NodeGlobalType();
       n->init(a, a+1, nullptr, 0);
       node_stack.push(n);
       return a + 1;
@@ -454,14 +455,14 @@ struct GlobalTypeName : public NodeMaker<GlobalTypeName> {
   }
 };
 
-struct DeclaredTypeName : public NodeMaker<DeclaredTypeName> {
+struct NodeDeclaredType : public NodeMaker<NodeDeclaredType> {
   static const Token* match(const Token* a, const Token* b) {
     if (!a || !a->is_identifier()) return nullptr;
 
     auto name = a->lex->text();
 
     if (declared_types.contains(name)) {
-      auto n = new DeclaredTypeName();
+      auto n = new NodeDeclaredType();
       n->init(a, a+1, nullptr, 0);
       node_stack.push(n);
       return a + 1;

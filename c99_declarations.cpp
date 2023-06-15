@@ -137,9 +137,10 @@ struct NodeTemplateArgs : public NodeMaker<NodeTemplateArgs> {
 
 struct NodeSpecifier : public NodeMaker<NodeSpecifier> {
   using pattern = Seq<
+    Opt<Keyword<"struct">>,
     Oneof<
-    GlobalTypeName,
-    NodeAtomicType
+      NodeGlobalType,
+      NodeAtomicType
     >,
     Opt<NodeTemplateArgs>
   >;
@@ -242,8 +243,7 @@ struct NodeNamespace : public NodeMaker<NodeNamespace> {
   using pattern = Seq<
     Keyword<"namespace">,
     Opt<NodeIdentifier>,
-    Opt<NodeFieldList>,
-    Atom<';'>
+    Opt<NodeFieldList>
   >;
 };
 
@@ -251,8 +251,7 @@ struct NodeStruct : public NodeMaker<NodeStruct> {
   using pattern = Seq<
     Keyword<"struct">,
     Opt<LogTypename<NodeIdentifier>>,
-    Opt<NodeFieldList>,
-    Atom<';'>
+    Opt<NodeFieldList>
   >;
 };
 
@@ -260,8 +259,7 @@ struct NodeUnion : public NodeMaker<NodeUnion> {
   using pattern = Seq<
     Keyword<"union">,
     Opt<LogTypename<NodeIdentifier>>,
-    Opt<NodeFieldList>,
-    Atom<';'>
+    Opt<NodeFieldList>
   >;
 };
 
@@ -269,8 +267,7 @@ struct NodeClass : public NodeMaker<NodeClass> {
   using pattern = Seq<
     Keyword<"class">,
     Opt<LogTypename<NodeIdentifier>>,
-    Opt<NodeFieldList>,
-    Atom<';'>
+    Opt<NodeFieldList>
   >;
 };
 
@@ -315,9 +312,8 @@ struct NodeEnum : public NodeMaker<NodeEnum> {
     Opt<Keyword<"class">>,
     Opt<LogTypename<NodeIdentifier>>,
     Opt<Seq<Atom<':'>, NodeTypeDecl>>,
-    Opt<NodeEnumerators>,
+    Opt<NodeEnumerators>
     //Opt<NodeIdentifier>, fixme enum {} blah;?
-    Atom<';'>
   >;
 };
 
@@ -404,7 +400,7 @@ struct NodeFunction : public NodeMaker<NodeFunction> {
 
 struct NodeConstructor : public NodeMaker<NodeConstructor> {
   using pattern = Seq<
-    DeclaredTypeName,
+    NodeDeclaredType,
     NodeParamList,
     Oneof<
       Atom<';'>,
@@ -435,8 +431,7 @@ struct NodeVariable : public NodeMaker<NodeVariable> {
           >
         >
       >
-    >>,
-    Opt<Atom<';'>>
+    >>
   >;
 
   // We specialize match() to dig out typedef'd identifiers
@@ -474,13 +469,12 @@ struct externalDeclaration : public PatternWrapper<externalDeclaration> {
   using pattern =
   Oneof<
     NodeFunction,
-    NodeStruct,
-    NodeUnion,
-    NodeTemplate,
-    NodeClass,
-    NodeEnum,
-    NodeVariable,
-    Atom<';'>
+    Seq<NodeStruct, Atom<';'>>,
+    Seq<NodeUnion, Atom<';'>>,
+    Seq<NodeTemplate, Atom<';'>>,
+    Seq<NodeClass, Atom<';'>>,
+    Seq<NodeEnum, Atom<';'>>,
+    Seq<NodeVariable, Atom<';'>>
   >;
 };
 
