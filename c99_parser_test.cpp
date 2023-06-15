@@ -87,9 +87,10 @@ struct TestPattern : public NodeMaker<TestPattern> {
 
 //------------------------------------------------------------------------------
 
+const Token* parse_function(const Token* a, const Token* b);
+
 int test_c99_peg(int argc, char** argv) {
   printf("Parseroni Demo\n");
-
 
   std::vector<std::string> paths;
   const char* base_path = argc > 1 ? argv[1] : "tests";
@@ -125,6 +126,7 @@ int test_c99_peg(int argc, char** argv) {
     printf("Parsing %s\n", path.c_str());
 
     parse_accum -= timestamp_ms();
+    //parse_function(token_a, token_b);
     NodeTranslationUnit::match(token_a, token_b);
     //TestPattern::match(token_a, token_b);
     parse_accum += timestamp_ms();

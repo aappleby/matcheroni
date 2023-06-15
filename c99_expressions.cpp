@@ -64,29 +64,27 @@ struct NodeExpressionSoup : public NodeMaker<NodeExpressionSoup> {
   >;
 };
 
-struct NodeExpressionCall : public NodeMaker<NodeExpressionCall> {
+struct NodeExpressionParen : public NodeMaker<NodeExpressionParen> {
   using pattern = Seq<
-    NodeIdentifier,
     Atom<'('>,
     Opt<comma_separated<NodeExpressionSoup>>,
     Atom<')'>
   >;
 
   static const Token* match(const Token* a, const Token* b) {
-    auto end = NodeMaker<NodeExpressionCall>::match(a, b);
+    auto end = NodeMaker<NodeExpressionParen>::match(a, b);
     return end;
   }
 };
 
-struct NodeExpressionParen : public NodeMaker<NodeExpressionParen> {
+struct NodeExpressionCall : public NodeMaker<NodeExpressionCall> {
   using pattern = Seq<
-    Atom<'('>,
-    NodeExpressionSoup,
-    Atom<')'>
+    NodeIdentifier,
+    NodeExpressionParen
   >;
 
   static const Token* match(const Token* a, const Token* b) {
-    auto end = NodeMaker<NodeExpressionParen>::match(a, b);
+    auto end = NodeMaker<NodeExpressionCall>::match(a, b);
     return end;
   }
 };

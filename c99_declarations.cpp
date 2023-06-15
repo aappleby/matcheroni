@@ -213,9 +213,9 @@ struct NodeField : public PatternWrapper<NodeField> {
   using pattern = Oneof<
     NodeAccessSpecifier,
     NodeConstructor,
-    NodeEnum,
+    Seq<NodeEnum, Atom<';'>>,
     NodeFunction,
-    NodeVariable
+    Seq<NodeVariable, Atom<';'>>
   >;
 
   static const Token* match(const Token* a, const Token* b) {
@@ -377,11 +377,22 @@ struct NodeInitializer : public NodeMaker<NodeInitializer> {
 
 //------------------------------------------------------------------------------
 
+struct NodeFunctionIdentifier : public NodeMaker<NodeFunctionIdentifier> {
+  using pattern = Seq<
+    Opt<NodePointer>,
+    Oneof<
+      NodeIdentifier,
+      Seq<Atom<'('>, NodeFunctionIdentifier, Atom<')'>>
+    >
+  >;
+};
+
+
 struct NodeFunction : public NodeMaker<NodeFunction> {
   using pattern = Seq<
     NodeQualifiers,
     NodeSpecifier,
-    NodeIdentifier,
+    NodeFunctionIdentifier,
     NodeParamList,
     Opt<NodeKeyword<"const">>,
     Oneof<
@@ -395,6 +406,11 @@ struct NodeFunction : public NodeMaker<NodeFunction> {
     return end;
   }
 };
+
+const Token* parse_function(const Token* a, const Token* b) {
+  auto end = NodeFunction::match(a, b);
+  return end;
+}
 
 //------------------------------------------------------------------------------
 
