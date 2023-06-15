@@ -192,14 +192,11 @@ struct Seq<P> {
 // Oneof<Atom<'a'>, Atom<'b'>>::match("abcd") == "bcd"
 // Oneof<Atom<'a'>, Atom<'b'>>::match("bcde") == "cde"
 
-extern int oneof_count;
-
 template <typename P, typename... rest>
 struct Oneof {
 
   template<typename atom>
   static const atom* match(const atom* a, const atom* b) {
-    oneof_count++;
     auto c = P::match(a, b);
     return c ? c : Oneof<rest...>::match(a, b);
   }
@@ -211,7 +208,6 @@ struct Oneof<P> {
 
   template<typename atom>
   static const atom* match(const atom* a, const atom* b) {
-    oneof_count++;
     return P::match(a, b);
   }
 };

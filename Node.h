@@ -35,22 +35,16 @@ struct NodeStack {
 struct NodeBase {
 
   void init(const Token* a = nullptr, const Token* b = nullptr) {
-    if (a == nullptr && b == nullptr) {
-    }
-    else {
-      assert(b > a);
-    }
+    //print_class_name();
+    //printf("::init()\n");
 
     this->tok_a = a;
     this->tok_b = b;
   }
 
   void init(const Token* a, const Token* b, NodeBase** children, size_t child_count) {
-    if (a == nullptr && b == nullptr) {
-    }
-    else {
-      assert(b > a);
-    }
+    //print_class_name();
+    //printf("::init()\n");
 
     this->tok_a = a;
     this->tok_b = b;
@@ -76,11 +70,23 @@ struct NodeBase {
   }
 
   template<typename P>
-  const P* child() const {
+  P* child() {
     if (this == nullptr) return nullptr;
     for (auto cursor = head; cursor; cursor = cursor->next) {
       if (cursor->isa<P>()) {
         return dynamic_cast<P*>(cursor);
+      }
+    }
+    return nullptr;
+  }
+
+  template<typename P>
+  P* search() {
+    if (this == nullptr) return nullptr;
+    if (this->isa<P>()) return this->as<P>();
+    for (auto cursor = head; cursor; cursor = cursor->next) {
+      if (auto c = cursor->search<P>()) {
+        return c;
       }
     }
     return nullptr;
@@ -184,14 +190,7 @@ struct NodeBase {
 
   //----------------------------------------
 
-  virtual void dump_tree(int max_depth = 0, int indentation = 0) {
-    if (max_depth && indentation == max_depth) return;
-
-    for (int i = 0; i < indentation; i++) printf(" | ");
-
-    if (tok_a) set_color(tok_a->lex->color());
-    if (!field.empty()) printf("%-10.10s : ", field.c_str());
-
+  void print_class_name() {
     const char* name = typeid(*this).name();
     int name_len = 0;
     if (sscanf(name, "%d", &name_len)) {
@@ -203,6 +202,19 @@ struct NodeBase {
     else {
       printf("%s", name);
     }
+  }
+
+  //----------------------------------------
+
+  virtual void dump_tree(int max_depth = 0, int indentation = 0) {
+    if (max_depth && indentation == max_depth) return;
+
+    for (int i = 0; i < indentation; i++) printf(" | ");
+
+    if (tok_a) set_color(tok_a->lex->color());
+    if (!field.empty()) printf("%-10.10s : ", field.c_str());
+
+    print_class_name();
 
     printf(" '%s'\n", escape_span().c_str());
 
@@ -261,18 +273,30 @@ struct NodeMaker : public NodeBase {
     auto end = NT::pattern::match(a, b);
     auto new_top = node_stack.top();
 
-    if (end && end != a) {
-      //auto node = new NT(a, end, &node_stack._stack[old_top], new_top - old_top);
-      auto node = new NT();
-      node->init(a, end, &node_stack._stack[old_top], new_top - old_top);
-      node_stack.pop_to(old_top);
-      node_stack.push(node);
-      return end;
-    }
-    else {
+    if (!end) {
       node_stack.clear_to(old_top);
       return nullptr;
     }
+
+    auto node = new NT();
+    node->init(a, end, &node_stack._stack[old_top], new_top - old_top);
+    node_stack.pop_to(old_top);
+    node_stack.push(node);
+    return end;
+  }
+};
+
+//------------------------------------------------------------------------------
+
+template<typename P>
+struct CleanDeadNodes {
+  static const Token* match(const Token* a, const Token* b) {
+    auto old_top = NodeBase::node_stack.top();
+    auto end = P::match(a, b);
+    if (!end) {
+      NodeBase::node_stack.clear_to(old_top);
+    }
+    return end;
   }
 };
 

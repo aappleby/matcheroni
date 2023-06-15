@@ -3,7 +3,7 @@ typedef const int* blep[7];
 blep quar;
 
 class blom {
-  int q;
+  _Atomic(int) q;
 };
 
 blom sugg;
