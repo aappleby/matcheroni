@@ -160,6 +160,11 @@ struct NodeBase {
     if (!tok_a || !tok_b) {
       return "<bad span>";
     }
+
+    if (tok_a == tok_b) {
+      return "<zero span>";
+    }
+
     auto lex_a = tok_a->lex;
     auto lex_b = (tok_b - 1)->lex;
     auto len = lex_b->span_b - lex_a->span_a;
