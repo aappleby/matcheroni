@@ -395,6 +395,12 @@ struct NodeDispenser {
 
 //------------------------------------------------------------------------------
 
+struct NodePreproc : public NodeMaker<NodePreproc> {
+  using pattern = Atom<TOK_PREPROC>;
+};
+
+//------------------------------------------------------------------------------
+
 struct NodeIdentifier : public NodeMaker<NodeIdentifier> {
   using pattern = Atom<TOK_IDENTIFIER>;
 };

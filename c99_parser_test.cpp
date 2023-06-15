@@ -1,3 +1,5 @@
+#include "c99_parser.h"
+
 #include <filesystem>
 #include "Node.h"
 
@@ -99,7 +101,7 @@ int test_c99_peg(int argc, char** argv) {
     paths.push_back(f.path().native());
   }
 
-  paths = { "tests/scratch.h" };
+  //paths = { "tests/scratch.h" };
   //paths = { "mini_tests/csmith.cpp" };
 
   double lex_accum = 0;
@@ -122,8 +124,8 @@ int test_c99_peg(int argc, char** argv) {
     printf("Parsing %s\n", path.c_str());
 
     parse_accum -= timestamp_ms();
-    //NodeTranslationUnit::match(token_a, token_b);
-    TestPattern::match(token_a, token_b);
+    NodeTranslationUnit::match(token_a, token_b);
+    //TestPattern::match(token_a, token_b);
     parse_accum += timestamp_ms();
 
     if (NodeBase::node_stack.top() != 1) {
