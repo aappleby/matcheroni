@@ -70,7 +70,8 @@ struct Token {
   }
 
   bool is_punct(char p) const {
-    return lex && lex->is_punct(p);
+    //return lex && lex->is_punct(p);
+    return lex && lex->span_a[0] == p;
   }
 
   bool is_lit(const char* lit) const {

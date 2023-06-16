@@ -111,10 +111,14 @@ int test_c99_peg(int argc, char** argv) {
   double lex_accum = 0;
   double parse_accum = 0;
 
+  std::string text;
+  std::vector<Lexeme> lexemes;
+  std::vector<Token> tokens;
+
   for (const auto& path : paths) {
-    std::string text;
-    std::vector<Lexeme> lexemes;
-    std::vector<Token> tokens;
+    text.clear();
+    lexemes.clear();
+    tokens.clear();
 
     if (!path.ends_with(".cpp") &&
         !path.ends_with(".hpp") &&

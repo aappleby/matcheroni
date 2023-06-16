@@ -218,7 +218,7 @@ struct NodeBase {
     for (int i = 0; i < indentation; i++) printf(" | ");
 
     if (tok_a) set_color(tok_a->lex->color());
-    if (!field.empty()) printf("%-10.10s : ", field.c_str());
+    //if (!field.empty()) printf("%-10.10s : ", field.c_str());
 
     print_class_name();
 
@@ -236,7 +236,7 @@ struct NodeBase {
   const Token* tok_a = nullptr;
   const Token* tok_b = nullptr;
 
-  std::string field = "";
+  //std::string field = "";
 
   NodeBase* parent = nullptr;
   NodeBase* prev   = nullptr;

@@ -30,6 +30,11 @@ struct NodeTranslationUnit : public NodeMaker<NodeTranslationUnit> {
       >
     //>
   >;
+
+  __attribute__((__noinline__)) static const Token* match(const Token* a, const Token* b) {
+    return NodeMaker<NodeTranslationUnit>::match(a, b);
+  }
+
 };
 
 //------------------------------------------------------------------------------
