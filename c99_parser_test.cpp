@@ -95,6 +95,8 @@ int test_c99_peg(int argc, char** argv) {
   std::vector<std::string> paths;
   const char* base_path = argc > 1 ? argv[1] : "tests";
 
+  base_path = "mini_tests";
+
   printf("Parsing source files in %s\n", base_path);
   using rdit = std::filesystem::recursive_directory_iterator;
   for (const auto& f : rdit(base_path)) {
@@ -104,7 +106,7 @@ int test_c99_peg(int argc, char** argv) {
 
   //paths = { "tests/scratch.h" };
   //paths = { "tests/basic_inputs.h" };
-  paths = { "mini_tests/csmith_0.cpp" };
+  //paths = { "mini_tests/csmith_5.cpp" };
 
   double lex_accum = 0;
   double parse_accum = 0;
@@ -114,7 +116,12 @@ int test_c99_peg(int argc, char** argv) {
     std::vector<Lexeme> lexemes;
     std::vector<Token> tokens;
 
-    printf("Lexing %s\n", path.c_str());
+    if (!path.ends_with(".cpp") &&
+        !path.ends_with(".hpp") &&
+        !path.ends_with(".c") &&
+        !path.ends_with(".h")) continue;
+
+    //printf("Lexing %s\n", path.c_str());
 
     lex_accum -= timestamp_ms();
     lex_file(path, text, lexemes, tokens);
@@ -123,7 +130,8 @@ int test_c99_peg(int argc, char** argv) {
     const Token* token_a = tokens.data();
     const Token* token_b = tokens.data() + tokens.size() - 1;
 
-    printf("Parsing %s\n", path.c_str());
+    static int ok_files = 0;
+    printf("%04d: Parsing %s...", ok_files, path.c_str());
 
     parse_accum -= timestamp_ms();
     //parse_function(token_a, token_b);
@@ -132,13 +140,14 @@ int test_c99_peg(int argc, char** argv) {
     parse_accum += timestamp_ms();
 
     if (NodeBase::node_stack.top() != 1) {
+      printf("Parsing %s failed!\n", path.c_str());
       printf("Node stack wrong size %ld\n", NodeBase::node_stack._top);
       return -1;
     }
 
     auto root = NodeBase::node_stack.pop();
 
-    root->dump_tree();
+    //root->dump_tree();
 
     if (root->tok_a != token_a) {
       printf("\n");
@@ -153,7 +162,8 @@ int test_c99_peg(int argc, char** argv) {
       printf("\n");
     }
     else {
-      printf("Root OK\n");
+      printf("OK!\n");
+      ok_files++;
     }
 
     delete root;

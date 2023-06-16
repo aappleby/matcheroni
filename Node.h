@@ -26,7 +26,8 @@ struct NodeStack {
   void clear_to(size_t new_top);
   void pop_to(size_t new_top);
 
-  NodeBase*  _stack[1024] = {0};
+  static const int stack_size = 8192;
+  NodeBase*  _stack[stack_size] = {0};
   size_t _top = 0;
 };
 
@@ -258,7 +259,7 @@ struct NodeBase {
   };
 
   static inline void add_declared_type(const std::string& t) {
-    printf("Adding type %s\n", t.c_str());
+    //printf("Adding type %s\n", t.c_str());
     declared_types.insert(t);
   }
 };

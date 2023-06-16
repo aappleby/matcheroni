@@ -2,15 +2,14 @@
 #include <stdio.h>
 
 void NodeStack::push(NodeBase* n) {
+  if (_top == stack_size) {
+    printf("Node stack overflow, size %d\n", stack_size);
+    exit(1);
+  }
+
   assert(_stack[_top] == nullptr);
   _stack[_top] = n;
   _top++;
-
-  static int max_top = 0;
-  if (_top > max_top) {
-    printf("max top %d\n", _top);
-    max_top = _top;
-  }
 }
 
 NodeBase* NodeStack::pop() {
