@@ -266,6 +266,43 @@ struct Some {
 };
 
 //------------------------------------------------------------------------------
+// Equivalent to Some<OneOf<>>
+
+template <typename P, typename... rest>
+struct SomeOf {
+  template<typename atom>
+  static const atom* match(const atom* a, const atom* b) {
+    auto c = match1(a, b);
+    if (c == nullptr) return nullptr;
+    while (auto end = match1(c, b)) {
+      c = end;
+    }
+    return c;
+  }
+
+  template<typename atom>
+  static const atom* match1(const atom* a, const atom* b) {
+    auto c = P::match(a, b);
+    return c ? c : Oneof<rest...>::match(a, b);
+  }
+};
+
+template <typename P>
+struct SomeOf<P> {
+
+  template<typename atom>
+  static const atom* match(const atom* a, const atom* b) {
+    return P::match(a, b);
+  }
+  
+  template<typename atom>
+  static const atom* match1(const atom* a, const atom* b) {
+    return P::match(a, b);
+  }
+
+};
+
+//------------------------------------------------------------------------------
 // Repetition, equivalent to M{N} in regex.
 
 template<int N, typename P>

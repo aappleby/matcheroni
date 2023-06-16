@@ -11,8 +11,10 @@
       "request": "launch",
       "program": "${workspaceFolder}/bin/matcheroni_demo",
       "cwd": "${workspaceFolder}",
+      //"args" : ["../gcc/gcc"],
+      "args" : ["../gcc/gcc/testsuite/gcc.c-torture"],
       //"args" : ["mini_tests"],
-      "args" : ["tests"],
+      //"args" : ["tests"],
       "setupCommands": [
         {
           // Display content in STL containers pretty

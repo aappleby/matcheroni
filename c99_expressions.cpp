@@ -2,6 +2,7 @@
 #include "Node.h"
 
 struct NodeExpressionParen;
+struct NodeExpressionBraces;
 struct NodeExpressionSoup;
 struct NodeExpressionSubscript;
 struct NodeExpressionCall;
@@ -15,6 +16,7 @@ struct NodeExpressionSoup : public NodeMaker<NodeExpressionSoup> {
       NodeConstant,
       NodeIdentifier,
       NodeExpressionParen,
+      NodeExpressionBraces,
       NodeExpressionSubscript,
       NodeKeyword<"sizeof">,
       NodeOperator<"->*">,
@@ -73,6 +75,19 @@ struct NodeExpressionParen : public NodeMaker<NodeExpressionParen> {
 
   static const Token* match(const Token* a, const Token* b) {
     auto end = NodeMaker<NodeExpressionParen>::match(a, b);
+    return end;
+  }
+};
+
+struct NodeExpressionBraces : public NodeMaker<NodeExpressionBraces> {
+  using pattern = Seq<
+    Atom<'{'>,
+    Opt<comma_separated<NodeExpressionSoup>>,
+    Atom<'}'>
+  >;
+
+  static const Token* match(const Token* a, const Token* b) {
+    auto end = NodeMaker<NodeExpressionBraces>::match(a, b);
     return end;
   }
 };

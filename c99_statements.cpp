@@ -1,6 +1,8 @@
 #include "c99_parser.h"
 #include "Node.h"
 
+const Token* parse_function(const Token* a, const Token* b);
+
 //------------------------------------------------------------------------------
 
 struct NodeStatementCompound : public NodeMaker<NodeStatementCompound> {
@@ -160,6 +162,7 @@ const Token* parse_statement(const Token* a, const Token* b) {
   using pattern_statement = Oneof<
     NodeStatementLabel,
     NodeStatementCompound,
+    Ref<parse_function>,
     NodeStatementDeclaration,
     NodeStatementExpression,
     NodeStatementFor,

@@ -251,7 +251,11 @@ struct NodeBase {
   static inline IdentifierSet builtin_types = {
     "void", "char", "short", "int", "long", "float", "double", "signed",
     "unsigned", "uint8_t", "uint16_t", "uint32_t", "uint64_t", "int8_t",
-    "int16_t", "int32_t", "int64_t"
+    "int16_t", "int32_t", "int64_t", "__int128"
+  };
+
+  static inline IdentifierSet builtin_type_prefixes = {
+    "signed", "unsigned", "short", "long"
   };
 
   static inline IdentifierSet declared_types = {
@@ -422,55 +426,72 @@ struct NodeConstant : public NodeMaker<NodeConstant> {
 
 //------------------------------------------------------------------------------
 
+struct NodeBuiltinTypeBase {
+  static const Token* match(const Token* a, const Token* b) {
+    if (!a || !a->is_identifier() || a == b) return nullptr;
+
+    if (NodeBase::builtin_types.contains(a->lex->text())) {
+      return a + 1;
+    }
+    else {
+      return nullptr;
+    }
+  }
+};
+
+struct NodeBuiltinTypePrefix {
+  static const Token* match(const Token* a, const Token* b) {
+    if (!a || !a->is_identifier() || a == b) return nullptr;
+
+    if (NodeBase::builtin_type_prefixes.contains(a->lex->text())) {
+      return a + 1;
+    }
+    else {
+      return nullptr;
+    }
+  }
+};
+
+//----------
+// Our builtin types are any sequence of prefixes followed by a builtin type
+
 struct NodeBuiltinType : public NodeMaker<NodeBuiltinType> {
-  static const Token* match(const Token* a, const Token* b) {
-    if (!a || !a->is_identifier()) return nullptr;
-
-    auto name = a->lex->text();
-
-    if (builtin_types.contains(name)) {
-      auto n = new NodeBuiltinType();
-      n->init(a, a+1, nullptr, 0);
-      node_stack.push(n);
-      return a + 1;
-    }
-
-    return nullptr;
-  }
+  using pattern = Seq<
+    Any<
+      Seq<NodeBuiltinTypePrefix, And<NodeBuiltinTypeBase>>
+    >,
+    NodeBuiltinTypeBase
+  >;
 };
 
-struct NodeGlobalType : public NodeMaker<NodeGlobalType> {
-  static const Token* match(const Token* a, const Token* b) {
-    if (!a || !a->is_identifier()) return nullptr;
-
-    auto name = a->lex->text();
-
-    if (builtin_types.contains(name) || declared_types.contains(name)) {
-      auto n = new NodeGlobalType();
-      n->init(a, a+1, nullptr, 0);
-      node_stack.push(n);
-      return a + 1;
-    }
-
-    return nullptr;
-  }
-};
+//------------------------------------------------------------------------------
 
 struct NodeDeclaredType : public NodeMaker<NodeDeclaredType> {
   static const Token* match(const Token* a, const Token* b) {
-    if (!a || !a->is_identifier()) return nullptr;
+    if (!a || !a->is_identifier() || a == b) return nullptr;
 
-    auto name = a->lex->text();
+    auto end = a;
 
-    if (declared_types.contains(name)) {
+    if (end < b && declared_types.contains(end->lex->text())) {
+      end++;
+    }
+
+    if (end > a) {
       auto n = new NodeDeclaredType();
-      n->init(a, a+1, nullptr, 0);
+      n->init(a, end, nullptr, 0);
       node_stack.push(n);
-      return a + 1;
+      return end;
     }
 
     return nullptr;
   }
+};
+
+struct NodeGlobalType : public PatternWrapper<NodeGlobalType> {
+  using pattern = Oneof<
+    NodeBuiltinType,
+    NodeDeclaredType
+  >;
 };
 
 //------------------------------------------------------------------------------

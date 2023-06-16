@@ -14,6 +14,12 @@ struct NodeTypeDecl;
 struct NodeConstructor;
 struct NodeFunction;
 struct NodeVariable;
+struct NodeStruct;
+struct NodeUnion;
+struct NodeClass;
+struct NodeTemplate;
+
+void extract_typedef();
 
 //------------------------------------------------------------------------------
 
@@ -43,11 +49,21 @@ struct NodeFunctionQualifier : public NodeMaker<NodeFunctionQualifier> {
   >;
 };
 
+struct NodeAttribute : public NodeMaker<NodeAttribute> {
+  using pattern = Seq<
+    NodeKeyword<"__attribute__">,
+    NodeOperator<"((">,
+    comma_separated<Ref<parse_expression>>,
+    NodeOperator<"))">
+  >;
+};
+
 struct NodeQualifier : public PatternWrapper<NodeQualifier> {
   using pattern = Oneof<
     NodeTypeQualifier,
     NodeAlignmentQualifier,
     NodeFunctionQualifier,
+    NodeAttribute,
     NodeKeyword<"thread_local">,
     NodeKeyword<"virtual">,
     NodeKeyword<"constexpr">,
@@ -89,14 +105,15 @@ struct NodePointer : public NodeMaker<NodePointer> {
 
 struct NodeParam : public NodeMaker<NodeParam> {
   using pattern = Oneof<
-    Seq<
+    CleanDeadNodes<Seq<
       NodeQualifiers,
       NodeSpecifier,
       Opt<Oneof<
         NodeDeclarator,
         NodeAbstractDeclarator
       >>
-    >,
+    >>,
+    NodeIdentifier,
     NodeOperator<"...">
   >;
 };
@@ -186,7 +203,13 @@ struct NodeAbstractDeclarator : public NodeMaker<NodeAbstractDeclarator> {
 struct NodeDeclarator : public NodeMaker<NodeDeclarator> {
   using pattern = Seq<
     Oneof<
-      Seq<Opt<NodePointer>, NodeIdentifier, Opt<NodeBitSuffix>>,
+      Seq<
+        Opt<NodePointer>,
+        Opt<NodeAttribute>,
+        NodeIdentifier,
+        Opt<NodeAttribute>,
+        Opt<NodeBitSuffix>
+      >,
       Seq<Opt<NodePointer>, Atom<'('>, NodeDeclarator, Atom<')'>>
     >,
     Any<Oneof<
@@ -200,6 +223,26 @@ struct NodeDeclarator : public NodeMaker<NodeDeclarator> {
     return end;
   }
 };
+
+//------------------------------------------------------------------------------
+
+void extract_typedef() {
+  // Poke through the node on the top of the stack to find identifiers
+  auto node = NodeBase::node_stack.back();
+  if (!node) return;
+
+  auto quals = node->child<NodeQualifiers>();
+  if (!quals || !quals->search<NodeKeyword<"typedef">>()) return;
+
+  auto decl = node->child<NodeDeclarator>();
+  if (!decl) return;
+
+  auto id = decl->child<NodeIdentifier>();
+  if (!id) return;
+
+  auto s = id->tok_a->lex->text();
+  NodeBase::add_declared_type(s);
+}
 
 //------------------------------------------------------------------------------
 
@@ -217,8 +260,12 @@ struct NodeField : public PatternWrapper<NodeField> {
   using pattern = Oneof<
     NodeAccessSpecifier,
     NodeConstructor,
-    Seq<NodeEnum, Atom<';'>>,
     NodeFunction,
+    Seq<NodeStruct, Atom<';'>>,
+    Seq<NodeUnion, Atom<';'>>,
+    Seq<NodeTemplate, Atom<';'>>,
+    Seq<NodeClass, Atom<';'>>,
+    Seq<NodeEnum, Atom<';'>>,
     Seq<NodeVariable, Atom<';'>>
   >;
 
@@ -251,28 +298,75 @@ struct NodeNamespace : public NodeMaker<NodeNamespace> {
   >;
 };
 
+// struct           ; // X
+// struct        bar; // X
+// struct     {}    ; // X
+// struct     {} bar;
+// struct foo       ;
+// struct foo    bar;
+// struct foo {}    ;
+// struct foo {} bar;
+
+struct DeclThing : public PatternWrapper<DeclThing> {
+  using pattern = Seq<
+    NodeDeclarator,
+    Opt<Seq<
+      Atom<'='>,
+      NodeInitializer
+    >>
+  >;
+};
+
+struct NodeDeclBody : public PatternWrapper<NodeDeclBody> {
+  using pattern = Oneof<
+    Seq< LogTypename<NodeIdentifier>, Opt<NodeFieldList>, Opt<DeclThing> >,
+    Seq<                                  NodeFieldList,      DeclThing  >
+  >;
+};
+
 struct NodeStruct : public NodeMaker<NodeStruct> {
   using pattern = Seq<
+    NodeQualifiers,
     Keyword<"struct">,
-    Opt<LogTypename<NodeIdentifier>>,
-    Opt<NodeFieldList>
+    NodeDeclBody
   >;
+
+  // We specialize match() to dig out typedef'd identifiers
+  static const Token* match(const Token* a, const Token* b) {
+    auto end = NodeMaker<NodeStruct>::match(a, b);
+    if (end) extract_typedef();
+    return end;
+  }
 };
 
 struct NodeUnion : public NodeMaker<NodeUnion> {
   using pattern = Seq<
+    NodeQualifiers,
     Keyword<"union">,
-    Opt<LogTypename<NodeIdentifier>>,
-    Opt<NodeFieldList>
+    NodeDeclBody
   >;
+
+  // We specialize match() to dig out typedef'd identifiers
+  static const Token* match(const Token* a, const Token* b) {
+    auto end = NodeMaker<NodeUnion>::match(a, b);
+    if (end) extract_typedef();
+    return end;
+  }
 };
 
 struct NodeClass : public NodeMaker<NodeClass> {
   using pattern = Seq<
+    NodeQualifiers,
     Keyword<"class">,
-    Opt<LogTypename<NodeIdentifier>>,
-    Opt<NodeFieldList>
+    NodeDeclBody
   >;
+
+  // We specialize match() to dig out typedef'd identifiers
+  static const Token* match(const Token* a, const Token* b) {
+    auto end = NodeMaker<NodeClass>::match(a, b);
+    if (end) extract_typedef();
+    return end;
+  }
 };
 
 //------------------------------------------------------------------------------
@@ -395,10 +489,16 @@ struct NodeFunctionIdentifier : public NodeMaker<NodeFunctionIdentifier> {
 struct NodeFunction : public NodeMaker<NodeFunction> {
   using pattern = Seq<
     NodeQualifiers,
-    NodeSpecifier,
-    NodeFunctionIdentifier,
+    Opt<NodeSpecifier>,
+    Opt<NodeAttribute>,
+    Opt<NodeFunctionIdentifier>,
+
     NodeParamList,
     Opt<NodeKeyword<"const">>,
+    Opt<Some<
+      Seq<NodeVariable, Atom<';'>>
+    >>,
+
     Oneof<
       Atom<';'>,
       Ref<parse_statement_compound>
@@ -438,13 +538,22 @@ struct NodeConstructor : public NodeMaker<NodeConstructor> {
 
 struct NodeVariable : public NodeMaker<NodeVariable> {
   using pattern = Seq<
+    Opt<NodeAttribute>,
     NodeQualifiers,
+    Opt<NodeAttribute>,
     NodeSpecifier,
+    Opt<NodeAttribute>,
+
     Opt<comma_separated<
       Seq<
         Oneof<
-          NodeDeclarator,
-          Seq<Opt<NodeDeclarator>, NodeBitSuffix>
+          Seq<
+            NodeDeclarator
+          >,
+          Seq<
+            Opt<NodeDeclarator>,
+            NodeBitSuffix
+          >
         >,
         Opt<
           Seq<
@@ -459,25 +568,8 @@ struct NodeVariable : public NodeMaker<NodeVariable> {
   // We specialize match() to dig out typedef'd identifiers
   static const Token* match(const Token* a, const Token* b) {
     auto end = NodeMaker<NodeVariable>::match(a, b);
-    if (end) {
-      // Poke through the node on the top of the stack to find identifiers
-      auto n1 = NodeBase::node_stack.back();
-      if (!n1) return end;
-      if (!n1->search<NodeKeyword<"typedef">>()) {
-        return end;
-      }
-
-      if (auto n2 = n1->child<NodeDeclarator>()) {
-        if (auto n3 = n2->child<NodeIdentifier>()) {
-          auto s = n3->tok_a->lex->text();
-          NodeBase::add_declared_type(s);
-        }
-      }
-      return end;
-    }
-    else {
-      return nullptr;
-    }
+    if (end) extract_typedef();
+    return end;
   }
 };
 
@@ -490,6 +582,7 @@ const Token* parse_declaration(const Token* a, const Token* b) {
 struct externalDeclaration : public PatternWrapper<externalDeclaration> {
   using pattern =
   Oneof<
+    Atom<';'>,
     NodeFunction,
     Seq<NodeStruct, Atom<';'>>,
     Seq<NodeUnion, Atom<';'>>,

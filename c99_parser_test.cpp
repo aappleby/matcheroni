@@ -95,7 +95,7 @@ int test_c99_peg(int argc, char** argv) {
   std::vector<std::string> paths;
   const char* base_path = argc > 1 ? argv[1] : "tests";
 
-  base_path = "mini_tests";
+  //base_path = "mini_tests";
 
   printf("Parsing source files in %s\n", base_path);
   using rdit = std::filesystem::recursive_directory_iterator;
@@ -107,6 +107,8 @@ int test_c99_peg(int argc, char** argv) {
   //paths = { "tests/scratch.h" };
   //paths = { "tests/basic_inputs.h" };
   //paths = { "mini_tests/csmith_5.cpp" };
+  //paths = { "../gcc/gcc/tree-inline.h" };
+  //paths = {"../gcc/gcc/testsuite/gcc.c-torture/execute/pr64718.c"};
 
   double lex_accum = 0;
   double parse_accum = 0;
