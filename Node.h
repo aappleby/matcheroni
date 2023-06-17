@@ -324,12 +324,10 @@ struct NodeBase {
   };
 
   static inline IdentifierSet declared_types = {
-    "logic"
   };
 
   static void reset_declared_types() {
     declared_types.clear();
-    declared_types.insert("logic");
   }
 
   static inline void add_declared_type(const std::string& t) {
