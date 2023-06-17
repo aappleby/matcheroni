@@ -254,6 +254,7 @@ struct NodeBase {
     "int16_t", "int32_t", "int64_t",
 
     // gcc stuff
+    "_Complex", // yes this is both a prefix and a type :P
     "__int128",
     "__SIZE_TYPE__",
     "__PTRDIFF_TYPE__",

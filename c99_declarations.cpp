@@ -596,10 +596,13 @@ struct NodeConstructor : public NodeMaker<NodeConstructor> {
 
 struct NodeVariable : public NodeMaker<NodeVariable> {
   using pattern = Seq<
+    // FIXME this is messy
     Opt<NodeAttribute>,
     NodeQualifiers,
     Opt<NodeAttribute>,
     NodeSpecifier,
+    Opt<NodeAttribute>,
+    NodeQualifiers,
     Opt<NodeAttribute>,
 
     Opt<comma_separated<

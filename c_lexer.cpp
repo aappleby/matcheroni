@@ -229,14 +229,15 @@ const char* match_int(const char* a, const char* b) {
     Seq<bit_precise_int_suffix, Opt<unsigned_suffix>>
   >;
 
-
+  // GCC allows i or j in addition to the normal suffixes for complex-ified types :/...
+  using complex_suffix = Oneof<Atom<'i'>, Atom<'j'>>;
 
   // Octal has to be _after_ bin/hex so we don't prematurely match the prefix
   using integer_constant = Oneof<
-    Seq<decimal_constant,     Opt<integer_suffix>>,
-    Seq<hexadecimal_constant, Opt<integer_suffix>>,
-    Seq<binary_constant,      Opt<integer_suffix>>,
-    Seq<octal_constant,       Opt<integer_suffix>>
+    Seq<decimal_constant,     Opt<complex_suffix>, Opt<integer_suffix>, Opt<complex_suffix>>,
+    Seq<hexadecimal_constant, Opt<complex_suffix>, Opt<integer_suffix>, Opt<complex_suffix>>,
+    Seq<binary_constant,      Opt<complex_suffix>, Opt<integer_suffix>, Opt<complex_suffix>>,
+    Seq<octal_constant,       Opt<complex_suffix>, Opt<integer_suffix>, Opt<complex_suffix>>
   >;
 
   return integer_constant::match(a, b);
@@ -318,9 +319,12 @@ const char* match_float(const char* a, const char* b) {
   using exponent_part        = Seq<Atom<'e', 'E'>, Opt<sign>, digit_sequence>;
   using binary_exponent_part = Seq<Atom<'p', 'P'>, Opt<sign>, digit_sequence>;
 
+  // GCC allows i or j in addition to the normal suffixes for complex-ified types :/...
+  using complex_suffix = Oneof<Atom<'i'>, Atom<'j'>>;
+
   using decimal_floating_constant = Oneof<
-    Seq< Opt<sign>, fractional_constant, Opt<exponent_part>, Opt<floating_suffix> >,
-    Seq< Opt<sign>, digit_sequence, exponent_part, Opt<floating_suffix> >
+    Seq< Opt<sign>, fractional_constant, Opt<exponent_part>, Opt<complex_suffix>, Opt<floating_suffix>, Opt<complex_suffix> >,
+    Seq< Opt<sign>, digit_sequence, exponent_part,           Opt<complex_suffix>, Opt<floating_suffix>, Opt<complex_suffix> >
   >;
 
   using hexadecimal_prefix         = Oneof<Lit<"0x">, Lit<"0X">>;
@@ -330,7 +334,9 @@ const char* match_float(const char* a, const char* b) {
     hexadecimal_prefix,
     Oneof<hexadecimal_fractional_constant, hexadecimal_digit_sequence>,
     binary_exponent_part,
-    Opt<floating_suffix>
+    Opt<complex_suffix>,
+    Opt<floating_suffix>,
+    Opt<complex_suffix>
   >;
 
   using floating_constant = Oneof<

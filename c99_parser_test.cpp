@@ -46,7 +46,7 @@ void lex_file(const std::string& path, std::string& text, std::vector<Lexeme>& l
 
 //------------------------------------------------------------------------------
 
-void dump_lexemes(const std::string& path, int size, std::string& text, std::vector<Lexeme>& lexemes) {
+void dump_lexemes(const std::string& path, std::string& text, std::vector<Lexeme>& lexemes) {
   for(auto& l : lexemes) {
     printf("%-15s ", l.str());
 
@@ -55,7 +55,7 @@ void dump_lexemes(const std::string& path, int size, std::string& text, std::vec
 
     for (int i = 0; i < len; i++) {
       auto text_a = text.data();
-      auto text_b = text_a + size;
+      auto text_b = text_a + text.size();
       if (l.span_a + i >= text_b) {
         putc('#', stdout);
         continue;
@@ -108,7 +108,7 @@ int test_c99_peg(int argc, char** argv) {
   //paths = { "tests/basic_inputs.h" };
   //paths = { "mini_tests/csmith_5.cpp" };
   //paths = { "../gcc/gcc/tree-inline.h" };
-  //paths = {"../gcc/gcc/testsuite/gcc.c-torture/execute/loop-13.c"};
+  //paths = {"../gcc/gcc/testsuite/gcc.c-torture/execute/20070614-1.c"};
 
   double lex_accum = 0;
   double parse_accum = 0;
@@ -148,6 +148,8 @@ int test_c99_peg(int argc, char** argv) {
     lex_accum -= timestamp_ms();
     lex_file(path, text, lexemes, tokens);
     lex_accum += timestamp_ms();
+
+    //dump_lexemes(path, text, lexemes);
 
     const Token* token_a = tokens.data();
     const Token* token_b = tokens.data() + tokens.size() - 1;
