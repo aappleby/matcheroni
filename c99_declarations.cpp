@@ -191,6 +191,7 @@ struct NodeAbstractDeclarator : public NodeMaker<NodeAbstractDeclarator> {
     Seq<
       Opt<NodePointer>,
       Some<Oneof<
+       NodeAttribute,
         NodeArraySuffix,
         NodeParamList
       >>
@@ -213,6 +214,7 @@ struct NodeDeclarator : public NodeMaker<NodeDeclarator> {
       Seq<Opt<NodePointer>, Atom<'('>, NodeDeclarator, Atom<')'>>
     >,
     Any<Oneof<
+      NodeAttribute,
       NodeArraySuffix,
       NodeParamList
     >>
