@@ -6,15 +6,14 @@ struct NodeExpressionBraces;
 struct NodeExpressionSoup;
 struct NodeExpressionSubscript;
 struct NodeExpressionCall;
+struct NodeExpressionTernary;
 
 //------------------------------------------------------------------------------
 
-struct NodeExpressionSoup : public NodeMaker<NodeExpressionSoup> {
+struct NodeExpressionSoup : public PatternWrapper<NodeExpressionSoup> {
   using pattern = Seq<
     Some<Oneof<
       NodeExpressionCall,
-      NodeConstant,
-      NodeIdentifier,
       NodeExpressionParen,
       NodeExpressionBraces,
       NodeExpressionSubscript,
@@ -47,9 +46,7 @@ struct NodeExpressionSoup : public NodeMaker<NodeExpressionSoup> {
       NodeOperator<"||">,
 
       NodeOperator<"-">,
-      NodeOperator<":">,
       NodeOperator<"!">,
-      NodeOperator<"?">,
       NodeOperator<".">,
       NodeOperator<"*">,
       NodeOperator<"/">,
@@ -61,7 +58,10 @@ struct NodeExpressionSoup : public NodeMaker<NodeExpressionSoup> {
       NodeOperator<"=">,
       NodeOperator<">">,
       NodeOperator<"|">,
-      NodeOperator<"~">
+      NodeOperator<"~">,
+
+      NodeIdentifier,
+      NodeConstant
     >>
   >;
 };
@@ -112,8 +112,24 @@ struct NodeExpressionSubscript : public NodeMaker<NodeExpressionSubscript> {
   >;
 };
 
+struct NodeExpressionTernary : public PatternWrapper<NodeExpressionTernary> {
+  using pattern = Seq<
+    NodeExpressionSoup,
+    Opt<Seq<
+      NodeOperator<"?">,
+      NodeExpressionTernary,
+      NodeOperator<":">,
+      NodeExpressionTernary
+    >>
+  >;
+};
+
+struct NodeExpression : public NodeMaker<NodeExpression> {
+  using pattern = NodeExpressionTernary;
+};
+
 const Token* parse_expression(const Token* a, const Token* b) {
-  auto end = NodeExpressionSoup::match(a, b);
+  auto end = NodeExpression::match(a, b);
   return end;
 }
 

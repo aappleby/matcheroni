@@ -88,6 +88,10 @@ struct NodeQualifiers : public NodeMaker<NodeQualifiers> {
   }
 };
 
+const Token* parse_qualifiers(const Token* a, const Token* b) {
+  return NodeQualifiers::match(a, b);
+}
+
 //------------------------------------------------------------------------------
 
 struct NodePointer : public NodeMaker<NodePointer> {
@@ -429,13 +433,21 @@ struct NodeEnumerators : public NodeMaker<NodeEnumerators> {
 
 struct NodeEnum : public NodeMaker<NodeEnum> {
   using pattern = Seq<
+    NodeQualifiers,
     Keyword<"enum">,
     Opt<Keyword<"class">>,
     Opt<LogTypename<NodeIdentifier>>,
     Opt<Seq<Atom<':'>, NodeTypeDecl>>,
     Opt<NodeEnumerators>,
-    Opt<NodeIdentifier>
+    Opt<DeclThing>
   >;
+
+  // We specialize match() to dig out typedef'd identifiers
+  static const Token* match(const Token* a, const Token* b) {
+    auto end = NodeMaker<NodeEnum>::match(a, b);
+    if (end) extract_typedef();
+    return end;
+  }
 };
 
 const Token* parse_enum(const Token* a, const Token* b) {

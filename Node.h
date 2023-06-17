@@ -451,6 +451,12 @@ struct NodeIdentifier : public NodeMaker<NodeIdentifier> {
 
 //------------------------------------------------------------------------------
 
+struct NodeString : public NodeMaker<NodeString> {
+  using pattern = Atom<TOK_STRING>;
+};
+
+//------------------------------------------------------------------------------
+
 struct NodeConstant : public NodeMaker<NodeConstant> {
   using pattern = Oneof<
     Atom<TOK_FLOAT>,

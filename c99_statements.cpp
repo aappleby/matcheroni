@@ -1,11 +1,12 @@
 #include "c99_parser.h"
 #include "Node.h"
 
-const Token* parse_function(const Token* a, const Token* b);
-const Token* parse_struct  (const Token* a, const Token* b);
-const Token* parse_class   (const Token* a, const Token* b);
-const Token* parse_union   (const Token* a, const Token* b);
-const Token* parse_enum    (const Token* a, const Token* b);
+const Token* parse_function   (const Token* a, const Token* b);
+const Token* parse_struct     (const Token* a, const Token* b);
+const Token* parse_class      (const Token* a, const Token* b);
+const Token* parse_union      (const Token* a, const Token* b);
+const Token* parse_enum       (const Token* a, const Token* b);
+const Token* parse_qualifiers (const Token* a, const Token* b);
 //------------------------------------------------------------------------------
 
 struct NodeStatementCompound : public NodeMaker<NodeStatementCompound> {
@@ -177,6 +178,46 @@ struct NodeStatementLabel: public NodeMaker<NodeStatementLabel> {
 
 //------------------------------------------------------------------------------
 
+struct NodeAsmRef : public NodeMaker<NodeAsmRef> {
+  using pattern = Seq<
+    NodeString,
+    Opt<Seq<
+      Atom<'('>,
+      Ref<parse_expression>,
+      Atom<')'>
+    >>
+  >;
+};
+
+struct NodeAsmRefs : public NodeMaker<NodeAsmRefs> {
+  using pattern = comma_separated<NodeAsmRef>;
+};
+
+//------------------------------------------------------------------------------
+
+struct NodeStatementAsm : public NodeMaker<NodeStatementAsm> {
+  using pattern = Seq<
+    Keyword<"asm">,
+    Ref<parse_qualifiers>,
+    Atom<'('>,
+    NodeString, // assembly code
+    Atom<':'>,
+    Opt<NodeAsmRefs>, // output operands
+    Opt<Seq<
+      Atom<':'>,
+      Opt<NodeAsmRefs>, // input operands
+      Opt<Seq<
+        Atom<':'>,
+        Opt<NodeAsmRefs> // clobbers
+      >>
+    >>,
+    Atom<')'>,
+    Atom<';'>
+  >;
+};
+
+//------------------------------------------------------------------------------
+
 const Token* parse_statement(const Token* a, const Token* b) {
   using pattern_statement = Oneof<
     // All of these have keywords first
@@ -188,6 +229,7 @@ const Token* parse_statement(const Token* a, const Token* b) {
     NodeStatementReturn,
     NodeStatementSwitch,
     NodeStatementWhile,
+    NodeStatementAsm,
 
     // These don't - but they might confuse a keyword with an identifier...
     NodeStatementLabel,
