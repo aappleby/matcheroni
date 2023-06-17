@@ -55,14 +55,14 @@ struct NodeStatementFor : public NodeMaker<NodeStatementFor> {
   using pattern = Seq<
     Keyword<"for">,
     Atom<'('>,
-    Opt<Oneof<
+    Opt<comma_separated<Oneof<
       Ref<parse_expression>,
       Ref<parse_declaration>
-    >>,
+    >>>,
     Atom<';'>,
-    Opt<Ref<parse_expression>>,
+    Opt<comma_separated<Ref<parse_expression>>>,
     Atom<';'>,
-    Opt<Ref<parse_expression>>,
+    Opt<comma_separated<Ref<parse_expression>>>,
     Atom<')'>,
     Ref<parse_statement>
   >;
