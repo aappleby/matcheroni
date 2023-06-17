@@ -306,6 +306,11 @@ struct NodeBase {
     "logic"
   };
 
+  static void reset_declared_types() {
+    declared_types.clear();
+    declared_types.insert("logic");
+  }
+
   static inline void add_declared_type(const std::string& t) {
     //printf("Adding type %s\n", t.c_str());
     declared_types.insert(t);
