@@ -344,8 +344,8 @@ struct NodeDeclBody : public PatternWrapper<NodeDeclBody> {
   using pattern = Seq<
     Any<NodeAttribute>,
     Oneof<
-      Seq< LogTypename<NodeIdentifier>, Opt<NodeFieldList>, Opt<DeclThing> >,
-      Seq<                                  NodeFieldList,      DeclThing  >
+      Seq< LogTypename<NodeIdentifier>, Opt<NodeFieldList>, Opt<NodeAttribute>, Opt<DeclThing> >,
+      Seq<                                  NodeFieldList,  Opt<NodeAttribute>,     DeclThing  >
     >
   >;
 };

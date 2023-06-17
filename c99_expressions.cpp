@@ -121,18 +121,6 @@ struct NodeExpressionSubscript : public NodeMaker<NodeExpressionSubscript> {
   >;
 };
 
-struct NodeExpressionTernary : public PatternWrapper<NodeExpressionTernary> {
-  using pattern = Seq<
-    NodeExpressionSoup,
-    Opt<Seq<
-      NodeOperator<"?">,
-      NodeExpressionTernary,
-      NodeOperator<":">,
-      NodeExpressionTernary
-    >>
-  >;
-};
-
 struct NodeGccCompoundExpression : public NodeMaker<NodeGccCompoundExpression> {
   using pattern = Seq<
     Atom<'('>,
@@ -146,8 +134,26 @@ struct NodeGccCompoundExpression : public NodeMaker<NodeGccCompoundExpression> {
   }
 };
 
+struct NodeExpressionTernary : public PatternWrapper<NodeExpressionTernary> {
+  using pattern = Seq<
+    NodeExpressionSoup,
+    Opt<Seq<
+      NodeOperator<"?">,
+      NodeExpressionTernary,
+      NodeOperator<":">,
+      NodeExpressionTernary
+    >>
+  >;
+};
+
 struct NodeExpression : public NodeMaker<NodeExpression> {
-  using pattern = NodeExpressionTernary;
+  using pattern = Seq<
+    NodeExpressionTernary,
+    Opt<Seq<
+      NodeOperator<",">,
+      NodeExpressionTernary
+    >>
+  >;
 };
 
 const Token* parse_expression(const Token* a, const Token* b) {
