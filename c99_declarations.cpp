@@ -189,21 +189,8 @@ struct NodeBitSuffix : public NodeMaker<NodeBitSuffix> {
 struct NodeAbstractDeclarator : public NodeMaker<NodeAbstractDeclarator> {
   using pattern =
   Seq<
-    Oneof<
-      NodePointer,
-      Seq<
-        Opt<NodePointer>,
-        Seq<Atom<'('>, NodeAbstractDeclarator, Atom<')'>>
-      >,
-      Seq<
-        Opt<NodePointer>,
-        Some<Oneof<
-          NodeAttribute,
-          NodeArraySuffix,
-          NodeParamList
-        >>
-      >
-    >,
+    Opt<NodePointer>,
+    Opt<Seq<Atom<'('>, NodeAbstractDeclarator, Atom<')'>>>,
     Any<Oneof<
       NodeAttribute,
       NodeArraySuffix,
@@ -221,20 +208,16 @@ struct NodeAbstractDeclarator : public NodeMaker<NodeAbstractDeclarator> {
 
 struct NodeDeclarator : public NodeMaker<NodeDeclarator> {
   using pattern = Seq<
+    Opt<NodeAttribute>,
+    Opt<NodePointer>,
+    Opt<NodeAttribute>,
+    NodeQualifiers,
     Oneof<
-      Seq<
-        Opt<NodePointer>,
-        Opt<NodeAttribute>,
-        NodeQualifiers,
-        NodeIdentifier,
-        Opt<NodeAttribute>,
-        Opt<NodeBitSuffix>
-      >,
-      Seq<
-        Opt<NodePointer>,
-        Atom<'('>, NodeDeclarator, Atom<')'>
-      >
+      NodeIdentifier,
+      Seq<Atom<'('>, NodeDeclarator, Atom<')'>>
     >,
+    Opt<NodeAttribute>,
+    Opt<NodeBitSuffix>,
     Any<Oneof<
       NodeAttribute,
       NodeArraySuffix,
