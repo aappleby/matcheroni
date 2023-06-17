@@ -5,7 +5,7 @@ const Token* parse_function(const Token* a, const Token* b);
 const Token* parse_struct  (const Token* a, const Token* b);
 const Token* parse_class   (const Token* a, const Token* b);
 const Token* parse_union   (const Token* a, const Token* b);
-
+const Token* parse_enum    (const Token* a, const Token* b);
 //------------------------------------------------------------------------------
 
 struct NodeStatementCompound : public NodeMaker<NodeStatementCompound> {

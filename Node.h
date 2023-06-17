@@ -299,7 +299,7 @@ struct NodeBase {
   };
 
   static inline void add_declared_type(const std::string& t) {
-    //printf("Adding type %s\n", t.c_str());
+    printf("Adding type %s\n", t.c_str());
     declared_types.insert(t);
   }
 };

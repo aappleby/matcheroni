@@ -321,9 +321,12 @@ struct DeclThing : public PatternWrapper<DeclThing> {
 };
 
 struct NodeDeclBody : public PatternWrapper<NodeDeclBody> {
-  using pattern = Oneof<
-    Seq< LogTypename<NodeIdentifier>, Opt<NodeFieldList>, Opt<DeclThing> >,
-    Seq<                                  NodeFieldList,      DeclThing  >
+  using pattern = Seq<
+    Any<NodeAttribute>,
+    Oneof<
+      Seq< LogTypename<NodeIdentifier>, Opt<NodeFieldList>, Opt<DeclThing> >,
+      Seq<                                  NodeFieldList,      DeclThing  >
+    >
   >;
 };
 
@@ -428,10 +431,14 @@ struct NodeEnum : public NodeMaker<NodeEnum> {
     Opt<Keyword<"class">>,
     Opt<LogTypename<NodeIdentifier>>,
     Opt<Seq<Atom<':'>, NodeTypeDecl>>,
-    Opt<NodeEnumerators>
-    //Opt<NodeIdentifier>, fixme enum {} blah;?
+    Opt<NodeEnumerators>,
+    Opt<NodeIdentifier>
   >;
 };
+
+const Token* parse_enum(const Token* a, const Token* b) {
+  return NodeEnum::match(a, b);
+}
 
 //------------------------------------------------------------------------------
 
