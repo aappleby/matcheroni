@@ -108,7 +108,7 @@ int test_c99_peg(int argc, char** argv) {
   //paths = { "tests/basic_inputs.h" };
   //paths = { "mini_tests/csmith_5.cpp" };
   //paths = { "../gcc/gcc/tree-inline.h" };
-  //paths = {"../gcc/gcc/testsuite/gcc.c-torture/execute/pr64718.c"};
+  //paths = {"../gcc/gcc/testsuite/gcc.c-torture/execute/return-addr.c"};
 
   double lex_accum = 0;
   double parse_accum = 0;
@@ -117,15 +117,26 @@ int test_c99_peg(int argc, char** argv) {
   std::vector<Lexeme> lexemes;
   std::vector<Token> tokens;
 
+  int file_total = 0;
+  int file_pass = 0;
+  int file_skip = 0;
+
   for (const auto& path : paths) {
     text.clear();
     lexemes.clear();
     tokens.clear();
 
+    file_total++;
+
     if (!path.ends_with(".cpp") &&
         !path.ends_with(".hpp") &&
         !path.ends_with(".c") &&
         !path.ends_with(".h")) continue;
+
+    if (path.ends_with("return-addr.c")) {
+      file_skip++;
+      continue;
+    }
 
     //printf("Lexing %s\n", path.c_str());
 
@@ -136,8 +147,7 @@ int test_c99_peg(int argc, char** argv) {
     const Token* token_a = tokens.data();
     const Token* token_b = tokens.data() + tokens.size() - 1;
 
-    static int ok_files = 0;
-    printf("%04d: Parsing %s...", ok_files, path.c_str());
+    printf("%04d: Parsing %s...", file_pass, path.c_str());
 
     parse_accum -= timestamp_ms();
     //parse_function(token_a, token_b);
@@ -169,13 +179,18 @@ int test_c99_peg(int argc, char** argv) {
     }
     else {
       printf("OK!\n");
-      ok_files++;
+      file_pass++;
     }
 
     delete root;
 
   }
 
+  printf("\n");
+  printf("Files total %d\n", file_total);
+  printf("Files pass  %d\n", file_pass);
+  printf("Files fail  %d\n", file_total - file_pass - file_skip);
+  printf("Files skip  %d\n", file_skip);
   printf("Lexing took  %f msec\n", lex_accum);
   printf("Parsing took %f msec\n", parse_accum);
 

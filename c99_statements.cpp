@@ -2,6 +2,9 @@
 #include "Node.h"
 
 const Token* parse_function(const Token* a, const Token* b);
+const Token* parse_struct  (const Token* a, const Token* b);
+const Token* parse_class   (const Token* a, const Token* b);
+const Token* parse_union   (const Token* a, const Token* b);
 
 //------------------------------------------------------------------------------
 
@@ -160,6 +163,9 @@ struct NodeStatementLabel: public NodeMaker<NodeStatementLabel> {
 
 const Token* parse_statement(const Token* a, const Token* b) {
   using pattern_statement = Oneof<
+    Seq<Ref<parse_class>, Atom<';'>>,
+    Seq<Ref<parse_struct>, Atom<';'>>,
+    Seq<Ref<parse_union>, Atom<';'>>,
     NodeStatementLabel,
     NodeStatementCompound,
     Ref<parse_function>,

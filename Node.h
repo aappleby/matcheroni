@@ -251,11 +251,47 @@ struct NodeBase {
   static inline IdentifierSet builtin_types = {
     "void", "char", "short", "int", "long", "float", "double", "signed",
     "unsigned", "uint8_t", "uint16_t", "uint32_t", "uint64_t", "int8_t",
-    "int16_t", "int32_t", "int64_t", "__int128"
+    "int16_t", "int32_t", "int64_t",
+
+    // gcc stuff
+    "__int128",
+    "__SIZE_TYPE__",
+    "__PTRDIFF_TYPE__",
+    "__WCHAR_TYPE__",
+    "__WINT_TYPE__",
+    "__INTMAX_TYPE__",
+    "__UINTMAX_TYPE__",
+    "__SIG_ATOMIC_TYPE__",
+    "__INT8_TYPE__",
+    "__INT16_TYPE__",
+    "__INT32_TYPE__",
+    "__INT64_TYPE__",
+    "__UINT8_TYPE__",
+    "__UINT16_TYPE__",
+    "__UINT32_TYPE__",
+    "__UINT64_TYPE__",
+    "__INT_LEAST8_TYPE__",
+    "__INT_LEAST16_TYPE__",
+    "__INT_LEAST32_TYPE__",
+    "__INT_LEAST64_TYPE__",
+    "__UINT_LEAST8_TYPE__",
+    "__UINT_LEAST16_TYPE__",
+    "__UINT_LEAST32_TYPE__",
+    "__UINT_LEAST64_TYPE__",
+    "__INT_FAST8_TYPE__",
+    "__INT_FAST16_TYPE__",
+    "__INT_FAST32_TYPE__",
+    "__INT_FAST64_TYPE__",
+    "__UINT_FAST8_TYPE__",
+    "__UINT_FAST16_TYPE__",
+    "__UINT_FAST32_TYPE__",
+    "__UINT_FAST64_TYPE__",
+    "__INTPTR_TYPE__",
+    "__UINTPTR_TYPE__",
   };
 
   static inline IdentifierSet builtin_type_prefixes = {
-    "signed", "unsigned", "short", "long"
+    "signed", "unsigned", "short", "long", "_Complex",
   };
 
   static inline IdentifierSet declared_types = {

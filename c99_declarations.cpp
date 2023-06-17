@@ -308,12 +308,15 @@ struct NodeNamespace : public NodeMaker<NodeNamespace> {
 // struct foo {} bar;
 
 struct DeclThing : public PatternWrapper<DeclThing> {
-  using pattern = Seq<
-    NodeDeclarator,
-    Opt<Seq<
-      Atom<'='>,
-      NodeInitializer
-    >>
+  using pattern =
+  comma_separated<
+    Seq<
+      NodeDeclarator,
+      Opt<Seq<
+        Atom<'='>,
+        NodeInitializer
+      >>
+    >
   >;
 };
 
@@ -368,6 +371,21 @@ struct NodeClass : public NodeMaker<NodeClass> {
     return end;
   }
 };
+
+const Token* parse_class(const Token* a, const Token* b) {
+  auto end = NodeClass::match(a, b);
+  return end;
+}
+
+const Token* parse_struct(const Token* a, const Token* b) {
+  auto end = NodeStruct::match(a, b);
+  return end;
+}
+
+const Token* parse_union(const Token* a, const Token* b) {
+  auto end = NodeUnion::match(a, b);
+  return end;
+}
 
 //------------------------------------------------------------------------------
 
