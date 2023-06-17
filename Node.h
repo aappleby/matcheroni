@@ -188,7 +188,7 @@ struct NodeBase {
       else {
         result.push_back(c);
       }
-      if (result.size() >= 40) break;
+      if (result.size() >= 80) break;
     }
 
     return result;

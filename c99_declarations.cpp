@@ -211,6 +211,7 @@ struct NodeDeclarator : public NodeMaker<NodeDeclarator> {
       Seq<
         Opt<NodePointer>,
         Opt<NodeAttribute>,
+        NodeQualifiers,
         NodeIdentifier,
         Opt<NodeAttribute>,
         Opt<NodeBitSuffix>
@@ -535,6 +536,7 @@ const Token* parse_initializer_list(const Token* a, const Token* b) {
 struct NodeFunctionIdentifier : public NodeMaker<NodeFunctionIdentifier> {
   using pattern = Seq<
     Opt<NodePointer>,
+    Opt<NodeAttribute>,
     Oneof<
       NodeIdentifier,
       Seq<Atom<'('>, NodeFunctionIdentifier, Atom<')'>>
@@ -546,6 +548,7 @@ struct NodeFunctionIdentifier : public NodeMaker<NodeFunctionIdentifier> {
 struct NodeFunction : public NodeMaker<NodeFunction> {
   using pattern = Seq<
     NodeQualifiers,
+    Opt<NodeAttribute>,
     Opt<NodeSpecifier>,
     Opt<NodeAttribute>,
     Opt<NodeFunctionIdentifier>,

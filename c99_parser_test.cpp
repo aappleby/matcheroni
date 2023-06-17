@@ -127,18 +127,6 @@ int test_c99_peg(int argc, char** argv) {
         !path.ends_with(".c") &&
         !path.ends_with(".h")) continue;
 
-    if (
-         path.ends_with("return-addr.c")
-      || path.ends_with("complex-6.c")     // requires preproc
-      || path.ends_with("loop-13.c")       // requires preproc
-      || path.ends_with("va-arg-24.c")     // requires preproc
-      //|| path.ends_with("pr39501.c")       // requires preproc
-    )
-    {
-      file_skip++;
-      continue;
-    }
-
     {
       auto size = std::filesystem::file_size(path);
       text.resize(size);
