@@ -169,13 +169,11 @@ struct NodeTemplateArgs : public NodeMaker<NodeTemplateArgs> {
 
 struct NodeSpecifier : public NodeMaker<NodeSpecifier> {
   using pattern = Seq<
-    Opt<Oneof<
-      Keyword<"class">,
-      Keyword<"union">,
-      Keyword<"struct">,
-      Keyword<"enum">
-    >>,
     Oneof<
+      Seq<Keyword<"class">, NodeIdentifier>,
+      Seq<Keyword<"union">, NodeIdentifier>,
+      Seq<Keyword<"struct">, NodeIdentifier>,
+      Seq<Keyword<"enum">, NodeIdentifier>,
       NodeGlobalType,
       NodeAtomicType
     >,
