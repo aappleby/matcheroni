@@ -199,6 +199,17 @@ struct NodeAsmRefs : public NodeMaker<NodeAsmRefs> {
 
 //------------------------------------------------------------------------------
 
+struct NodeAsmQualifiers : public NodeMaker<NodeAsmQualifiers> {
+  using pattern =
+  Some<Oneof<
+    NodeKeyword<"volatile">,
+    NodeKeyword<"inline">,
+    NodeKeyword<"goto">
+  >>;
+};
+
+//------------------------------------------------------------------------------
+
 struct NodeStatementAsm : public NodeMaker<NodeStatementAsm> {
   using pattern = Seq<
     Oneof<
@@ -206,7 +217,8 @@ struct NodeStatementAsm : public NodeMaker<NodeStatementAsm> {
       Keyword<"__asm">,
       Keyword<"__asm__">
     >,
-    Ref<parse_qualifiers>,
+    //Ref<parse_qualifiers>,
+    Opt<NodeAsmQualifiers>,
     Atom<'('>,
     NodeString, // assembly code
     Atom<':'>,
