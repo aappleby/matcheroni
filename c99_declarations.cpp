@@ -42,6 +42,7 @@ struct NodeQualifier : public PatternWrapper<NodeQualifier> {
     NodeKeyword<"__const">,
     NodeKeyword<"__extension__">,
     NodeKeyword<"__inline__">,
+    NodeKeyword<"__inline">,
     NodeKeyword<"__restrict__">,
     NodeKeyword<"__restrict">,
     NodeKeyword<"__stdcall">,
@@ -165,7 +166,8 @@ struct NodeSpecifier : public NodeMaker<NodeSpecifier> {
     Opt<Oneof<
       Keyword<"class">,
       Keyword<"union">,
-      Keyword<"struct">
+      Keyword<"struct">,
+      Keyword<"enum">
     >>,
     Oneof<
       NodeGlobalType,
