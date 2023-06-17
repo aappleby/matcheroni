@@ -186,7 +186,7 @@ struct Delimited {
 //------------------------------------------------------------------------------
 
 template<typename P>
-using comma_separated = Seq<P,Any<Seq<Atom<','>, P>>>;
+using comma_separated = Seq<P, Any<Seq<Atom<','>, P>>, Opt<Atom<','>> >;
 
 template<typename P>
 using opt_comma_separated = Opt<comma_separated<P>>;

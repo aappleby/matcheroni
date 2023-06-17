@@ -535,8 +535,14 @@ struct NodeInitializerList : public PatternWrapper<NodeInitializerList> {
         NodeInitializer
       >
     >,
+    //Opt<Atom<','>>,
     Atom<'}'>
   >;
+
+  static const Token* match(const Token* a, const Token* b) {
+    auto end = PatternWrapper::match(a, b);
+    return end;
+  }
 };
 
 struct NodeInitializer : public NodeMaker<NodeInitializer> {
@@ -546,7 +552,7 @@ struct NodeInitializer : public NodeMaker<NodeInitializer> {
   >;
 
   static const Token* match(const Token* a, const Token* b) {
-    auto end = NodeMaker<NodeInitializer>::match(a, b);
+    auto end = NodeMaker::match(a, b);
     return end;
   }
 };
