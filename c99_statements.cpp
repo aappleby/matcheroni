@@ -158,12 +158,24 @@ struct NodeStatementSwitch : public NodeMaker<NodeStatementSwitch> {
 struct NodeStatementWhile : public NodeMaker<NodeStatementWhile> {
   using pattern = Seq<
     Keyword<"while">,
-    Seq<
-      Atom<'('>,
-      Ref<parse_expression>,
-      Atom<')'>
-    >,
+    Atom<'('>,
+    Ref<parse_expression>,
+    Atom<')'>,
     Ref<parse_statement>
+  >;
+};
+
+//------------------------------------------------------------------------------
+
+struct NodeStatementDoWhile : public NodeMaker<NodeStatementDoWhile> {
+  using pattern = Seq<
+    Keyword<"do">,
+    Ref<parse_statement>,
+    Keyword<"while">,
+    Atom<'('>,
+    Ref<parse_expression>,
+    Atom<')'>,
+    Atom<';'>
   >;
 };
 
@@ -228,6 +240,7 @@ const Token* parse_statement(const Token* a, const Token* b) {
     NodeStatementIf,
     NodeStatementReturn,
     NodeStatementSwitch,
+    NodeStatementDoWhile,
     NodeStatementWhile,
     NodeStatementAsm,
 
