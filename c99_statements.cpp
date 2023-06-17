@@ -69,6 +69,20 @@ struct NodeStatementFor : public NodeMaker<NodeStatementFor> {
 
 //------------------------------------------------------------------------------
 
+struct NodeStatementElse : public NodeMaker<NodeStatementElse> {
+  using pattern =
+  Seq<
+    Keyword<"else">,
+    Ref<parse_statement>
+  >;
+
+  static const Token* match(const Token* a, const Token* b) {
+    auto end = NodeMaker<NodeStatementElse>::match(a, b);
+    return end;
+  }
+
+};
+
 struct NodeStatementIf : public NodeMaker<NodeStatementIf> {
   using pattern = Seq<
     Keyword<"if">,
@@ -78,11 +92,13 @@ struct NodeStatementIf : public NodeMaker<NodeStatementIf> {
       Atom<')'>
     >,
     Ref<parse_statement>,
-    Opt<Seq<
-      Keyword<"else">,
-      Ref<parse_statement>
-    >>
+    Opt<NodeStatementElse>
   >;
+
+  static const Token* match(const Token* a, const Token* b) {
+    auto end = NodeMaker<NodeStatementIf>::match(a, b);
+    return end;
+  }
 };
 
 //------------------------------------------------------------------------------
@@ -163,22 +179,26 @@ struct NodeStatementLabel: public NodeMaker<NodeStatementLabel> {
 
 const Token* parse_statement(const Token* a, const Token* b) {
   using pattern_statement = Oneof<
+    // All of these have keywords first
     Seq<Ref<parse_class>, Atom<';'>>,
     Seq<Ref<parse_struct>, Atom<';'>>,
     Seq<Ref<parse_union>, Atom<';'>>,
-    NodeStatementLabel,
-    NodeStatementCompound,
-    Ref<parse_function>,
-    NodeStatementDeclaration,
-    NodeStatementExpression,
     NodeStatementFor,
     NodeStatementIf,
     NodeStatementReturn,
     NodeStatementSwitch,
-    NodeStatementWhile
+    NodeStatementWhile,
+
+    // These don't - but they might confuse a keyword with an identifier...
+    NodeStatementLabel,
+    NodeStatementCompound,
+    Ref<parse_function>,
+    NodeStatementDeclaration,
+    NodeStatementExpression
   >;
 
-  return pattern_statement::match(a, b);
+  auto end = pattern_statement::match(a, b);
+  return end;
 }
 
 //------------------------------------------------------------------------------
