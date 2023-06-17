@@ -311,6 +311,11 @@ struct NodeBase {
     "__complex__", "__real__", "__imag__",
   };
 
+  static inline IdentifierSet builtin_type_suffixes = {
+    // Why, GCC, why?
+    "_Complex",
+  };
+
   static inline IdentifierSet declared_types = {
     "logic"
   };
@@ -516,6 +521,19 @@ struct NodeBuiltinTypePrefix {
   }
 };
 
+struct NodeBuiltinTypeSuffix {
+  static const Token* match(const Token* a, const Token* b) {
+    if (!a || !a->is_identifier() || a == b) return nullptr;
+
+    if (NodeBase::builtin_type_suffixes.contains(a->lex->text())) {
+      return a + 1;
+    }
+    else {
+      return nullptr;
+    }
+  }
+};
+
 //----------
 // Our builtin types are any sequence of prefixes followed by a builtin type
 
@@ -524,7 +542,8 @@ struct NodeBuiltinType : public NodeMaker<NodeBuiltinType> {
     Any<
       Seq<NodeBuiltinTypePrefix, And<NodeBuiltinTypeBase>>
     >,
-    NodeBuiltinTypeBase
+    NodeBuiltinTypeBase,
+    Opt<NodeBuiltinTypeSuffix>
   >;
 };
 

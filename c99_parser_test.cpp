@@ -98,7 +98,7 @@ int test_c99_peg(int argc, char** argv) {
   //paths = { "tests/basic_inputs.h" };
   //paths = { "mini_tests/csmith_5.cpp" };
   //paths = { "../gcc/gcc/tree-inline.h" };
-  //paths = { "../gcc/gcc/testsuite/gcc.c-torture/execute/20001101.c"};
+  //paths = { "../gcc/gcc/testsuite/gcc.c-torture/execute/builtins/complex-1.c"};
 
   double lex_accum = 0;
   double parse_accum = 0;
