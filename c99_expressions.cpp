@@ -3,15 +3,17 @@
 
 struct NodeExpression;
 struct NodeExpressionParen;
-//struct NodeExpressionBraces;
+struct NodeExpressionBraces;
 struct NodeExpressionSoup;
 struct NodeExpressionSubscript;
 struct NodeExpressionCall;
 struct NodeExpressionTernary;
 struct NodeGccCompoundExpression;
+struct NodeExpressionCast;
 
 const Token* parse_initializer_list(const Token* a, const Token* b);
 const Token* parse_statement_compound(const Token* a, const Token* b);
+const Token* parse_type_name(const Token* a, const Token* b);
 
 //------------------------------------------------------------------------------
 
@@ -20,9 +22,10 @@ struct NodeExpressionSoup : public PatternWrapper<NodeExpressionSoup> {
     Some<Oneof<
       NodeGccCompoundExpression,
       NodeExpressionCall,
+      NodeExpressionCast, // must be before NodeExpressionParen
       NodeExpressionParen,
-      //NodeExpressionBraces,
       Ref<parse_initializer_list>,
+      NodeExpressionBraces,
       NodeExpressionSubscript,
       NodeKeyword<"sizeof">,
       NodeOperator<"->*">,
@@ -73,6 +76,26 @@ struct NodeExpressionSoup : public PatternWrapper<NodeExpressionSoup> {
   >;
 };
 
+//------------------------------------------------------------------------------
+// (6.5.4) cast-expression:
+//   unary-expression
+//   ( type-name ) cast-expression
+
+struct NodeExpressionCast : public NodeMaker<NodeExpressionCast> {
+  using pattern = Seq<
+    Atom<'('>,
+    Ref<parse_type_name>,
+    Atom<')'>
+  >;
+
+  static const Token* match(const Token* a, const Token* b) {
+    auto end = NodeMaker<NodeExpressionCast>::match(a, b);
+    return end;
+  }
+};
+
+//------------------------------------------------------------------------------
+
 struct NodeExpressionParen : public NodeMaker<NodeExpressionParen> {
   using pattern = Seq<
     Atom<'('>,
@@ -86,7 +109,6 @@ struct NodeExpressionParen : public NodeMaker<NodeExpressionParen> {
   }
 };
 
-/*
 struct NodeExpressionBraces : public NodeMaker<NodeExpressionBraces> {
   using pattern = Seq<
     Atom<'{'>,
@@ -99,7 +121,6 @@ struct NodeExpressionBraces : public NodeMaker<NodeExpressionBraces> {
     return end;
   }
 };
-*/
 
 struct NodeExpressionCall : public NodeMaker<NodeExpressionCall> {
   using pattern = Seq<

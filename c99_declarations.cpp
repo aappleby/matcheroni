@@ -179,6 +179,25 @@ struct NodeSpecifier : public NodeMaker<NodeSpecifier> {
 };
 
 //------------------------------------------------------------------------------
+// (6.7.6) type-name:
+//   specifier-qualifier-list abstract-declaratoropt
+
+struct NodeTypeName : public NodeMaker<NodeTypeName> {
+  using pattern = Seq<
+    Some<Oneof<
+      NodeSpecifier,
+      NodeQualifier
+    >>,
+    Opt<NodeAbstractDeclarator>
+  >;
+};
+
+const Token* parse_type_name(const Token* a, const Token* b) {
+  auto end = NodeTypeName::match(a, b);
+  return end;
+}
+
+//------------------------------------------------------------------------------
 
 struct NodeBitSuffix : public NodeMaker<NodeBitSuffix> {
   using pattern = Seq<Atom<':'>, NodeConstant>;
@@ -554,7 +573,7 @@ struct NodeFunction : public NodeMaker<NodeFunction> {
     Opt<NodeAttribute>,
     Opt<NodeSpecifier>,
     Opt<NodeAttribute>,
-    Opt<NodeFunctionIdentifier>,
+    NodeFunctionIdentifier,
 
     NodeParamList,
     Opt<NodeAttribute>,
