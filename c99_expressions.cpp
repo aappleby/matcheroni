@@ -1,6 +1,7 @@
 #include "c99_parser.h"
 #include "Node.h"
 
+struct NodeExpression;
 struct NodeExpressionParen;
 struct NodeExpressionBraces;
 struct NodeExpressionSoup;
@@ -69,7 +70,7 @@ struct NodeExpressionSoup : public PatternWrapper<NodeExpressionSoup> {
 struct NodeExpressionParen : public NodeMaker<NodeExpressionParen> {
   using pattern = Seq<
     Atom<'('>,
-    Opt<comma_separated<NodeExpressionSoup>>,
+    Opt<comma_separated<NodeExpression>>,
     Atom<')'>
   >;
 
@@ -82,7 +83,7 @@ struct NodeExpressionParen : public NodeMaker<NodeExpressionParen> {
 struct NodeExpressionBraces : public NodeMaker<NodeExpressionBraces> {
   using pattern = Seq<
     Atom<'{'>,
-    Opt<comma_separated<NodeExpressionSoup>>,
+    Opt<comma_separated<NodeExpression>>,
     Atom<'}'>
   >;
 
@@ -107,7 +108,7 @@ struct NodeExpressionCall : public NodeMaker<NodeExpressionCall> {
 struct NodeExpressionSubscript : public NodeMaker<NodeExpressionSubscript> {
   using pattern = Seq<
     Atom<'['>,
-    NodeExpressionSoup,
+    NodeExpression,
     Atom<']'>
   >;
 };
