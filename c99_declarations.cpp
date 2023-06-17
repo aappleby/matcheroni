@@ -459,7 +459,7 @@ struct NodeTemplate : public NodeMaker<NodeTemplate> {
 struct NodeEnumerator : public NodeMaker<NodeEnumerator> {
   using pattern = Seq<
     NodeIdentifier,
-    Opt<Seq<Atom<'='>, NodeIdentifier>>
+    Opt<Seq<Atom<'='>, Ref<parse_expression>>>
   >;
 };
 
