@@ -261,9 +261,16 @@ struct NodeBase {
     "__real__",
     "__imag__",
     "__builtin_va_list",
+    "wchar_t",
 
     // technically part of the c library, but it shows up in stdarg test files
     "va_list",
+
+    // used in fprintf.c torture test
+    "FILE",
+
+    // used in fputs-lib.c torture test
+    "size_t",
 
     // pr60003.c fails if this is included, pr56982.c fails if it isn't
     //"jmp_buf",

@@ -98,7 +98,7 @@ int test_c99_peg(int argc, char** argv) {
   //paths = { "tests/basic_inputs.h" };
   //paths = { "mini_tests/csmith_5.cpp" };
   //paths = { "../gcc/gcc/tree-inline.h" };
-  //paths = { "../gcc/gcc/testsuite/gcc.c-torture/execute/builtins/complex-1.c"};
+  //paths = { "../gcc/gcc/testsuite/gcc.c-torture/execute/921110-1.c"};
 
   double lex_accum = 0;
   double parse_accum = 0;
@@ -132,6 +132,7 @@ int test_c99_peg(int argc, char** argv) {
 
     if (path.ends_with("pr56982.c")) continue; // requires jmp_buf
     if (path.ends_with("20210505-1.c")) continue; // requires jmp_buf
+    if (path.ends_with("sprintf-chk.c")) continue; // requires #include "chk.h"
 
     {
       auto size = std::filesystem::file_size(path);

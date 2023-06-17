@@ -601,6 +601,48 @@ struct NodeFunction : public NodeMaker<NodeFunction> {
 
   static const Token* match(const Token* a, const Token* b) {
     auto end = NodeMaker<NodeFunction>::match(a, b);
+
+    /*
+    | NodeFunction 'typedef void (*frob)();'
+    |  | NodeQualifiers 'typedef'
+    |  |  | NodeKeyword 'typedef'
+    |  | NodeSpecifier 'void'
+    |  |  | NodeBuiltinType 'void'
+    |  | NodeFunctionIdentifier '(*frob)'
+    |  |  | NodeFunctionIdentifier '*frob'
+    |  |  |  | NodePointer '*'
+    |  |  |  |  | NodeOperator '*'
+    |  |  |  | NodeIdentifier 'frob'
+    |  | NodeParamList '()'
+    */
+
+    if (end) {
+      // Check for function pointer typedef
+      // FIXME typedefs should really be in their own node type...
+
+      auto node = NodeBase::node_stack.back();
+      if (!node) return end;
+
+      auto quals = node->child<NodeQualifiers>();
+      if (!quals || !quals->search<NodeKeyword<"typedef">>()) return end;
+
+      auto id1 = node->child<NodeFunctionIdentifier>();
+      if (!id1) return end;
+
+      auto id2 = id1->child<NodeFunctionIdentifier>();
+      if (!id2) return end;
+
+      auto id3 = id2->child<NodePointer>();
+      if (!id3) return end;
+
+      auto id4 = id3->next;
+      if (!id4->isa<NodeIdentifier>()) return end;
+
+      auto s = id4->tok_a->lex->text();
+      NodeBase::add_declared_type(s);
+
+    }
+
     return end;
   }
 };
