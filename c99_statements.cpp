@@ -24,10 +24,7 @@ const Token* parse_statement_compound(const Token* a, const Token* b) {
 //------------------------------------------------------------------------------
 
 struct NodeStatementDeclaration : public NodeMaker<NodeStatementDeclaration> {
-  using pattern = Seq<
-    Ref<parse_declaration>,
-    Atom<';'>
-  >;
+  using pattern = Ref<parse_declaration>;
 
   static const Token* match(const Token* a, const Token* b) {
     auto end = NodeMaker<NodeStatementDeclaration>::match(a, b);
@@ -38,10 +35,7 @@ struct NodeStatementDeclaration : public NodeMaker<NodeStatementDeclaration> {
 //------------------------------------------------------------------------------
 
 struct NodeStatementExpression : public NodeMaker<NodeStatementExpression> {
-  using pattern = Seq<
-    Ref<parse_expression>,
-    Atom<';'>
-  >;
+  using pattern = comma_separated<Ref<parse_expression>>;
 
   static const Token* match(const Token* a, const Token* b) {
     auto end = NodeMaker<NodeStatementExpression>::match(a, b);
@@ -107,8 +101,7 @@ struct NodeStatementIf : public NodeMaker<NodeStatementIf> {
 struct NodeStatementReturn : public NodeMaker<NodeStatementReturn> {
   using pattern = Seq<
     Keyword<"return">,
-    Ref<parse_expression>,
-    Atom<';'>
+    Ref<parse_expression>
   >;
 };
 
@@ -174,8 +167,7 @@ struct NodeStatementDoWhile : public NodeMaker<NodeStatementDoWhile> {
     Keyword<"while">,
     Atom<'('>,
     Ref<parse_expression>,
-    Atom<')'>,
-    Atom<';'>
+    Atom<')'>
   >;
 };
 
@@ -223,8 +215,16 @@ struct NodeStatementAsm : public NodeMaker<NodeStatementAsm> {
         Opt<NodeAsmRefs> // clobbers
       >>
     >>,
-    Atom<')'>,
-    Atom<';'>
+    Atom<')'>
+  >;
+};
+
+//------------------------------------------------------------------------------
+
+struct NodeStatementGoto : public NodeMaker<NodeStatementGoto> {
+  using pattern = Seq<
+    Keyword<"goto">,
+    NodeIdentifier
   >;
 };
 
@@ -232,10 +232,11 @@ struct NodeStatementAsm : public NodeMaker<NodeStatementAsm> {
 
 const Token* parse_statement(const Token* a, const Token* b) {
   using pattern_statement = Oneof<
+    Atom<';'>,
     // All of these have keywords first
-    Seq<Ref<parse_class>, Atom<';'>>,
-    Seq<Ref<parse_struct>, Atom<';'>>,
-    Seq<Ref<parse_union>, Atom<';'>>,
+    Ref<parse_class>,
+    Ref<parse_struct>,
+    Ref<parse_union>,
     NodeStatementFor,
     NodeStatementIf,
     NodeStatementReturn,

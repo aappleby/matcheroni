@@ -147,13 +147,7 @@ struct NodeExpressionTernary : public PatternWrapper<NodeExpressionTernary> {
 };
 
 struct NodeExpression : public NodeMaker<NodeExpression> {
-  using pattern = Seq<
-    NodeExpressionTernary,
-    Opt<Seq<
-      NodeOperator<",">,
-      NodeExpressionTernary
-    >>
-  >;
+  using pattern = NodeExpressionTernary;
 };
 
 const Token* parse_expression(const Token* a, const Token* b) {

@@ -258,6 +258,9 @@ struct NodeBase {
     "_Bool",
     "_Complex", // yes this is both a prefix and a type :P
 
+    // technically part of the c library, but it shows up in stdarg test files
+    "va_list",
+
     // gcc stuff
     "__int128",
     "__SIZE_TYPE__",
@@ -304,7 +307,7 @@ struct NodeBase {
   };
 
   static inline void add_declared_type(const std::string& t) {
-    printf("Adding type %s\n", t.c_str());
+    //printf("Adding type %s\n", t.c_str());
     declared_types.insert(t);
   }
 };

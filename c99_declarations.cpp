@@ -75,7 +75,8 @@ struct NodeQualifier : public PatternWrapper<NodeQualifier> {
     NodeKeyword<"_Thread_local">,
     NodeKeyword<"auto">,
     NodeKeyword<"register">,
-    NodeKeyword<"__restrict__">
+    NodeKeyword<"__restrict__">,
+    NodeKeyword<"__extension__">
   >;
 };
 
@@ -186,21 +187,34 @@ struct NodeBitSuffix : public NodeMaker<NodeBitSuffix> {
 //------------------------------------------------------------------------------
 
 struct NodeAbstractDeclarator : public NodeMaker<NodeAbstractDeclarator> {
-  using pattern = Oneof<
-    NodePointer,
-    Seq<
-      Opt<NodePointer>,
-      Seq<Atom<'('>, NodeAbstractDeclarator, Atom<')'>>
+  using pattern =
+  Seq<
+    Oneof<
+      NodePointer,
+      Seq<
+        Opt<NodePointer>,
+        Seq<Atom<'('>, NodeAbstractDeclarator, Atom<')'>>
+      >,
+      Seq<
+        Opt<NodePointer>,
+        Some<Oneof<
+          NodeAttribute,
+          NodeArraySuffix,
+          NodeParamList
+        >>
+      >
     >,
-    Seq<
-      Opt<NodePointer>,
-      Some<Oneof<
-       NodeAttribute,
-        NodeArraySuffix,
-        NodeParamList
-      >>
-    >
+    Any<Oneof<
+      NodeAttribute,
+      NodeArraySuffix,
+      NodeParamList
+    >>
   >;
+
+  static const Token* match(const Token* a, const Token* b) {
+    auto end = NodeMaker<NodeAbstractDeclarator>::match(a, b);
+    return end;
+  }
 };
 
 //------------------------------------------------------------------------------
@@ -216,7 +230,10 @@ struct NodeDeclarator : public NodeMaker<NodeDeclarator> {
         Opt<NodeAttribute>,
         Opt<NodeBitSuffix>
       >,
-      Seq<Opt<NodePointer>, Atom<'('>, NodeDeclarator, Atom<')'>>
+      Seq<
+        Opt<NodePointer>,
+        Atom<'('>, NodeDeclarator, Atom<')'>
+      >
     >,
     Any<Oneof<
       NodeAttribute,
@@ -268,12 +285,12 @@ struct NodeField : public PatternWrapper<NodeField> {
     NodeAccessSpecifier,
     NodeConstructor,
     NodeFunction,
-    Seq<NodeStruct, Atom<';'>>,
-    Seq<NodeUnion, Atom<';'>>,
-    Seq<NodeTemplate, Atom<';'>>,
-    Seq<NodeClass, Atom<';'>>,
-    Seq<NodeEnum, Atom<';'>>,
-    Seq<NodeVariable, Atom<';'>>
+    NodeStruct,
+    NodeUnion,
+    NodeTemplate,
+    NodeClass,
+    NodeEnum,
+    NodeVariable
   >;
 
   static const Token* match(const Token* a, const Token* b) {
@@ -285,7 +302,10 @@ struct NodeField : public PatternWrapper<NodeField> {
 struct NodeFieldList : public NodeMaker<NodeFieldList> {
   using pattern = Seq<
     Atom<'{'>,
-    Any<NodeField>,
+    Any<Oneof<
+      Atom<';'>,
+      NodeField
+    >>,
     Atom<'}'>
   >;
 
