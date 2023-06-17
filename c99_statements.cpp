@@ -254,25 +254,27 @@ struct NodeStatementGoto : public NodeMaker<NodeStatementGoto> {
 
 const Token* parse_statement(const Token* a, const Token* b) {
   using pattern_statement = Oneof<
-    Atom<';'>,
     // All of these have keywords first
-    Ref<parse_class>,
-    Ref<parse_struct>,
-    Ref<parse_union>,
+    Seq<Ref<parse_class>, Atom<';'>>,
+    Seq<Ref<parse_struct>, Atom<';'>>,
+    Seq<Ref<parse_union>, Atom<';'>>,
     NodeStatementFor,
     NodeStatementIf,
-    NodeStatementReturn,
+    Seq<NodeStatementReturn, Atom<';'>>,
     NodeStatementSwitch,
-    NodeStatementDoWhile,
+    Seq<NodeStatementDoWhile, Atom<';'>>,
     NodeStatementWhile,
-    NodeStatementAsm,
+    Seq<NodeStatementAsm, Atom<';'>>,
 
     // These don't - but they might confuse a keyword with an identifier...
     NodeStatementLabel,
     NodeStatementCompound,
     Ref<parse_function>,
-    NodeStatementDeclaration,
-    NodeStatementExpression
+    Seq<NodeStatementDeclaration, Atom<';'>>,
+    Seq<NodeStatementExpression, Atom<';'>>,
+
+    // Extra semicolons
+    Atom<';'>
   >;
 
   auto end = pattern_statement::match(a, b);
