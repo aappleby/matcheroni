@@ -257,6 +257,8 @@ struct NodeBase {
     "int8_t", "int16_t", "int32_t", "int64_t",
     "_Bool",
     "_Complex", // yes this is both a prefix and a type :P
+    "__real__",
+    "__imag__",
 
     // technically part of the c library, but it shows up in stdarg test files
     "va_list",
@@ -300,6 +302,8 @@ struct NodeBase {
 
   static inline IdentifierSet builtin_type_prefixes = {
     "signed", "unsigned", "short", "long", "_Complex",
+    "__signed__", "__unsigned__",
+    "__complex__", "__real__", "__imag__",
   };
 
   static inline IdentifierSet declared_types = {
