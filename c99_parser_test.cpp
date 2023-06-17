@@ -38,7 +38,7 @@ void lex_file(const std::string& path, std::string& text, std::vector<Lexeme>& l
 
   for (auto i = 0; i < lexemes.size(); i++) {
     auto l = &lexemes[i];
-    if (!l->is_gap()) {
+    if (!l->is_gap() && !l->is_preproc()) {
       tokens.push_back(Token(lex_to_tok(l->type), l));
     }
   }
@@ -108,7 +108,7 @@ int test_c99_peg(int argc, char** argv) {
   //paths = { "tests/basic_inputs.h" };
   //paths = { "mini_tests/csmith_5.cpp" };
   //paths = { "../gcc/gcc/tree-inline.h" };
-  //paths = {"../gcc/gcc/testsuite/gcc.c-torture/execute/pr93945.c"};
+  //paths = {"../gcc/gcc/testsuite/gcc.c-torture/execute/990208-1.c"};
 
   double lex_accum = 0;
   double parse_accum = 0;
@@ -133,7 +133,11 @@ int test_c99_peg(int argc, char** argv) {
         !path.ends_with(".c") &&
         !path.ends_with(".h")) continue;
 
-    if (path.ends_with("return-addr.c")) {
+    if (
+      path.ends_with("return-addr.c") ||
+      path.ends_with("complex-6.c")       // requires preproc
+    )
+    {
       file_skip++;
       continue;
     }

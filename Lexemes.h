@@ -68,6 +68,10 @@ struct Lexeme {
     return false;
   }
 
+  bool is_preproc() const {
+    return type == LEX_PREPROC;
+  }
+
   const char* str() const {
     switch(type) {
       case LEX_INVALID:    return "LEX_INVALID";
