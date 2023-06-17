@@ -624,6 +624,23 @@ struct NodeFunction : public NodeMaker<NodeFunction> {
     |  | NodeParamList '()'
     */
 
+    /*
+    | NodeFunction 'typedef void ft(int);'
+    |  | NodeQualifiers 'typedef'
+    |  |  | NodeKeyword 'typedef'
+    |  | NodeSpecifier 'void'
+    |  |  | NodeBuiltinType 'void'
+    |  | NodeFunctionIdentifier 'ft'
+    |  |  | NodeIdentifier 'ft'
+    |  | NodeParamList '(int)'
+    |  |  | NodeParam 'int'
+    |  |  |  | NodeQualifiers '<zero span>'
+    |  |  |  | NodeSpecifier 'int'
+    |  |  |  |  | NodeBuiltinType 'int'
+    |  |  |  | NodeQualifiers '<zero span>'
+    |  |  |  | NodeAbstractDeclarator '<zero span>'
+    */
+
     if (end) {
       // Check for function pointer typedef
       // FIXME typedefs should really be in their own node type...
@@ -637,18 +654,25 @@ struct NodeFunction : public NodeMaker<NodeFunction> {
       auto id1 = node->child<NodeFunctionIdentifier>();
       if (!id1) return end;
 
-      auto id2 = id1->child<NodeFunctionIdentifier>();
-      if (!id2) return end;
+      if (auto id5 = id1->child<NodeIdentifier>()) {
+        // typedef void foo();
+        auto s = id5->tok_a->lex->text();
+        NodeBase::add_declared_type(s);
+      }
+      else {
+        // typedef void (*foo)();
+        auto id2 = id1->child<NodeFunctionIdentifier>();
+        if (!id2) return end;
 
-      auto id3 = id2->child<NodePointer>();
-      if (!id3) return end;
+        auto id3 = id2->child<NodePointer>();
+        if (!id3) return end;
 
-      auto id4 = id3->next;
-      if (!id4->isa<NodeIdentifier>()) return end;
+        auto id4 = id3->next;
+        if (!id4->isa<NodeIdentifier>()) return end;
 
-      auto s = id4->tok_a->lex->text();
-      NodeBase::add_declared_type(s);
-
+        auto s = id4->tok_a->lex->text();
+        NodeBase::add_declared_type(s);
+      }
     }
 
     return end;
