@@ -320,7 +320,7 @@ struct NodeBase {
 
   static inline IdentifierSet builtin_type_suffixes = {
     // Why, GCC, why?
-    "_Complex",
+    "_Complex", "__complex__",
   };
 
   static inline IdentifierSet declared_types = {
