@@ -519,6 +519,7 @@ struct NodeFunction : public NodeMaker<NodeFunction> {
     Opt<NodeFunctionIdentifier>,
 
     NodeParamList,
+    Opt<NodeAttribute>,
     Opt<NodeKeyword<"const">>,
     Opt<Some<
       Seq<NodeVariable, Atom<';'>>
