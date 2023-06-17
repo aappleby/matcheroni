@@ -141,6 +141,11 @@ struct NodeParamList : public NodeMaker<NodeParamList> {
   }
 };
 
+const Token* parse_param_list(const Token* a, const Token* b) {
+  auto end = NodeParamList::match(a, b);
+  return end;
+}
+
 //------------------------------------------------------------------------------
 
 struct NodeArraySuffix : public NodeMaker<NodeArraySuffix> {

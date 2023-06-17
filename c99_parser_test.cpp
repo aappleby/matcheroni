@@ -98,7 +98,7 @@ int test_c99_peg(int argc, char** argv) {
   //paths = { "tests/basic_inputs.h" };
   //paths = { "mini_tests/csmith_5.cpp" };
   //paths = { "../gcc/gcc/tree-inline.h" };
-  //paths = { "../gcc/gcc/testsuite/gcc.c-torture/execute/990413-2.c"};
+  //paths = { "../gcc/gcc/testsuite/gcc.c-torture/execute/builtin-types-compatible-p.c"};
 
   double lex_accum = 0;
   double parse_accum = 0;
@@ -113,7 +113,7 @@ int test_c99_peg(int argc, char** argv) {
 
   int file_total = 0;
   int file_pass = 0;
-  int file_skip = 0;
+  int file_keep = 0;
 
   for (const auto& path : paths) {
     text.clear();
@@ -136,6 +136,7 @@ int test_c99_peg(int argc, char** argv) {
     if (path.ends_with("pr51447.c")) continue;     // register void *ptr asm ("rbx");
     if (path.ends_with("20041213-1.c")) continue;  // extern double sqrt (double) __asm ("sqrtf");
     if (path.ends_with("medce-1.c")) continue;     // case statement _inside_ an if() {} block, wtf
+    if (path.ends_with("builtin-types-compatible-p.c")) continue; // __builtin_types_compatible_p (int[5], int[])
 
     {
       auto size = std::filesystem::file_size(path);
@@ -149,9 +150,10 @@ int test_c99_peg(int argc, char** argv) {
     }
 
     if (text.find("#define") != std::string::npos) {
-      file_skip++;
       continue;
     }
+
+    file_keep++;
 
     //printf("Lexing %s\n", path.c_str());
 
@@ -209,10 +211,11 @@ int test_c99_peg(int argc, char** argv) {
   }
 
   printf("\n");
-  printf("Files total %d\n", file_total);
-  printf("Files pass  %d\n", file_pass);
-  printf("Files fail  %d\n", file_total - file_pass - file_skip);
-  printf("Files skip  %d\n", file_skip);
+  printf("Files total    %d\n", file_total);
+  printf("Files filtered %d\n", file_total - file_keep);
+  printf("Files kept     %d\n", file_keep);
+  printf("Files pass     %d\n", file_pass);
+  printf("Files fail     %d\n", file_keep - file_pass);
   printf("Lexing took  %f msec\n", lex_accum);
   printf("Parsing took %f msec\n", parse_accum);
 

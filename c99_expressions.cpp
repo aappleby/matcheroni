@@ -156,13 +156,15 @@ struct NodeGccCompoundExpression : public NodeMaker<NodeGccCompoundExpression> {
 };
 
 struct NodeExpressionTernary : public PatternWrapper<NodeExpressionTernary> {
+  // pr68249.c - ternary option can be empty
+
   using pattern = Seq<
     NodeExpressionSoup,
     Opt<Seq<
       NodeOperator<"?">,
-      NodeExpressionTernary,
+      Opt<NodeExpressionTernary>,
       NodeOperator<":">,
-      NodeExpressionTernary
+      Opt<NodeExpressionTernary>
     >>
   >;
 };
