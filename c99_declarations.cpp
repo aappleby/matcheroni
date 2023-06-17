@@ -46,6 +46,7 @@ struct NodeQualifier : public PatternWrapper<NodeQualifier> {
     NodeKeyword<"__restrict__">,
     NodeKeyword<"__restrict">,
     NodeKeyword<"__stdcall">,
+    NodeKeyword<"__volatile__">,
     NodeKeyword<"__volatile">,
     NodeKeyword<"_Noreturn">,
     NodeKeyword<"_Thread_local">,
