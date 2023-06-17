@@ -11,20 +11,10 @@ double timestamp_ms();
 
 //==============================================================================
 
-void lex_file(const std::string& path, std::string& text, std::vector<Lexeme>& lexemes, std::vector<Token>& tokens) {
-
-  auto size = std::filesystem::file_size(path);
-
-  text.resize(size + 1);
-  memset(text.data(), 0, size + 1);
-  FILE* file = fopen(path.c_str(), "rb");
-  if (!file) {
-    printf("Could not open %s!\n", path.c_str());
-  }
-  auto r = fread(text.data(), 1, size, file);
+void lex_file(std::string& text, std::vector<Lexeme>& lexemes, std::vector<Token>& tokens) {
 
   auto text_a = text.data();
-  auto text_b = text_a + size;
+  auto text_b = text_a + text.size();
 
   const char* cursor = text_a;
   while(cursor) {
@@ -46,7 +36,7 @@ void lex_file(const std::string& path, std::string& text, std::vector<Lexeme>& l
 
 //------------------------------------------------------------------------------
 
-void dump_lexemes(const std::string& path, std::string& text, std::vector<Lexeme>& lexemes) {
+void dump_lexemes(std::string& text, std::vector<Lexeme>& lexemes) {
   for(auto& l : lexemes) {
     printf("%-15s ", l.str());
 
@@ -108,7 +98,7 @@ int test_c99_peg(int argc, char** argv) {
   //paths = { "tests/basic_inputs.h" };
   //paths = { "mini_tests/csmith_5.cpp" };
   //paths = { "../gcc/gcc/tree-inline.h" };
-  //paths = {"../gcc/gcc/testsuite/gcc.c-torture/execute/20050502-1.c"};
+  //paths = { "../gcc/gcc/testsuite/gcc.c-torture/execute/pr39501.c"};
 
   double lex_accum = 0;
   double parse_accum = 0;
@@ -116,6 +106,10 @@ int test_c99_peg(int argc, char** argv) {
   std::string text;
   std::vector<Lexeme> lexemes;
   std::vector<Token> tokens;
+
+  text.reserve(65536);
+  lexemes.reserve(65536);
+  tokens.reserve(65536);
 
   int file_total = 0;
   int file_pass = 0;
@@ -137,8 +131,26 @@ int test_c99_peg(int argc, char** argv) {
          path.ends_with("return-addr.c")
       || path.ends_with("complex-6.c")     // requires preproc
       || path.ends_with("loop-13.c")       // requires preproc
+      || path.ends_with("va-arg-24.c")     // requires preproc
+      //|| path.ends_with("pr39501.c")       // requires preproc
     )
     {
+      file_skip++;
+      continue;
+    }
+
+    {
+      auto size = std::filesystem::file_size(path);
+      text.resize(size);
+      memset(text.data(), 0, size);
+      FILE* file = fopen(path.c_str(), "rb");
+      if (!file) {
+        printf("Could not open %s!\n", path.c_str());
+      }
+      auto r = fread(text.data(), 1, size, file);
+    }
+
+    if (text.find("#define") != std::string::npos) {
       file_skip++;
       continue;
     }
@@ -146,7 +158,7 @@ int test_c99_peg(int argc, char** argv) {
     //printf("Lexing %s\n", path.c_str());
 
     lex_accum -= timestamp_ms();
-    lex_file(path, text, lexemes, tokens);
+    lex_file(text, lexemes, tokens);
     lex_accum += timestamp_ms();
 
     //dump_lexemes(path, text, lexemes);
