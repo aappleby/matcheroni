@@ -18,6 +18,7 @@ struct NodeStruct;
 struct NodeUnion;
 struct NodeClass;
 struct NodeTemplate;
+struct NodeDeclaratorList;
 
 void extract_typedef();
 
@@ -269,26 +270,6 @@ struct NodeDeclarator : public NodeMaker<NodeDeclarator> {
 
 //------------------------------------------------------------------------------
 
-void extract_typedef() {
-  // Poke through the node on the top of the stack to find identifiers
-  auto node = NodeBase::node_stack.back();
-  if (!node) return;
-
-  auto quals = node->child<NodeQualifiers>();
-  if (!quals || !quals->search<NodeKeyword<"typedef">>()) return;
-
-  auto decl = node->child<NodeDeclarator>();
-  if (!decl) return;
-
-  auto id = decl->child<NodeIdentifier>();
-  if (!id) return;
-
-  auto s = id->tok_a->lex->text();
-  NodeBase::add_declared_type(s);
-}
-
-//------------------------------------------------------------------------------
-
 struct NodeAccessSpecifier : public NodeMaker<NodeAccessSpecifier> {
   using pattern = Seq<
     Oneof<
@@ -360,12 +341,17 @@ struct NodeNamespace : public NodeMaker<NodeNamespace> {
         >>,
 */
 
-
-struct DeclThing : public PatternWrapper<DeclThing> {
+struct NodeDeclaratorList : public NodeMaker<NodeDeclaratorList> {
   using pattern =
   comma_separated<
     Seq<
-      NodeDeclarator,
+      Oneof<
+        Seq<
+          NodeDeclarator,
+          Opt<NodeBitSuffix>
+        >,
+        NodeBitSuffix
+      >,
       Opt<Seq<
         Atom<'='>,
         NodeInitializer
@@ -374,7 +360,7 @@ struct DeclThing : public PatternWrapper<DeclThing> {
   >;
 
   static const Token* match(const Token* a, const Token* b) {
-    auto end = PatternWrapper::match(a, b);
+    auto end = NodeMaker::match(a, b);
     return end;
   }
 };
@@ -383,8 +369,8 @@ struct NodeDeclBody : public PatternWrapper<NodeDeclBody> {
   using pattern = Seq<
     Any<NodeAttribute>,
     Oneof<
-      Seq< LogTypename<NodeIdentifier>, Opt<NodeFieldList>, Opt<NodeAttribute>, Opt<DeclThing> >,
-      Seq<                                  NodeFieldList,  Opt<NodeAttribute>, Opt<DeclThing> >
+      Seq< LogTypename<NodeIdentifier>, Opt<NodeFieldList>, Opt<NodeAttribute>, Opt<NodeDeclaratorList> >,
+      Seq<                                  NodeFieldList,  Opt<NodeAttribute>, Opt<NodeDeclaratorList> >
     >
   >;
 };
@@ -398,7 +384,7 @@ struct NodeStruct : public NodeMaker<NodeStruct> {
 
   // We specialize match() to dig out typedef'd identifiers
   static const Token* match(const Token* a, const Token* b) {
-    auto end = NodeMaker<NodeStruct>::match(a, b);
+    auto end = NodeMaker::match(a, b);
     if (end) extract_typedef();
     return end;
   }
@@ -492,7 +478,7 @@ struct NodeEnum : public NodeMaker<NodeEnum> {
     Opt<LogTypename<NodeIdentifier>>,
     Opt<Seq<Atom<':'>, NodeTypeDecl>>,
     Opt<NodeEnumerators>,
-    Opt<DeclThing>
+    Opt<NodeDeclaratorList>
   >;
 
   // We specialize match() to dig out typedef'd identifiers
@@ -636,26 +622,26 @@ struct NodeConstructor : public NodeMaker<NodeConstructor> {
 
 //------------------------------------------------------------------------------
 
-struct NodeDeclaratorList : public NodeMaker<NodeDeclaratorList> {
-  using pattern =
-  comma_separated<
-    Seq<
-      Oneof<
-        Seq<
-          NodeDeclarator
-        >,
-        Seq<
-          Opt<NodeDeclarator>,
-          NodeBitSuffix
-        >
-      >,
-      Opt<Seq<
-        Atom<'='>,
-        NodeInitializer
-      >>
-    >
-  >;
-};
+void extract_typedef() {
+  // Poke through the node on the top of the stack to find identifiers
+  auto node = NodeBase::node_stack.back();
+  if (!node) return;
+
+  auto quals = node->child<NodeQualifiers>();
+  if (!quals || !quals->search<NodeKeyword<"typedef">>()) return;
+
+  auto list = node->child<NodeDeclaratorList>();
+  if (!list) return;
+
+  auto decl = list->child<NodeDeclarator>();
+  if (!decl) return;
+
+  auto id = decl->child<NodeIdentifier>();
+  if (!id) return;
+
+  auto s = id->tok_a->lex->text();
+  NodeBase::add_declared_type(s);
+}
 
 //------------------------------------------------------------------------------
 
