@@ -26,10 +26,14 @@ void extract_typedef();
 
 struct NodeAttribute : public NodeMaker<NodeAttribute> {
   using pattern = Seq<
-    NodeKeyword<"__attribute__">,
+    Oneof<
+      NodeKeyword<"__attribute__">,
+      NodeKeyword<"__attribute">
+    >,
     NodeOperator<"((">,
     comma_separated<Ref<parse_expression>>,
-    NodeOperator<"))">
+    NodeOperator<"))">,
+    Opt<NodeAttribute>
   >;
 };
 
@@ -636,14 +640,13 @@ void extract_typedef() {
   auto list = node->child<NodeDeclaratorList>();
   if (!list) return;
 
-  auto decl = list->child<NodeDeclarator>();
-  if (!decl) return;
+  for (auto decl = list->head; decl; decl = decl->next) {
+    auto id = decl->child<NodeIdentifier>();
+    if (!id) return;
 
-  auto id = decl->child<NodeIdentifier>();
-  if (!id) return;
-
-  auto s = id->tok_a->lex->text();
-  NodeBase::add_declared_type(s);
+    auto s = id->tok_a->lex->text();
+    NodeBase::add_declared_type(s);
+  }
 }
 
 //------------------------------------------------------------------------------

@@ -203,6 +203,7 @@ struct NodeStatementAsm : public NodeMaker<NodeStatementAsm> {
   using pattern = Seq<
     Oneof<
       Keyword<"asm">,
+      Keyword<"__asm">,
       Keyword<"__asm__">
     >,
     Ref<parse_qualifiers>,

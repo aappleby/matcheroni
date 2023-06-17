@@ -265,6 +265,9 @@ struct NodeBase {
     // technically part of the c library, but it shows up in stdarg test files
     "va_list",
 
+    // pr60003.c fails if this is included, pr56982.c fails if it isn't
+    //"jmp_buf",
+
     // gcc stuff
     "__int128",
     "__SIZE_TYPE__",
