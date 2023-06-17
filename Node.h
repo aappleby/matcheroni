@@ -249,12 +249,16 @@ struct NodeBase {
   //static inline IdentifierSet global_ids = {};
 
   static inline IdentifierSet builtin_types = {
-    "void", "char", "short", "int", "long", "float", "double", "signed",
-    "unsigned", "uint8_t", "uint16_t", "uint32_t", "uint64_t", "int8_t",
-    "int16_t", "int32_t", "int64_t",
+    "void",
+    "char", "short", "int", "long",
+    "float", "double",
+    "signed", "unsigned",
+    "uint8_t", "uint16_t", "uint32_t", "uint64_t",
+    "int8_t", "int16_t", "int32_t", "int64_t",
+    "_Bool",
+    "_Complex", // yes this is both a prefix and a type :P
 
     // gcc stuff
-    "_Complex", // yes this is both a prefix and a type :P
     "__int128",
     "__SIZE_TYPE__",
     "__PTRDIFF_TYPE__",
