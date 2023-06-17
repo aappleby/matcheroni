@@ -83,7 +83,7 @@ struct NodeStatementIf : public NodeMaker<NodeStatementIf> {
     Keyword<"if">,
     Seq<
       Atom<'('>,
-      Ref<parse_expression>,
+      comma_separated<Ref<parse_expression>>,
       Atom<')'>
     >,
     Ref<parse_statement>,
@@ -152,7 +152,7 @@ struct NodeStatementWhile : public NodeMaker<NodeStatementWhile> {
   using pattern = Seq<
     Keyword<"while">,
     Atom<'('>,
-    Ref<parse_expression>,
+    comma_separated<Ref<parse_expression>>,
     Atom<')'>,
     Ref<parse_statement>
   >;

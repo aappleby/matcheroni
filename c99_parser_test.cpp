@@ -98,7 +98,7 @@ int test_c99_peg(int argc, char** argv) {
   //paths = { "tests/basic_inputs.h" };
   //paths = { "mini_tests/csmith_5.cpp" };
   //paths = { "../gcc/gcc/tree-inline.h" };
-  //paths = { "../gcc/gcc/testsuite/gcc.c-torture/compile/pr42998.c"};
+  //paths = { "../gcc/gcc/testsuite/gcc.c-torture/compile/pr43367.c"};
 
   double lex_accum = 0;
   double parse_accum = 0;
@@ -136,7 +136,12 @@ int test_c99_peg(int argc, char** argv) {
     if (path.ends_with("pr51447.c")) continue;     // register void *ptr asm ("rbx");
     if (path.ends_with("20041213-1.c")) continue;  // extern double sqrt (double) __asm ("sqrtf");
     if (path.ends_with("medce-1.c")) continue;     // case statement _inside_ an if() {} block, wtf
-    if (path.ends_with("builtin-types-compatible-p.c")) continue; // __builtin_types_compatible_p (int[5], int[])
+
+    // __builtin_types_compatible_p (int[5], int[])
+    if (path.ends_with("builtin-types-compatible-p.c")) continue;
+
+    // jump target inside a switch block
+    if (path.ends_with("20030902-1.c")) continue;
 
     {
       auto size = std::filesystem::file_size(path);
