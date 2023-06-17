@@ -203,6 +203,8 @@ struct NodeAsmQualifiers : public NodeMaker<NodeAsmQualifiers> {
   using pattern =
   Some<Oneof<
     NodeKeyword<"volatile">,
+    NodeKeyword<"__volatile">,
+    NodeKeyword<"__volatile__">,
     NodeKeyword<"inline">,
     NodeKeyword<"goto">
   >>;
@@ -228,7 +230,11 @@ struct NodeStatementAsm : public NodeMaker<NodeStatementAsm> {
       Opt<NodeAsmRefs>, // input operands
       Opt<Seq<
         Atom<':'>,
-        Opt<NodeAsmRefs> // clobbers
+        Opt<NodeAsmRefs>, // clobbers
+        Opt<Seq<
+          Atom<':'>,
+          Opt<comma_separated<NodeIdentifier>> // GotoLabels
+        >>
       >>
     >>,
     Atom<')'>
