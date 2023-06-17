@@ -3,20 +3,26 @@
 
 struct NodeExpression;
 struct NodeExpressionParen;
-struct NodeExpressionBraces;
+//struct NodeExpressionBraces;
 struct NodeExpressionSoup;
 struct NodeExpressionSubscript;
 struct NodeExpressionCall;
 struct NodeExpressionTernary;
+struct NodeGccCompoundExpression;
+
+const Token* parse_initializer_list(const Token* a, const Token* b);
+const Token* parse_statement_compound(const Token* a, const Token* b);
 
 //------------------------------------------------------------------------------
 
 struct NodeExpressionSoup : public PatternWrapper<NodeExpressionSoup> {
   using pattern = Seq<
     Some<Oneof<
+      NodeGccCompoundExpression,
       NodeExpressionCall,
       NodeExpressionParen,
-      NodeExpressionBraces,
+      //NodeExpressionBraces,
+      Ref<parse_initializer_list>,
       NodeExpressionSubscript,
       NodeKeyword<"sizeof">,
       NodeOperator<"->*">,
@@ -80,6 +86,7 @@ struct NodeExpressionParen : public NodeMaker<NodeExpressionParen> {
   }
 };
 
+/*
 struct NodeExpressionBraces : public NodeMaker<NodeExpressionBraces> {
   using pattern = Seq<
     Atom<'{'>,
@@ -92,6 +99,7 @@ struct NodeExpressionBraces : public NodeMaker<NodeExpressionBraces> {
     return end;
   }
 };
+*/
 
 struct NodeExpressionCall : public NodeMaker<NodeExpressionCall> {
   using pattern = Seq<
@@ -123,6 +131,19 @@ struct NodeExpressionTernary : public PatternWrapper<NodeExpressionTernary> {
       NodeExpressionTernary
     >>
   >;
+};
+
+struct NodeGccCompoundExpression : public NodeMaker<NodeGccCompoundExpression> {
+  using pattern = Seq<
+    Atom<'('>,
+    Ref<parse_statement_compound>,
+    Atom<')'>
+  >;
+
+  static const Token* match(const Token* a, const Token* b) {
+    auto end = NodeMaker<NodeGccCompoundExpression>::match(a, b);
+    return end;
+  }
 };
 
 struct NodeExpression : public NodeMaker<NodeExpression> {

@@ -108,7 +108,7 @@ int test_c99_peg(int argc, char** argv) {
   //paths = { "tests/basic_inputs.h" };
   //paths = { "mini_tests/csmith_5.cpp" };
   //paths = { "../gcc/gcc/tree-inline.h" };
-  //paths = {"../gcc/gcc/testsuite/gcc.c-torture/execute/990208-1.c"};
+  paths = {"../gcc/gcc/testsuite/gcc.c-torture/execute/compndlit-1.c"};
 
   double lex_accum = 0;
   double parse_accum = 0;
@@ -167,7 +167,7 @@ int test_c99_peg(int argc, char** argv) {
 
     auto root = NodeBase::node_stack.pop();
 
-    //root->dump_tree();
+    root->dump_tree();
 
     if (root->tok_a != token_a) {
       printf("\n");

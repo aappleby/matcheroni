@@ -313,6 +313,14 @@ struct NodeNamespace : public NodeMaker<NodeNamespace> {
 // struct foo {}    ;
 // struct foo {} bar;
 
+/*
+        Opt<Oneof<
+          Seq<NodeDesignation, Atom<'='>>,
+          Seq<NodeIdentifier,  Atom<':'>> // This isn't in the C99 grammar but compndlit-1.c uses it?
+        >>,
+*/
+
+
 struct DeclThing : public PatternWrapper<DeclThing> {
   using pattern =
   comma_separated<
@@ -324,6 +332,11 @@ struct DeclThing : public PatternWrapper<DeclThing> {
       >>
     >
   >;
+
+  static const Token* match(const Token* a, const Token* b) {
+    auto end = PatternWrapper::match(a, b);
+    return end;
+  }
 };
 
 struct NodeDeclBody : public PatternWrapper<NodeDeclBody> {
@@ -489,9 +502,9 @@ struct NodeInitializerList : public PatternWrapper<NodeInitializerList> {
     Atom<'{'>,
     opt_comma_separated<
       Seq<
-        Opt<Seq<
-          NodeDesignation,
-          Atom<'='>
+        Opt<Oneof<
+          Seq<NodeDesignation, Atom<'='>>,
+          Seq<NodeIdentifier,  Atom<':'>> // This isn't in the C99 grammar but compndlit-1.c uses it?
         >>,
         NodeInitializer
       >
@@ -511,6 +524,11 @@ struct NodeInitializer : public NodeMaker<NodeInitializer> {
     return end;
   }
 };
+
+const Token* parse_initializer_list(const Token* a, const Token* b) {
+  auto end = NodeInitializerList::match(a, b);
+  return end;
+}
 
 //------------------------------------------------------------------------------
 
@@ -595,12 +613,10 @@ struct NodeVariable : public NodeMaker<NodeVariable> {
             NodeBitSuffix
           >
         >,
-        Opt<
-          Seq<
-            Atom<'='>,
-            NodeInitializer
-          >
-        >
+        Opt<Seq<
+          Atom<'='>,
+          NodeInitializer
+        >>
       >
     >>
   >;
@@ -634,7 +650,8 @@ struct externalDeclaration : public PatternWrapper<externalDeclaration> {
 };
 
 const Token* parse_external_declaration(const Token* a, const Token* b) {
-  return externalDeclaration::match(a, b);
+  auto end = externalDeclaration::match(a, b);
+  return end;
 }
 
 //------------------------------------------------------------------------------
