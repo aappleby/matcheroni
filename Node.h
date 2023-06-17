@@ -250,6 +250,7 @@ struct NodeBase {
 
   static inline IdentifierSet builtin_types = {
     "void",
+    "bool",
     "char", "short", "int", "long",
     "float", "double",
     "signed", "unsigned",

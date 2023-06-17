@@ -98,7 +98,7 @@ int test_c99_peg(int argc, char** argv) {
   //paths = { "tests/basic_inputs.h" };
   //paths = { "mini_tests/csmith_5.cpp" };
   //paths = { "../gcc/gcc/tree-inline.h" };
-  //paths = { "../gcc/gcc/testsuite/gcc.c-torture/execute/20190820-1.c"};
+  //paths = { "../gcc/gcc/testsuite/gcc.c-torture/execute/builtin-prefetch-3.c"};
 
   double lex_accum = 0;
   double parse_accum = 0;
@@ -171,9 +171,22 @@ int test_c99_peg(int argc, char** argv) {
       return -1;
     }
 
-    auto root = NodeBase::node_stack.pop();
 
+
+
+
+
+
+    auto root = NodeBase::node_stack.pop();
     //root->dump_tree();
+
+
+
+
+
+
+
+
 
     if (root->tok_a != token_a || root->tok_b != token_b) {
       printf("Parsing failed: %s\n", path.c_str());

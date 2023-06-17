@@ -201,7 +201,10 @@ struct NodeAsmRefs : public NodeMaker<NodeAsmRefs> {
 
 struct NodeStatementAsm : public NodeMaker<NodeStatementAsm> {
   using pattern = Seq<
-    Keyword<"asm">,
+    Oneof<
+      Keyword<"asm">,
+      Keyword<"__asm__">
+    >,
     Ref<parse_qualifiers>,
     Atom<'('>,
     NodeString, // assembly code

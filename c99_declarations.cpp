@@ -198,9 +198,26 @@ const Token* parse_type_name(const Token* a, const Token* b) {
 }
 
 //------------------------------------------------------------------------------
+// Spec says the bit size can be any constant expression, but can we use just a
+// constant or a paren-expression?
+
+// (6.7.2.1) struct-declarator:
+//   declarator
+//   declaratoropt : constant-expression
 
 struct NodeBitSuffix : public NodeMaker<NodeBitSuffix> {
-  using pattern = Seq<Atom<':'>, NodeConstant>;
+  using pattern =
+  Seq<
+    Atom<':'>,
+    Oneof<
+      NodeConstant,
+      Seq<
+        Atom<'('>,
+        Ref<parse_expression>,
+        Atom<')'>
+      >
+    >
+  >;
 };
 
 //------------------------------------------------------------------------------
@@ -367,7 +384,7 @@ struct NodeDeclBody : public PatternWrapper<NodeDeclBody> {
     Any<NodeAttribute>,
     Oneof<
       Seq< LogTypename<NodeIdentifier>, Opt<NodeFieldList>, Opt<NodeAttribute>, Opt<DeclThing> >,
-      Seq<                                  NodeFieldList,  Opt<NodeAttribute>,     DeclThing  >
+      Seq<                                  NodeFieldList,  Opt<NodeAttribute>, Opt<DeclThing> >
     >
   >;
 };
@@ -619,34 +636,53 @@ struct NodeConstructor : public NodeMaker<NodeConstructor> {
 
 //------------------------------------------------------------------------------
 
+struct NodeDeclaratorList : public NodeMaker<NodeDeclaratorList> {
+  using pattern =
+  comma_separated<
+    Seq<
+      Oneof<
+        Seq<
+          NodeDeclarator
+        >,
+        Seq<
+          Opt<NodeDeclarator>,
+          NodeBitSuffix
+        >
+      >,
+      Opt<Seq<
+        Atom<'='>,
+        NodeInitializer
+      >>
+    >
+  >;
+};
+
+//------------------------------------------------------------------------------
+
 struct NodeVariable : public NodeMaker<NodeVariable> {
   using pattern = Seq<
     // FIXME this is messy
     Opt<NodeAttribute>,
     NodeQualifiers,
     Opt<NodeAttribute>,
-    NodeSpecifier,
-    Opt<NodeAttribute>,
-    NodeQualifiers,
-    Opt<NodeAttribute>,
 
-    Opt<comma_separated<
+    // this is getting ridiculous
+    Oneof<
       Seq<
-        Oneof<
-          Seq<
-            NodeDeclarator
-          >,
-          Seq<
-            Opt<NodeDeclarator>,
-            NodeBitSuffix
-          >
-        >,
-        Opt<Seq<
-          Atom<'='>,
-          NodeInitializer
-        >>
+        NodeSpecifier,
+        Opt<NodeAttribute>,
+        Opt<NodeQualifiers>,
+        Opt<NodeAttribute>,
+        Opt<NodeDeclaratorList>
+      >,
+      Seq<
+        Opt<NodeSpecifier>,
+        Opt<NodeAttribute>,
+        Opt<NodeQualifiers>,
+        Opt<NodeAttribute>,
+        NodeDeclaratorList
       >
-    >>
+    >
   >;
 
   // We specialize match() to dig out typedef'd identifiers
