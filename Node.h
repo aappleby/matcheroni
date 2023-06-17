@@ -260,6 +260,7 @@ struct NodeBase {
     "_Complex", // yes this is both a prefix and a type :P
     "__real__",
     "__imag__",
+    "__builtin_va_list",
 
     // technically part of the c library, but it shows up in stdarg test files
     "va_list",

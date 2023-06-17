@@ -24,32 +24,6 @@ void extract_typedef();
 
 //------------------------------------------------------------------------------
 
-struct NodeTypeQualifier : public NodeMaker<NodeTypeQualifier> {
-  using pattern = Oneof<
-    NodeKeyword<"const">,
-    NodeKeyword<"mutable">,
-    NodeKeyword<"restrict">,
-    NodeKeyword<"volatile">
-  >;
-};
-
-struct NodeAlignmentQualifier : public NodeMaker<NodeAlignmentQualifier> {
-  using pattern = Seq<
-    NodeKeyword<"_Alignas">, Atom<'('>, Oneof<NodeTypeDecl, NodeConstant>, Atom<')'>
-  >;
-};
-
-struct NodeFunctionQualifier : public NodeMaker<NodeFunctionQualifier> {
-  using pattern = Oneof<
-    NodeKeyword<"explicit">,
-    NodeKeyword<"inline">,
-    NodeKeyword<"_Noreturn">,
-    NodeKeyword<"__inline__">,
-    NodeKeyword<"__stdcall">,
-    Seq<NodeKeyword<"__declspec">, Atom<'('>, NodeIdentifier, Atom<')'>>
-  >;
-};
-
 struct NodeAttribute : public NodeMaker<NodeAttribute> {
   using pattern = Seq<
     NodeKeyword<"__attribute__">,
@@ -61,10 +35,22 @@ struct NodeAttribute : public NodeMaker<NodeAttribute> {
 
 struct NodeQualifier : public PatternWrapper<NodeQualifier> {
   using pattern = Oneof<
-    NodeTypeQualifier,
-    NodeAlignmentQualifier,
-    NodeFunctionQualifier,
+    NodeKeyword<"const">,
+    NodeKeyword<"mutable">,
+    NodeKeyword<"restrict">,
+    NodeKeyword<"volatile">,
+    NodeKeyword<"__volatile">,
+    NodeKeyword<"register">,
+    NodeKeyword<"__restrict__">,
+    NodeKeyword<"__restrict">,
+    Seq<NodeKeyword<"_Alignas">, Atom<'('>, Oneof<NodeTypeDecl, NodeConstant>, Atom<')'>>,
     NodeAttribute,
+    NodeKeyword<"explicit">,
+    NodeKeyword<"inline">,
+    NodeKeyword<"_Noreturn">,
+    NodeKeyword<"__inline__">,
+    NodeKeyword<"__stdcall">,
+    Seq<NodeKeyword<"__declspec">, Atom<'('>, NodeIdentifier, Atom<')'>>,
     NodeKeyword<"thread_local">,
     NodeKeyword<"virtual">,
     NodeKeyword<"constexpr">,
@@ -75,8 +61,6 @@ struct NodeQualifier : public PatternWrapper<NodeQualifier> {
     NodeKeyword<"static">,
     NodeKeyword<"_Thread_local">,
     NodeKeyword<"auto">,
-    NodeKeyword<"register">,
-    NodeKeyword<"__restrict__">,
     NodeKeyword<"__extension__">
   >;
 };
@@ -102,18 +86,31 @@ struct NodePointer : public NodeMaker<NodePointer> {
     NodeOperator<"*">,
     Any<Oneof<
       NodeOperator<"*">,
-      NodeTypeQualifier
+      NodeQualifier
     >>
   >;
 };
 
 //------------------------------------------------------------------------------
 
+/*
+(6.7) declaration-specifiers:
+  storage-class-specifier declaration-specifiersopt
+  type-specifier declaration-specifiersopt
+  type-qualifier declaration-specifiersopt
+  function-specifier declaration-specifiersopt
+
+(6.7.5) parameter-declaration:
+  declaration-specifiers declarator
+  declaration-specifiers abstract-declaratoropt
+*/
+
 struct NodeParam : public NodeMaker<NodeParam> {
   using pattern = Oneof<
     CleanDeadNodes<Seq<
       NodeQualifiers,
       NodeSpecifier,
+      NodeQualifiers,
       Opt<Oneof<
         NodeDeclarator,
         NodeAbstractDeclarator
@@ -141,10 +138,10 @@ struct NodeParamList : public NodeMaker<NodeParamList> {
 
 struct NodeArraySuffix : public NodeMaker<NodeArraySuffix> {
   using pattern = Oneof<
-    Seq<Atom<'['>, Any<NodeTypeQualifier>, Opt<Ref<parse_expression>>, Atom<']'>>,
-    Seq<Atom<'['>, Keyword<"static">, Any<NodeTypeQualifier>, Ref<parse_expression>, Atom<']'>>,
-    Seq<Atom<'['>, Some<NodeTypeQualifier>, Keyword<"static">, Ref<parse_expression>, Atom<']'>>,
-    Seq<Atom<'['>, Any<NodeTypeQualifier>, Atom<'*'>, Atom<']'>>
+    Seq<Atom<'['>, NodeQualifiers,                   Opt<Ref<parse_expression>>, Atom<']'>>,
+    Seq<Atom<'['>, Keyword<"static">, NodeQualifiers, Ref<parse_expression>, Atom<']'>>,
+    Seq<Atom<'['>, NodeQualifiers, Keyword<"static">, Ref<parse_expression>, Atom<']'>>,
+    Seq<Atom<'['>, NodeQualifiers, Atom<'*'>, Atom<']'>>
   >;
 };
 
