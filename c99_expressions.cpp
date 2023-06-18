@@ -1,7 +1,6 @@
 #include "c99_parser.h"
 #include "Node.h"
 
-struct NodeExpression;
 struct NodeExpressionParen;
 struct NodeExpressionBraces;
 struct NodeExpressionSoup;
@@ -99,7 +98,7 @@ struct NodeExpressionCast : public NodeMaker<NodeExpressionCast> {
 struct NodeExpressionParen : public NodeMaker<NodeExpressionParen> {
   using pattern = Seq<
     Atom<'('>,
-    Opt<comma_separated<NodeExpression>>,
+    Opt<Ref<parse_expression_list>>,
     Atom<')'>
   >;
 
@@ -112,7 +111,7 @@ struct NodeExpressionParen : public NodeMaker<NodeExpressionParen> {
 struct NodeExpressionBraces : public NodeMaker<NodeExpressionBraces> {
   using pattern = Seq<
     Atom<'{'>,
-    Opt<comma_separated<NodeExpression>>,
+    Opt<Ref<parse_expression_list>>,
     Atom<'}'>
   >;
 
@@ -137,7 +136,7 @@ struct NodeExpressionCall : public NodeMaker<NodeExpressionCall> {
 struct NodeExpressionSubscript : public NodeMaker<NodeExpressionSubscript> {
   using pattern = Seq<
     Atom<'['>,
-    NodeExpression,
+    Ref<parse_expression_list>,
     Atom<']'>
   >;
 };
@@ -157,14 +156,15 @@ struct NodeGccCompoundExpression : public NodeMaker<NodeGccCompoundExpression> {
 
 struct NodeExpressionTernary : public PatternWrapper<NodeExpressionTernary> {
   // pr68249.c - ternary option can be empty
+  // pr49474.c - ternary branches can be comma-lists
 
   using pattern = Seq<
     NodeExpressionSoup,
     Opt<Seq<
       NodeOperator<"?">,
-      Opt<NodeExpressionTernary>,
+      Opt<Ref<parse_expression_list>>,
       NodeOperator<":">,
-      Opt<NodeExpressionTernary>
+      Opt<Ref<parse_expression_list>>
     >>
   >;
 };
@@ -175,6 +175,11 @@ struct NodeExpression : public NodeMaker<NodeExpression> {
 
 const Token* parse_expression(const Token* a, const Token* b) {
   auto end = NodeExpression::match(a, b);
+  return end;
+}
+
+const Token* parse_expression_list(const Token* a, const Token* b) {
+  auto end = comma_separated<NodeExpression>::match(a, b);
   return end;
 }
 

@@ -35,7 +35,7 @@ struct NodeStatementDeclaration : public NodeMaker<NodeStatementDeclaration> {
 //------------------------------------------------------------------------------
 
 struct NodeStatementExpression : public NodeMaker<NodeStatementExpression> {
-  using pattern = comma_separated<Ref<parse_expression>>;
+  using pattern = Ref<parse_expression_list>;
 
   static const Token* match(const Token* a, const Token* b) {
     auto end = NodeMaker<NodeStatementExpression>::match(a, b);
@@ -54,9 +54,9 @@ struct NodeStatementFor : public NodeMaker<NodeStatementFor> {
       Ref<parse_declaration>
     >>>,
     Atom<';'>,
-    Opt<comma_separated<Ref<parse_expression>>>,
+    Opt<Ref<parse_expression_list>>,
     Atom<';'>,
-    Opt<comma_separated<Ref<parse_expression>>>,
+    Opt<Ref<parse_expression_list>>,
     Atom<')'>,
     Ref<parse_statement>
   >;
@@ -83,7 +83,7 @@ struct NodeStatementIf : public NodeMaker<NodeStatementIf> {
     Keyword<"if">,
     Seq<
       Atom<'('>,
-      comma_separated<Ref<parse_expression>>,
+      Ref<parse_expression_list>,
       Atom<')'>
     >,
     Ref<parse_statement>,
@@ -152,7 +152,7 @@ struct NodeStatementWhile : public NodeMaker<NodeStatementWhile> {
   using pattern = Seq<
     Keyword<"while">,
     Atom<'('>,
-    comma_separated<Ref<parse_expression>>,
+    Ref<parse_expression_list>,
     Atom<')'>,
     Ref<parse_statement>
   >;

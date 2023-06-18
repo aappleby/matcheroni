@@ -120,12 +120,22 @@ struct AnyAtom {
 
 struct Nothing {
   template<typename atom>
+  static const atom* match_key(const atom* a, const atom* b) {
+    return a;
+  }
+
+  template<typename atom>
   static const atom* match(const atom* a, const atom* b) {
     return a;
   }
 };
 
-struct Everything {
+struct Anything {
+  template<typename atom>
+  static const atom* match_key(const atom* a, const atom* b) {
+    return b;
+  }
+
   template<typename atom>
   static const atom* match(const atom* a, const atom* b) {
     return b;
@@ -194,7 +204,6 @@ struct Seq<P> {
 
 template <typename P, typename... rest>
 struct Oneof {
-
   template<typename atom>
   static const atom* match(const atom* a, const atom* b) {
     auto c = P::match(a, b);
@@ -202,13 +211,68 @@ struct Oneof {
   }
 };
 
-
 template <typename P>
 struct Oneof<P> {
-
   template<typename atom>
   static const atom* match(const atom* a, const atom* b) {
     return P::match(a, b);
+  }
+};
+
+//------------------------------------------------------------------------------
+// 'Map' returns the result of the first matcher whose 'match_key' matches the
+// input. Unlike 'Oneof', if the key pattern matches but the value pattern does
+// not, the rest of the options will _not_ be checked. This can make matching
+// much faster by allowing large arrays of options to be broken down into
+// skippable groups.
+
+// Note - the key is _NOT_ consumed, as the key pattern may be substantially
+// different than the match pattern (for example matching a single character as
+// a key for a match pattern consisting of a bunch of operators starting with
+// that character)
+
+// Example:
+
+// using Declaration =
+// Map<
+//   KeyVal<Atom<"struct">, NodeStruct>,
+//   KeyVal<Atom<"union">,  NodeUnion>,
+//   KeyVal<Atom<"class",   NodeClass>,
+//   KeyVal<Atom<"enum",    NodeEnum>,
+//   KeyVal<Anything,       NodeVariable>
+// >;
+
+template<typename P, typename... rest>
+struct Map {
+  template<typename atom>
+  static const atom* match(const atom* a, const atom* b) {
+    if (P::match_key(a, b)) {
+      return P::match(a, b);
+    }
+    else {
+      return Map<rest...>::match(a, b);
+    }
+  }
+};
+
+template <typename P>
+struct Map<P> {
+  template<typename atom>
+  static const atom* match(const atom* a, const atom* b) {
+    return P::match(a, b);
+  }
+};
+
+template <typename K, typename V>
+struct KeyVal {
+  template<typename atom>
+  static const atom* match_key(const atom* a, const atom* b) {
+    return K::match(a, b);
+  }
+
+  template<typename atom>
+  static const atom* match(const atom* a, const atom* b) {
+    return V::match(a, b);
   }
 };
 
@@ -294,7 +358,7 @@ struct SomeOf<P> {
   static const atom* match(const atom* a, const atom* b) {
     return P::match(a, b);
   }
-  
+
   template<typename atom>
   static const atom* match1(const atom* a, const atom* b) {
     return P::match(a, b);

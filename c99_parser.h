@@ -8,6 +8,7 @@ struct NodeBase;
 const Token* parse_declaration(const Token* a, const Token* b);
 const Token* parse_external_declaration(const Token* a, const Token* b);
 const Token* parse_expression (const Token* a, const Token* b);
+const Token* parse_expression_list (const Token* a, const Token* b);
 const Token* parse_statement  (const Token* a, const Token* b);
 const Token* parse_statement_compound  (const Token* a, const Token* b);
 

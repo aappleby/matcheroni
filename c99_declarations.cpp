@@ -31,7 +31,7 @@ struct NodeAttribute : public NodeMaker<NodeAttribute> {
       NodeKeyword<"__attribute">
     >,
     NodeOperator<"((">,
-    comma_separated<Ref<parse_expression>>,
+    Ref<parse_expression_list>,
     NodeOperator<"))">,
     Opt<NodeAttribute>
   >;
@@ -161,7 +161,7 @@ struct NodeArraySuffix : public NodeMaker<NodeArraySuffix> {
 
 struct NodeTemplateArgs : public NodeMaker<NodeTemplateArgs> {
   using pattern = Delimited<'<', '>',
-    opt_comma_separated<Ref<parse_expression>>
+    Opt<Ref<parse_expression_list>>
   >;
 };
 
