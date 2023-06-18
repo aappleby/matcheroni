@@ -217,18 +217,7 @@ const Token* parse_type_name(const Token* a, const Token* b) {
 //   declaratoropt : constant-expression
 
 struct NodeBitSuffix : public NodeMaker<NodeBitSuffix> {
-  using pattern =
-  Seq<
-    Atom<':'>,
-    Oneof<
-      NodeConstant,
-      Seq<
-        Atom<'('>,
-        Ref<parse_expression>,
-        Atom<')'>
-      >
-    >
-  >;
+  using pattern = Seq< Atom<':'>, Ref<parse_expression> >;
 };
 
 //------------------------------------------------------------------------------
