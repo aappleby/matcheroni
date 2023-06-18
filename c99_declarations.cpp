@@ -65,6 +65,7 @@ struct NodeQualifier : public PatternWrapper<NodeQualifier> {
     NodeKeyword<"restrict">,
     NodeKeyword<"static">,
     NodeKeyword<"thread_local">,
+    NodeKeyword<"__thread">,
     NodeKeyword<"typedef">,
     NodeKeyword<"virtual">,
     NodeKeyword<"volatile">,
@@ -177,7 +178,17 @@ struct NodeSpecifier : public NodeMaker<NodeSpecifier> {
       Seq<Keyword<"struct">, NodeIdentifier>,
       Seq<Keyword<"enum">, NodeIdentifier>,
       NodeGlobalType,
-      NodeAtomicType
+      NodeAtomicType,
+      Seq<
+        Oneof<
+          Keyword<"__typeof__">,
+          Keyword<"__typeof">,
+          Keyword<"typeof">
+        >,
+        Atom<'('>,
+        Ref<parse_expression>,
+        Atom<')'>
+      >
     >,
     Opt<NodeTemplateArgs>
   >;
