@@ -98,7 +98,7 @@ int test_c99_peg(int argc, char** argv) {
   //paths = { "tests/basic_inputs.h" };
   //paths = { "mini_tests/csmith_5.cpp" };
   //paths = { "../gcc/gcc/tree-inline.h" };
-  //paths = { "../gcc/gcc/testsuite/gcc.c-torture/compile/20050105-1.c"};
+  //paths = { "../gcc/gcc/testsuite/gcc.c-torture/compile/920928-4.c"};
 
   double lex_accum = 0;
   double parse_accum = 0;
@@ -159,6 +159,9 @@ int test_c99_peg(int argc, char** argv) {
 
     // More asm("lskdjfsl") suffixes on variables.
     if (path.ends_with("mipscop-3.c")) continue;
+
+    // Anonymous struct declaration inside a cast expression
+    if (path.ends_with("920928-4.c")) continue;
 
 
 

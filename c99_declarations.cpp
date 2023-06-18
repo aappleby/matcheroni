@@ -25,13 +25,15 @@ void extract_typedef();
 //------------------------------------------------------------------------------
 
 struct NodeAttribute : public NodeMaker<NodeAttribute> {
+  // 20010911-1.c - Attribute can be empty
+
   using pattern = Seq<
     Oneof<
       NodeKeyword<"__attribute__">,
       NodeKeyword<"__attribute">
     >,
     NodeOperator<"((">,
-    Ref<parse_expression_list>,
+    Opt<Ref<parse_expression_list>>,
     NodeOperator<"))">,
     Opt<NodeAttribute>
   >;
