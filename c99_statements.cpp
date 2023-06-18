@@ -255,23 +255,23 @@ struct NodeStatementGoto : public NodeMaker<NodeStatementGoto> {
 const Token* parse_statement(const Token* a, const Token* b) {
   using pattern_statement = Oneof<
     // All of these have keywords first
-    Seq<Ref<parse_class>, Atom<';'>>,
-    Seq<Ref<parse_struct>, Atom<';'>>,
-    Seq<Ref<parse_union>, Atom<';'>>,
-    NodeStatementFor,
-    NodeStatementIf,
-    Seq<NodeStatementReturn, Atom<';'>>,
-    NodeStatementSwitch,
-    Seq<NodeStatementDoWhile, Atom<';'>>,
-    NodeStatementWhile,
-    Seq<NodeStatementAsm, Atom<';'>>,
+    Seq<Ref<parse_class>,         Atom<';'>>,
+    Seq<Ref<parse_struct>,        Atom<';'>>,
+    Seq<Ref<parse_union>,         Atom<';'>>,
+    Seq<NodeStatementFor,         Opt<Atom<';'>> >,
+    Seq<NodeStatementIf,          Opt<Atom<';'>> >,
+    Seq<NodeStatementReturn,      Atom<';'>>,
+    Seq<NodeStatementSwitch,      Opt<Atom<';'>> >,
+    Seq<NodeStatementDoWhile,     Atom<';'>>,
+    Seq<NodeStatementWhile,       Opt<Atom<';'>> >,
+    Seq<NodeStatementAsm,         Atom<';'>>,
 
     // These don't - but they might confuse a keyword with an identifier...
-    NodeStatementLabel,
-    NodeStatementCompound,
-    Ref<parse_function>,
+    Seq<NodeStatementLabel,       Opt<Atom<';'>> >,
+    Seq<NodeStatementCompound,    Opt<Atom<';'>> >,
+    Seq<Ref<parse_function>,      Opt<Atom<';'>> >,
     Seq<NodeStatementDeclaration, Atom<';'>>,
-    Seq<NodeStatementExpression, Atom<';'>>,
+    Seq<NodeStatementExpression,  Atom<';'>>,
 
     // Extra semicolons
     Atom<';'>
