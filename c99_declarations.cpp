@@ -580,6 +580,7 @@ struct NodeFunction : public NodeMaker<NodeFunction> {
     NodeQualifiers,
     Opt<NodeAttribute>,
     Opt<NodeSpecifier>,
+    NodeQualifiers,
     Opt<NodeAttribute>,
     NodeFunctionIdentifier,
 
@@ -614,6 +615,19 @@ struct NodeFunction : public NodeMaker<NodeFunction> {
     */
 
     /*
+    | NodeFunction 'typedef int (FUNC_P) ();'
+    |  | NodeQualifiers 'typedef'
+    |  |  | NodeKeyword 'typedef'
+    |  | NodeSpecifier 'int'
+    |  |  | NodeBuiltinType 'int'
+    |  | NodeQualifiers '<zero span>'
+    |  | NodeFunctionIdentifier '(FUNC_P)'
+    |  |  | NodeFunctionIdentifier 'FUNC_P'
+    |  |  |  | NodeIdentifier 'FUNC_P'
+    |  | NodeParamList '()'
+     */
+
+    /*
     | NodeFunction 'typedef void ft(int);'
     |  | NodeQualifiers 'typedef'
     |  |  | NodeKeyword 'typedef'
@@ -640,27 +654,11 @@ struct NodeFunction : public NodeMaker<NodeFunction> {
       auto quals = node->child<NodeQualifiers>();
       if (!quals || !quals->search<NodeKeyword<"typedef">>()) return end;
 
-      auto id1 = node->child<NodeFunctionIdentifier>();
-      if (!id1) return end;
-
-      if (auto id5 = id1->child<NodeIdentifier>()) {
-        // typedef void foo();
-        auto s = id5->tok_a->lex->text();
-        NodeBase::add_declared_type(s);
-      }
-      else {
-        // typedef void (*foo)();
-        auto id2 = id1->child<NodeFunctionIdentifier>();
-        if (!id2) return end;
-
-        auto id3 = id2->child<NodePointer>();
-        if (!id3) return end;
-
-        auto id4 = id3->next;
-        if (!id4->isa<NodeIdentifier>()) return end;
-
-        auto s = id4->tok_a->lex->text();
-        NodeBase::add_declared_type(s);
+      if (auto id1 = node->child<NodeFunctionIdentifier>()) {
+        if (auto id2 = node->search<NodeIdentifier>()) {
+          auto s = id2->tok_a->lex->text();
+          NodeBase::add_declared_type(s);
+        }
       }
     }
 

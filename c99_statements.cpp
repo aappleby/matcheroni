@@ -244,9 +244,11 @@ struct NodeStatementAsm : public NodeMaker<NodeStatementAsm> {
 //------------------------------------------------------------------------------
 
 struct NodeStatementGoto : public NodeMaker<NodeStatementGoto> {
+  // pr21356.c - Spec says goto should be an identifier, GCC allows expressions
+
   using pattern = Seq<
     Keyword<"goto">,
-    NodeIdentifier
+    Ref<parse_expression>
   >;
 };
 
