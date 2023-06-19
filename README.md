@@ -59,7 +59,7 @@ If you're familiar with C++ templates, you are probably concerned that this libr
 
 Since Matcheroni is based on Parsing Expression Grammars, it includes all the basic rules you'd expect:
 
-- ```Atom<x, ...>``` matches a single "atom" of your input. Atoms can be characters, objects, or whatever as long as you implement ```atom_eq(...)``` for them. Atoms "consume" input and advance the read cursor when they match.
+- ```Atom<x, y, ...>``` matches any single "atom" of your input that is equal to one of the template parameters. Atoms can be characters, objects, or whatever as long as you implement ```atom_eq(...)``` for them. Atoms "consume" input and advance the read cursor when they match.
 - ```Seq<x, y, ...>``` matches sequences of other matchers.
 - ```Oneof<x, y, ...>``` returns the result of the first pattern that matches the input. Like parsing expression grammars, there is no backtracking - if ```x``` matches, we will never back up and try ```y```.
 - ```Any<x>``` is equivalent to ```x*``` in regex - it matches zero or more instances of ```x```.
@@ -70,24 +70,28 @@ Since Matcheroni is based on Parsing Expression Grammars, it includes all the ba
 
 # Additional built-in patterns for convenience
 
+While writing the C lexer and parser demos, I found myself needing some additional matchers:
+
 - ```SomeOf<x, ...>``` is just ```Some<Of<x, ...>>```
 - ```Rep<N, x>``` matches ```x``` N times.
 - ```NotAtom<x, ...>``` is equivalent to ```[^abc]``` in regex, and is faster than ```Seq<Not<Atom<x, ...>>, AnyAtom>```
 - ```Range<x, y>``` is equivalent to ```[x-y]``` in regex.
 - ```Until<x>``` matches anything until X matches, but does not consume X. Equivalent to ```Any<Seq<Not<x>,AnyAtom>>```
 - ```Ref<f>``` allows you to plug hand-written matching code into a Matcheroni pattern. The function ```f``` must be of the form ```const atom* match(const atom* a, const atom* b)```
-- ```StoreBackref<x> / MatchBackref<x>``` work like backreferences in regex, with a caveat - the backref is stored as a static variable _in_ the matcher's struct, so be careful with nesting these as you could clobber a backref on accident.
+- ```StoreBackref<x> / MatchBackref<x>``` works like backreferences in regex, with a caveat - the backref is stored as a static variable _in_ the matcher's struct, so be careful with nesting these as you could clobber a backref on accident.
 - ```EOL``` matches newlines and end-of-file, but does not advance past it.
 - ```Lit<x>``` matches a C string literal (only valid for ```const char``` atoms)
-- ```Keyword<x>``` matches a C string literal as if it was a single atom - this is only useful if your atom type can represent strings.
+- ```Keyword<x>``` matches a C string literal as if it was a single atom - this is only useful if your atom type can represent whole strings.
 - ```Charset<x>``` matches any ```const char``` atom in the string literal ```x```, which can be much more concise than ```Atom<'a', 'b', 'c', 'd', ...>```
-- ```Map<x, ...>``` differs from the other matchers in that expects ```x``` to define both ```match()``` and ```match_key()```. ```Map<>``` is like ```Oneof<>``` except that it checks ```match_key()``` first
+- ```Map<x, ...>``` differs from the other matchers in that expects ```x``` to define both ```match()``` and ```match_key()```. ```Map<>``` is like ```Oneof<>``` except that it checks ```match_key()``` first and then returns the result of ```match()``` if the key pattern matched. It does _not_ check other alternatives once the key pattern matches. This should allow for more performant matchers, but I haven't used it much yet.
 
 # Demo - Lexing and Parsing C
-This repo contains an example C lexer and parser built using Matcheroni. The lexer should be conformant to the C99 spec, the parser is less conformant but is still able to parse nearly everything in GCC's torture-test suite.
+This repo contains an example C lexer and parser built using Matcheroni. The lexer should be conformant to the C99 spec, the parser is less conformant but is still able to parse nearly everything in GCC's torture-test suite. The output of the parser is a simple tree of parse nodes with all parent/child/sibling links as pointers.
 
 # Performance
 After compilation, the trees of templates turn into trees of tiny simple function calls. GCC/Clang's optimizer does an exceptionally good job of flattening these down into small optimized functions that are nearly as small and fast as if you'd written the matchers by hand. The generated assembly looks good, and the code size can actually be smaller than hand-written as GCC can dedupe redundant template instantiations in a lot of cases.
+
+In practice it's usually way faster than std::regex. I'll insert some benchmarks here later.
 
 # A non-trivial example
 
