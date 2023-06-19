@@ -408,6 +408,8 @@ struct NodeAccessSpecifier : public NodeMaker<NodeAccessSpecifier> {
   >;
 };
 
+//------------------------------------------------------------------------------
+
 struct NodeField : public PatternWrapper<NodeField> {
   using pattern = Oneof<
     NodeAccessSpecifier,
@@ -640,7 +642,6 @@ struct NodeTypeDecl : public NodeMaker<NodeTypeDecl> {
   >;
 };
 
-
 //------------------------------------------------------------------------------
 
 struct NodeDesignation : public NodeMaker<NodeDesignation> {
@@ -755,23 +756,6 @@ struct NodeDeclaration : public NodeMaker<NodeDeclaration> {
         NodeDeclaratorList
       >
     >
-  >;
-};
-
-//------------------------------------------------------------------------------
-
-struct NodeToplevelDeclaration : public PatternWrapper<NodeToplevelDeclaration> {
-  using pattern =
-  Oneof<
-    Atom<';'>,
-    NodeFunction,
-    NodeStatementTypedef,
-    Seq<NodeStruct,   Atom<';'>>,
-    Seq<NodeUnion,    Atom<';'>>,
-    Seq<NodeTemplate, Atom<';'>>,
-    Seq<NodeClass,    Atom<';'>>,
-    Seq<NodeEnum,     Atom<';'>>,
-    Seq<NodeDeclaration, Atom<';'>>
   >;
 };
 
@@ -996,7 +980,8 @@ struct NodeStatementTypedef : public NodeMaker<NodeStatementTypedef> {
       NodeClass,
       NodeEnum,
       NodeDeclaration
-    >
+    >,
+    Atom<';'>
   >;
 
   static void extract_declarator(const NodeDeclarator* decl) {
@@ -1057,56 +1042,6 @@ struct NodeStatementTypedef : public NodeMaker<NodeStatementTypedef> {
     assert(false);
   }
 
-  /*
-  auto quals = node->child<NodeQualifiers>();
-  if (!quals || !quals->search<NodeKeyword<"typedef">>()) return;
-
-  auto list = node->child<NodeDeclaratorList>();
-  if (!list) return;
-
-  for (auto decl = list->head; decl; decl = decl->next) {
-    auto id = decl->child<NodeIdentifier>();
-    if (id) {
-      auto s = id->tok_a->lex->text();
-      NodeBase::typedef_types.insert(s);
-    }
-  }
-  */
-
-  /*
-  // We specialize match() to dig out typedef'd identifiers
-  static const Token* match(const Token* a, const Token* b) {
-    auto end = NodeMaker::match(a, b);
-    if (end) {
-      auto node = NodeBase::node_stack.back();
-      assert(node);
-      node->dump_tree();
-      assert(false);
-    }
-    return end;
-  }
-  */
-
-  /*
-  if (end) {
-    // Check for function pointer typedef
-    // FIXME typedefs should really be in their own node type...
-
-    auto node = NodeBase::node_stack.back();
-    if (!node) return end;
-
-    auto quals = node->child<NodeQualifiers>();
-    if (!quals || !quals->search<NodeKeyword<"typedef">>()) return end;
-
-    if (auto id1 = node->child<NodeFunctionIdentifier>()) {
-      if (auto id2 = node->search<NodeIdentifier>()) {
-        auto s = id2->tok_a->lex->text();
-        NodeBase::add_declared_type(s);
-      }
-    }
-  }
-  */
-
   static const Token* match(const Token* a, const Token* b) {
     auto end = NodeMaker::match(a, b);
     if (end) extract_type();
@@ -1130,10 +1065,13 @@ struct NodeStatementGoto : public NodeMaker<NodeStatementGoto> {
 struct NodeStatement : public PatternWrapper<NodeStatement> {
   using pattern = Oneof<
     // All of these have keywords first
-    Seq<NodeStatementTypedef,     Atom<';'>>,
+    NodeStatementTypedef,
+
     Seq<NodeClass,                Atom<';'>>,
     Seq<NodeStruct,               Atom<';'>>,
     Seq<NodeUnion,                Atom<';'>>,
+    Seq<NodeEnum,                 Atom<';'>>,
+
     Seq<NodeStatementFor,         Opt<Atom<';'>> >,
     Seq<NodeStatementIf,          Opt<Atom<';'>> >,
     Seq<NodeStatementReturn,      Atom<';'>>,
@@ -1162,6 +1100,21 @@ struct ProgressBar {
     printf("%.40s\n", a->lex->span_a);
     return P::match(a, b);
   }
+};
+
+struct NodeToplevelDeclaration : public PatternWrapper<NodeToplevelDeclaration> {
+  using pattern =
+  Oneof<
+    Atom<';'>,
+    NodeFunction,
+    NodeStatementTypedef,
+    Seq<NodeStruct,   Atom<';'>>,
+    Seq<NodeUnion,    Atom<';'>>,
+    Seq<NodeTemplate, Atom<';'>>,
+    Seq<NodeClass,    Atom<';'>>,
+    Seq<NodeEnum,     Atom<';'>>,
+    Seq<NodeDeclaration, Atom<';'>>
+  >;
 };
 
 struct NodeTranslationUnit : public NodeMaker<NodeTranslationUnit> {
