@@ -98,7 +98,7 @@ int test_c99_peg(int argc, char** argv) {
   //paths = { "tests/basic_inputs.h" };
   //paths = { "mini_tests/csmith_5.cpp" };
   //paths = { "../gcc/gcc/tree-inline.h" };
-  //paths = { "../gcc/gcc/testsuite/gcc.c-torture/execute/pr31448-2.c"};
+  //paths = { "../gcc/gcc/testsuite/gcc.c-torture/execute/921110-1.c"};
 
   double lex_accum = 0;
   double parse_accum = 0;
@@ -143,15 +143,6 @@ int test_c99_peg(int argc, char** argv) {
     if (path.ends_with("pr39394.c")) continue;
     if (path.ends_with("pr85401.c")) continue;
 
-    // Asm("") suffixes on variables.
-    if (path.ends_with("mipscop-3.c")) continue;
-    if (path.ends_with("mipscop-2.c")) continue;
-    if (path.ends_with("20041119-1.c")) continue;
-    if (path.ends_with("mipscop-1.c")) continue;
-    if (path.ends_with("mipscop-4.c")) continue;
-    if (path.ends_with("pr51447.c")) continue;
-    if (path.ends_with("20041213-1.c")) continue;
-
     // Weird stuff inside a switch
     if (path.ends_with("20000105-1.c")) continue;
     if (path.ends_with("pr21356.c")) continue;
@@ -162,22 +153,12 @@ int test_c99_peg(int argc, char** argv) {
     if (path.ends_with("pr65241.c")) continue;
     if (path.ends_with("pr34091.c")) continue;
 
-    // Function with same name as struct/union
-    if (path.ends_with("ifreg.c")) continue;
-    if (path.ends_with("stru.c")) continue;
-    if (path.ends_with("ext.c")) continue;
-    if (path.ends_with("pr34334.c")) continue;
-    if (path.ends_with("layout.c")) continue;
-
     // __builtin_types_compatible_p (int[5], int[])
     if (path.ends_with("builtin-types-compatible-p.c")) continue;
 
     // Function "zloop" missing return type so it assumes that the previous
     // struct declaration that is missing a semicolon is the return type :P
     if (path.ends_with("900116-1.c")) continue;
-
-    // __typeof(x) and weird __asm__()
-    if (path.ends_with("20031112-1.c")) continue;
 
     // Weird type stuff idunno i'm tired
     if (path.ends_with("pr43635.c")) continue;

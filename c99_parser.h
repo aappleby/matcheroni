@@ -290,13 +290,19 @@ struct NodeAtomicType : public NodeMaker<NodeAtomicType> {
 struct NodeSpecifier : public NodeMaker<NodeSpecifier> {
   using pattern = Seq<
     Oneof<
-      Seq<Keyword<"class">,  NodeClassType>,
-      Seq<Keyword<"union">,  NodeUnionType>,
-      Seq<Keyword<"struct">, NodeStructType>,
-      Seq<Keyword<"enum">,   NodeEnumType>,
+      Seq<Keyword<"class">,  NodeIdentifier>,
+      Seq<Keyword<"union">,  NodeIdentifier>,
+      Seq<Keyword<"struct">, NodeIdentifier>,
+      Seq<Keyword<"enum">,   NodeIdentifier>,
       NodeBuiltinType,
       NodeTypedefType,
+      /*
+      // If this was C++, we would need to match these directly
+      NodeClassType,
+      NodeStructType,
+      NodeUnionType,
       NodeEnumType,
+      */
       NodeAtomicType,
       Seq<
         Oneof<
@@ -339,6 +345,19 @@ struct NodeBitSuffix : public NodeMaker<NodeBitSuffix> {
   using pattern = Seq< Atom<':'>, NodeExpression >;
 };
 
+struct NodeAsmSuffix : public NodeMaker<NodeAsmSuffix> {
+  using pattern = Seq<
+    Oneof<
+      Keyword<"asm">,
+      Keyword<"__asm">,
+      Keyword<"__asm__">
+    >,
+    Atom<'('>,
+    Some<NodeString>,
+    Atom<')'>
+  >;
+};
+
 //------------------------------------------------------------------------------
 
 struct NodeAbstractDeclarator : public NodeMaker<NodeAbstractDeclarator> {
@@ -366,6 +385,7 @@ struct NodeDeclarator : public NodeMaker<NodeDeclarator> {
       NodeIdentifier,
       Seq<Atom<'('>, NodeDeclarator, Atom<')'>>
     >,
+    Opt<NodeAsmSuffix>,
     Opt<NodeAttribute>,
     Opt<NodeBitSuffix>,
     Any<Oneof<
@@ -444,25 +464,14 @@ struct NodeDeclaratorList : public NodeMaker<NodeDeclaratorList> {
   >;
 };
 
-struct NodeDeclBody : public PatternWrapper<NodeDeclBody> {
-  using pattern = Seq<
-    Any<NodeAttribute>,
-    Oneof<
-      Seq< NodeIdentifier, Opt<NodeFieldList>>,
-      Seq<                     NodeFieldList>
-    >,
-    Any<NodeAttribute>,
-    Opt<NodeDeclaratorList>
-  >;
-};
-
 //------------------------------------------------------------------------------
 
-struct NodeStruct : public NodeMaker<NodeStruct> {
+struct NodeStructName : public NodeMaker<NodeStructName> {
   using pattern = Seq<
     NodeQualifiers,
     Keyword<"struct">,
-    NodeDeclBody
+    Any<NodeAttribute>, // This has to be here, there are a lot of struct __attrib__() foo {};
+    Opt<NodeIdentifier>
   >;
 
   // We specialize match() to dig out typedef'd identifiers
@@ -479,18 +488,28 @@ struct NodeStruct : public NodeMaker<NodeStruct> {
   }
 };
 
+struct NodeStruct : public NodeMaker<NodeStruct> {
+  using pattern = Seq<
+    NodeStructName,
+    Opt<NodeFieldList>,
+    Any<NodeAttribute>,
+    Opt<NodeDeclaratorList>
+  >;
+};
+
 //------------------------------------------------------------------------------
 
-struct NodeUnion : public NodeMaker<NodeUnion> {
+struct NodeUnionName : public NodeMaker<NodeUnionName> {
   using pattern = Seq<
     NodeQualifiers,
     Keyword<"union">,
-    NodeDeclBody
+    Any<NodeAttribute>,
+    Opt<NodeIdentifier>
   >;
 
   // We specialize match() to dig out typedef'd identifiers
   static const Token* match(const Token* a, const Token* b) {
-    auto end = NodeMaker<NodeUnion>::match(a, b);
+    auto end = NodeMaker::match(a, b);
     if (end) {
       auto node = NodeBase::node_stack.back();
       if (auto id = node->child<NodeIdentifier>()) {
@@ -502,18 +521,29 @@ struct NodeUnion : public NodeMaker<NodeUnion> {
   }
 };
 
+
+struct NodeUnion : public NodeMaker<NodeUnion> {
+  using pattern = Seq<
+    NodeUnionName,
+    Opt<NodeFieldList>,
+    Any<NodeAttribute>,
+    Opt<NodeDeclaratorList>
+  >;
+};
+
 //------------------------------------------------------------------------------
 
-struct NodeClass : public NodeMaker<NodeClass> {
+struct NodeClassName : public NodeMaker<NodeClassName> {
   using pattern = Seq<
     NodeQualifiers,
     Keyword<"class">,
-    NodeDeclBody
+    Any<NodeAttribute>,
+    Opt<NodeIdentifier>
   >;
 
   // We specialize match() to dig out typedef'd identifiers
   static const Token* match(const Token* a, const Token* b) {
-    auto end = NodeMaker<NodeClass>::match(a, b);
+    auto end = NodeMaker::match(a, b);
     if (end) {
       auto node = NodeBase::node_stack.back();
       if (auto id = node->child<NodeIdentifier>()) {
@@ -523,6 +553,15 @@ struct NodeClass : public NodeMaker<NodeClass> {
     }
     return end;
   }
+};
+
+struct NodeClass : public NodeMaker<NodeClass> {
+  using pattern = Seq<
+    NodeClassName,
+    Opt<NodeFieldList>,
+    Any<NodeAttribute>,
+    Opt<NodeDeclaratorList>
+  >;
 };
 
 //------------------------------------------------------------------------------
@@ -544,6 +583,29 @@ struct NodeTemplate : public NodeMaker<NodeTemplate> {
 //------------------------------------------------------------------------------
 // FIXME should probably have a few diffeerent versions instead of all the opts
 
+struct NodeEnumName : public NodeMaker<NodeEnumName> {
+  using pattern = Seq<
+    NodeQualifiers,
+    Keyword<"enum">,
+    Opt<Keyword<"class">>,
+    Opt<NodeIdentifier>,
+    Opt<Seq<Atom<':'>, NodeTypeDecl>>
+  >;
+
+  // We specialize match() to dig out typedef'd identifiers
+  static const Token* match(const Token* a, const Token* b) {
+    auto end = NodeMaker::match(a, b);
+    if (end) {
+      auto node = NodeBase::node_stack.back();
+      if (auto id = node->child<NodeIdentifier>()) {
+        //printf("Adding enum type %s\n", id->text().c_str());
+        NodeBase::enum_types.insert(id->text());
+      }
+    }
+    return end;
+  }
+};
+
 struct NodeEnumerator : public NodeMaker<NodeEnumerator> {
   using pattern = Seq<
     NodeIdentifier,
@@ -562,27 +624,10 @@ struct NodeEnumerators : public NodeMaker<NodeEnumerators> {
 
 struct NodeEnum : public NodeMaker<NodeEnum> {
   using pattern = Seq<
-    NodeQualifiers,
-    Keyword<"enum">,
-    Opt<Keyword<"class">>,
-    Opt<NodeIdentifier>,
-    Opt<Seq<Atom<':'>, NodeTypeDecl>>,
+    NodeEnumName,
     Opt<NodeEnumerators>,
     Opt<NodeDeclaratorList>
   >;
-
-  // We specialize match() to dig out typedef'd identifiers
-  static const Token* match(const Token* a, const Token* b) {
-    auto end = NodeMaker<NodeEnum>::match(a, b);
-    if (end) {
-      auto node = NodeBase::node_stack.back();
-      if (auto id = node->child<NodeIdentifier>()) {
-        //printf("Adding enum type %s\n", id->text().c_str());
-        NodeBase::class_types.insert(id->text());
-      }
-    }
-    return end;
-  }
 };
 
 //------------------------------------------------------------------------------
@@ -654,6 +699,7 @@ struct NodeFunction : public NodeMaker<NodeFunction> {
     NodeFunctionIdentifier,
 
     NodeParamList,
+    Opt<NodeAsmSuffix>,
     Opt<NodeAttribute>,
     Opt<NodeKeyword<"const">>,
     Opt<Some<
@@ -953,13 +999,25 @@ struct NodeStatementTypedef : public NodeMaker<NodeStatementTypedef> {
     >
   >;
 
+  static void extract_declarator(const NodeDeclarator* decl) {
+    if (auto id = decl->child<NodeIdentifier>()) {
+      auto text = id->text();
+      //printf("Adding typedef %s\n", text.c_str());
+      NodeBase::typedef_types.insert(text);
+    }
+
+    for (auto child : decl) {
+      if (auto decl = child->as<NodeDeclarator>()) {
+        extract_declarator(decl);
+      }
+    }
+  }
+
   static void extract_declarator_list(const NodeDeclaratorList* decls) {
     if (!decls) return;
-    for (auto decl : decls) {
-      if (auto id = decl->child<NodeIdentifier>()) {
-        auto text = id->text();
-        //printf("Adding typedef %s\n", text.c_str());
-        NodeBase::typedef_types.insert(text);
+    for (auto child : decls) {
+      if (auto decl = child->as<NodeDeclarator>()) {
+        extract_declarator(decl);
       }
     }
   }
@@ -1018,7 +1076,7 @@ struct NodeStatementTypedef : public NodeMaker<NodeStatementTypedef> {
   /*
   // We specialize match() to dig out typedef'd identifiers
   static const Token* match(const Token* a, const Token* b) {
-    auto end = NodeMaker<NodeDeclaration>::match(a, b);
+    auto end = NodeMaker::match(a, b);
     if (end) {
       auto node = NodeBase::node_stack.back();
       assert(node);
