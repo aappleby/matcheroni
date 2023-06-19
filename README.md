@@ -87,7 +87,7 @@ While writing the C lexer and parser demos, I found myself needing some addition
 - ```Map<x, ...>``` differs from the other matchers in that expects ```x``` to define both ```match()``` and ```match_key()```. ```Map<>``` is like ```Oneof<>``` except that it checks ```match_key()``` first and then returns the result of ```match()``` if the key pattern matched. It does _not_ check other alternatives once the key pattern matches. This should allow for more performant matchers, but I haven't used it much yet.
 
 # Demo - Lexing and Parsing C
-This repo contains an example C lexer and parser built using Matcheroni. The lexer should be conformant to the C99 spec, the parser is less conformant but is still able to parse nearly everything in GCC's torture-test suite. The output of the parser is a simple tree of parse nodes with all parent/child/sibling links as pointers. Each type of node in the parse tree is both a matcher (in Matcheroni parlance) and a subclass of ParseNode. ParseNode implements additional bookkeeping to simplify building of the node trees. More details here later.
+This repo contains an example C lexer and parser built using Matcheroni. The lexer should be conformant to the C99 spec, the parser is less conformant but is still able to parse nearly everything in GCC's torture-test suite. The output of the parser is a simple tree of parse nodes with all parent/child/sibling links as pointers.
 
 Here's our parser for C for loops:
 ```
