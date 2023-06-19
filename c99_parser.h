@@ -26,7 +26,7 @@ struct NodeTypeDecl;
 struct NodeTypeName;
 struct NodeUnion;
 
-const char* match_lits2(const char** lits, int lit_count, const char* a, const char* b);
+const char* match_text(const char** lits, int lit_count, const char* a, const char* b);
 
 //------------------------------------------------------------------------------
 // (6.5.4) cast-expression:
@@ -192,19 +192,19 @@ struct NodeQualifier : public PatternWrapper<NodeQualifier> {
     "static", "thread_local", "__thread", /*"typedef",*/ "virtual", "volatile",
   };
 
-  static const Token* match_operator(const Token* a, const Token* b) {
+  static const Token* match_qualifier(const Token* a, const Token* b) {
     if (!a || a == b) return nullptr;
     int qual_count = sizeof(qualifiers) / sizeof(qualifiers[0]);
 
-    auto end = match_lits2(qualifiers, qual_count, a->lex->span_a, a->lex->span_b);
-    return end ? a + 1 : nullptr;
+    auto end = match_text(qualifiers, qual_count, a->lex->span_a, a->lex->span_b);
+    return (end == a->lex->span_b) ? a + 1 : nullptr;
   }
 
   using pattern = Oneof<
     Seq<NodeKeyword<"_Alignas">, Atom<'('>, Oneof<NodeTypeDecl, NodeConstant>, Atom<')'>>,
     Seq<NodeKeyword<"__declspec">, Atom<'('>, NodeIdentifier, Atom<')'>>,
     NodeAttribute,
-    Ref<match_operator>
+    Ref<match_qualifier>
   >;
 };
 
@@ -577,6 +577,7 @@ struct NodeEnum : public NodeMaker<NodeEnum> {
     if (end) {
       auto node = NodeBase::node_stack.back();
       if (auto id = node->child<NodeIdentifier>()) {
+        //printf("Adding enum type %s\n", id->text().c_str());
         NodeBase::class_types.insert(id->text());
       }
     }
@@ -941,6 +942,7 @@ struct NodeStatementAsm : public NodeMaker<NodeStatementAsm> {
 
 struct NodeStatementTypedef : public NodeMaker<NodeStatementTypedef> {
   using pattern = Seq<
+    Opt<Keyword<"__extension__">>,
     Keyword<"typedef">,
     Oneof<
       NodeStruct,

@@ -9,21 +9,6 @@
 using namespace matcheroni;
 #endif
 
-const char* match_lit2(const char* lit, const char* a, const char* b) {
-  auto c = a;
-  for (;c < b && (*c == *lit) && *lit; c++, lit++);
-  return *lit ? nullptr : c;
-}
-
-const char* match_lits2(const char** lits, int lit_count, const char* a, const char* b) {
-  for (auto i = 0; i < lit_count; i++) {
-    if (auto t = match_lit2(lits[i], a, b)) {
-      return t;
-    }
-  }
-  return nullptr;
-}
-
 template<typename M>
 using ticked = Seq<Opt<Atom<'\''>>, M>;
 
@@ -182,7 +167,7 @@ const char* match_keyword(const char* a, const char* b) {
   const int keyword_count = sizeof(c_keywords) / sizeof(c_keywords[0]);
 
   for (int i = 0; i < keyword_count; i++) {
-    if (auto t = match_lit2(c_keywords[i], a, b)) {
+    if (auto t = match_text(c_keywords[i], a, b)) {
       return t;
     }
   }
@@ -473,7 +458,7 @@ const char* match_assign_op(const char* a, const char* b) {
     "+=","-=","*=","/=","%=","&=","|=","^=", "=",
   };
   int op_count = sizeof(ops)/sizeof(*ops);
-  return match_lits2(ops, op_count, a, b);
+  return match_text(ops, op_count, a, b);
 }
 
 const char* match_infix_op(const char* a, const char* b) {
@@ -490,19 +475,19 @@ const char* match_infix_op(const char* a, const char* b) {
     // comma operator?
   };
   int op_count = sizeof(ops)/sizeof(*ops);
-  return match_lits2(ops, op_count, a, b);
+  return match_text(ops, op_count, a, b);
 }
 
 const char* match_prefix_op(const char* a, const char* b) {
   const char* ops[] = { "++", "--", "+", "-", "!", "~", "&", "*" };
   int op_count = sizeof(ops)/sizeof(*ops);
-  return match_lits2(ops, op_count, a, b);
+  return match_text(ops, op_count, a, b);
 }
 
 const char* match_postfix_op(const char* a, const char* b) {
   const char* ops[] = { "++", "--" };
   int op_count = sizeof(ops)/sizeof(*ops);
-  return match_lits2(ops, op_count, a, b);
+  return match_text(ops, op_count, a, b);
 }
 
 //------------------------------------------------------------------------------

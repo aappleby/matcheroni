@@ -15,17 +15,25 @@ namespace matcheroni {
 // Matchers must always handle null pointers and empty ranges.
 
 template<typename atom>
-struct StackEntry;
-
-template<typename atom>
 using matcher = const atom* (*) (const atom* a, const atom* b);
 
-template<typename atom>
-struct StackEntry {
-  matcher<atom> m;
-  const atom* a;
-  const atom* b;
-};
+//------------------------------------------------------------------------------
+
+inline const char* match_text(const char* text, const char* a, const char* b) {
+  auto c = a;
+  for (;c < b && (*c == *text) && *text; c++, text++);
+  if (*text) return nullptr;
+  return c;
+}
+
+inline const char* match_text(const char** texts, int text_count, const char* a, const char* b) {
+  for (auto i = 0; i < text_count; i++) {
+    if (auto t = match_text(texts[i], a, b)) {
+      return t;
+    }
+  }
+  return nullptr;
+}
 
 //------------------------------------------------------------------------------
 
@@ -141,33 +149,6 @@ struct Anything {
     return b;
   }
 };
-
-//------------------------------------------------------------------------------
-
-/*
-template<typename P>
-struct Push {
-
-  template<typename atom>
-  static const atom* match(const atom* a, const atom* b) {
-    auto stack = (StackEntry*)ctx;
-    stack[0].m = P::match;
-    stack[0].a = a;
-    stack[0].b = P::match(a, b, stack + 1);
-    return stack[0].b;
-  }
-};
-
-template<typename P>
-struct Pop {
-
-  template<typename atom>
-  static const atom* match(const atom* a, const atom* b) {
-    auto stack = (StackEntry*)ctx;
-    assert(
-  }
-};
-*/
 
 //------------------------------------------------------------------------------
 // The 'Seq' matcher succeeds if all of its sub-matchers succeed in order.
