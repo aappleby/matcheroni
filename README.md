@@ -14,9 +14,8 @@ Unlike std::regex though, the Matcheroni pattern is both the definition of the p
 
 Matcheroni patterns thus require no additional libraries or code to be usable - you can immediately call
 ```
-const char* text_begin = "aaabbaaccdefxyz";
-const char* text_end = text_begin + strlen(text_begin);
-const char* result = my_pattern::match(some_text_begin, some_text_end);
+const std::string text = "aaabbaaccdefxyz";
+const char* result = my_pattern::match(text.data(), text.data() + text.size());
 printf("%s\n", result); // prints "xyz"
 ```
 
@@ -47,9 +46,8 @@ and we could use it like this:
 ```
 using pattern = PrintMessageOnMatch<Atom<'a'>>;
 
-const char* text_begin = "This does not start with 'a'";
-const char* text_end = text_begin + strlen(text_begin);
-pattern::match(text_begin, text_end); // prints "Match failed!"
+const std::string text = "This does not start with 'a'";
+pattern::match(text.data(), text.data() + text.size()); // prints "Match failed!"
 ```
 
 
@@ -90,3 +88,63 @@ This repo contains an example C lexer and parser built using Matcheroni. The lex
 
 # Performance
 After compilation, the trees of templates turn into trees of tiny simple function calls. GCC/Clang's optimizer does an exceptionally good job of flattening these down into small optimized functions that are nearly as small and fast as if you'd written the matchers by hand. The generated assembly looks good, and the code size can actually be smaller than hand-written as GCC can dedupe redundant template instantiations in a lot of cases.
+
+# A non-trivial example
+
+Here's the pattern I use to match C99 integers, plus a few additions from the C++ spec and the GCC extensions:
+
+```
+const char* match_int(const char* a, const char* b) {
+  using digit         = Range<'0', '9'>;
+  using nonzero_digit = Range<'1', '9'>;
+
+  // The 'ticked' template allows for an optional single-quote to be inserted
+  // before each digit.
+  using decimal_constant = Seq<nonzero_digit, Any<ticked<digit>>>;
+
+  using hexadecimal_prefix         = Oneof<Lit<"0x">, Lit<"0X">>;
+  using hexadecimal_digit          = Oneof<Range<'0', '9'>, Range<'a', 'f'>, Range<'A', 'F'>>;
+  using hexadecimal_digit_sequence = Seq<hexadecimal_digit, Any<ticked<hexadecimal_digit>>>;
+  using hexadecimal_constant       = Seq<hexadecimal_prefix, hexadecimal_digit_sequence>;
+
+  using binary_prefix         = Oneof<Lit<"0b">, Lit<"0B">>;
+  using binary_digit          = Atom<'0','1'>;
+  using binary_digit_sequence = Seq<binary_digit, Any<ticked<binary_digit>>>;
+  using binary_constant       = Seq<binary_prefix, binary_digit_sequence>;
+
+  using octal_digit        = Range<'0', '7'>;
+  using octal_constant     = Seq<Atom<'0'>, Any<ticked<octal_digit>>>;
+
+  using unsigned_suffix        = Atom<'u', 'U'>;
+  using long_suffix            = Atom<'l', 'L'>;
+  using long_long_suffix       = Oneof<Lit<"ll">, Lit<"LL">>;
+  using bit_precise_int_suffix = Oneof<Lit<"wb">, Lit<"WB">>;
+
+  // This is a little odd because we have to match in longest-suffix-first order
+  // to ensure we capture the entire suffix
+  using integer_suffix = Oneof<
+    Seq<unsigned_suffix,  long_long_suffix>,
+    Seq<unsigned_suffix,  long_suffix>,
+    Seq<unsigned_suffix,  bit_precise_int_suffix>,
+    Seq<unsigned_suffix>,
+
+    Seq<long_long_suffix,       Opt<unsigned_suffix>>,
+    Seq<long_suffix,            Opt<unsigned_suffix>>,
+    Seq<bit_precise_int_suffix, Opt<unsigned_suffix>>
+  >;
+
+  // GCC allows i or j in addition to the normal suffixes for complex-ified types :/...
+  using complex_suffix = Oneof<Atom<'i'>, Atom<'j'>>;
+
+  // Octal has to be _after_ bin/hex so we don't prematurely match the prefix
+  using integer_constant = Oneof<
+    Seq<decimal_constant,     Opt<complex_suffix>, Opt<integer_suffix>, Opt<complex_suffix>>,
+    Seq<hexadecimal_constant, Opt<complex_suffix>, Opt<integer_suffix>, Opt<complex_suffix>>,
+    Seq<binary_constant,      Opt<complex_suffix>, Opt<integer_suffix>, Opt<complex_suffix>>,
+    Seq<octal_constant,       Opt<complex_suffix>, Opt<integer_suffix>, Opt<complex_suffix>>
+  >;
+
+  return integer_constant::match(a, b);
+}
+```
+Yep, it's all "using" declarations and the only actual call is ```return integer_constant::match(a, b)``` at the end. Works fine.

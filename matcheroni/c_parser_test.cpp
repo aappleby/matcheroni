@@ -13,7 +13,6 @@ void set_color(uint32_t c);
 //------------------------------------------------------------------------------
 
 void lex_file(std::string& text, std::vector<Lexeme>& lexemes, std::vector<Token>& tokens) {
-
   auto text_a = text.data();
   auto text_b = text_a + text.size();
 
