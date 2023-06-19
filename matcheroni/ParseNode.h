@@ -15,25 +15,25 @@ void set_color(uint32_t c);
 
 //------------------------------------------------------------------------------
 
-struct NodeBase;
+struct ParseNode;
 
-struct NodeStack {
-  void push(NodeBase* n);
-  NodeBase* pop();
-  NodeBase* back();
+struct ParseNodeStack {
+  void push(ParseNode* n);
+  ParseNode* pop();
+  ParseNode* back();
   size_t top() const;
   void dump_top();
   void clear_to(size_t new_top);
   void pop_to(size_t new_top);
 
   static const int stack_size = 8192;
-  NodeBase*  _stack[stack_size] = {0};
+  ParseNode*  _stack[stack_size] = {0};
   size_t _top = 0;
 };
 
 //------------------------------------------------------------------------------
 
-struct NodeBase {
+struct ParseNode {
 
   void init(const Token* a = nullptr, const Token* b = nullptr) {
     //print_class_name();
@@ -43,7 +43,7 @@ struct NodeBase {
     this->tok_b = b;
   }
 
-  void init(const Token* a, const Token* b, NodeBase** children, size_t child_count) {
+  void init(const Token* a, const Token* b, ParseNode** children, size_t child_count) {
     //print_class_name();
     //printf("::init()\n");
 
@@ -55,7 +55,7 @@ struct NodeBase {
     }
   }
 
-  virtual ~NodeBase() {
+  virtual ~ParseNode() {
     auto cursor = head;
     while(cursor) {
       auto next = cursor->next;
@@ -116,7 +116,7 @@ struct NodeBase {
 
   //----------------------------------------
 
-  NodeBase* child_at(int index) {
+  ParseNode* child_at(int index) {
     auto cursor = head;
     for (auto i = 0; i < index; i++) {
       if (cursor) cursor = cursor->next;
@@ -126,7 +126,7 @@ struct NodeBase {
 
   //----------------------------------------
 
-  void append(NodeBase* node) {
+  void append(ParseNode* node) {
     if (!node) return;
 
     node->parent = this;
@@ -154,7 +154,7 @@ struct NodeBase {
     assert(!next || next->prev == this);
     assert(!prev || prev->next == this);
 
-    NodeBase* cursor = nullptr;
+    ParseNode* cursor = nullptr;
 
     // Check node chain
     for (cursor = head; cursor && cursor->next; cursor = cursor->next);
@@ -247,13 +247,13 @@ struct NodeBase {
 
   //std::string field = "";
 
-  NodeBase* parent = nullptr;
-  NodeBase* prev   = nullptr;
-  NodeBase* next   = nullptr;
-  NodeBase* head   = nullptr;
-  NodeBase* tail   = nullptr;
+  ParseNode* parent = nullptr;
+  ParseNode* prev   = nullptr;
+  ParseNode* next   = nullptr;
+  ParseNode* head   = nullptr;
+  ParseNode* tail   = nullptr;
 
-  static NodeStack node_stack;
+  static ParseNodeStack node_stack;
 
   //static inline IdentifierSet global_ids = {};
 
@@ -359,7 +359,7 @@ struct NodeBase {
 //------------------------------------------------------------------------------
 
 struct ParseNodeIterator {
-  ParseNodeIterator(const NodeBase* cursor) : cursor(cursor) {
+  ParseNodeIterator(const ParseNode* cursor) : cursor(cursor) {
   }
 
   ParseNodeIterator& operator++() {
@@ -371,25 +371,25 @@ struct ParseNodeIterator {
     return cursor != b.cursor;
   }
 
-  const NodeBase* operator*() const {
+  const ParseNode* operator*() const {
     return cursor;
   }
 
-  const NodeBase* cursor;
+  const ParseNode* cursor;
 };
 
-inline ParseNodeIterator begin(const NodeBase* parent) {
+inline ParseNodeIterator begin(const ParseNode* parent) {
   return ParseNodeIterator(parent->head);
 }
 
-inline ParseNodeIterator end(const NodeBase* parent) {
+inline ParseNodeIterator end(const ParseNode* parent) {
   return ParseNodeIterator(nullptr);
 }
 
 //------------------------------------------------------------------------------
 
 template<typename NT>
-struct NodeMaker : public NodeBase {
+struct NodeMaker : public ParseNode {
 
   static const Token* match(const Token* a, const Token* b) {
     auto old_top = node_stack.top();
@@ -410,14 +410,16 @@ struct NodeMaker : public NodeBase {
 };
 
 //------------------------------------------------------------------------------
+// FIXME we need an alternate OneOf<> for the parser that wraps dead branches
+// with this
 
 template<typename P>
 struct CleanDeadNodes {
   static const Token* match(const Token* a, const Token* b) {
-    auto old_top = NodeBase::node_stack.top();
+    auto old_top = ParseNode::node_stack.top();
     auto end = P::match(a, b);
     if (!end) {
-      NodeBase::node_stack.clear_to(old_top);
+      ParseNode::node_stack.clear_to(old_top);
     }
     return end;
   }
@@ -450,7 +452,7 @@ struct NodeKeyword : public NodeMaker<NodeKeyword<lit>> {
 
 struct NodeDispenser {
 
-  NodeDispenser(NodeBase** children, size_t child_count) {
+  NodeDispenser(ParseNode** children, size_t child_count) {
     this->children = children;
     this->child_count = child_count;
   }
@@ -470,7 +472,7 @@ struct NodeDispenser {
     }
   }
 
-  NodeBase** children;
+  ParseNode** children;
   size_t child_count;
 };
 
@@ -513,7 +515,7 @@ struct NodeBuiltinTypeBase {
   static const Token* match(const Token* a, const Token* b) {
     if (!a || !a->is_identifier() || a == b) return nullptr;
 
-    if (NodeBase::builtin_types.contains(a->lex->text())) {
+    if (ParseNode::builtin_types.contains(a->lex->text())) {
       return a + 1;
     }
     else {
@@ -526,7 +528,7 @@ struct NodeBuiltinTypePrefix {
   static const Token* match(const Token* a, const Token* b) {
     if (!a || !a->is_identifier() || a == b) return nullptr;
 
-    if (NodeBase::builtin_type_prefixes.contains(a->lex->text())) {
+    if (ParseNode::builtin_type_prefixes.contains(a->lex->text())) {
       return a + 1;
     }
     else {
@@ -539,7 +541,7 @@ struct NodeBuiltinTypeSuffix {
   static const Token* match(const Token* a, const Token* b) {
     if (!a || !a->is_identifier() || a == b) return nullptr;
 
-    if (NodeBase::builtin_type_suffixes.contains(a->lex->text())) {
+    if (ParseNode::builtin_type_suffixes.contains(a->lex->text())) {
       return a + 1;
     }
     else {
@@ -563,35 +565,35 @@ struct NodeBuiltinType : public NodeMaker<NodeBuiltinType> {
 
 struct NodeClassType : public NodeMaker<NodeClassType> {
   static const Token* match(const Token* a, const Token* b) {
-    if (a && NodeBase::class_types.contains(a->lex->text())) return a + 1;
+    if (a && ParseNode::class_types.contains(a->lex->text())) return a + 1;
     return nullptr;
   }
 };
 
 struct NodeStructType : public NodeMaker<NodeStructType> {
   static const Token* match(const Token* a, const Token* b) {
-    if (a && NodeBase::struct_types.contains(a->lex->text())) return a + 1;
+    if (a && ParseNode::struct_types.contains(a->lex->text())) return a + 1;
     return nullptr;
   }
 };
 
 struct NodeUnionType : public NodeMaker<NodeUnionType> {
   static const Token* match(const Token* a, const Token* b) {
-    if (a && NodeBase::union_types.contains(a->lex->text())) return a + 1;
+    if (a && ParseNode::union_types.contains(a->lex->text())) return a + 1;
     return nullptr;
   }
 };
 
 struct NodeEnumType : public NodeMaker<NodeEnumType> {
   static const Token* match(const Token* a, const Token* b) {
-    if (a && NodeBase::enum_types.contains(a->lex->text())) return a + 1;
+    if (a && ParseNode::enum_types.contains(a->lex->text())) return a + 1;
     return nullptr;
   }
 };
 
 struct NodeTypedefType : public PatternWrapper<NodeTypedefType> {
   static const Token* match(const Token* a, const Token* b) {
-    if (a && NodeBase::typedef_types.contains(a->lex->text())) return a + 1;
+    if (a && ParseNode::typedef_types.contains(a->lex->text())) return a + 1;
     return nullptr;
   }
 };

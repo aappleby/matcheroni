@@ -1,3 +1,6 @@
+// A dirty hack to generate random sequences of tokens that match the C spec.
+// Rather useless as it goes off into the weeds easily.
+
 #include <stdio.h>
 #include <string>
 #include <functional>

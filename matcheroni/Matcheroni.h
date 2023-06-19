@@ -64,7 +64,6 @@ struct Atom;
 
 template <auto C, auto... rest>
 struct Atom<C, rest...> {
-
   template<typename atom>
   static const atom* match(const atom* a, const atom* b) {
     if (!a || a == b) return nullptr;
@@ -78,7 +77,6 @@ struct Atom<C, rest...> {
 
 template <auto C>
 struct Atom<C> {
-
   template<typename atom>
   static const atom* match(const atom* a, const atom* b) {
     if (!a || a == b) return nullptr;
@@ -99,7 +97,7 @@ struct AnyAtom {
 };
 
 //------------------------------------------------------------------------------
-// The 'Seq' matcher succeeds if all of its sub-matchers succeed in order.
+// 'Seq' (sequence) succeeds if all of its sub-matchers succeed in order.
 
 // Examples:
 // Seq<Atom<'a'>, Atom<'b'>::match("abcd") == "cd"
@@ -149,59 +147,17 @@ struct Oneof<P> {
 };
 
 //------------------------------------------------------------------------------
-// 'Map' returns the result of the first matcher whose 'match_key' matches the
-// input. Unlike 'Oneof', if the key pattern matches but the value pattern does
-// not, the rest of the options will _not_ be checked. This can make matching
-// much faster by allowing large arrays of options to be broken down into
-// skippable groups.
+// Zero-or-one 'optional' patterns, equivalent to M? in regex.
 
-// Note - the key is _NOT_ consumed, as the key pattern may be substantially
-// different than the match pattern (for example matching a single character as
-// a key for a match pattern consisting of a bunch of operators starting with
-// that character)
+// Opt<Atom<'a'>>::match("abcd") == "bcd"
+// Opt<Atom<'a'>>::match("bcde") == "bcde"
 
-// Example:
-
-// using Declaration =
-// Map<
-//   KeyVal<Atom<"struct">, NodeStruct>,
-//   KeyVal<Atom<"union">,  NodeUnion>,
-//   KeyVal<Atom<"class",   NodeClass>,
-//   KeyVal<Atom<"enum",    NodeEnum>,
-//   KeyVal<Anything,       NodeVariable>
-// >;
-
-template<typename P, typename... rest>
-struct Map {
+template<typename P>
+struct Opt {
   template<typename atom>
   static const atom* match(const atom* a, const atom* b) {
-    if (P::match_key(a, b)) {
-      return P::match(a, b);
-    }
-    else {
-      return Map<rest...>::match(a, b);
-    }
-  }
-};
-
-template <typename P>
-struct Map<P> {
-  template<typename atom>
-  static const atom* match(const atom* a, const atom* b) {
-    return P::match(a, b);
-  }
-};
-
-template <typename K, typename V>
-struct KeyVal {
-  template<typename atom>
-  static const atom* match_key(const atom* a, const atom* b) {
-    return K::match(a, b);
-  }
-
-  template<typename atom>
-  static const atom* match(const atom* a, const atom* b) {
-    return V::match(a, b);
+    auto c = P::match(a, b);
+    return c ? c : a;
   }
 };
 
@@ -211,7 +167,6 @@ struct KeyVal {
 // _never_ match anything, as the first Any<> is greedy and consumes all 'a's
 // without doing any backtracking.
 
-// Examples:
 // Any<Atom<'a'>>::match("aaaab") == "b"
 // Any<Atom<'a'>>::match("bbbbc") == "bbbbc"
 
@@ -226,31 +181,13 @@ struct Any {
 };
 
 //------------------------------------------------------------------------------
-// Zero-or-one 'optional' patterns, equivalent to M? in regex.
-
-// Opt<Atom<'a'>>::match("abcd") == "bcd"
-// Opt<Atom<'a'>>::match("bcde") == "bcde"
-
-template<typename P>
-struct Opt {
-
-  template<typename atom>
-  static const atom* match(const atom* a, const atom* b) {
-    auto c = P::match(a, b);
-    return c ? c : a;
-  }
-};
-
-//------------------------------------------------------------------------------
 // One-or-more patterns, equivalent to M+ in regex.
 
-// Examples:
 // Some<Atom<'a'>>::match("aaaab") == "b"
 // Some<Atom<'a'>>::match("bbbbc") == nullptr
 
 template<typename P>
 struct Some {
-
   template<typename atom>
   static const atom* match(const atom* a, const atom* b) {
     auto c = P::match(a, b);
@@ -260,6 +197,7 @@ struct Some {
 
 //------------------------------------------------------------------------------
 // Equivalent to Some<OneOf<>>
+// FIXME should we leave this in?
 
 template <typename P, typename... rest>
 struct SomeOf {
@@ -282,7 +220,6 @@ struct SomeOf {
 
 template <typename P>
 struct SomeOf<P> {
-
   template<typename atom>
   static const atom* match(const atom* a, const atom* b) {
     return P::match(a, b);
@@ -292,7 +229,6 @@ struct SomeOf<P> {
   static const atom* match1(const atom* a, const atom* b) {
     return P::match(a, b);
   }
-
 };
 
 //------------------------------------------------------------------------------
@@ -300,7 +236,6 @@ struct SomeOf<P> {
 
 template<int N, typename P>
 struct Rep {
-
   template<typename atom>
   static const atom* match(const atom* a, const atom* b) {
     for(auto i = 0; i < N; i++) {
@@ -321,7 +256,6 @@ struct Rep {
 
 template<typename P>
 struct And {
-
   template<typename atom>
   static const atom* match(const atom* a, const atom* b) {
     auto c = P::match(a, b);
@@ -337,7 +271,6 @@ struct And {
 
 template<typename P>
 struct Not {
-
   template<typename atom>
   static const atom* match(const atom* a, const atom* b) {
     auto c = P::match(a, b);
@@ -346,26 +279,11 @@ struct Not {
 };
 
 //------------------------------------------------------------------------------
-// Matches EOF, but does not advance past it.
-
-/*
-template <typename C>
-struct EOF {
-
-  template<typename atom>
-  static const atom* match(const atom* a, const atom* b) {
-    return a == b ? a : nullptr;
-  }
-};
-*/
-
-//------------------------------------------------------------------------------
 // Atom-not-in-set matcher, which is a bit faster than using
 // Seq<Not<Atom<...>>, AnyAtom>
 
 template <auto C, auto... rest>
 struct NotAtom {
-
   template<typename atom>
   static const atom* match(const atom* a, const atom* b) {
     if (!a || a == b) return nullptr;
@@ -376,7 +294,6 @@ struct NotAtom {
 
 template <auto C>
 struct NotAtom<C> {
-
   template<typename atom>
   static const atom* match(const atom* a, const atom* b) {
     if (!a || a == b) return nullptr;
@@ -389,7 +306,6 @@ struct NotAtom<C> {
 
 template<auto RA, decltype(RA) RB>
 struct Range {
-
   template<typename atom>
   static const atom* match(const atom* a, const atom* b) {
     if (!a || a == b) return nullptr;
@@ -406,7 +322,6 @@ struct Range {
 
 template<typename P>
 struct Until {
-
   template<typename atom>
   static const atom* match(const atom* a, const atom* b) {
     while(a < b) {
@@ -418,13 +333,13 @@ struct Until {
 };
 
 //------------------------------------------------------------------------------
-// References to other matchers. Enables recursive matchers.
+// References to bare matcher functions.
 
-template <typename R, typename... A> R ret(const R *(*)(A...));
+// const char* my_special_matcher(const char* a, const char* b);
+// using pattern = Ref<my_special_matcher>;
 
 template<auto& M>
 struct Ref {
-
   template<typename atom>
   static const atom* match(const atom* a, const atom* b) {
     return M(a, b);
@@ -432,6 +347,9 @@ struct Ref {
 };
 
 //------------------------------------------------------------------------------
+// Stores and matches backreferences, used for raw string delimiters in the C
+// lexer. Note that the backreference is stored as a static pointer in the
+// StoreBackref template, so be careful of nesting as you could clobber it.
 
 template<typename P>
 struct StoreBackref {
@@ -466,46 +384,9 @@ struct MatchBackref {
 };
 
 //------------------------------------------------------------------------------
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-//------------------------------------------------------------------------------
 // Matches newline and EOF, but does not advance past it.
 
 struct EOL {
-
   template<typename atom>
   static const atom* match(const atom* a, const atom* b) {
     if (!a) return nullptr;
@@ -571,74 +452,11 @@ struct Keyword {
   }
 };
 
-#if 0
-//------------------------------------------------------------------------------
-// Not a matcher, but a template helper that allows us to use arrays of strings
-// as template arguments.
-
-template<int N>
-struct StringParams {
-  constexpr StringParams(const char* const (&strs)[N]) {
-    for (int i = 0; i < N; i++) value[i] = strs[i];
-  }
-  const char* value[N];
-};
-
-
-//------------------------------------------------------------------------------
-// Matches arrays of string literals. Does ___NOT___ include the trailing null.
-
-// const char* keywords[] = {"foo", "bar"};
-// Keywords<keywords>::match("foobar") == "bar"
-
-//template<const char* const* lits, int N>
-template<StringParams lits>
-struct Keywords {
-
-  template<typename atom>
-  static const atom* match(const atom* a, const atom* b) {
-    if (!a || a == b) return nullptr;
-
-    auto N = sizeof(lits.value) / sizeof(lits.value[0]);
-    for (auto i = 0; i < N; i++) {
-      auto lit = lits.value[i];
-      auto c = a;
-      for (;c < b && (*c == *lit) && *lit; c++, lit++);
-      if (*lit == 0) return c;
-    }
-
-    return nullptr;
-  }
-};
-#endif
-
-//------------------------------------------------------------------------------
-// 'OneofLit' returns the first match in an array of literals.
-
-/*
-template <StringParam M1, StringParam... rest>
-struct OneofLit {
-  static const char* match(const char* cursor) {
-    if (auto end = Lit<M1>::match(cursor)) return end;
-    return OneofLit<rest...>::match(cursor);
-  }
-};
-
-template <StringParam M1>
-struct OneofLit<M1> {
-  static const char* match(const char* cursor) {
-    return Lit<M1>::match(cursor);
-  }
-};
-*/
-
 //------------------------------------------------------------------------------
 // Matches larger sets of chars, digraphs, and trigraphs packed into a string
 // literal.
 
 // Charset<"abcdef">::match("defg") == "efg"
-// Digraphs<"aabbcc">::match("bbccdd") == "ccddee"
-// Trigraphs<"abc123xyz">::match("123456") == "456"
 
 template<StringParam chars>
 struct Charset {
@@ -656,36 +474,62 @@ struct Charset {
 
 };
 
-/*
-template<StringParam chars>
-struct Digraphs {
-  static const char* match(const char* cursor) {
-    if(!cursor) return nullptr;
-    for (auto i = 0; i < sizeof(chars.value); i += 2) {
-      if (cursor[0] == chars.value[i+0] &&
-          cursor[1] == chars.value[i+1]) {
-        return cursor + 2;
-      }
+//------------------------------------------------------------------------------
+// 'Map' returns the result of the first matcher whose 'match_key' matches the
+// input. Unlike 'Oneof', if the key pattern matches but the value pattern does
+// not, the rest of the options will _not_ be checked. This can make matching
+// much faster by allowing large arrays of options to be broken down into
+// skippable groups.
+
+// Note - the key is _NOT_ consumed, as the key pattern may be substantially
+// different than the match pattern (for example matching a single character as
+// a key for a match pattern consisting of a bunch of operators starting with
+// that character)
+
+// Example:
+
+// using Declaration =
+// Map<
+//   KeyVal<Atom<"struct">, NodeStruct>,
+//   KeyVal<Atom<"union">,  NodeUnion>,
+//   KeyVal<Atom<"class",   NodeClass>,
+//   KeyVal<Atom<"enum",    NodeEnum>,
+//   KeyVal<AnyAtom,        NodeVariable>
+// >;
+
+template<typename P, typename... rest>
+struct Map {
+  template<typename atom>
+  static const atom* match(const atom* a, const atom* b) {
+    if (P::match_key(a, b)) {
+      return P::match(a, b);
     }
-    return nullptr;
+    else {
+      return Map<rest...>::match(a, b);
+    }
   }
 };
 
-template<StringParam chars>
-struct Trigraphs {
-  static const char* match(const char* cursor) {
-    if(!cursor) return nullptr;
-    for (auto i = 0; i < sizeof(chars.value); i += 3) {
-      if (cursor[0] == chars.value[i+0] &&
-          cursor[1] == chars.value[i+1] &&
-          cursor[2] == chars.value[i+2]) {
-        return cursor + 3;
-      }
-    }
-    return nullptr;
+template <typename P>
+struct Map<P> {
+  template<typename atom>
+  static const atom* match(const atom* a, const atom* b) {
+    return P::match(a, b);
   }
 };
-*/
+
+template <typename K, typename V>
+struct KeyVal {
+  template<typename atom>
+  static const atom* match_key(const atom* a, const atom* b) {
+    return K::match(a, b);
+  }
+
+  template<typename atom>
+  static const atom* match(const atom* a, const atom* b) {
+    return V::match(a, b);
+  }
+};
 
 //------------------------------------------------------------------------------
 

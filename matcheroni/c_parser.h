@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Tokens.h"
-#include "Node.h"
+#include "ParseNode.h"
 #include <string.h>
 
 struct NodeAbstractDeclarator;
@@ -480,10 +480,10 @@ struct NodeStructName : public NodeMaker<NodeStructName> {
   static const Token* match(const Token* a, const Token* b) {
     auto end = NodeMaker::match(a, b);
     if (end) {
-      auto node = NodeBase::node_stack.back();
+      auto node = ParseNode::node_stack.back();
       if (auto id = node->child<NodeIdentifier>()) {
         //printf("Adding struct type %s\n", id->text().c_str());
-        NodeBase::struct_types.insert(id->text());
+        ParseNode::struct_types.insert(id->text());
       }
     }
     return end;
@@ -513,10 +513,10 @@ struct NodeUnionName : public NodeMaker<NodeUnionName> {
   static const Token* match(const Token* a, const Token* b) {
     auto end = NodeMaker::match(a, b);
     if (end) {
-      auto node = NodeBase::node_stack.back();
+      auto node = ParseNode::node_stack.back();
       if (auto id = node->child<NodeIdentifier>()) {
         //printf("Adding union type %s\n", id->text().c_str());
-        NodeBase::union_types.insert(id->text());
+        ParseNode::union_types.insert(id->text());
       }
     }
     return end;
@@ -547,10 +547,10 @@ struct NodeClassName : public NodeMaker<NodeClassName> {
   static const Token* match(const Token* a, const Token* b) {
     auto end = NodeMaker::match(a, b);
     if (end) {
-      auto node = NodeBase::node_stack.back();
+      auto node = ParseNode::node_stack.back();
       if (auto id = node->child<NodeIdentifier>()) {
         //printf("Adding class type %s\n", id->text().c_str());
-        NodeBase::class_types.insert(id->text());
+        ParseNode::class_types.insert(id->text());
       }
     }
     return end;
@@ -598,10 +598,10 @@ struct NodeEnumName : public NodeMaker<NodeEnumName> {
   static const Token* match(const Token* a, const Token* b) {
     auto end = NodeMaker::match(a, b);
     if (end) {
-      auto node = NodeBase::node_stack.back();
+      auto node = ParseNode::node_stack.back();
       if (auto id = node->child<NodeIdentifier>()) {
         //printf("Adding enum type %s\n", id->text().c_str());
-        NodeBase::enum_types.insert(id->text());
+        ParseNode::enum_types.insert(id->text());
       }
     }
     return end;
@@ -995,7 +995,7 @@ struct NodeStatementTypedef : public NodeMaker<NodeStatementTypedef> {
     if (auto id = decl->child<NodeIdentifier>()) {
       auto text = id->text();
       //printf("Adding typedef %s\n", text.c_str());
-      NodeBase::typedef_types.insert(text);
+      ParseNode::typedef_types.insert(text);
     }
 
     for (auto child : decl) {
@@ -1015,7 +1015,7 @@ struct NodeStatementTypedef : public NodeMaker<NodeStatementTypedef> {
   }
 
   static void extract_type() {
-    auto node = NodeBase::node_stack.back();
+    auto node = ParseNode::node_stack.back();
     if (!node) return;
 
     //node->dump_tree();

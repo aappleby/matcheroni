@@ -1,7 +1,7 @@
 #include "c_parser.h"
 
 #include <filesystem>
-#include "Node.h"
+#include "ParseNode.h"
 
 #include "Lexemes.h"
 #include <vector>
@@ -111,8 +111,8 @@ int test_c_peg(int argc, char** argv) {
     lexemes.clear();
     tokens.clear();
     // Don't forget to reset the parser state derrrrrp
-    NodeBase::node_stack.clear_to(0);
-    NodeBase::reset_types();
+    ParseNode::node_stack.clear_to(0);
+    ParseNode::reset_types();
 
     file_total++;
 
@@ -197,13 +197,13 @@ int test_c_peg(int argc, char** argv) {
     NodeTranslationUnit::match(token_a, token_b);
     parse_accum += timestamp_ms();
 
-    if (NodeBase::node_stack.top() != 1) {
+    if (ParseNode::node_stack.top() != 1) {
       printf("Parsing failed: %s\n", path.c_str());
-      printf("Node stack wrong size %ld\n", NodeBase::node_stack._top);
+      printf("Node stack wrong size %ld\n", ParseNode::node_stack._top);
       return -1;
     }
 
-    auto root = NodeBase::node_stack.pop();
+    auto root = ParseNode::node_stack.pop();
     //root->dump_tree();
 
     if (root->tok_a != token_a || root->tok_b != token_b) {
