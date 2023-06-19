@@ -89,6 +89,26 @@ While writing the C lexer and parser demos, I found myself needing some addition
 # Demo - Lexing and Parsing C
 This repo contains an example C lexer and parser built using Matcheroni. The lexer should be conformant to the C99 spec, the parser is less conformant but is still able to parse nearly everything in GCC's torture-test suite. The output of the parser is a simple tree of parse nodes with all parent/child/sibling links as pointers. Each type of node in the parse tree is both a matcher (in Matcheroni parlance) and a subclass of ParseNode. ParseNode implements additional bookkeeping to simplify building of the node trees. More details here later.
 
+Here's our parser for C for loops:
+```
+struct NodeStatementFor : public NodeMaker<NodeStatementFor> {
+  using pattern = Seq<
+    Keyword<"for">,
+    Atom<'('>,
+    Opt<comma_separated<Oneof<
+      NodeExpression,
+      NodeDeclaration
+    >>>,
+    Atom<';'>,
+    Opt<comma_separated<NodeExpression>>,
+    Atom<';'>,
+    Opt<comma_separated<NodeExpression>>,
+    Atom<')'>,
+    NodeStatement
+  >;
+};
+```
+
 # Performance
 After compilation, the trees of templates turn into trees of tiny simple function calls. GCC/Clang's optimizer does an exceptionally good job of flattening these down into small optimized functions that are nearly as small and fast as if you'd written the matchers by hand. The generated assembly looks good, and the code size can actually be smaller than hand-written as GCC can dedupe redundant template instantiations in a lot of cases.
 
