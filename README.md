@@ -89,7 +89,7 @@ While writing the C lexer and parser demos, I found myself needing some addition
 # Demo - Lexing and Parsing C
 This repo contains an example C lexer and parser built using Matcheroni. The lexer should be conformant to the C99 spec, the parser is less conformant but is still able to parse nearly everything in GCC's torture-test suite. The output of the parser is a simple tree of parse nodes with all parent/child/sibling links as pointers.
 
-Here's our parser for C for loops:
+Here's our parser for C's ```for``` loops:
 ```
 struct NodeStatementFor : public NodeMaker<NodeStatementFor> {
   using pattern = Seq<
