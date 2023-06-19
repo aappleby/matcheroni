@@ -19,6 +19,7 @@ struct NodeQualifier;
 struct NodeSpecifier;
 struct NodeStatement;
 struct NodeStatementCompound;
+struct NodeStatementTypedef;
 struct NodeStruct;
 struct NodeTemplate;
 struct NodeTypeDecl;
@@ -188,7 +189,7 @@ struct NodeQualifier : public PatternWrapper<NodeQualifier> {
     "__restrict", "__stdcall", "__volatile__", "__volatile", "_Noreturn",
     "_Thread_local", "auto", "const", "consteval", "constexpr", "constinit",
     "explicit", "extern", "inline", "mutable", "register", "restrict",
-    "static", "thread_local", "__thread", "typedef", "virtual", "volatile",
+    "static", "thread_local", "__thread", /*"typedef",*/ "virtual", "volatile",
   };
 
   static const Token* match_operator(const Token* a, const Token* b) {
@@ -294,6 +295,7 @@ struct NodeSpecifier : public NodeMaker<NodeSpecifier> {
       Seq<Keyword<"struct">, NodeStructType>,
       Seq<Keyword<"enum">,   NodeEnumType>,
       NodeBuiltinType,
+      NodeTypedefType,
       NodeEnumType,
       NodeAtomicType,
       Seq<
@@ -446,9 +448,11 @@ struct NodeDeclBody : public PatternWrapper<NodeDeclBody> {
   using pattern = Seq<
     Any<NodeAttribute>,
     Oneof<
-      Seq< NodeIdentifier, Opt<NodeFieldList>, Opt<NodeAttribute>, Opt<NodeDeclaratorList> >,
-      Seq<                     NodeFieldList,  Opt<NodeAttribute>, Opt<NodeDeclaratorList> >
-    >
+      Seq< NodeIdentifier, Opt<NodeFieldList>>,
+      Seq<                     NodeFieldList>
+    >,
+    Any<NodeAttribute>,
+    Opt<NodeDeclaratorList>
   >;
 };
 
@@ -466,9 +470,10 @@ struct NodeStruct : public NodeMaker<NodeStruct> {
     auto end = NodeMaker::match(a, b);
     if (end) {
       auto node = NodeBase::node_stack.back();
-      assert(node);
-      node->dump_tree();
-      assert(false);
+      if (auto id = node->child<NodeIdentifier>()) {
+        //printf("Adding struct type %s\n", id->text().c_str());
+        NodeBase::struct_types.insert(id->text());
+      }
     }
     return end;
   }
@@ -488,9 +493,10 @@ struct NodeUnion : public NodeMaker<NodeUnion> {
     auto end = NodeMaker<NodeUnion>::match(a, b);
     if (end) {
       auto node = NodeBase::node_stack.back();
-      assert(node);
-      node->dump_tree();
-      assert(false);
+      if (auto id = node->child<NodeIdentifier>()) {
+        //printf("Adding union type %s\n", id->text().c_str());
+        NodeBase::union_types.insert(id->text());
+      }
     }
     return end;
   }
@@ -510,9 +516,10 @@ struct NodeClass : public NodeMaker<NodeClass> {
     auto end = NodeMaker<NodeClass>::match(a, b);
     if (end) {
       auto node = NodeBase::node_stack.back();
-      assert(node);
-      node->dump_tree();
-      assert(false);
+      if (auto id = node->child<NodeIdentifier>()) {
+        //printf("Adding class type %s\n", id->text().c_str());
+        NodeBase::class_types.insert(id->text());
+      }
     }
     return end;
   }
@@ -569,9 +576,9 @@ struct NodeEnum : public NodeMaker<NodeEnum> {
     auto end = NodeMaker<NodeEnum>::match(a, b);
     if (end) {
       auto node = NodeBase::node_stack.back();
-      assert(node);
-      node->dump_tree();
-      assert(false);
+      if (auto id = node->child<NodeIdentifier>()) {
+        NodeBase::class_types.insert(id->text());
+      }
     }
     return end;
   }
@@ -702,18 +709,6 @@ struct NodeDeclaration : public NodeMaker<NodeDeclaration> {
       >
     >
   >;
-
-  // We specialize match() to dig out typedef'd identifiers
-  static const Token* match(const Token* a, const Token* b) {
-    auto end = NodeMaker<NodeDeclaration>::match(a, b);
-    if (end) {
-      auto node = NodeBase::node_stack.back();
-      assert(node);
-      node->dump_tree();
-      assert(false);
-    }
-    return end;
-  }
 };
 
 //------------------------------------------------------------------------------
@@ -723,6 +718,7 @@ struct NodeToplevelDeclaration : public PatternWrapper<NodeToplevelDeclaration> 
   Oneof<
     Atom<';'>,
     NodeFunction,
+    NodeStatementTypedef,
     Seq<NodeStruct,   Atom<';'>>,
     Seq<NodeUnion,    Atom<';'>>,
     Seq<NodeTemplate, Atom<';'>>,
@@ -946,30 +942,110 @@ struct NodeStatementAsm : public NodeMaker<NodeStatementAsm> {
 struct NodeStatementTypedef : public NodeMaker<NodeStatementTypedef> {
   using pattern = Seq<
     Keyword<"typedef">,
-    NodeDeclaration
+    Oneof<
+      NodeStruct,
+      NodeUnion,
+      NodeClass,
+      NodeEnum,
+      NodeDeclaration
+    >
   >;
+
+  static void extract_declarator_list(const NodeDeclaratorList* decls) {
+    if (!decls) return;
+    for (auto decl : decls) {
+      if (auto id = decl->child<NodeIdentifier>()) {
+        auto text = id->text();
+        //printf("Adding typedef %s\n", text.c_str());
+        NodeBase::typedef_types.insert(text);
+      }
+    }
+  }
 
   static void extract_type() {
     auto node = NodeBase::node_stack.back();
     if (!node) return;
 
+    //node->dump_tree();
+
+    if (auto type = node->child<NodeStruct>()) {
+      extract_declarator_list(type->child<NodeDeclaratorList>());
+      return;
+    }
+
+    if (auto type = node->child<NodeUnion>()) {
+      extract_declarator_list(type->child<NodeDeclaratorList>());
+      return;
+    }
+
+    if (auto type = node->child<NodeClass>()) {
+      extract_declarator_list(type->child<NodeDeclaratorList>());
+      return;
+    }
+
+    if (auto type = node->child<NodeEnum>()) {
+      extract_declarator_list(type->child<NodeDeclaratorList>());
+      return;
+    }
+
+    if (auto type = node->child<NodeDeclaration>()) {
+      extract_declarator_list(type->child<NodeDeclaratorList>());
+      return;
+    }
+
     node->dump_tree();
     assert(false);
+  }
+
+  /*
+  auto quals = node->child<NodeQualifiers>();
+  if (!quals || !quals->search<NodeKeyword<"typedef">>()) return;
+
+  auto list = node->child<NodeDeclaratorList>();
+  if (!list) return;
+
+  for (auto decl = list->head; decl; decl = decl->next) {
+    auto id = decl->child<NodeIdentifier>();
+    if (id) {
+      auto s = id->tok_a->lex->text();
+      NodeBase::typedef_types.insert(s);
+    }
+  }
+  */
+
+  /*
+  // We specialize match() to dig out typedef'd identifiers
+  static const Token* match(const Token* a, const Token* b) {
+    auto end = NodeMaker<NodeDeclaration>::match(a, b);
+    if (end) {
+      auto node = NodeBase::node_stack.back();
+      assert(node);
+      node->dump_tree();
+      assert(false);
+    }
+    return end;
+  }
+  */
+
+  /*
+  if (end) {
+    // Check for function pointer typedef
+    // FIXME typedefs should really be in their own node type...
+
+    auto node = NodeBase::node_stack.back();
+    if (!node) return end;
 
     auto quals = node->child<NodeQualifiers>();
-    if (!quals || !quals->search<NodeKeyword<"typedef">>()) return;
+    if (!quals || !quals->search<NodeKeyword<"typedef">>()) return end;
 
-    auto list = node->child<NodeDeclaratorList>();
-    if (!list) return;
-
-    for (auto decl = list->head; decl; decl = decl->next) {
-      auto id = decl->child<NodeIdentifier>();
-      if (id) {
-        auto s = id->tok_a->lex->text();
-        NodeBase::typedef_types.insert(s);
+    if (auto id1 = node->child<NodeFunctionIdentifier>()) {
+      if (auto id2 = node->search<NodeIdentifier>()) {
+        auto s = id2->tok_a->lex->text();
+        NodeBase::add_declared_type(s);
       }
     }
   }
+  */
 
   static const Token* match(const Token* a, const Token* b) {
     auto end = NodeMaker::match(a, b);
@@ -977,32 +1053,6 @@ struct NodeStatementTypedef : public NodeMaker<NodeStatementTypedef> {
     return end;
   }
 };
-
-//------------------------------------------------------------------------------
-
-/*
-if (end) {
-  // Check for function pointer typedef
-  // FIXME typedefs should really be in their own node type...
-
-  auto node = NodeBase::node_stack.back();
-  if (!node) return end;
-
-  auto quals = node->child<NodeQualifiers>();
-  if (!quals || !quals->search<NodeKeyword<"typedef">>()) return end;
-
-  if (auto id1 = node->child<NodeFunctionIdentifier>()) {
-    if (auto id2 = node->search<NodeIdentifier>()) {
-      auto s = id2->tok_a->lex->text();
-      NodeBase::add_declared_type(s);
-    }
-  }
-}
-*/
-
-inline void extract_typedef() {
-  assert(false);
-}
 
 //------------------------------------------------------------------------------
 

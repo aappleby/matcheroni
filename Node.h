@@ -82,6 +82,17 @@ struct NodeBase {
   }
 
   template<typename P>
+  const P* child() const {
+    if (this == nullptr) return nullptr;
+    for (auto cursor = head; cursor; cursor = cursor->next) {
+      if (cursor->isa<P>()) {
+        return dynamic_cast<const P*>(cursor);
+      }
+    }
+    return nullptr;
+  }
+
+  template<typename P>
   P* search() {
     if (this == nullptr) return nullptr;
     if (this->isa<P>()) return this->as<P>();
@@ -95,14 +106,12 @@ struct NodeBase {
 
   template<typename P>
   P* as() {
-    if (this == nullptr) return nullptr;
-    if (typeid(*this) == typeid(P)) {
-      return dynamic_cast<P*>(this);
-    }
-    else {
-      assert(false);
-      return nullptr;
-    }
+    return dynamic_cast<P*>(this);
+  };
+
+  template<typename P>
+  const P* as() const {
+    return dynamic_cast<const P*>(this);
   };
 
   //----------------------------------------
@@ -349,6 +358,36 @@ struct NodeBase {
 
 //------------------------------------------------------------------------------
 
+struct ParseNodeIterator {
+  ParseNodeIterator(const NodeBase* cursor) : cursor(cursor) {
+  }
+
+  ParseNodeIterator& operator++() {
+    cursor = cursor->next;
+    return *this;
+  }
+
+  bool operator!=(const ParseNodeIterator& b) const {
+    return cursor != b.cursor;
+  }
+
+  const NodeBase* operator*() const {
+    return cursor;
+  }
+
+  const NodeBase* cursor;
+};
+
+inline ParseNodeIterator begin(const NodeBase* parent) {
+  return ParseNodeIterator(parent->head);
+}
+
+inline ParseNodeIterator end(const NodeBase* parent) {
+  return ParseNodeIterator(nullptr);
+}
+
+//------------------------------------------------------------------------------
+
 template<typename NT>
 struct NodeMaker : public NodeBase {
 
@@ -445,6 +484,10 @@ struct NodePreproc : public NodeMaker<NodePreproc> {
 
 struct NodeIdentifier : public NodeMaker<NodeIdentifier> {
   using pattern = Atom<TOK_IDENTIFIER>;
+
+  std::string text() const {
+    return tok_a->lex->text();
+  }
 };
 
 //------------------------------------------------------------------------------
