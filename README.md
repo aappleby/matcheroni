@@ -29,7 +29,7 @@ Matcheroni is based on two fundamental primitives -
 
 ```
 template<typename P>
-struct PrintMessageOnMatch {
+struct PrintMessage {
   const char* match(const char* a, const char* b) {
     const char* result = P::match(a, b);
     if (result) {
@@ -38,13 +38,14 @@ struct PrintMessageOnMatch {
     else {
       printf("Match failed!\n");
     }
+    return result;
   }
 };
 ```
 
 and we could use it like this:
 ```
-using pattern = PrintMessageOnMatch<Atom<'a'>>;
+using pattern = PrintMessage<Atom<'a'>>;
 
 const std::string text = "This does not start with 'a'";
 pattern::match(text.data(), text.data() + text.size()); // prints "Match failed!"
