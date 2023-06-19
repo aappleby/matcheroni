@@ -108,6 +108,8 @@ struct NodeStatementFor : public NodeMaker<NodeStatementFor> {
   >;
 };
 ```
+Note that there's no code or data in the class. That's intentional - the NodeMaker<> helper only requires that a parse node type declares a match pattern and it will take care of the details of matching source code, creating parse nodes, and linking them together into a tree.
+
 
 # Performance
 After compilation, the trees of templates turn into trees of tiny simple function calls. GCC/Clang's optimizer does an exceptionally good job of flattening these down into small optimized functions that are nearly as small and fast as if you'd written the matchers by hand. The generated assembly looks good, and the code size can actually be smaller than hand-written as GCC can dedupe redundant template instantiations in a lot of cases.
@@ -172,4 +174,3 @@ const char* match_int(const char* a, const char* b) {
   return integer_constant::match(a, b);
 }
 ```
-Yep, it's all "using" declarations and the only actual call is ```return integer_constant::match(a, b)``` at the end. Works fine.
