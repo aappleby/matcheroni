@@ -196,6 +196,37 @@ struct Some {
 };
 
 //------------------------------------------------------------------------------
+// The 'and' predicate, which matches but does _not_ advance the cursor. Used
+// for lookahead.
+
+// And<Atom<'a'>>::match("abcd") == "abcd"
+// And<Atom<'a'>>::match("bcde") == nullptr
+
+template<typename P>
+struct And {
+  template<typename atom>
+  static const atom* match(const atom* a, const atom* b) {
+    auto c = P::match(a, b);
+    return c ? a : nullptr;
+  }
+};
+
+//------------------------------------------------------------------------------
+// The 'not' predicate, the logical negation of the 'and' predicate.
+
+// Not<Atom<'a'>>::match("abcd") == nullptr
+// Not<Atom<'a'>>::match("bcde") == "bcde"
+
+template<typename P>
+struct Not {
+  template<typename atom>
+  static const atom* match(const atom* a, const atom* b) {
+    auto c = P::match(a, b);
+    return c ? nullptr : a;
+  }
+};
+
+//------------------------------------------------------------------------------
 // Equivalent to Some<OneOf<>>
 // FIXME should we leave this in?
 
@@ -244,37 +275,6 @@ struct Rep {
       a = c;
     }
     return a;
-  }
-};
-
-//------------------------------------------------------------------------------
-// The 'and' predicate, which matches but does _not_ advance the cursor. Used
-// for lookahead.
-
-// And<Atom<'a'>>::match("abcd") == "abcd"
-// And<Atom<'a'>>::match("bcde") == nullptr
-
-template<typename P>
-struct And {
-  template<typename atom>
-  static const atom* match(const atom* a, const atom* b) {
-    auto c = P::match(a, b);
-    return c ? a : nullptr;
-  }
-};
-
-//------------------------------------------------------------------------------
-// The 'not' predicate, the logical negation of the 'and' predicate.
-
-// Not<Atom<'a'>>::match("abcd") == nullptr
-// Not<Atom<'a'>>::match("bcde") == "bcde"
-
-template<typename P>
-struct Not {
-  template<typename atom>
-  static const atom* match(const atom* a, const atom* b) {
-    auto c = P::match(a, b);
-    return c ? nullptr : a;
   }
 };
 

@@ -1,9 +1,92 @@
+# Matcheroni
 Matcheroni is a minimal, zero-dependency (not even stdlib), header-only library for building text matchers, lexers, and parsers out of trees of C++20 templates. It's a generalization of Parsing Expression Grammars, and allows you to freely mix hand-written matching code and templated match patterns.
 
-Matcheroni patterns are roughly equivalent with regular expressions - something like ```regex my_pattern("[abc]+def");``` would be expressed in Matcheroni as ```using my_pattern = Seq<Some<Atom<'a','b','c'>>, Lit<"def">>;```. Unlike std::regex though, the Matcheroni pattern is both the definition of the pattern and the implementation of the matcher for that pattern. Matcheroni patterns thus require no additional libraries or code to be usable - you can immediately call ```"const char* result = my_pattern::match(some_text_begin, some_text_end);``` and 'result' will either be a pointer to the first character _after_ the match, or nullptr if there was no match.
+# Example
+Matcheroni patterns are roughly equivalent with regular expressions - something like
+```
+regex my_pattern("[abc]+def");
+```
+would be expressed in Matcheroni as
+```
+using my_pattern = Seq<Some<Atom<'a','b','c'>>, Lit<"def">>;
+```
+Unlike std::regex though, the Matcheroni pattern is both the definition of the pattern **and** the implementation of the matcher for that pattern.
 
+Matcheroni patterns thus require no additional libraries or code to be usable - you can immediately call
+```
+const char* text_begin = "aaabbaaccdefxyz";
+const char* text_end = text_begin + strlen(text_begin);
+const char* result = my_pattern::match(some_text_begin, some_text_end);
+printf("%s\n", result); // prints "xyz"
+```
+
+# Fundamentals
+
+Matcheroni is based on two fundamental primitives -
+
+- A "matching function" is a function of the form ```const atom* match(const atom* a, const atom* b)```, where a and b are the endpoints of the range of atoms to match against. Matching functions should return a pointer in the range ```[a, b)``` to indicate success or failure - returning ```a``` means the match succeded but did not consume any input, returning ```nullptr``` means the match failed, and any other pointer in the range indicates that the match succeeded and consumed some amount of the input.
+
+- A "matcher" is any class or struct that contains a matching function named ```match()``` in its body. Matchers can be templated and can do basically whatever they like inside ```match()```. For example, if we wanted to print a message whenever some pattern matches, we could do this:
+
+```
+template<typename P>
+struct PrintMessageOnMatch {
+  const char* match(const char* a, const char* b) {
+    const char* result = P::match(a, b);
+    if (result) {
+      printf("Match succeeded!\n");
+    }
+    else {
+      printf("Match failed!\n");
+    }
+  }
+};
+```
+
+and we could use it like this:
+```
+using pattern = PrintMessageOnMatch<Atom<'a'>>;
+
+const char* text_begin = "This does not start with 'a'";
+const char* text_end = text_begin + strlen(text_begin);
+pattern::match(text_begin, text_end); // prints "Match failed!"
+```
+
+
+
+# Templates? Really?
 If you're familiar with C++ templates, you are probably concerned that this library will cause your compiler to grind to a halt. I can assure you that that's not the case - compile times for even pretty large matchers are fine, though the resulting debug symbols are so enormous as to be useless.
 
+# Built-in patterns
+
+Since Matcheroni is based on Parsing Expression Grammars, it includes all the basic rules you'd expect:
+
+- ```Atom<x, ...>``` matches a single "atom" of your input. Atoms can be characters, objects, or whatever as long as you implement ```atom_eq(...)``` for them. Atoms "consume" input and advance the read cursor when they match.
+- ```Seq<x, y, ...>``` matches sequences of other matchers.
+- ```Oneof<x, y, ...>``` returns the result of the first pattern that matches the input. Like parsing expression grammars, there is no backtracking - if ```x``` matches, we will never back up and try ```y```.
+- ```Any<x>``` is equivalent to ```x*``` in regex - it matches zero or more instances of ```x```.
+- ```Some<x>``` is equivalent to ```x+``` in regex - it matches one or more instances of ```x```.
+- ```Opt<x>``` is equivalent to ```x?``` in regex - it matches exactly 0 or 1 instances of ```x```.
+- ```And<x>``` matches ```x``` but does _not_ advance the read cursor.
+- ```Not<x>``` matches if ```x``` does _not_ match and does _not_ advance the read cursor.
+
+# Additional built-in patterns for convenience
+
+- ```SomeOf<x, ...>``` is just ```Some<Of<x, ...>>```
+- ```Rep<N, x>``` matches ```x``` N times.
+- ```NotAtom<x, ...>``` is equivalent to ```[^abc]``` in regex, and is faster than ```Seq<Not<Atom<x, ...>>, AnyAtom>```
+- ```Range<x, y>``` is equivalent to ```[x-y]``` in regex.
+- ```Until<x>``` matches anything until X matches, but does not consume X. Equivalent to ```Any<Seq<Not<x>,AnyAtom>>```
+- ```Ref<f>``` allows you to plug hand-written matching code into a Matcheroni pattern. The function ```f``` must be of the form ```const atom* match(const atom* a, const atom* b)```
+- ```StoreBackref<x> / MatchBackref<x>``` work like backreferences in regex, with a caveat - the backref is stored as a static variable _in_ the matcher's struct, so be careful with nesting these as you could clobber a backref on accident.
+- ```EOL``` matches newlines and end-of-file, but does not advance past it.
+- ```Lit<x>``` matches a C string literal (only valid for ```const char``` atoms)
+- ```Keyword<x>``` matches a C string literal as if it was a single atom - this is only useful if your atom type can represent strings.
+- ```Charset<x>``` matches any ```const char``` atom in the string literal ```x```, which can be much more concise than ```Atom<'a', 'b', 'c', 'd', ...>```
+- ```Map<x, ...>``` differs from the other matchers in that expects ```x``` to define both ```match()``` and ```match_key()```. ```Map<>``` is like ```Oneof<>``` except that it checks ```match_key()``` first
+
+# Demo - Lexing and Parsing C
 This repo contains an example C lexer and parser built using Matcheroni. The lexer should be conformant to the C99 spec, the parser is less conformant but is still able to parse nearly everything in GCC's torture-test suite.
 
+# Performance
 After compilation, the trees of templates turn into trees of tiny simple function calls. GCC/Clang's optimizer does an exceptionally good job of flattening these down into small optimized functions that are nearly as small and fast as if you'd written the matchers by hand. The generated assembly looks good, and the code size can actually be smaller than hand-written as GCC can dedupe redundant template instantiations in a lot of cases.
