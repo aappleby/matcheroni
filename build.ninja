@@ -10,16 +10,14 @@ rule compile_cpp
 rule link
   command = g++ ${cpp_build_mode} ${in} -o ${out}
 
-build obj/c_lexer.o          : compile_cpp c_lexer.cpp
-build obj/c99_parser_test.o  : compile_cpp c99_parser_test.cpp
-build obj/c99_parser.o       : compile_cpp c99_parser.cpp
-build obj/Node.o             : compile_cpp Node.cpp
+build obj/c_lexer.o        : compile_cpp c_lexer.cpp
+build obj/c_parser_test.o  : compile_cpp c_parser_test.cpp
+build obj/Node.o           : compile_cpp Node.cpp
 
 build obj/demo.o       : compile_cpp demo.cpp
 
 build bin/matcheroni_demo : link $
   obj/c_lexer.o $
-  obj/c99_parser_test.o $
-  obj/c99_parser.o $
+  obj/c_parser_test.o $
   obj/Node.o $
   obj/demo.o

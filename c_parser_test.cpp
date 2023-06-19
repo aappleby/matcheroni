@@ -1,4 +1,4 @@
-#include "c99_parser.h"
+#include "c_parser.h"
 
 #include <filesystem>
 #include "Node.h"
@@ -69,7 +69,7 @@ void dump_lexemes(std::string& text, std::vector<Lexeme>& lexemes) {
 
 //------------------------------------------------------------------------------
 
-int test_c99_peg(int argc, char** argv) {
+int test_c_peg(int argc, char** argv) {
 
   std::vector<std::string> paths;
   const char* base_path = argc > 1 ? argv[1] : "tests";

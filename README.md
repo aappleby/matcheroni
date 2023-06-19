@@ -1,1 +1,9 @@
-All the header files in this directory _should_ be convertible to SystemVerilog.
+Matcheroni is a minimal, zero-dependency (not even stdlib), header-only library for building text matchers, lexers, and parsers out of trees of C++20 templates. It's a generalization of Parsing Expression Grammars, and allows you to freely mix hand-written matching code and templated match patterns.
+
+Matcheroni patterns are roughly equivalent with regular expressions - something like ```regex my_pattern("[abc]+def");``` would be expressed in Matcheroni as ```using my_pattern = Seq<Some<Atom<'a','b','c'>>, Lit<"def">>;```. Unlike std::regex though, the Matcheroni pattern is both the definition of the pattern and the implementation of the matcher for that pattern. Matcheroni patterns thus require no additional libraries or code to be usable - you can immediately call ```"const char* result = my_pattern::match(some_text_begin, some_text_end);``` and 'result' will either be a pointer to the first character _after_ the match, or nullptr if there was no match.
+
+If you're familiar with C++ templates, you are probably concerned that this library will cause your compiler to grind to a halt. I can assure you that that's not the case - compile times for even pretty large matchers are fine, though the resulting debug symbols are so enormous as to be useless.
+
+This repo contains an example C lexer and parser built using Matcheroni. The lexer should be conformant to the C99 spec, the parser is less conformant but is still able to parse nearly everything in GCC's torture-test suite.
+
+After compilation, the trees of templates turn into trees of tiny simple function calls. GCC/Clang's optimizer does an exceptionally good job of flattening these down into small optimized functions that are nearly as small and fast as if you'd written the matchers by hand. The generated assembly looks good, and the code size can actually be smaller than hand-written as GCC can dedupe redundant template instantiations in a lot of cases.

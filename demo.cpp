@@ -245,12 +245,12 @@ void test_lex(const std::string& path, size_t size, bool echo) {
 
 //------------------------------------------------------------------------------
 
-extern int test_c99_peg(int argc, char** argv);
+extern int test_c_peg(int argc, char** argv);
 
 int main(int argc, char** argv) {
   printf("Matcheroni Demo\n");
 
-  test_c99_peg(argc, argv);
+  test_c_peg(argc, argv);
   exit(0);
 
   using rdit = std::filesystem::recursive_directory_iterator;

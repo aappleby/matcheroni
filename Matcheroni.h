@@ -1,23 +1,39 @@
 #ifndef __MATCHERONI_H__
 #define __MATCHERONI_H__
 
-// FIXME minimal push/pop stack for matchers
-#include <stdio.h>
-
 #ifdef MATCHERONI_USE_NAMESPACE
 namespace matcheroni {
 #endif
 
 //------------------------------------------------------------------------------
 // Matcheroni is based on building trees of "matcher" functions. A matcher takes
-// a range of atoms as input and returns either the endpoint of the match if
-// found, or nullptr if a match was not found.
+// a range of "atoms" (could be characters, could be some application-specific
+// type) as input and returns either the endpoint of the match if found, or
+// nullptr if a match was not found.
 // Matchers must always handle null pointers and empty ranges.
 
 template<typename atom>
 using matcher = const atom* (*) (const atom* a, const atom* b);
 
 //------------------------------------------------------------------------------
+// Matcheroni needs some way to compare different types of atoms - for
+// convenience, comparators for "const char" are provided here.
+
+inline bool atom_eq(const char& a, const char& b) {
+  return a == b;
+}
+
+inline bool atom_lte(const char& a, const char& b) {
+  return a <= b;
+}
+
+inline bool atom_gte(const char& a, const char& b) {
+  return a >= b;
+}
+
+//------------------------------------------------------------------------------
+// Matchers will often need to compare literal strings of text, so some helpers
+// are provided here as well.
 
 inline const char* match_text(const char* text, const char* a, const char* b) {
   auto c = a;
@@ -34,48 +50,6 @@ inline const char* match_text(const char** texts, int text_count, const char* a,
   }
   return nullptr;
 }
-
-//------------------------------------------------------------------------------
-
-/*
-template<typename atom1, typename atom2>
-inline bool atom_eq(const atom1& a, const atom2& b);
-
-template<typename atom1, typename atom2>
-inline bool atom_lte(const atom1& a, const atom2& b);
-
-template<typename atom1, typename atom2>
-inline bool atom_gte(const atom1& a, const atom2& b);
-*/
-
-inline bool atom_eq(const char& a, const char& b) {
-  return a == b;
-}
-
-inline bool atom_lte(const char& a, const char& b) {
-  return a <= b;
-}
-
-inline bool atom_gte(const char& a, const char& b) {
-  return a >= b;
-}
-
-/*
-template<typename atom1, typename atom2>
-inline bool atom_eq(const atom1& a, const atom2& b) {
-  return a == b;
-}
-
-template<typename atom1, typename atom2>
-inline bool atom_lte(const atom1& a, const atom2& b) {
-  return a <= b;
-}
-
-template<typename atom1, typename atom2>
-inline bool atom_gte(const atom1& a, const atom2& b) {
-  return a >= b;
-}
-*/
 
 //------------------------------------------------------------------------------
 // The most fundamental unit of matching is a single atom. For convenience, we
@@ -121,32 +95,6 @@ struct AnyAtom {
   static const atom* match(const atom* a, const atom* b) {
     if (!a || a == b) return nullptr;
     return a + 1;
-  }
-};
-
-//------------------------------------------------------------------------------
-
-struct Nothing {
-  template<typename atom>
-  static const atom* match_key(const atom* a, const atom* b) {
-    return a;
-  }
-
-  template<typename atom>
-  static const atom* match(const atom* a, const atom* b) {
-    return a;
-  }
-};
-
-struct Anything {
-  template<typename atom>
-  static const atom* match_key(const atom* a, const atom* b) {
-    return b;
-  }
-
-  template<typename atom>
-  static const atom* match(const atom* a, const atom* b) {
-    return b;
   }
 };
 

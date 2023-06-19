@@ -659,7 +659,7 @@ struct NodeInitializerList : public PatternWrapper<NodeInitializerList> {
       Seq<
         Opt<Oneof<
           Seq<NodeDesignation, Atom<'='>>,
-          Seq<NodeIdentifier,  Atom<':'>> // This isn't in the C99 grammar but compndlit-1.c uses it?
+          Seq<NodeIdentifier,  Atom<':'>> // This isn't in the C grammar but compndlit-1.c uses it?
         >>,
         NodeInitializer
       >
