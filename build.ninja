@@ -10,29 +10,29 @@ rule compile_cpp
 rule link
   command = g++ ${cpp_build_mode} ${in} -o ${out}
 
-build obj/c_lexer.o          : compile_cpp c_lexer.cpp
-build obj/c99_declarations.o : compile_cpp c99_declarations.cpp
-build obj/c99_definitions.o  : compile_cpp c99_definitions.cpp
-build obj/c99_expressions.o  : compile_cpp c99_expressions.cpp
-build obj/c99_parser_test.o  : compile_cpp c99_parser_test.cpp
+#build obj/c_lexer.o          : compile_cpp c_lexer.cpp
+#build obj/c99_declarations.o : compile_cpp c99_declarations.cpp
+#build obj/c99_definitions.o  : compile_cpp c99_definitions.cpp
+#build obj/c99_expressions.o  : compile_cpp c99_expressions.cpp
+#build obj/c99_parser_test.o  : compile_cpp c99_parser_test.cpp
 build obj/c99_parser.o       : compile_cpp c99_parser.cpp
-build obj/c99_statements.o   : compile_cpp c99_statements.cpp
+#build obj/c99_statements.o   : compile_cpp c99_statements.cpp
 build obj/Node.o             : compile_cpp Node.cpp
-build obj/Tokens.o           : compile_cpp Tokens.cpp
+#build obj/Tokens.o           : compile_cpp Tokens.cpp
 
-build obj/demo.o       : compile_cpp demo.cpp
+#build obj/demo.o       : compile_cpp demo.cpp
 
-build bin/matcheroni_demo : link $
-  obj/c_lexer.o $
-  obj/c99_declarations.o $
-  obj/c99_definitions.o $
-  obj/c99_expressions.o $
-  obj/c99_parser_test.o $
-  obj/c99_parser.o $
-  obj/c99_statements.o $
-  obj/Node.o $
-  obj/Tokens.o $
-  obj/demo.o
+#build bin/matcheroni_demo : link $
+#  obj/c_lexer.o $
+#  obj/c99_declarations.o $
+#  obj/c99_definitions.o $
+#  obj/c99_expressions.o $
+#  obj/c99_parser_test.o $
+#  obj/c99_parser.o $
+#  obj/c99_statements.o $
+#  obj/Node.o $
+#  obj/Tokens.o $
+#  obj/demo.o
 
 
 #g++ $MODE bin/cgen.o -o bin/cgen

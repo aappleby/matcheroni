@@ -2,15 +2,1047 @@
 
 #include "Tokens.h"
 #include "Node.h"
+#include <string.h>
 
-struct NodeBase;
+struct NodeAbstractDeclarator;
+struct NodeClass;
+struct NodeConstructor;
+struct NodeDeclaration;
+struct NodeDeclarator;
+struct NodeEnum;
+struct NodeExpression;
+struct NodeExpressionSoup;
+struct NodeFunction;
+struct NodeInitializer;
+struct NodeInitializerList;
+struct NodeQualifier;
+struct NodeSpecifier;
+struct NodeStatement;
+struct NodeStatementCompound;
+struct NodeStruct;
+struct NodeTemplate;
+struct NodeTypeDecl;
+struct NodeTypeName;
+struct NodeUnion;
 
-const Token* parse_declaration(const Token* a, const Token* b);
-const Token* parse_external_declaration(const Token* a, const Token* b);
-const Token* parse_expression (const Token* a, const Token* b);
-const Token* parse_expression_list (const Token* a, const Token* b);
-const Token* parse_statement  (const Token* a, const Token* b);
-const Token* parse_statement_compound  (const Token* a, const Token* b);
+const char* match_lits2(const char** lits, int lit_count, const char* a, const char* b);
+
+//------------------------------------------------------------------------------
+// (6.5.4) cast-expression:
+//   unary-expression
+//   ( type-name ) cast-expression
+
+struct NodeExpressionCast : public NodeMaker<NodeExpressionCast> {
+  using pattern = Seq<
+    Atom<'('>,
+    NodeTypeName,
+    Atom<')'>
+  >;
+};
+
+//------------------------------------------------------------------------------
+
+struct NodeExpressionParen : public NodeMaker<NodeExpressionParen> {
+  using pattern = Seq<
+    Atom<'('>,
+    Opt<comma_separated<NodeExpression>>,
+    Atom<')'>
+  >;
+};
+
+//------------------------------------------------------------------------------
+
+struct NodeExpressionBraces : public NodeMaker<NodeExpressionBraces> {
+  using pattern = Seq<
+    Atom<'{'>,
+    Opt<comma_separated<NodeExpression>>,
+    Atom<'}'>
+  >;
+};
+
+//------------------------------------------------------------------------------
+
+struct NodeExpressionCall : public NodeMaker<NodeExpressionCall> {
+  using pattern = Seq<
+    NodeIdentifier,
+    NodeExpressionParen
+  >;
+};
+
+//------------------------------------------------------------------------------
+
+struct NodeExpressionSubscript : public NodeMaker<NodeExpressionSubscript> {
+  using pattern = Seq<
+    Atom<'['>,
+    comma_separated<NodeExpression>,
+    Atom<']'>
+  >;
+};
+
+//------------------------------------------------------------------------------
+
+struct NodeGccCompoundExpression : public NodeMaker<NodeGccCompoundExpression> {
+  using pattern = Seq<
+    Atom<'('>,
+    NodeStatementCompound,
+    Atom<')'>
+  >;
+};
+
+//------------------------------------------------------------------------------
+
+struct NodeExpressionTernary : public PatternWrapper<NodeExpressionTernary> {
+  // pr68249.c - ternary option can be empty
+  // pr49474.c - ternary branches can be comma-lists
+
+  using pattern = Seq<
+    NodeExpressionSoup,
+    Opt<Seq<
+      NodeOperator<"?">,
+      Opt<comma_separated<NodeExpression>>,
+      NodeOperator<":">,
+      Opt<comma_separated<NodeExpression>>
+    >>
+  >;
+};
+
+//------------------------------------------------------------------------------
+
+struct NodeExpression : public NodeMaker<NodeExpression> {
+  using pattern = NodeExpressionTernary;
+};
+
+//------------------------------------------------------------------------------
+
+struct NodeExpressionSoup : public PatternWrapper<NodeExpressionSoup> {
+  inline static const char* all_operators[] = {
+    "->*", "<<=", "<=>", ">>=", "--", "-=", "->", "::", "!=", ".*", "*=", "/=",
+    "&&", "&=", "%=", "^=", "++", "+=", "<<", "<=", "==", ">=", ">>", "|=",
+    "||", "-", "!", ".", "*", "/", "&", "%", "^", "+", "<", "=", ">", "|", "~",
+  };
+
+  static const Token* match_operator(const char* lit, const Token* a, const Token* b) {
+    auto len = strlen(lit);
+    if (!a || a == b) return nullptr;
+    if (a + len > b) return nullptr;
+
+    for (auto i = 0; i < len; i++) {
+      if (!a[i].is_punct(lit[i])) return nullptr;
+    }
+
+    return a + len;
+  }
+
+  static const Token* match_operators(const Token* a, const Token* b) {
+    if (!a || a == b) return nullptr;
+
+    int op_count = sizeof(all_operators) / sizeof(all_operators[0]);
+    for (int i = 0; i < op_count; i++) {
+      if (auto end = match_operator(all_operators[i], a, b)) {
+        return end;
+      }
+    }
+
+    return nullptr;
+  }
+
+  using pattern = Seq<
+    Some<Oneof<
+      NodeGccCompoundExpression,
+      NodeExpressionCall,
+      NodeExpressionCast, // must be before NodeExpressionParen
+      NodeExpressionParen,
+      NodeInitializerList,
+      NodeExpressionBraces,
+      NodeExpressionSubscript,
+      NodeKeyword<"sizeof">,
+      NodeIdentifier,
+      NodeConstant,
+      Ref<NodeExpressionSoup::match_operators>
+    >>
+  >;
+};
+
+//------------------------------------------------------------------------------
+
+struct NodeAttribute : public NodeMaker<NodeAttribute> {
+  // 20010911-1.c - Attribute can be empty
+
+  using pattern = Seq<
+    Oneof<
+      NodeKeyword<"__attribute__">,
+      NodeKeyword<"__attribute">
+    >,
+    NodeOperator<"((">,
+    Opt<comma_separated<NodeExpression>>,
+    NodeOperator<"))">,
+    Opt<NodeAttribute>
+  >;
+};
+
+//------------------------------------------------------------------------------
+
+struct NodeQualifier : public PatternWrapper<NodeQualifier> {
+  inline static const char* qualifiers[] = {
+    "__const", "__extension__", "__inline__", "__inline", "__restrict__",
+    "__restrict", "__stdcall", "__volatile__", "__volatile", "_Noreturn",
+    "_Thread_local", "auto", "const", "consteval", "constexpr", "constinit",
+    "explicit", "extern", "inline", "mutable", "register", "restrict",
+    "static", "thread_local", "__thread", "typedef", "virtual", "volatile",
+  };
+
+  static const Token* match_operator(const Token* a, const Token* b) {
+    if (!a || a == b) return nullptr;
+    int qual_count = sizeof(qualifiers) / sizeof(qualifiers[0]);
+
+    auto end = match_lits2(qualifiers, qual_count, a->lex->span_a, a->lex->span_b);
+    return end ? a + 1 : nullptr;
+  }
+
+  using pattern = Oneof<
+    Seq<NodeKeyword<"_Alignas">, Atom<'('>, Oneof<NodeTypeDecl, NodeConstant>, Atom<')'>>,
+    Seq<NodeKeyword<"__declspec">, Atom<'('>, NodeIdentifier, Atom<')'>>,
+    NodeAttribute,
+    Ref<match_operator>
+  >;
+};
+
+//------------------------------------------------------------------------------
+
+struct NodeQualifiers : public NodeMaker<NodeQualifiers> {
+  using pattern = Any<NodeQualifier>;
+};
+
+//------------------------------------------------------------------------------
+
+struct NodePointer : public NodeMaker<NodePointer> {
+  using pattern =
+  Seq<
+    NodeOperator<"*">,
+    Any<Oneof<
+      NodeOperator<"*">,
+      NodeQualifier
+    >>
+  >;
+};
+
+//------------------------------------------------------------------------------
+
+struct NodeParam : public NodeMaker<NodeParam> {
+  using pattern = Oneof<
+    CleanDeadNodes<Seq<
+      NodeQualifiers,
+      NodeSpecifier,
+      NodeQualifiers,
+      Opt<Oneof<
+        NodeDeclarator,
+        NodeAbstractDeclarator
+      >>
+    >>,
+    NodeIdentifier,
+    NodeOperator<"...">
+  >;
+};
+
+//------------------------------------------------------------------------------
+
+struct NodeParamList : public NodeMaker<NodeParamList> {
+  using pattern = Seq<
+    Atom<'('>,
+    Opt<comma_separated<NodeParam>>,
+    Atom<')'>
+  >;
+};
+
+//------------------------------------------------------------------------------
+
+struct NodeArraySuffix : public NodeMaker<NodeArraySuffix> {
+  using pattern = Oneof<
+    Seq<Atom<'['>, NodeQualifiers,                   Opt<NodeExpression>, Atom<']'>>,
+    Seq<Atom<'['>, Keyword<"static">, NodeQualifiers,    NodeExpression,  Atom<']'>>,
+    Seq<Atom<'['>, NodeQualifiers, Keyword<"static">,    NodeExpression,  Atom<']'>>,
+    Seq<Atom<'['>, NodeQualifiers, Atom<'*'>,                             Atom<']'>>
+  >;
+};
+
+//------------------------------------------------------------------------------
+
+struct NodeTemplateArgs : public NodeMaker<NodeTemplateArgs> {
+  using pattern = Delimited<'<', '>',
+    Opt<comma_separated<NodeExpression>>
+  >;
+};
+
+//------------------------------------------------------------------------------
+
+struct NodeAtomicType : public NodeMaker<NodeAtomicType> {
+  using pattern = Seq<
+    Keyword<"_Atomic">,
+    Atom<'('>,
+    NodeTypeDecl,
+    Atom<')'>
+  >;
+};
+
+//------------------------------------------------------------------------------
+
+struct NodeSpecifier : public NodeMaker<NodeSpecifier> {
+  using pattern = Seq<
+    Oneof<
+      Seq<Keyword<"class">,  NodeClassType>,
+      Seq<Keyword<"union">,  NodeUnionType>,
+      Seq<Keyword<"struct">, NodeStructType>,
+      Seq<Keyword<"enum">,   NodeEnumType>,
+      NodeBuiltinType,
+      NodeEnumType,
+      NodeAtomicType,
+      Seq<
+        Oneof<
+          Keyword<"__typeof__">,
+          Keyword<"__typeof">,
+          Keyword<"typeof">
+        >,
+        Atom<'('>,
+        NodeExpression,
+        Atom<')'>
+      >
+    >,
+    Opt<NodeTemplateArgs>
+  >;
+};
+
+//------------------------------------------------------------------------------
+// (6.7.6) type-name:
+//   specifier-qualifier-list abstract-declaratoropt
+
+struct NodeTypeName : public NodeMaker<NodeTypeName> {
+  using pattern = Seq<
+    Some<Oneof<
+      NodeSpecifier,
+      NodeQualifier
+    >>,
+    Opt<NodeAbstractDeclarator>
+  >;
+};
+
+//------------------------------------------------------------------------------
+// Spec says the bit size can be any constant expression, but can we use just a
+// constant or a paren-expression?
+
+// (6.7.2.1) struct-declarator:
+//   declarator
+//   declaratoropt : constant-expression
+
+struct NodeBitSuffix : public NodeMaker<NodeBitSuffix> {
+  using pattern = Seq< Atom<':'>, NodeExpression >;
+};
+
+//------------------------------------------------------------------------------
+
+struct NodeAbstractDeclarator : public NodeMaker<NodeAbstractDeclarator> {
+  using pattern =
+  Seq<
+    Opt<NodePointer>,
+    Opt<Seq<Atom<'('>, NodeAbstractDeclarator, Atom<')'>>>,
+    Any<Oneof<
+      NodeAttribute,
+      NodeArraySuffix,
+      NodeParamList
+    >>
+  >;
+};
+
+//------------------------------------------------------------------------------
+
+struct NodeDeclarator : public NodeMaker<NodeDeclarator> {
+  using pattern = Seq<
+    Opt<NodeAttribute>,
+    Opt<NodePointer>,
+    Opt<NodeAttribute>,
+    NodeQualifiers,
+    Oneof<
+      NodeIdentifier,
+      Seq<Atom<'('>, NodeDeclarator, Atom<')'>>
+    >,
+    Opt<NodeAttribute>,
+    Opt<NodeBitSuffix>,
+    Any<Oneof<
+      NodeAttribute,
+      NodeArraySuffix,
+      NodeParamList
+    >>
+  >;
+};
+
+//------------------------------------------------------------------------------
+
+struct NodeAccessSpecifier : public NodeMaker<NodeAccessSpecifier> {
+  using pattern = Seq<
+    Oneof<
+      Keyword<"public">,
+      Keyword<"private">
+    >,
+    Atom<':'>
+  >;
+};
+
+struct NodeField : public PatternWrapper<NodeField> {
+  using pattern = Oneof<
+    NodeAccessSpecifier,
+    NodeConstructor,
+    NodeFunction,
+    NodeStruct,
+    NodeUnion,
+    NodeTemplate,
+    NodeClass,
+    NodeEnum,
+    NodeDeclaration
+  >;
+};
+
+struct NodeFieldList : public NodeMaker<NodeFieldList> {
+  using pattern = Seq<
+    Atom<'{'>,
+    Any<Oneof<
+      Atom<';'>,
+      NodeField
+    >>,
+    Atom<'}'>
+  >;
+};
+
+//------------------------------------------------------------------------------
+
+struct NodeNamespace : public NodeMaker<NodeNamespace> {
+  using pattern = Seq<
+    Keyword<"namespace">,
+    Opt<NodeIdentifier>,
+    Opt<NodeFieldList>
+  >;
+};
+
+//------------------------------------------------------------------------------
+
+struct NodeDeclaratorList : public NodeMaker<NodeDeclaratorList> {
+  using pattern =
+  comma_separated<
+    Seq<
+      Oneof<
+        Seq<
+          NodeDeclarator,
+          Opt<NodeBitSuffix>
+        >,
+        NodeBitSuffix
+      >,
+      Opt<Seq<
+        Atom<'='>,
+        NodeInitializer
+      >>
+    >
+  >;
+};
+
+struct NodeDeclBody : public PatternWrapper<NodeDeclBody> {
+  using pattern = Seq<
+    Any<NodeAttribute>,
+    Oneof<
+      Seq< NodeIdentifier, Opt<NodeFieldList>, Opt<NodeAttribute>, Opt<NodeDeclaratorList> >,
+      Seq<                     NodeFieldList,  Opt<NodeAttribute>, Opt<NodeDeclaratorList> >
+    >
+  >;
+};
+
+//------------------------------------------------------------------------------
+
+struct NodeStruct : public NodeMaker<NodeStruct> {
+  using pattern = Seq<
+    NodeQualifiers,
+    Keyword<"struct">,
+    NodeDeclBody
+  >;
+
+  // We specialize match() to dig out typedef'd identifiers
+  static const Token* match(const Token* a, const Token* b) {
+    auto end = NodeMaker::match(a, b);
+    if (end) {
+      auto node = NodeBase::node_stack.back();
+      assert(node);
+      node->dump_tree();
+      assert(false);
+    }
+    return end;
+  }
+};
+
+//------------------------------------------------------------------------------
+
+struct NodeUnion : public NodeMaker<NodeUnion> {
+  using pattern = Seq<
+    NodeQualifiers,
+    Keyword<"union">,
+    NodeDeclBody
+  >;
+
+  // We specialize match() to dig out typedef'd identifiers
+  static const Token* match(const Token* a, const Token* b) {
+    auto end = NodeMaker<NodeUnion>::match(a, b);
+    if (end) {
+      auto node = NodeBase::node_stack.back();
+      assert(node);
+      node->dump_tree();
+      assert(false);
+    }
+    return end;
+  }
+};
+
+//------------------------------------------------------------------------------
+
+struct NodeClass : public NodeMaker<NodeClass> {
+  using pattern = Seq<
+    NodeQualifiers,
+    Keyword<"class">,
+    NodeDeclBody
+  >;
+
+  // We specialize match() to dig out typedef'd identifiers
+  static const Token* match(const Token* a, const Token* b) {
+    auto end = NodeMaker<NodeClass>::match(a, b);
+    if (end) {
+      auto node = NodeBase::node_stack.back();
+      assert(node);
+      node->dump_tree();
+      assert(false);
+    }
+    return end;
+  }
+};
+
+//------------------------------------------------------------------------------
+
+struct NodeTemplateParams : public NodeMaker<NodeTemplateParams> {
+  using pattern = Delimited<'<', '>',
+    comma_separated<NodeDeclaration>
+  >;
+};
+
+struct NodeTemplate : public NodeMaker<NodeTemplate> {
+  using pattern = Seq<
+    Keyword<"template">,
+    NodeTemplateParams,
+    NodeClass
+  >;
+};
+
+//------------------------------------------------------------------------------
+// FIXME should probably have a few diffeerent versions instead of all the opts
+
+struct NodeEnumerator : public NodeMaker<NodeEnumerator> {
+  using pattern = Seq<
+    NodeIdentifier,
+    Opt<Seq<Atom<'='>, NodeExpression>>
+  >;
+};
+
+struct NodeEnumerators : public NodeMaker<NodeEnumerators> {
+  using pattern = Seq<
+    Atom<'{'>,
+    comma_separated<NodeEnumerator>,
+    Opt<Atom<','>>,
+    Atom<'}'>
+  >;
+};
+
+struct NodeEnum : public NodeMaker<NodeEnum> {
+  using pattern = Seq<
+    NodeQualifiers,
+    Keyword<"enum">,
+    Opt<Keyword<"class">>,
+    Opt<NodeIdentifier>,
+    Opt<Seq<Atom<':'>, NodeTypeDecl>>,
+    Opt<NodeEnumerators>,
+    Opt<NodeDeclaratorList>
+  >;
+
+  // We specialize match() to dig out typedef'd identifiers
+  static const Token* match(const Token* a, const Token* b) {
+    auto end = NodeMaker<NodeEnum>::match(a, b);
+    if (end) {
+      auto node = NodeBase::node_stack.back();
+      assert(node);
+      node->dump_tree();
+      assert(false);
+    }
+    return end;
+  }
+};
+
+//------------------------------------------------------------------------------
+
+struct NodeTypeDecl : public NodeMaker<NodeTypeDecl> {
+  using pattern = Seq<
+    NodeQualifiers,
+    NodeSpecifier,
+    Opt<NodeAbstractDeclarator>
+  >;
+};
+
+
+//------------------------------------------------------------------------------
+
+struct NodeDesignation : public NodeMaker<NodeDesignation> {
+  using pattern =
+  Some<Oneof<
+    Seq<Atom<'['>, NodeConstant, Atom<']'>>,
+    Seq<Atom<'.'>, NodeIdentifier>
+  >>;
+};
+
+struct NodeInitializerList : public PatternWrapper<NodeInitializerList> {
+  using pattern = Seq<
+    Atom<'{'>,
+    opt_comma_separated<
+      Seq<
+        Opt<Oneof<
+          Seq<NodeDesignation, Atom<'='>>,
+          Seq<NodeIdentifier,  Atom<':'>> // This isn't in the C99 grammar but compndlit-1.c uses it?
+        >>,
+        NodeInitializer
+      >
+    >,
+    //Opt<Atom<','>>,
+    Atom<'}'>
+  >;
+};
+
+struct NodeInitializer : public NodeMaker<NodeInitializer> {
+  using pattern = Oneof<
+    NodeInitializerList,
+    NodeExpression
+  >;
+};
+
+//------------------------------------------------------------------------------
+
+struct NodeFunctionIdentifier : public NodeMaker<NodeFunctionIdentifier> {
+  using pattern = Seq<
+    Opt<NodePointer>,
+    Opt<NodeAttribute>,
+    Oneof<
+      NodeIdentifier,
+      Seq<Atom<'('>, NodeFunctionIdentifier, Atom<')'>>
+    >
+  >;
+};
+
+
+struct NodeFunction : public NodeMaker<NodeFunction> {
+  using pattern = Seq<
+    NodeQualifiers,
+    Opt<NodeAttribute>,
+    Opt<NodeSpecifier>,
+    NodeQualifiers,
+    Opt<NodeAttribute>,
+    NodeFunctionIdentifier,
+
+    NodeParamList,
+    Opt<NodeAttribute>,
+    Opt<NodeKeyword<"const">>,
+    Opt<Some<
+      Seq<NodeDeclaration, Atom<';'>>
+    >>,
+
+    Oneof<
+      Atom<';'>,
+      NodeStatementCompound
+    >
+  >;
+};
+
+//------------------------------------------------------------------------------
+
+struct NodeConstructor : public NodeMaker<NodeConstructor> {
+  using pattern = Seq<
+    Oneof<
+      NodeClassType,
+      NodeStructType
+    >,
+    NodeParamList,
+    Oneof<
+      Atom<';'>,
+      NodeStatementCompound
+    >
+  >;
+};
+
+//------------------------------------------------------------------------------
+
+struct NodeDeclaration : public NodeMaker<NodeDeclaration> {
+  using pattern = Seq<
+    // FIXME this is messy
+    Opt<NodeAttribute>,
+    NodeQualifiers,
+    Opt<NodeAttribute>,
+
+    // this is getting ridiculous
+    Oneof<
+      Seq<
+        NodeSpecifier,
+        Opt<NodeAttribute>,
+        Opt<NodeQualifiers>,
+        Opt<NodeAttribute>,
+        Opt<NodeDeclaratorList>
+      >,
+      Seq<
+        Opt<NodeSpecifier>,
+        Opt<NodeAttribute>,
+        Opt<NodeQualifiers>,
+        Opt<NodeAttribute>,
+        NodeDeclaratorList
+      >
+    >
+  >;
+
+  // We specialize match() to dig out typedef'd identifiers
+  static const Token* match(const Token* a, const Token* b) {
+    auto end = NodeMaker<NodeDeclaration>::match(a, b);
+    if (end) {
+      auto node = NodeBase::node_stack.back();
+      assert(node);
+      node->dump_tree();
+      assert(false);
+    }
+    return end;
+  }
+};
+
+//------------------------------------------------------------------------------
+
+struct NodeToplevelDeclaration : public PatternWrapper<NodeToplevelDeclaration> {
+  using pattern =
+  Oneof<
+    Atom<';'>,
+    NodeFunction,
+    Seq<NodeStruct,   Atom<';'>>,
+    Seq<NodeUnion,    Atom<';'>>,
+    Seq<NodeTemplate, Atom<';'>>,
+    Seq<NodeClass,    Atom<';'>>,
+    Seq<NodeEnum,     Atom<';'>>,
+    Seq<NodeDeclaration, Atom<';'>>
+  >;
+};
+
+//------------------------------------------------------------------------------
+
+struct NodeStatementCompound : public NodeMaker<NodeStatementCompound> {
+  using pattern = Seq<
+    Atom<'{'>,
+    Any<NodeStatement>,
+    Atom<'}'>
+  >;
+};
+
+//------------------------------------------------------------------------------
+
+struct NodeStatementDeclaration : public NodeMaker<NodeStatementDeclaration> {
+  using pattern = NodeDeclaration;
+};
+
+//------------------------------------------------------------------------------
+
+struct NodeStatementExpression : public NodeMaker<NodeStatementExpression> {
+  using pattern = comma_separated<NodeExpression>;
+};
+
+//------------------------------------------------------------------------------
+
+struct NodeStatementFor : public NodeMaker<NodeStatementFor> {
+  using pattern = Seq<
+    Keyword<"for">,
+    Atom<'('>,
+    Opt<comma_separated<Oneof<
+      NodeExpression,
+      NodeDeclaration
+    >>>,
+    Atom<';'>,
+    Opt<comma_separated<NodeExpression>>,
+    Atom<';'>,
+    Opt<comma_separated<NodeExpression>>,
+    Atom<')'>,
+    NodeStatement
+  >;
+};
+
+//------------------------------------------------------------------------------
+
+struct NodeStatementElse : public NodeMaker<NodeStatementElse> {
+  using pattern =
+  Seq<
+    Keyword<"else">,
+    NodeStatement
+  >;
+};
+
+struct NodeStatementIf : public NodeMaker<NodeStatementIf> {
+  using pattern = Seq<
+    Keyword<"if">,
+    Seq<
+      Atom<'('>,
+      comma_separated<NodeExpression>,
+      Atom<')'>
+    >,
+    NodeStatement,
+    Opt<NodeStatementElse>
+  >;
+};
+
+//------------------------------------------------------------------------------
+
+struct NodeStatementReturn : public NodeMaker<NodeStatementReturn> {
+  using pattern = Seq<
+    Keyword<"return">,
+    NodeExpression
+  >;
+};
+
+
+//------------------------------------------------------------------------------
+
+struct NodeStatementCase : public NodeMaker<NodeStatementCase> {
+  using pattern = Seq<
+    Keyword<"case">,
+    NodeExpression,
+    Atom<':'>,
+    Any<Seq<
+      Not<Keyword<"case">>,
+      Not<Keyword<"default">>,
+      NodeStatement
+    >>
+  >;
+};
+
+struct NodeStatementDefault : public NodeMaker<NodeStatementDefault> {
+  using pattern = Seq<
+    Keyword<"default">,
+    Atom<':'>,
+    Any<Seq<
+      Not<Keyword<"case">>,
+      Not<Keyword<"default">>,
+      NodeStatement
+    >>
+  >;
+};
+
+struct NodeStatementSwitch : public NodeMaker<NodeStatementSwitch> {
+  using pattern = Seq<
+    Keyword<"switch">,
+    NodeExpression,
+    Atom<'{'>,
+    Any<Oneof<
+      NodeStatementCase,
+      NodeStatementDefault
+    >>,
+    Atom<'}'>
+  >;
+};
+
+//------------------------------------------------------------------------------
+
+struct NodeStatementWhile : public NodeMaker<NodeStatementWhile> {
+  using pattern = Seq<
+    Keyword<"while">,
+    Atom<'('>,
+    comma_separated<NodeExpression>,
+    Atom<')'>,
+    NodeStatement
+  >;
+};
+
+//------------------------------------------------------------------------------
+
+struct NodeStatementDoWhile : public NodeMaker<NodeStatementDoWhile> {
+  using pattern = Seq<
+    Keyword<"do">,
+    NodeStatement,
+    Keyword<"while">,
+    Atom<'('>,
+    NodeExpression,
+    Atom<')'>
+  >;
+};
+
+//------------------------------------------------------------------------------
+
+struct NodeStatementLabel: public NodeMaker<NodeStatementLabel> {
+  using pattern = Seq<
+    NodeIdentifier,
+    Atom<':'>
+  >;
+};
+
+//------------------------------------------------------------------------------
+
+struct NodeAsmRef : public NodeMaker<NodeAsmRef> {
+  using pattern = Seq<
+    NodeString,
+    Opt<Seq<
+      Atom<'('>,
+      NodeExpression,
+      Atom<')'>
+    >>
+  >;
+};
+
+struct NodeAsmRefs : public NodeMaker<NodeAsmRefs> {
+  using pattern = comma_separated<NodeAsmRef>;
+};
+
+//------------------------------------------------------------------------------
+
+struct NodeAsmQualifiers : public NodeMaker<NodeAsmQualifiers> {
+  using pattern =
+  Some<Oneof<
+    NodeKeyword<"volatile">,
+    NodeKeyword<"__volatile">,
+    NodeKeyword<"__volatile__">,
+    NodeKeyword<"inline">,
+    NodeKeyword<"goto">
+  >>;
+};
+
+//------------------------------------------------------------------------------
+
+struct NodeStatementAsm : public NodeMaker<NodeStatementAsm> {
+  using pattern = Seq<
+    Oneof<
+      Keyword<"asm">,
+      Keyword<"__asm">,
+      Keyword<"__asm__">
+    >,
+    //NodeQualifiers,
+    Opt<NodeAsmQualifiers>,
+    Atom<'('>,
+    NodeString, // assembly code
+    Atom<':'>,
+    Opt<NodeAsmRefs>, // output operands
+    Opt<Seq<
+      Atom<':'>,
+      Opt<NodeAsmRefs>, // input operands
+      Opt<Seq<
+        Atom<':'>,
+        Opt<NodeAsmRefs>, // clobbers
+        Opt<Seq<
+          Atom<':'>,
+          Opt<comma_separated<NodeIdentifier>> // GotoLabels
+        >>
+      >>
+    >>,
+    Atom<')'>
+  >;
+};
+
+//------------------------------------------------------------------------------
+
+struct NodeStatementTypedef : public NodeMaker<NodeStatementTypedef> {
+  using pattern = Seq<
+    Keyword<"typedef">,
+    NodeDeclaration
+  >;
+
+  static void extract_type() {
+    auto node = NodeBase::node_stack.back();
+    if (!node) return;
+
+    node->dump_tree();
+    assert(false);
+
+    auto quals = node->child<NodeQualifiers>();
+    if (!quals || !quals->search<NodeKeyword<"typedef">>()) return;
+
+    auto list = node->child<NodeDeclaratorList>();
+    if (!list) return;
+
+    for (auto decl = list->head; decl; decl = decl->next) {
+      auto id = decl->child<NodeIdentifier>();
+      if (id) {
+        auto s = id->tok_a->lex->text();
+        NodeBase::typedef_types.insert(s);
+      }
+    }
+  }
+
+  static const Token* match(const Token* a, const Token* b) {
+    auto end = NodeMaker::match(a, b);
+    if (end) extract_type();
+    return end;
+  }
+};
+
+//------------------------------------------------------------------------------
+
+/*
+if (end) {
+  // Check for function pointer typedef
+  // FIXME typedefs should really be in their own node type...
+
+  auto node = NodeBase::node_stack.back();
+  if (!node) return end;
+
+  auto quals = node->child<NodeQualifiers>();
+  if (!quals || !quals->search<NodeKeyword<"typedef">>()) return end;
+
+  if (auto id1 = node->child<NodeFunctionIdentifier>()) {
+    if (auto id2 = node->search<NodeIdentifier>()) {
+      auto s = id2->tok_a->lex->text();
+      NodeBase::add_declared_type(s);
+    }
+  }
+}
+*/
+
+inline void extract_typedef() {
+  assert(false);
+}
+
+//------------------------------------------------------------------------------
+
+struct NodeStatementGoto : public NodeMaker<NodeStatementGoto> {
+  // pr21356.c - Spec says goto should be an identifier, GCC allows expressions
+
+  using pattern = Seq<
+    Keyword<"goto">,
+    NodeExpression
+  >;
+};
+
+//------------------------------------------------------------------------------
+
+struct NodeStatement : public PatternWrapper<NodeStatement> {
+  using pattern = Oneof<
+    // All of these have keywords first
+    Seq<NodeStatementTypedef,     Atom<';'>>,
+    Seq<NodeClass,                Atom<';'>>,
+    Seq<NodeStruct,               Atom<';'>>,
+    Seq<NodeUnion,                Atom<';'>>,
+    Seq<NodeStatementFor,         Opt<Atom<';'>> >,
+    Seq<NodeStatementIf,          Opt<Atom<';'>> >,
+    Seq<NodeStatementReturn,      Atom<';'>>,
+    Seq<NodeStatementSwitch,      Opt<Atom<';'>> >,
+    Seq<NodeStatementDoWhile,     Atom<';'>>,
+    Seq<NodeStatementWhile,       Opt<Atom<';'>> >,
+    Seq<NodeStatementAsm,         Atom<';'>>,
+
+    // These don't - but they might confuse a keyword with an identifier...
+    Seq<NodeStatementLabel,       Opt<Atom<';'>> >,
+    Seq<NodeStatementCompound,    Opt<Atom<';'>> >,
+    Seq<NodeFunction,             Opt<Atom<';'>> >,
+    Seq<NodeStatementDeclaration, Atom<';'>>,
+    Seq<NodeStatementExpression,  Atom<';'>>,
+
+    // Extra semicolons
+    Atom<';'>
+  >;
+};
 
 //------------------------------------------------------------------------------
 
@@ -27,15 +1059,10 @@ struct NodeTranslationUnit : public NodeMaker<NodeTranslationUnit> {
     //ProgressBar<
       Oneof<
         NodePreproc,
-        Ref<parse_external_declaration>
+        NodeToplevelDeclaration
       >
     //>
   >;
-
-  __attribute__((__noinline__)) static const Token* match(const Token* a, const Token* b) {
-    return NodeMaker<NodeTranslationUnit>::match(a, b);
-  }
-
 };
 
 //------------------------------------------------------------------------------

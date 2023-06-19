@@ -323,30 +323,27 @@ struct NodeBase {
     "_Complex", "__complex__",
   };
 
-  static inline IdentifierSet declared_types = {
+  static inline IdentifierSet class_types = {
   };
 
-  static void reset_declared_types() {
-    declared_types.clear();
-  }
+  static inline IdentifierSet struct_types = {
+  };
 
-  static inline void add_declared_type(const std::string& t) {
-    //printf("Adding type %s\n", t.c_str());
-    declared_types.insert(t);
-  }
-};
+  static inline IdentifierSet union_types = {
+  };
 
-//------------------------------------------------------------------------------
+  static inline IdentifierSet enum_types = {
+  };
 
-template<typename P>
-struct LogTypename {
-  static const Token* match(const Token* a, const Token* b) {
-    auto end = P::match(a, b);
-    if (end) {
-      assert(end == a + 1);
-      NodeBase::add_declared_type(a->lex->text());
-    }
-    return end;
+  static inline IdentifierSet typedef_types = {
+  };
+
+  static void reset_types() {
+    class_types.clear();
+    struct_types.clear();
+    union_types.clear();
+    enum_types.clear();
+    typedef_types.clear();
   }
 };
 
@@ -399,46 +396,15 @@ struct PatternWrapper {
 //------------------------------------------------------------------------------
 
 template<StringParam lit>
-struct NodeOperator : public NodeBase {
-  static const Token* match(const Token* a, const Token* b) {
-    if (auto end = Operator<lit>::match(a, b)) {
-      auto n = new NodeOperator();
-      n->init(a, end);
-      node_stack.push(n);
-      return end;
-    }
-    else {
-      return nullptr;
-    }
-  }
+struct NodeOperator : public NodeMaker<NodeOperator<lit>> {
+  using pattern = Operator<lit>;
 };
 
 //------------------------------------------------------------------------------
 
 template<StringParam lit>
-struct NodeKeyword : public NodeBase {
-  static const Token* match(const Token* a, const Token* b) {
-    if (auto end = Keyword<lit>::match(a, b)) {
-      auto n = new NodeKeyword();
-      n->init(a, end);
-      node_stack.push(n);
-      return end;
-    }
-    else {
-      return nullptr;
-    }
-  }
-};
-
-//------------------------------------------------------------------------------
-
-template<typename pattern>
-struct Dump {
-  static const Token* match(const Token* a, const Token* b) {
-    auto end = pattern::match(a, b);
-    if (end) NodeBase::node_stack.dump_top();
-    return end;
-  }
+struct NodeKeyword : public NodeMaker<NodeKeyword<lit>> {
+  using pattern = Keyword<lit>;
 };
 
 //------------------------------------------------------------------------------
@@ -539,7 +505,7 @@ struct NodeBuiltinTypeSuffix {
   }
 };
 
-//----------
+//------------------------------------------------------------------------------
 // Our builtin types are any sequence of prefixes followed by a builtin type
 
 struct NodeBuiltinType : public NodeMaker<NodeBuiltinType> {
@@ -552,34 +518,39 @@ struct NodeBuiltinType : public NodeMaker<NodeBuiltinType> {
   >;
 };
 
-//------------------------------------------------------------------------------
-
-struct NodeDeclaredType : public NodeMaker<NodeDeclaredType> {
+struct NodeClassType : public NodeMaker<NodeClassType> {
   static const Token* match(const Token* a, const Token* b) {
-    if (!a || !a->is_identifier() || a == b) return nullptr;
-
-    auto end = a;
-
-    if (end < b && declared_types.contains(end->lex->text())) {
-      end++;
-    }
-
-    if (end > a) {
-      auto n = new NodeDeclaredType();
-      n->init(a, end, nullptr, 0);
-      node_stack.push(n);
-      return end;
-    }
-
+    if (a && NodeBase::class_types.contains(a->lex->text())) return a + 1;
     return nullptr;
   }
 };
 
-struct NodeGlobalType : public PatternWrapper<NodeGlobalType> {
-  using pattern = Oneof<
-    NodeBuiltinType,
-    NodeDeclaredType
-  >;
+struct NodeStructType : public NodeMaker<NodeStructType> {
+  static const Token* match(const Token* a, const Token* b) {
+    if (a && NodeBase::struct_types.contains(a->lex->text())) return a + 1;
+    return nullptr;
+  }
+};
+
+struct NodeUnionType : public NodeMaker<NodeUnionType> {
+  static const Token* match(const Token* a, const Token* b) {
+    if (a && NodeBase::union_types.contains(a->lex->text())) return a + 1;
+    return nullptr;
+  }
+};
+
+struct NodeEnumType : public NodeMaker<NodeEnumType> {
+  static const Token* match(const Token* a, const Token* b) {
+    if (a && NodeBase::enum_types.contains(a->lex->text())) return a + 1;
+    return nullptr;
+  }
+};
+
+struct NodeTypedefType : public PatternWrapper<NodeTypedefType> {
+  static const Token* match(const Token* a, const Token* b) {
+    if (a && NodeBase::typedef_types.contains(a->lex->text())) return a + 1;
+    return nullptr;
+  }
 };
 
 //------------------------------------------------------------------------------

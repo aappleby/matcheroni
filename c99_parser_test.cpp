@@ -121,7 +121,7 @@ int test_c99_peg(int argc, char** argv) {
     tokens.clear();
     // Don't forget to reset the parser state derrrrrp
     NodeBase::node_stack.clear_to(0);
-    NodeBase::reset_declared_types();
+    NodeBase::reset_types();
 
     file_total++;
 
