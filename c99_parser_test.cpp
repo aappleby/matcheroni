@@ -8,8 +8,9 @@
 #include <memory.h>
 
 double timestamp_ms();
+void set_color(uint32_t c);
 
-//==============================================================================
+//------------------------------------------------------------------------------
 
 void lex_file(std::string& text, std::vector<Lexeme>& lexemes, std::vector<Token>& tokens) {
 
@@ -68,19 +69,7 @@ void dump_lexemes(std::string& text, std::vector<Lexeme>& lexemes) {
 
 //------------------------------------------------------------------------------
 
-const Token* parse_declaration(const Token* a, const Token* b);
-const Token* parse_external_declaration(const Token* a, const Token* b);
-
-struct TestPattern : public NodeMaker<TestPattern> {
-  using pattern = Some<Ref<parse_external_declaration>>;
-};
-
-//------------------------------------------------------------------------------
-
-const Token* parse_function(const Token* a, const Token* b);
-
 int test_c99_peg(int argc, char** argv) {
-  printf("Parseroni Demo\n");
 
   std::vector<std::string> paths;
   const char* base_path = argc > 1 ? argv[1] : "tests";
@@ -100,6 +89,7 @@ int test_c99_peg(int argc, char** argv) {
   //paths = { "../gcc/gcc/tree-inline.h" };
   //paths = { "../gcc/gcc/testsuite/gcc.c-torture/execute/921110-1.c"};
 
+  double io_accum = 0;
   double lex_accum = 0;
   double parse_accum = 0;
 
@@ -114,6 +104,7 @@ int test_c99_peg(int argc, char** argv) {
   int file_total = 0;
   int file_pass = 0;
   int file_keep = 0;
+  int file_bytes = 0;
 
   for (const auto& path : paths) {
     text.clear();
@@ -124,6 +115,9 @@ int test_c99_peg(int argc, char** argv) {
     NodeBase::reset_types();
 
     file_total++;
+
+    //----------
+    // File filters
 
     if (!path.ends_with(".cpp") &&
         !path.ends_with(".hpp") &&
@@ -166,26 +160,25 @@ int test_c99_peg(int argc, char** argv) {
     // Requires preproc
     if (path.ends_with("structs.c")) continue;
 
+    //----------
 
-
-
-
-    {
-      auto size = std::filesystem::file_size(path);
-      text.resize(size);
-      memset(text.data(), 0, size);
-      FILE* file = fopen(path.c_str(), "rb");
-      if (!file) {
-        printf("Could not open %s!\n", path.c_str());
-      }
-      auto r = fread(text.data(), 1, size, file);
+    io_accum -= timestamp_ms();
+    auto size = std::filesystem::file_size(path);
+    text.resize(size);
+    memset(text.data(), 0, size);
+    FILE* file = fopen(path.c_str(), "rb");
+    if (!file) {
+      printf("Could not open %s!\n", path.c_str());
     }
+    auto r = fread(text.data(), 1, size, file);
+    io_accum += timestamp_ms();
 
     if (text.find("#define") != std::string::npos) {
       continue;
     }
 
     file_keep++;
+    file_bytes += size;
 
     //printf("Lexing %s\n", path.c_str());
 
@@ -201,9 +194,7 @@ int test_c99_peg(int argc, char** argv) {
     //printf("%04d: Parsing %s\n", file_pass, path.c_str());
 
     parse_accum -= timestamp_ms();
-    //parse_function(token_a, token_b);
     NodeTranslationUnit::match(token_a, token_b);
-    //TestPattern::match(token_a, token_b);
     parse_accum += timestamp_ms();
 
     if (NodeBase::node_stack.top() != 1) {
@@ -212,21 +203,8 @@ int test_c99_peg(int argc, char** argv) {
       return -1;
     }
 
-
-
-
-
-
     auto root = NodeBase::node_stack.pop();
     //root->dump_tree();
-
-
-
-
-
-
-
-
 
     if (root->tok_a != token_a || root->tok_b != token_b) {
       printf("Parsing failed: %s\n", path.c_str());
@@ -238,17 +216,36 @@ int test_c99_peg(int argc, char** argv) {
     }
 
     delete root;
-
   }
 
+  printf("\n");
+  printf("IO took      %7.2f msec\n", io_accum);
+  printf("Lexing took  %7.2f msec\n", lex_accum);
+  printf("Parsing took %7.2f msec\n", parse_accum);
   printf("\n");
   printf("Files total    %d\n", file_total);
   printf("Files filtered %d\n", file_total - file_keep);
   printf("Files kept     %d\n", file_keep);
+  printf("Files bytes    %d\n", file_bytes);
   printf("Files pass     %d\n", file_pass);
   printf("Files fail     %d\n", file_keep - file_pass);
-  printf("Lexing took  %f msec\n", lex_accum);
-  printf("Parsing took %f msec\n", parse_accum);
+
+  printf("\n");
+  if (file_keep != file_pass) {
+    set_color(0x008080FF);
+    printf("##################\n");
+    printf("##     FAIL     ##\n");
+    printf("##################\n");
+    set_color(0);
+  }
+  else {
+    set_color(0x0080FF80);
+    printf("##################\n");
+    printf("##     PASS     ##\n");
+    printf("##################\n");
+    set_color(0);
+  }
+  printf("\n");
 
   return 0;
 }

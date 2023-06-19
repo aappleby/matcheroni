@@ -772,7 +772,10 @@ struct NodeStatementCompound : public NodeMaker<NodeStatementCompound> {
 //------------------------------------------------------------------------------
 
 struct NodeStatementDeclaration : public NodeMaker<NodeStatementDeclaration> {
-  using pattern = NodeDeclaration;
+  using pattern = Seq<
+    NodeDeclaration,
+    Atom<';'>
+  >;
 };
 
 //------------------------------------------------------------------------------
@@ -828,7 +831,8 @@ struct NodeStatementIf : public NodeMaker<NodeStatementIf> {
 struct NodeStatementReturn : public NodeMaker<NodeStatementReturn> {
   using pattern = Seq<
     Keyword<"return">,
-    NodeExpression
+    NodeExpression,
+    Atom<';'>
   >;
 };
 
@@ -894,7 +898,8 @@ struct NodeStatementDoWhile : public NodeMaker<NodeStatementDoWhile> {
     Keyword<"while">,
     Atom<'('>,
     NodeExpression,
-    Atom<')'>
+    Atom<')'>,
+    Atom<';'>
   >;
 };
 
@@ -903,7 +908,8 @@ struct NodeStatementDoWhile : public NodeMaker<NodeStatementDoWhile> {
 struct NodeStatementLabel: public NodeMaker<NodeStatementLabel> {
   using pattern = Seq<
     NodeIdentifier,
-    Atom<':'>
+    Atom<':'>,
+    Opt<Atom<';'>>
   >;
 };
 
@@ -964,7 +970,8 @@ struct NodeStatementAsm : public NodeMaker<NodeStatementAsm> {
         >>
       >>
     >>,
-    Atom<')'>
+    Atom<')'>,
+    Atom<';'>
   >;
 };
 
@@ -1072,19 +1079,19 @@ struct NodeStatement : public PatternWrapper<NodeStatement> {
     Seq<NodeUnion,                Atom<';'>>,
     Seq<NodeEnum,                 Atom<';'>>,
 
-    Seq<NodeStatementFor,         Opt<Atom<';'>> >,
-    Seq<NodeStatementIf,          Opt<Atom<';'>> >,
-    Seq<NodeStatementReturn,      Atom<';'>>,
-    Seq<NodeStatementSwitch,      Opt<Atom<';'>> >,
-    Seq<NodeStatementDoWhile,     Atom<';'>>,
-    Seq<NodeStatementWhile,       Opt<Atom<';'>> >,
-    Seq<NodeStatementAsm,         Atom<';'>>,
+    NodeStatementFor,
+    NodeStatementIf,
+    NodeStatementReturn,
+    NodeStatementSwitch,
+    NodeStatementDoWhile,
+    NodeStatementWhile,
+    NodeStatementAsm,
 
     // These don't - but they might confuse a keyword with an identifier...
-    Seq<NodeStatementLabel,       Opt<Atom<';'>> >,
-    Seq<NodeStatementCompound,    Opt<Atom<';'>> >,
-    Seq<NodeFunction,             Opt<Atom<';'>> >,
-    Seq<NodeStatementDeclaration, Atom<';'>>,
+    NodeStatementLabel,
+    NodeStatementCompound,
+    NodeFunction,
+    NodeStatementDeclaration,
     Seq<NodeStatementExpression,  Atom<';'>>,
 
     // Extra semicolons
