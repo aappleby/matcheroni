@@ -1,18 +1,18 @@
 # Matcheroni
-Matcheroni is a minimal, zero-dependency (not even stdlib), header-only library for building text matchers, [lexers](matcheroni/c_lexer.cpp), and [parsers](matcheroni/c_parser.h) out of trees of C++20 templates.
+Matcheroni is a minimal, zero-dependency (not even stdlib), header-only library for building pattern-matchers, [lexers](matcheroni/c_lexer.cpp), and [parsers](matcheroni/c_parser.h) out of trees of C++20 templates.
 
 Matcheroni is a generalization of [Parsing Expression Grammars](https://en.wikipedia.org/wiki/Parsing_expression_grammar) and can be used in place of regular expressions in most cases.
 
-Matcheroni matchers are tiny - 100s of bytes versus 150k+ for the std::regex library.
+Matcheroni generates tiny code - 100s of bytes for moderately-sized patterns versus 100k+ if you have to include the std::regex library.
 
-Matcheroni matchers are fast - 10x or more versus std::regex.
+Matcheroni generates fast code - 10x or more versus std::regex.
 
 Matcheroni matchers are more readable and more modular than regexes - you can build [large matchers](matcheroni/c_lexer.cpp#L180) out of small simple matchers without affecting performance.
 
 Matcheroni allows you to freely intermingle C++ code with your matcher templates so that you can build parse trees, log stats, or do whatever else you need to do while processing your data.
 
 # Examples
-Matcheroni matchers are roughly equivalent to regular expressions. A regular expression using the std::regex C++ library
+Matchers are roughly equivalent to regular expressions. A regular expression using the std::regex C++ library
 ```
 std::regex my_pattern("[abc]+def");
 ```
@@ -33,7 +33,7 @@ const char* result = my_pattern::match(text.data(), text.data() + text.size());
 printf("%s\n", result);
 ```
 
-Matcheroni patterns are also modular - you could write the above as
+Matchers are also modular - you could write the above as
 ```
 using abc = Atom<'a','b','c'>;
 using def = Lit<"def">;
@@ -41,7 +41,7 @@ using my_pattern = Seq<Some<abc>, def>;
 ```
 and it would perform identically to the one-line version.
 
-Unlike regexes, Matcheroni patterns can be recursive:
+Unlike regexes, matchers can be recursive:
 ```
 // Recursively match correctly-paired nested parenthesis
 const char* matcheroni_match_parens(const char* a, const char* b) {
@@ -191,17 +191,19 @@ Note that there's no code or data in the class. That's intentional - the NodeMak
 
 Matcheroni requires C++20, which is a non-starter for some projects. There's not a lot I can do about that, as I'm heavily leveraging some newish template stuff that doesn't have any backwards-compatible equivalents.
 
-Like parsing expression grammars, Matcheroni matchers are greedy - ```Seq<Some<Atom<'a'>>, Atom<'a'>>``` will _always_ fail as ```Some<Atom<'a'>>``` leaves no 'a's behind for the second ```Atom<'a'>``` to match.
+Like parsing expression grammars, matchers are greedy - ```Seq<Some<Atom<'a'>>, Atom<'a'>>``` will _always_ fail as ```Some<Atom<'a'>>``` leaves no 'a's behind for the second ```Atom<'a'>``` to match.
 
-Recursive patterns create recursive code that can explode your call stack.
+Recursive matchers create recursive code that can explode your call stack.
 
-Left-recursive patterns can get stuck in an infinite loop - this is true with most versions of Parsing Expression Grammars, it's a fundamental limitation of the algorithm.
+Left-recursive matchers can get stuck in an infinite loop - this is true with most versions of Parsing Expression Grammars, it's a fundamental limitation of the algorithm.
 
 Parsers generated with a real parser generator will probably be faster.
 
 # A non-trivial example
 
-Here's the pattern I use to match C99 integers, plus a few additions from the C++ spec and the GCC extensions:
+Here's the code I use to match C99 integers, plus a few additions from the C++ spec and the GCC extensions.
+
+If you follow along in Appendix A of the [C99 spec](https://www.open-std.org/jtc1/sc22/wg14/www/docs/n1256.pdf), you'll see it lines up quite closely.
 
 ```
 const char* match_int(const char* a, const char* b) {
