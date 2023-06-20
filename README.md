@@ -22,11 +22,15 @@ using my_pattern = Seq<Some<Atom<'a','b','c'>>, Lit<"def">>;
 ```
 Unlike std::regex though, the Matcheroni pattern is both the definition of the pattern **and** the implementation of the matcher for that pattern.
 
-Matcheroni patterns thus require no additional libraries or code to be usable - you can immediately call
+Matcheroni patterns thus require no additional libraries or code to be usable - you can immediately use it like so:
 ```
 const std::string text = "aaabbaaccdefxyz";
+
+// The match function returns the _end_ of the match, or nullptr if there was no match.
 const char* result = my_pattern::match(text.data(), text.data() + text.size());
-printf("%s\n", result); // prints "xyz"
+
+// Since we matched "aabbaacc", this prints "xyz".
+printf("%s\n", result);
 ```
 
 Matcheroni patterns are also modular - you could write the above as
