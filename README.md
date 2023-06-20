@@ -29,7 +29,7 @@ const std::string text = "aaabbaaccdefxyz";
 // The match function returns the _end_ of the match, or nullptr if there was no match.
 const char* result = my_pattern::match(text.data(), text.data() + text.size());
 
-// Since we matched "aabbaacc", this prints "xyz".
+// Since we matched "aabbaaccdef", this prints "xyz".
 printf("%s\n", result);
 ```
 
