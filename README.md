@@ -114,7 +114,7 @@ nonrecursive_matching_parens: 75 bytes
 matcheroni_match_parens is 0.692946 times faster than recursive_matching_parens
 matcheroni_match_parens is 0.578635 times faster than nonrecursive_matching_parens
 ```
-So it's slower in that case than hand-written code, but I didn't have to worry about termination conditions, null pointers, or off-by-ones.
+The Matcheroni version is a bit larger and slower due to extra null and range checking, but I didn't have to worry about termination conditions, null pointers, or off-by-ones.
 
 It's hard to measure exactly how much the std::regex library adds to the binary, but we can compare against a build with std::regex commented out:
 ```
