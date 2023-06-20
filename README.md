@@ -114,7 +114,22 @@ Note that there's no code or data in the class. That's intentional - the NodeMak
 # Performance
 After compilation, the trees of templates turn into trees of tiny simple function calls. GCC/Clang's optimizer does an exceptionally good job of flattening these down into small optimized functions that are nearly as small and fast as if you'd written the matchers by hand. The generated assembly looks good, and the code size can actually be smaller than hand-written as GCC can dedupe redundant template instantiations in a lot of cases.
 
-In practice it's usually way faster than std::regex. I'll insert some benchmarks here later.
+I've written a quick benchmark that generates a 1 million character string consisting of letters and parenthesis, with a maximum parenthesis nesting depth of 5.
+
+For the regex pattern ```\([^()]+\)``` and the equivalent Matcheroni pattern ```Seq<Atom<'('>, Some<NotAtom<'(', ')'>>, Atom<')'>>``` (paired parenthesis containing only non-parenthesis):
+
+```
+Matcheroni is 153.891915 times faster than std::regex_search
+Matcheroni is 10.277835 times faster than std::regex_iterator
+Matcheroni is 1.012847 times faster than handwritten
+```
+
+I also tested matching nested paired parenthesis using a recursive Matcheroni pattern, a recursive handwritten implementation and a non-recursive handwritten implementation:
+
+```
+Matcheroni is 0.692946 times faster than handwritten recursive
+Matcheroni is 0.578635 times faster than handwritten non-recursive
+```
 
 # A non-trivial example
 
