@@ -105,7 +105,7 @@ Matcheroni is 10.277835 times faster than std::regex_iterator
 Matcheroni is 1.012847 times faster than hand-written
 ```
 
-I also tested the parenthesis matcher above against a recursive hand-written implementation and a non-recursive hand-written implementation.
+I also tested the recursive parenthesis matcher above against a recursive hand-written implementation and a non-recursive hand-written implementation.
 ```
 With -O3:
 matcheroni_match_parens: 123 bytes
