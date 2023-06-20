@@ -124,12 +124,14 @@ Matcheroni is 10.277835 times faster than std::regex_iterator
 Matcheroni is 1.012847 times faster than hand-written
 ```
 
-I also tested matching nested paired parenthesis using a recursive Matcheroni pattern, a recursive hand-written implementation and a non-recursive hand-written implementation:
+I also tested matching nested paired parenthesis using a recursive Matcheroni pattern, a recursive hand-written implementation and a non-recursive hand-written implementation. The optimized Matcheroni function is 123 bytes, the non-recursive function is 75 bytes, and the recursive function is 81 bytes.
 
 ```
 Matcheroni is 0.692946 times faster than hand-written recursive
 Matcheroni is 0.578635 times faster than hand-written non-recursive
 ```
+
+It's hard to measure exactly how much the std::regex library adds to the binary, but a build with std::regex is 174232 bytes and a build with std::regex commented out is 17664, or about 156000 bytes added.
 
 # Caveats
 
