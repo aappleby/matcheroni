@@ -7,7 +7,7 @@ Matcheroni matchers are tiny - 100s of bytes versus 150k+ for std::regex
 
 Matcheroni matchers are fast - 10x or more vs std::regex
 
-Matcheroni matchers are more readable and more modular than regexes - you can build large matchers out of small simple matchers without affecting performance.
+Matcheroni matchers are more readable and more modular than regexes - you can build [large matchers](matcheroni/c_lexer.cpp#L180) out of small simple matchers without affecting performance.
 
 Matcheroni allows you to freely mix C++ code with your match patterns.
 
