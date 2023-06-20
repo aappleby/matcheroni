@@ -66,7 +66,7 @@ Matching functions should return a pointer in the range ```[a, b]``` to indicate
 
  - A **"matcher"** is any class or struct that contains a static matching function named ```match()``` in its body.
 
-Matchers can be templated and can do basically whatever they like inside ```match()```. For example, if we wanted to print a message whenever some pattern matches, we could do this:
+Matcheroni includes [built-in matchers for most regex-like tasks](matcheroni/Matcheroni.h#L54), but writing your own is straightforward. Matchers can be templated and can do basically whatever they like inside ```match()```. For example, if we wanted to print a message whenever some pattern matches, we could do this:
 
 ```
 template<typename P>
