@@ -20,6 +20,7 @@ enum LexemeType {
   LEX_SPLICE,
   LEX_FORMFEED,
   LEX_EOF,
+  LEX_LAST
 };
 
 //------------------------------------------------------------------------------
@@ -35,21 +36,6 @@ struct Lexeme {
 
   std::string text() const {
     return std::string(span_a, span_b);
-  }
-
-  const char* match(const char* lit) const {
-    auto c = span_a;
-    for (; c < span_b && (*c == *lit) && *lit; c++, lit++);
-    if (*lit == 0) {
-      return c;
-    }
-    else {
-      return nullptr;
-    }
-  }
-
-  bool is_valid() const {
-    return type != LEX_INVALID;
   }
 
   bool is_eof() const {
@@ -131,13 +117,7 @@ struct Lexeme {
     for (;c < span_b && (*c == *lit) && *lit; c++, lit++);
 
     if (*lit) return false;
-
-    if ((*c >= 'a' && *c <= 'z') ||
-        (*c >= 'A' && *c <= 'Z') ||
-        (*c >= '0' && *c <= '9') ||
-        (*c == '_')) {
-      return false;
-    }
+    if (c != span_b) return false;
 
     return true;
   }

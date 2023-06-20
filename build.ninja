@@ -1,6 +1,5 @@
-#cpp_build_mode = -g -Og -std=c++20
 #cpp_build_mode = -g -O0 -std=c++20
-cpp_build_mode = -g -O3 -std=c++20
+cpp_build_mode = -s -O3 -std=c++20
 
 rule compile_cpp
   command = g++ ${cpp_build_mode} ${includes} -MMD -MF ${out}.d -c ${in} -o ${out}
@@ -13,10 +12,8 @@ rule link
 build obj/c_lexer.o        : compile_cpp matcheroni/c_lexer.cpp
 build obj/c_parser_test.o  : compile_cpp matcheroni/c_parser_test.cpp
 build obj/ParseNode.o      : compile_cpp matcheroni/ParseNode.cpp
-build obj/demo.o           : compile_cpp matcheroni/demo.cpp
 
 build bin/matcheroni_demo : link $
   obj/c_lexer.o $
   obj/c_parser_test.o $
-  obj/ParseNode.o $
-  obj/demo.o
+  obj/ParseNode.o

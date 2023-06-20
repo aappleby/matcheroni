@@ -1058,9 +1058,8 @@ struct NodeStatementTypedef : public NodeMaker<NodeStatementTypedef> {
 
 //------------------------------------------------------------------------------
 
+// pr21356.c - Spec says goto should be an identifier, GCC allows expressions
 struct NodeStatementGoto : public NodeMaker<NodeStatementGoto> {
-  // pr21356.c - Spec says goto should be an identifier, GCC allows expressions
-
   using pattern = Seq<
     Keyword<"goto">,
     NodeExpression

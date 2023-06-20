@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <array>
 #include <cstdint>
+#include <map>
 
 #ifdef MATCHERONI_USE_NAMESPACE
 using namespace matcheroni;
@@ -12,75 +13,66 @@ using namespace matcheroni;
 template<typename M>
 using ticked = Seq<Opt<Atom<'\''>>, M>;
 
-//------------------------------------------------------------------------------
-
-struct LexemeTableEntry {
-  template<typename atom>
-  using lex_matcher = matcher<atom>;
-
-  lex_matcher<char> match  = nullptr;
-  LexemeType    lexeme = LEX_INVALID;
-  unsigned int  color  = 0;
-  const char*   name   = nullptr;
-};
-
-LexemeTableEntry matcher_table[] = {
-  { match_space,      LEX_SPACE,      0x804040, "space" },
-  { match_newline,    LEX_NEWLINE,    0x404080, "newline" },
-  { match_string,     LEX_STRING,     0x4488AA, "string" },        // must be before identifier because R"()"
-  { match_identifier, LEX_IDENTIFIER, 0xCCCC40, "identifier" },
-  { match_comment,    LEX_COMMENT,    0x66AA66, "comment" },       // must be before punct
-  { match_preproc,    LEX_PREPROC,    0xCC88CC, "preproc" },       // must be before punct
-  { match_float,      LEX_FLOAT,      0xFF88AA, "float" },         // must be before int
-  { match_int,        LEX_INT,        0xFF8888, "int" },           // must be before punct
-  { match_punct,      LEX_PUNCT,      0x808080, "punct" },
-  { match_char,       LEX_CHAR,       0x44DDDD, "char_literal" },
-  { match_splice,     LEX_SPLICE,     0x00CCFF, "splice" },
-  { match_formfeed,   LEX_FORMFEED,   0xFF00FF, "formfeed" },
-  { match_eof,        LEX_EOF,        0xFF00FF, "EOF" },
-};
-
-const int matcher_table_count = sizeof(matcher_table) / sizeof(matcher_table[0]);
-
-int match_count[matcher_table_count] = {0};
-int fail_count[matcher_table_count] = {0};
+const char* match_never      (const char* a, const char* b);
+const char* match_space      (const char* a, const char* b);
+const char* match_newline    (const char* a, const char* b);
+const char* match_string     (const char* a, const char* b);
+const char* match_identifier (const char* a, const char* b);
+const char* match_comment    (const char* a, const char* b);
+const char* match_preproc    (const char* a, const char* b);
+const char* match_float      (const char* a, const char* b);
+const char* match_int        (const char* a, const char* b);
+const char* match_punct      (const char* a, const char* b);
+const char* match_char       (const char* a, const char* b);
+const char* match_splice     (const char* a, const char* b);
+const char* match_formfeed   (const char* a, const char* b);
+const char* match_eof        (const char* a, const char* b);
 
 //------------------------------------------------------------------------------
 
 Lexeme next_lexeme(const char* cursor, const char* text_end) {
-  if (cursor == text_end) {
-    int x = 1;
-  }
+  struct LexemeTableEntry {
+    matcher<char> match  = nullptr;
+    LexemeType    lexeme = LEX_INVALID;
+  };
+
+  static int blep[] = {
+    [LEX_INVALID] = 1
+  };
+
+  static LexemeTableEntry matcher_table[] = {
+    { match_never,      LEX_INVALID,    },
+    { match_space,      LEX_SPACE,      },
+    { match_newline,    LEX_NEWLINE,    },
+    { match_string,     LEX_STRING,     }, // must be before identifier because R"()"
+    { match_identifier, LEX_IDENTIFIER, },
+    { match_comment,    LEX_COMMENT,    }, // must be before punct
+    { match_preproc,    LEX_PREPROC,    }, // must be before punct
+    { match_float,      LEX_FLOAT,      }, // must be before int
+    { match_int,        LEX_INT,        }, // must be before punct
+    { match_punct,      LEX_PUNCT,      },
+    { match_char,       LEX_CHAR,       },
+    { match_splice,     LEX_SPLICE,     },
+    { match_formfeed,   LEX_FORMFEED,   },
+    { match_eof,        LEX_EOF,        },
+  };
 
   const int matcher_count = sizeof(matcher_table) / sizeof(matcher_table[0]);
   for (int i = 0; i < matcher_count; i++) {
-    auto t = matcher_table[i];
-    auto end = t.match(cursor, text_end);
-    if (end) {
-      match_count[i]++;
-      return Lexeme(t.lexeme, cursor, end);
-    } else {
-      fail_count[i]++;
+    if (auto end = matcher_table[i].match(cursor, text_end)) {
+      return Lexeme(matcher_table[i].lexeme, cursor, end);
     }
   }
 
   return Lexeme::invalid();
 }
 
-void dump_lexer_stats() {
-  const int matcher_count = sizeof(matcher_table) / sizeof(matcher_table[0]);
-  for (int i = 0; i < matcher_count; i++) {
-    printf("%-20s match %8d fail %8d\n",
-      matcher_table[i].name,
-      match_count[i],
-      fail_count[i]
-    );
-  }
-  printf("\n");
-}
-
 //------------------------------------------------------------------------------
 // Misc helpers
+
+const char* match_never(const char* a, const char* b) {
+  return nullptr;
+}
 
 const char* match_eof(const char* a, const char* b) {
   if (a == b) return a;
@@ -100,78 +92,6 @@ const char* match_space(const char* a, const char* b) {
 const char* match_newline(const char* a, const char* b) {
   using match = Seq<Opt<Atom<'\r'>>, Atom<'\n'>>;
   return match::match(a, b);
-}
-
-//------------------------------------------------------------------------------
-// Basic UTF8 support
-
-const char* match_utf8(const char* a, const char* b) {
-  using utf8_ext       = Range<char(0x80), char(0xBF)>;
-  using utf8_onebyte   = Range<char(0x00), char(0x7F)>;
-  using utf8_twobyte   = Seq<Range<char(0xC0), char(0xDF)>, utf8_ext>;
-  using utf8_threebyte = Seq<Range<char(0xE0), char(0xEF)>, utf8_ext, utf8_ext>;
-  using utf8_fourbyte  = Seq<Range<char(0xF0), char(0xF7)>, utf8_ext, utf8_ext, utf8_ext>;
-
-  // matching 1-byte utf breaks things in match_identifier
-  using utf8_char      = Oneof<utf8_twobyte, utf8_threebyte, utf8_fourbyte>;
-  //using utf8_char      = Oneof<utf8_onebyte, utf8_twobyte, utf8_threebyte, utf8_fourbyte>;
-
-  return utf8_char::match(a, b);
-}
-
-const char* match_utf8_bom(const char* a, const char* b) {
-  using utf8_bom = Seq<Atom<char(0xEF)>, Atom<char(0xBB)>, Atom<char(0xBF)>>;
-  return utf8_bom::match(a, b);
-}
-
-// Yeaaaah, not gonna try to support trigraphs, they're obsolete and have been
-// removed from the latest C spec. Also we have to declare them funny to get them through the preprocessor...
-//using trigraphs = Trigraphs<R"(??=)" R"(??()" R"(??/)" R"(??))" R"(??')" R"(??<)" R"(??!)" R"(??>)" R"(??-)">;
-
-//------------------------------------------------------------------------------
-// 5.1.1.2 : Lines ending in a backslash and a newline get spliced together
-// with the following line.
-
-const char* match_splice(const char* a, const char* b) {
-  // According to GCC it's only a warning to have whitespace between the
-  // backslash and the newline... and apparently \r\n is ok too?
-
-  using space = Atom<' ','\t'>;
-  using splice = Seq<
-    Atom<'\\'>,
-    Any<space>,
-    Opt<Atom<'\r'>>,
-    Any<space>,
-    Atom<'\n'>
-  >;
-
-  return splice::match(a, b);
-}
-
-//------------------------------------------------------------------------------
-// 6.4.1 Keywords
-
-const char* match_keyword(const char* a, const char* b) {
-
-  // Probably too many strings to pass as template parameters...
-  const char* c_keywords[] = {
-    "alignas", "alignof", "auto", "bool", "break", "case", "char", "const",
-    "constexpr", "continue", "default", "do", "double", "else", "enum",
-    "extern", "false", "float", "for", "goto", "if", "inline", "int", "long",
-    "nullptr", "register", "restrict", "return", "short", "signed", "sizeof",
-    "static", "static_assert", "struct", "switch", "thread_local", "true",
-    "typedef", "typeof", "typeof_unqual", "union", "unsigned", "void",
-    "volatile", "while", "", "_Atomic", "_BitInt", "_Complex", "_Decimal128",
-    "_Decimal32", "_Decimal64", "_Generic", "_Imaginary", "_Noreturn"
-  };
-  const int keyword_count = sizeof(c_keywords) / sizeof(c_keywords[0]);
-
-  for (int i = 0; i < keyword_count; i++) {
-    if (auto t = match_text(c_keywords[i], a, b)) {
-      return t;
-    }
-  }
-  return nullptr;
 }
 
 //------------------------------------------------------------------------------
@@ -247,6 +167,28 @@ const char* match_universal_character_name(const char* a, const char* b) {
   >;
 
   return universal_character_name::match(a, b);
+}
+
+//------------------------------------------------------------------------------
+// Basic UTF8 support
+
+const char* match_utf8(const char* a, const char* b) {
+  using utf8_ext       = Range<char(0x80), char(0xBF)>;
+  using utf8_onebyte   = Range<char(0x00), char(0x7F)>;
+  using utf8_twobyte   = Seq<Range<char(0xC0), char(0xDF)>, utf8_ext>;
+  using utf8_threebyte = Seq<Range<char(0xE0), char(0xEF)>, utf8_ext, utf8_ext>;
+  using utf8_fourbyte  = Seq<Range<char(0xF0), char(0xF7)>, utf8_ext, utf8_ext, utf8_ext>;
+
+  // matching 1-byte utf breaks things in match_identifier
+  using utf8_char      = Oneof<utf8_twobyte, utf8_threebyte, utf8_fourbyte>;
+  //using utf8_char      = Oneof<utf8_onebyte, utf8_twobyte, utf8_threebyte, utf8_fourbyte>;
+
+  return utf8_char::match(a, b);
+}
+
+const char* match_utf8_bom(const char* a, const char* b) {
+  using utf8_bom = Seq<Atom<char(0xEF)>, Atom<char(0xBB)>, Atom<char(0xBF)>>;
+  return utf8_bom::match(a, b);
 }
 
 //------------------------------------------------------------------------------
@@ -333,11 +275,6 @@ const char* match_float(const char* a, const char* b) {
 }
 
 //------------------------------------------------------------------------------
-// 6.4.4.3 Enumeration constants
-
-using enumeration_constant = Ref<match_identifier>;
-
-//------------------------------------------------------------------------------
 // Escape sequences
 
 const char* match_escape_sequence(const char* a, const char* b) {
@@ -391,11 +328,6 @@ const char* match_char(const char* a, const char* b) {
 }
 
 //------------------------------------------------------------------------------
-// 6.4.4.5 Predefined constants
-
-using predefined_constant = Oneof<Lit<"false">, Lit<"true">, Lit<"nullptr">>;
-
-//------------------------------------------------------------------------------
 // 6.4.5 String literals
 
 const char* match_cooked_string_literal(const char* a, const char* b) {
@@ -436,8 +368,6 @@ const char* match_raw_string_literal(const char* a, const char* b) {
     Atom<'"'>
   >;
 
-  // Raw strings require matching backreferences, so we squish that into the
-  // grammar by passing the backreference in the context pointer.
   return raw_string_literal::match(a, b);
 }
 
@@ -451,76 +381,17 @@ const char* match_string(const char* a, const char* b) {
 }
 
 //------------------------------------------------------------------------------
-// for the parser
-
-const char* match_assign_op(const char* a, const char* b) {
- const char* ops[] = {
-    "+=","-=","*=","/=","%=","&=","|=","^=", "=",
-  };
-  int op_count = sizeof(ops)/sizeof(*ops);
-  return match_text(ops, op_count, a, b);
-}
-
-const char* match_infix_op(const char* a, const char* b) {
-  const char* ops[] = {
-    "<<=",">>=",
-    "==","!=","<=",">=",
-    "&&","||",
-    "<<",">>",
-    "+=","-=","*=","/=","%=","&=","|=","^=",
-    "+","-","*","/","%","<",">","&","|","^","=",
-    ".",  // i'm considering the dot in a.b() as infix
-    "->", // and i guess arrow too?
-    "::", // scope operator also infix lol
-    // comma operator?
-  };
-  int op_count = sizeof(ops)/sizeof(*ops);
-  return match_text(ops, op_count, a, b);
-}
-
-const char* match_prefix_op(const char* a, const char* b) {
-  const char* ops[] = { "++", "--", "+", "-", "!", "~", "&", "*" };
-  int op_count = sizeof(ops)/sizeof(*ops);
-  return match_text(ops, op_count, a, b);
-}
-
-const char* match_postfix_op(const char* a, const char* b) {
-  const char* ops[] = { "++", "--" };
-  int op_count = sizeof(ops)/sizeof(*ops);
-  return match_text(ops, op_count, a, b);
-}
-
-//------------------------------------------------------------------------------
 // 6.4.6 Punctuators
 
 const char* match_punct(const char* a, const char* b) {
   // We're just gonna match these one punct at a time
   using punctuator = Charset<"-,;:!?.()[]{}*/&#%^+<=>|~">;
   return punctuator::match(a, b);
-
-#if 0
-  using tripunct  = Trigraphs<"...<<=>>=">;
-  using dipunct   = Digraphs<"---=->!=*=/=&&&=##%=^=+++=<<<===>=>>|=||">;
-  using unipunct  = Charset<"-,;:!?.()[]{}*/&#%^+<=>|~">;
-  using all_punct = Oneof<tripunct, dipunct, unipunct>;
-  return all_punct::match(text);
-#endif
 }
 
-//------------------------------------------------------------------------------
-// 6.4.7 Header names
-
-const char* match_header_name(const char* a, const char* b) {
-  using q_char          = NotAtom<'\n', '"'>;
-  using q_char_sequence = Some<q_char>;
-  using h_char          = NotAtom<'\n', '>'>;
-  using h_char_sequence = Some<h_char>;
-  using header_name = Oneof<
-    Seq< Atom<'<'>, h_char_sequence, Atom<'>'> >,
-    Seq< Atom<'"'>, q_char_sequence, Atom<'"'> >
-  >;
-  return header_name::match(a, b);
-}
+// Yeaaaah, not gonna try to support trigraphs, they're obsolete and have been
+// removed from the latest C spec. Also we have to declare them funny to get them through the preprocessor...
+//using trigraphs = Trigraphs<R"(??=)" R"(??()" R"(??/)" R"(??))" R"(??')" R"(??<)" R"(??!)" R"(??>)" R"(??-)">;
 
 //------------------------------------------------------------------------------
 // 6.4.9 Comments
@@ -548,64 +419,36 @@ const char* match_comment(const char* a, const char* b) {
   return comment::match(a, b);
 }
 
-// Multi-line nested comments (not actually in C, just here for reference)
-// FIXME needs test case
-const char* match_nested_comment(const char* a, const char* b) {
-  using ldelim = Lit<"/*">;
-  using rdelim = Lit<"*/">;
-  using item   = Oneof<Ref<match_nested_comment>, AnyAtom>;
-  using match  = Seq<ldelim, Any<item>, rdelim>;
-  return match::match(a, b);
+//------------------------------------------------------------------------------
+// 5.1.1.2 : Lines ending in a backslash and a newline get spliced together
+// with the following line.
+
+const char* match_splice(const char* a, const char* b) {
+  // According to GCC it's only a warning to have whitespace between the
+  // backslash and the newline... and apparently \r\n is ok too?
+
+  using splice = Seq<
+    Atom<'\\'>,
+    Any<Atom<' ','\t'>>,
+    Opt<Atom<'\r'>>,
+    Any<Atom<' ','\t'>>,
+    Atom<'\n'>
+  >;
+
+  return splice::match(a, b);
 }
 
 //------------------------------------------------------------------------------
-// FIXME clean this up... :P
-
-const char* until_eol(const char* a, const char* b) {
-  bool splice = false;
-
-  while(a < b) {
-    if (auto end = match_raw_string_literal(a, b)) {
-      a = end;
-      continue;
-    }
-
-    auto c = *a;
-
-    if (c == 0) {
-      return a;
-    }
-
-    if (c == '\n') {
-      if (splice) {
-        splice = false;
-      }
-      else {
-        return a;
-      }
-    }
-
-    if (c == '\\') {
-      splice = true;
-    }
-    else if (c != ' ' && c != '\t' && c != '\r') {
-      splice = false;
-    }
-
-    a++;
-  }
-
-  return a;
-};
 
 const char* match_preproc(const char* a, const char* b) {
-  if (*a == '#') {
-    auto end = until_eol(a, b);
-    return end;
-  }
-  else {
-    return nullptr;
-  }
+  using pattern = Seq<
+    Atom<'#'>,
+    Any<Oneof<
+      Ref<match_splice>,
+      NotAtom<'\n'>
+    >>
+  >;
+  return pattern::match(a, b);
 }
 
 //------------------------------------------------------------------------------

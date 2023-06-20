@@ -146,7 +146,7 @@ bool test_lex(const std::string& path, const std::string& text, bool echo) {
     if (lexeme.is_eof()) {
       break;
     }
-    else if (lexeme.is_valid()) {
+    else if (lexeme.type != LEX_INVALID) {
       if (lexeme.span_b > text_b) {
         printf("#### READ OFF THE END DURING %d\n", lexeme.type);
         printf("File %s:\n", path.c_str());

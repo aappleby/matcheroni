@@ -16,15 +16,47 @@ void set_color(uint32_t c);
 //------------------------------------------------------------------------------
 
 struct ParseNode;
+struct ParseNodeStack;
 
 struct ParseNodeStack {
-  void push(ParseNode* n);
-  ParseNode* pop();
-  ParseNode* back();
-  size_t top() const;
-  void dump_top();
-  void clear_to(size_t new_top);
-  void pop_to(size_t new_top);
+  void push(ParseNode* n) {
+    if (_top == stack_size) {
+      printf("Node stack overflow, size %d\n", stack_size);
+      exit(1);
+    }
+
+    assert(_stack[_top] == nullptr);
+    _stack[_top] = n;
+    _top++;
+  }
+
+  ParseNode* pop() {
+    assert(_top);
+    _top--;
+    ParseNode* result = _stack[_top];
+    _stack[_top] = nullptr;
+    return result;
+  }
+
+  ParseNode* back() {
+    return _stack[_top - 1];
+  }
+
+  size_t top() const {
+    return _top;
+  }
+
+  /*
+  void clear_to(size_t new_top) {
+    while(_top > new_top) {
+      delete pop();
+    }
+  }
+  */
+
+  void pop_to(size_t new_top) {
+    while (_top > new_top) pop();
+  }
 
   static const int stack_size = 8192;
   ParseNode*  _stack[stack_size] = {0};
@@ -253,7 +285,7 @@ struct ParseNode {
   ParseNode* head   = nullptr;
   ParseNode* tail   = nullptr;
 
-  static ParseNodeStack node_stack;
+  inline static ParseNodeStack node_stack;
 
   //static inline IdentifierSet global_ids = {};
 
@@ -397,7 +429,9 @@ struct NodeMaker : public ParseNode {
     auto new_top = node_stack.top();
 
     if (!end) {
-      node_stack.clear_to(old_top);
+      while(node_stack.top() > old_top) {
+        delete node_stack.pop();
+      }
       return nullptr;
     }
 
@@ -419,7 +453,9 @@ struct CleanDeadNodes {
     auto old_top = ParseNode::node_stack.top();
     auto end = P::match(a, b);
     if (!end) {
-      ParseNode::node_stack.clear_to(old_top);
+      while(ParseNode::node_stack.top() > old_top) {
+        delete ParseNode::node_stack.pop();
+      }
     }
     return end;
   }
@@ -479,13 +515,13 @@ struct NodeDispenser {
 //------------------------------------------------------------------------------
 
 struct NodePreproc : public NodeMaker<NodePreproc> {
-  using pattern = Atom<TOK_PREPROC>;
+  using pattern = Atom<LEX_PREPROC>;
 };
 
 //------------------------------------------------------------------------------
 
 struct NodeIdentifier : public NodeMaker<NodeIdentifier> {
-  using pattern = Atom<TOK_IDENTIFIER>;
+  using pattern = Atom<LEX_IDENTIFIER>;
 
   std::string text() const {
     return tok_a->lex->text();
@@ -495,17 +531,17 @@ struct NodeIdentifier : public NodeMaker<NodeIdentifier> {
 //------------------------------------------------------------------------------
 
 struct NodeString : public NodeMaker<NodeString> {
-  using pattern = Atom<TOK_STRING>;
+  using pattern = Atom<LEX_STRING>;
 };
 
 //------------------------------------------------------------------------------
 
 struct NodeConstant : public NodeMaker<NodeConstant> {
   using pattern = Oneof<
-    Atom<TOK_FLOAT>,
-    Atom<TOK_INT>,
-    Atom<TOK_CHAR>,
-    Atom<TOK_STRING>
+    Atom<LEX_FLOAT>,
+    Atom<LEX_INT>,
+    Atom<LEX_CHAR>,
+    Atom<LEX_STRING>
   >;
 };
 

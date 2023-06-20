@@ -7,8 +7,32 @@
 #include <vector>
 #include <memory.h>
 
-double timestamp_ms();
-void set_color(uint32_t c);
+//------------------------------------------------------------------------------
+
+double timestamp_ms() {
+  using clock = std::chrono::high_resolution_clock;
+  using nano = std::chrono::nanoseconds;
+
+  static bool init = false;
+  static double origin = 0;
+
+  auto now = clock::now().time_since_epoch();
+  auto now_nanos = std::chrono::duration_cast<nano>(now).count();
+  if (!origin) origin = now_nanos;
+
+  return (now_nanos - origin) * 1.0e-6;
+}
+
+//------------------------------------------------------------------------------
+
+void set_color(uint32_t c) {
+  if (c) {
+    printf("\u001b[38;2;%d;%d;%dm", (c >> 0) & 0xFF, (c >> 8) & 0xFF, (c >> 16) & 0xFF);
+  }
+  else {
+    printf("\u001b[0m");
+  }
+}
 
 //------------------------------------------------------------------------------
 
@@ -29,7 +53,7 @@ void lex_file(std::string& text, std::vector<Lexeme>& lexemes, std::vector<Token
   for (auto i = 0; i < lexemes.size(); i++) {
     auto l = &lexemes[i];
     if (!l->is_gap() && !l->is_preproc()) {
-      tokens.push_back(Token(lex_to_tok(l->type), l));
+      tokens.push_back(Token(l));
     }
   }
 }
@@ -68,14 +92,15 @@ void dump_lexemes(std::string& text, std::vector<Lexeme>& lexemes) {
 
 //------------------------------------------------------------------------------
 
-int test_c_peg(int argc, char** argv) {
+int main(int argc, char** argv) {
+  printf("Matcheroni c_parser_test\n");
 
   std::vector<std::string> paths;
   const char* base_path = argc > 1 ? argv[1] : "tests";
 
   //base_path = "mini_tests";
 
-  printf("Parsing source files in %s\n", base_path);
+  printf("Parsing all source files in %s\n", base_path);
   using rdit = std::filesystem::recursive_directory_iterator;
   for (const auto& f : rdit(base_path)) {
     if (!f.is_regular_file()) continue;
@@ -110,7 +135,9 @@ int test_c_peg(int argc, char** argv) {
     lexemes.clear();
     tokens.clear();
     // Don't forget to reset the parser state derrrrrp
-    ParseNode::node_stack.clear_to(0);
+    while(ParseNode::node_stack.top()) {
+      delete ParseNode::node_stack.pop();
+    }
     ParseNode::reset_types();
 
     file_total++;
@@ -244,7 +271,6 @@ int test_c_peg(int argc, char** argv) {
     printf("##################\n");
     set_color(0);
   }
-  printf("\n");
 
   return 0;
 }
