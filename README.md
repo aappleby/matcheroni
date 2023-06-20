@@ -29,6 +29,19 @@ using my_pattern = Seq<Some<abc>, def>;
 ```
 and it would perform identically to the one-line version.
 
+Unlike regexes, Matcheroni patterns can be recursive:
+```
+const char* matcheroni_match_parens(const char* a, const char* b) {
+  using pattern =
+  Seq<
+    Atom<'('>,
+    Any<Oneof<Ref<matcheroni_match_parens>, NotAtom<')'>>>,
+    Atom<')'>
+  >;
+  return pattern::match(a, b);
+}
+```
+Note that you can't nest "pattern" inside itself directly, as "using pattern" doesn't count as a declaration. Wrapping it in a matcher function or class works though.
 
 # Performance
 After compilation, the trees of templates turn into trees of tiny simple function calls. GCC/Clang's optimizer does an exceptionally good job of flattening these down into small optimized functions that are nearly as small and fast as if you'd written the matchers by hand. The generated assembly looks good, and the code size can actually be smaller than hand-written as GCC can dedupe redundant template instantiations in a lot of cases.
