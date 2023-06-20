@@ -121,14 +121,14 @@ For the regex pattern ```\([^()]+\)``` and the equivalent Matcheroni pattern ```
 ```
 Matcheroni is 153.891915 times faster than std::regex_search
 Matcheroni is 10.277835 times faster than std::regex_iterator
-Matcheroni is 1.012847 times faster than handwritten
+Matcheroni is 1.012847 times faster than hand-written
 ```
 
-I also tested matching nested paired parenthesis using a recursive Matcheroni pattern, a recursive handwritten implementation and a non-recursive handwritten implementation:
+I also tested matching nested paired parenthesis using a recursive Matcheroni pattern, a recursive hand-written implementation and a non-recursive hand-written implementation:
 
 ```
-Matcheroni is 0.692946 times faster than handwritten recursive
-Matcheroni is 0.578635 times faster than handwritten non-recursive
+Matcheroni is 0.692946 times faster than hand-written recursive
+Matcheroni is 0.578635 times faster than hand-written non-recursive
 ```
 
 # A non-trivial example
