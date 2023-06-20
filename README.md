@@ -43,6 +43,7 @@ and it would perform identically to the one-line version.
 
 Unlike regexes, Matcheroni patterns can be recursive:
 ```
+// Recursively match correctly-paired nested parenthesis
 const char* matcheroni_match_parens(const char* a, const char* b) {
   using pattern =
   Seq<
@@ -98,19 +99,22 @@ After compilation, the trees of templates turn into trees of tiny simple functio
 I've written a quick benchmark that generates a 1 million character string consisting of letters and parenthesis, with a maximum parenthesis nesting depth of 5.
 
 For the regex pattern ```\([^()]+\)``` and the equivalent Matcheroni pattern ```Seq<Atom<'('>, Some<NotAtom<'(', ')'>>, Atom<')'>>``` (paired parenthesis containing only non-parenthesis):
-
 ```
 Matcheroni is 153.891915 times faster than std::regex_search
 Matcheroni is 10.277835 times faster than std::regex_iterator
 Matcheroni is 1.012847 times faster than hand-written
 ```
 
-I also tested matching nested paired parenthesis using a recursive Matcheroni pattern, a recursive hand-written implementation and a non-recursive hand-written implementation. The optimized Matcheroni function is 123 bytes, the non-recursive function is 75 bytes, and the recursive function is 81 bytes.
-
+I also tested the parenthesis matcher above against a recursive hand-written implementation and a non-recursive hand-written implementation.
 ```
-Matcheroni is 0.692946 times faster than hand-written recursive
-Matcheroni is 0.578635 times faster than hand-written non-recursive
+With -O3:
+matcheroni_match_parens: 123 bytes
+recursive_matching_parens: 81 bytes
+nonrecursive_matching_parens: 75 bytes
+matcheroni_match_parens is 0.692946 times faster than recursive_matching_parens
+matcheroni_match_parens is 0.578635 times faster than nonrecursive_matching_parens
 ```
+So it's slower in that case than hand-written code, but I didn't have to worry about termination conditions, null pointers, or off-by-ones.
 
 It's hard to measure exactly how much the std::regex library adds to the binary, but we can compare against a build with std::regex commented out:
 ```
