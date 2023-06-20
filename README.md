@@ -94,7 +94,7 @@ pattern::match(text.data(), text.data() + text.size());
 ```
 
 # Performance
-After compilation, the trees of templates turn into trees of tiny simple function calls. GCC/Clang's optimizer does an exceptionally good job of flattening these down into small optimized functions that are nearly as small and fast as if you'd written the matchers by hand. The generated assembly looks good, and the code size can actually be smaller than hand-written as GCC can dedupe redundant template instantiations in a lot of cases.
+After compilation, the trees of templates turn into trees of tiny simple function calls. GCC and Clang do an exceptionally good job of optimizing these down into functions that are nearly as small and fast as if you'd written them by hand. The generated assembly looks good, and the code size can actually be smaller than hand-written as GCC can dedupe redundant template instantiations in a lot of cases.
 
 I've written a quick benchmark that generates a 1 million character string consisting of letters and parenthesis, with a maximum parenthesis nesting depth of 5.
 
