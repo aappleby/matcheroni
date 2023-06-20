@@ -11,6 +11,38 @@ Matcheroni matchers are fast - 10x or more vs std::regex
 
 Matcheroni matchers are more readable and more modular than regexes - you can build large matchers out of small simple matchers without affecting performance.
 
+# Fundamentals
+
+Matcheroni is based on two fundamental primitives -
+
+- A "matching function" is a function of the form ```const atom* match(const atom* a, const atom* b)```, where ```atom``` can be any plain-old-data type and ```a``` and ```b``` are the endpoints of the range of atoms to match against. Matching functions should return a pointer in the range ```[a, b]``` to indicate success or failure - returning ```a``` means the match succeded but did not consume any input, returning ```b``` means the match consumed all the input, returning ```nullptr``` means the match failed, and any other pointer in the range indicates that the match succeeded and consumed some amount of the input.
+
+- A "matcher" is any class or struct that contains a matching function named ```match()``` in its body. Matchers can be templated and can do basically whatever they like inside ```match()```. For example, if we wanted to print a message whenever some pattern matches, we could do this:
+
+```
+template<typename P>
+struct PrintMessage {
+  const char* match(const char* a, const char* b) {
+    const char* result = P::match(a, b);
+    if (result) {
+      printf("Match succeeded!\n");
+    }
+    else {
+      printf("Match failed!\n");
+    }
+    return result;
+  }
+};
+```
+
+and we could use it like this:
+```
+using pattern = PrintMessage<Atom<'a'>>;
+
+const std::string text = "This does not start with 'a'";
+pattern::match(text.data(), text.data() + text.size()); // prints "Match failed!"
+```
+
 # Example
 Matcheroni patterns are roughly equivalent to regular expressions - something like
 ```
@@ -86,40 +118,6 @@ Without std::regex, -Os
 -rwxr-xr-x 1 aappleby aappleby  17496 Jun 20 14:18 benchmark
 ```
 So std::regex adds about 130k-150k of code for this example.
-
-# Fundamentals
-
-Matcheroni is based on two fundamental primitives -
-
-- A "matching function" is a function of the form ```const atom* match(const atom* a, const atom* b)```, where ```atom``` can be any plain-old-data type and ```a``` and ```b``` are the endpoints of the range of atoms to match against. Matching functions should return a pointer in the range ```[a, b]``` to indicate success or failure - returning ```a``` means the match succeded but did not consume any input, returning ```b``` means the match consumed all the input, returning ```nullptr``` means the match failed, and any other pointer in the range indicates that the match succeeded and consumed some amount of the input.
-
-- A "matcher" is any class or struct that contains a matching function named ```match()``` in its body. Matchers can be templated and can do basically whatever they like inside ```match()```. For example, if we wanted to print a message whenever some pattern matches, we could do this:
-
-```
-template<typename P>
-struct PrintMessage {
-  const char* match(const char* a, const char* b) {
-    const char* result = P::match(a, b);
-    if (result) {
-      printf("Match succeeded!\n");
-    }
-    else {
-      printf("Match failed!\n");
-    }
-    return result;
-  }
-};
-```
-
-and we could use it like this:
-```
-using pattern = PrintMessage<Atom<'a'>>;
-
-const std::string text = "This does not start with 'a'";
-pattern::match(text.data(), text.data() + text.size()); // prints "Match failed!"
-```
-
-
 
 # Templates? Really?
 If you're familiar with C++ templates, you are probably concerned that this library will cause your compiler to grind to a halt. I can assure you that that's not the case - compile times for even pretty large matchers are fine, though the resulting debug symbols are so enormous as to be useless.
