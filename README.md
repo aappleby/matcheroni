@@ -20,9 +20,7 @@ would be expressed in Matcheroni as
 ```
 using my_pattern = Seq<Some<Atom<'a','b','c'>>, Lit<"def">>;
 ```
-Unlike std::regex though, the Matcheroni pattern is both the definition of the pattern **and** the implementation of the matcher for that pattern.
-
-Matcheroni patterns thus require no additional libraries or code to be usable - you can immediately use it like so:
+In the above line of code, we are defining the matcher "my_pattern" by nesting the Seq<>, Some<>, Atom<>, and Lit<> matcher templates. The resuling type (not instance) defines a "match()" function that behaves similarly to the regex. Unlike std::regex though, we don't need to compile or link or instantiate anything to use it:
 ```
 const std::string text = "aaabbaaccdefxyz";
 
