@@ -54,7 +54,7 @@ const char* matcheroni_match_parens(const char* a, const char* b) {
   return pattern::match(a, b);
 }
 ```
-Note that you can't nest "pattern" inside itself directly, as "using pattern" doesn't count as a declaration. Wrapping it in a matcher function or class works though.
+Note that you can't nest "pattern" inside itself directly, as "using pattern" doesn't count as a declaration. Wrapping it in a function or class works though.
 
 # Fundamentals
 
