@@ -20,7 +20,7 @@ would be expressed in Matcheroni as
 ```
 using my_pattern = Seq<Some<Atom<'a','b','c'>>, Lit<"def">>;
 ```
-In the above line of code, we are defining the matcher "my_pattern" by nesting the Seq<>, Some<>, Atom<>, and Lit<> matcher templates. The resuling type (not instance) defines a "match()" function that behaves similarly to the regex.
+In the above line of code, we are defining the matcher "my_pattern" by nesting the Seq<>, Some<>, Atom<>, and Lit<> matcher templates. The resuling type (not instance) defines a static "match()" function that behaves similarly to the regex.
 
 Unlike std::regex, we don't need to link in any additional libraries or instantiate anything to use it:
 ```
