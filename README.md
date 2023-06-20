@@ -11,43 +11,7 @@ Matcheroni matchers are more readable and more modular than regexes - you can bu
 
 Matcheroni allows you to freely mix C++ code with your match patterns.
 
-# Fundamentals
-
-Matcheroni is based on two fundamental primitives -
-
- - A **"matching function"** is a function of the form ```const atom* match(const atom* a, const atom* b)```, where ```atom``` can be any plain-old-data type and ```a``` and ```b``` are the endpoints of the range of atoms to match against.
-
-Matching functions should return a pointer in the range ```[a, b]``` to indicate success or failure - returning ```a``` means the match succeded but did not consume any input, returning ```b``` means the match consumed all the input, returning ```nullptr``` means the match failed, and any other pointer in the range indicates that the match succeeded and consumed some amount of the input.
-
- - A **"matcher"** is any class or struct that contains a static matching function named ```match()``` in its body.
-
-Matchers can be templated and can do basically whatever they like inside ```match()```. For example, if we wanted to print a message whenever some pattern matches, we could do this:
-
-```
-template<typename P>
-struct PrintMessage {
-  const char* match(const char* a, const char* b) {
-    const char* result = P::match(a, b);
-    if (result) {
-      printf("Match succeeded!\n");
-    }
-    else {
-      printf("Match failed!\n");
-    }
-    return result;
-  }
-};
-```
-
-and we could use it like this:
-```
-using pattern = PrintMessage<Atom<'a'>>;
-
-const std::string text = "This does not start with 'a'";
-pattern::match(text.data(), text.data() + text.size()); // prints "Match failed!"
-```
-
-# Example
+# Examples
 Matcheroni patterns are roughly equivalent to regular expressions - something like
 ```
 regex my_pattern("[abc]+def");
@@ -86,6 +50,42 @@ const char* matcheroni_match_parens(const char* a, const char* b) {
 }
 ```
 Note that you can't nest "pattern" inside itself directly, as "using pattern" doesn't count as a declaration. Wrapping it in a matcher function or class works though.
+
+# Fundamentals
+
+Matcheroni is based on two fundamental primitives -
+
+ - A **"matching function"** is a function of the form ```const atom* match(const atom* a, const atom* b)```, where ```atom``` can be any plain-old-data type and ```a``` and ```b``` are the endpoints of the range of atoms to match against.
+
+Matching functions should return a pointer in the range ```[a, b]``` to indicate success or failure - returning ```a``` means the match succeded but did not consume any input, returning ```b``` means the match consumed all the input, returning ```nullptr``` means the match failed, and any other pointer in the range indicates that the match succeeded and consumed some amount of the input.
+
+ - A **"matcher"** is any class or struct that contains a static matching function named ```match()``` in its body.
+
+Matchers can be templated and can do basically whatever they like inside ```match()```. For example, if we wanted to print a message whenever some pattern matches, we could do this:
+
+```
+template<typename P>
+struct PrintMessage {
+  const char* match(const char* a, const char* b) {
+    const char* result = P::match(a, b);
+    if (result) {
+      printf("Match succeeded!\n");
+    }
+    else {
+      printf("Match failed!\n");
+    }
+    return result;
+  }
+};
+```
+
+and we could use it like this:
+```
+using pattern = PrintMessage<Atom<'a'>>;
+
+const std::string text = "This does not start with 'a'";
+pattern::match(text.data(), text.data() + text.size()); // prints "Match failed!"
+```
 
 # Performance
 After compilation, the trees of templates turn into trees of tiny simple function calls. GCC/Clang's optimizer does an exceptionally good job of flattening these down into small optimized functions that are nearly as small and fast as if you'd written the matchers by hand. The generated assembly looks good, and the code size can actually be smaller than hand-written as GCC can dedupe redundant template instantiations in a lot of cases.
