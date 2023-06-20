@@ -39,7 +39,15 @@ Matcheroni is 0.692946 times faster than hand-written recursive
 Matcheroni is 0.578635 times faster than hand-written non-recursive
 ```
 
-It's hard to measure exactly how much the std::regex library adds to the binary, but a build with std::regex is 174232 bytes and a build with std::regex commented out is 17664, or about 156000 bytes added.
+It's hard to measure exactly how much the std::regex library adds to the binary, but we can compare against a build with std::regex commented out:
+```
+With std::regex:
+-rwxr-xr-x 1 aappleby aappleby 174232 Jun 20 14:11 benchmark
+
+Without std::regex:
+-rwxr-xr-x 1 aappleby aappleby  17664 Jun 20 14:15 benchmark
+```
+So std::regex adds about 150k of code for this example.
 
 # Fundamentals
 
