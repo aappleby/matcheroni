@@ -70,7 +70,7 @@ Matchers can be templated and can do basically whatever they like inside ```matc
 ```
 template<typename P>
 struct PrintMessage {
-  const char* match(const char* a, const char* b) {
+  static const char* match(const char* a, const char* b) {
     const char* result = P::match(a, b);
     if (result) {
       printf("Match succeeded!\n");
