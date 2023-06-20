@@ -15,11 +15,11 @@ Matcheroni allows you to freely mix C++ code with your match patterns.
 
 Matcheroni is based on two fundamental primitives -
 
-A **"matching function"** is a function of the form ```const atom* match(const atom* a, const atom* b)```, where ```atom``` can be any plain-old-data type and ```a``` and ```b``` are the endpoints of the range of atoms to match against.
+ - A **"matching function"** is a function of the form ```const atom* match(const atom* a, const atom* b)```, where ```atom``` can be any plain-old-data type and ```a``` and ```b``` are the endpoints of the range of atoms to match against.
 
 Matching functions should return a pointer in the range ```[a, b]``` to indicate success or failure - returning ```a``` means the match succeded but did not consume any input, returning ```b``` means the match consumed all the input, returning ```nullptr``` means the match failed, and any other pointer in the range indicates that the match succeeded and consumed some amount of the input.
 
-A **"matcher"** is any class or struct that contains a matching function named ```match()``` in its body.
+ - A **"matcher"** is any class or struct that contains a matching function named ```match()``` in its body.
 
 Matchers can be templated and can do basically whatever they like inside ```match()```. For example, if we wanted to print a message whenever some pattern matches, we could do this:
 
