@@ -113,7 +113,7 @@ While writing the C lexer and parser demos, I found myself needing some addition
 - ```NotAtom<x, ...>``` is equivalent to ```[^abc]``` in regex, and is faster than ```Seq<Not<Atom<x, ...>>, AnyAtom>```
 - ```Range<x, y>``` is equivalent to ```[x-y]``` in regex.
 - ```Until<x>``` matches anything until X matches, but does not consume X. Equivalent to ```Any<Seq<Not<x>,AnyAtom>>```
-- ```Ref<f>``` allows you to plug hand-written matching code into a Matcheroni pattern. The function ```f``` must be of the form ```const atom* match(const atom* a, const atom* b)```
+- ```Ref<f>``` allows you to plug arbitrary code into a matcher. The function ```f``` must be of the form ```const atom* match(const atom* a, const atom* b)```
 - ```StoreBackref<x> / MatchBackref<x>``` works like backreferences in regex, with a caveat - the backref is stored as a static variable _in_ the matcher's struct, so be careful with nesting these as you could clobber a backref on accident.
 - ```EOL``` matches newlines and end-of-file, but does not advance past it.
 - ```Lit<x>``` matches a C string literal (only valid for ```const char``` atoms)
