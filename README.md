@@ -93,7 +93,7 @@ const std::string text = "This does not start with 'a'";
 pattern::match(text.data(), text.data() + text.size()); 
 ```
 
-# Built-in patterns
+# Built-in matchers
 Since Matcheroni is based on Parsing Expression Grammars, it includes all the basic rules you'd expect:
 
 - ```Atom<x, y, ...>``` matches any single "atom" of your input that is equal to one of the template parameters. Atoms can be characters, objects, or whatever as long as you implement ```atom_eq(...)``` for them. Atoms "consume" input and advance the read cursor when they match.
@@ -105,8 +105,8 @@ Since Matcheroni is based on Parsing Expression Grammars, it includes all the ba
 - ```And<x>``` matches ```x``` but does _not_ advance the read cursor.
 - ```Not<x>``` matches if ```x``` does _not_ match and does _not_ advance the read cursor.
 
-# Additional built-in patterns for convenience
-While writing the C lexer and parser demos, I found myself needing some additional matchers:
+# Additional built-in matchers for convenience
+While writing the C lexer and parser demos, I found myself needing some additional pieces:
 
 - ```SomeOf<x, ...>``` is just ```Some<Of<x, ...>>```
 - ```Rep<N, x>``` matches ```x``` N times.
