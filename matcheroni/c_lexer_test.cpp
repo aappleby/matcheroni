@@ -1,5 +1,8 @@
 #include "c_lexer.h"
 
+#include "Lexemes.h"
+#include "Matcheroni.h"
+
 #include <assert.h>
 #include <chrono>
 #include <filesystem>
@@ -10,9 +13,6 @@
 #include <string>
 #include <type_traits>
 #include <vector>
-
-#include "Matcheroni.h"
-#include "c_lexer.h"
 
 #ifdef MATCHERONI_USE_NAMESPACE
 using namespace matcheroni;
@@ -266,13 +266,8 @@ void test_lex(const std::string& path, size_t size, bool echo) {
 
 //------------------------------------------------------------------------------
 
-extern int test_c_peg(int argc, char** argv);
-
 int main(int argc, char** argv) {
   printf("Matcheroni Demo\n");
-
-  test_c_peg(argc, argv);
-  exit(0);
 
   using rdit = std::filesystem::recursive_directory_iterator;
   const char* base_path = argc > 1 ? argv[1] : ".";
@@ -320,7 +315,7 @@ int main(int argc, char** argv) {
   printf("Files with lex errors %ld\n", bad_files.size());
   printf("\n");
 
-  dump_lexer_stats();
+  //dump_lexer_stats();
 
   return 0;
 }

@@ -1,6 +1,5 @@
 #pragma once
 
-#include "Tokens.h"
 #include "ParseNode.h"
 #include <string.h>
 
@@ -27,6 +26,149 @@ struct NodeTypeName;
 struct NodeUnion;
 
 const char* match_text(const char** lits, int lit_count, const char* a, const char* b);
+
+//------------------------------------------------------------------------------
+
+template<typename P>
+using comma_separated = Seq<P, Any<Seq<Atom<','>, P>>, Opt<Atom<','>> >;
+
+template<typename P>
+using opt_comma_separated = Opt<comma_separated<P>>;
+
+//------------------------------------------------------------------------------
+
+template<StringParam lit>
+struct Operator {
+
+  static const Token* match(const Token* a, const Token* b) {
+    if (!a || a == b) return nullptr;
+    if (a + sizeof(lit.value) > b) return nullptr;
+
+    for (auto i = 0; i < lit.len; i++) {
+      if (!a[i].is_punct(lit.value[i])) return nullptr;
+    }
+
+    return a + sizeof(lit.value);
+  }
+};
+
+//------------------------------------------------------------------------------
+
+template<StringParam lit>
+struct NodeOperator : public NodeMaker<NodeOperator<lit>> {
+  using pattern = Operator<lit>;
+};
+
+//------------------------------------------------------------------------------
+
+template<StringParam lit>
+struct NodeKeyword : public NodeMaker<NodeKeyword<lit>> {
+  using pattern = Keyword<lit>;
+};
+
+//------------------------------------------------------------------------------
+
+struct NodePreproc : public NodeMaker<NodePreproc> {
+  using pattern = Atom<LEX_PREPROC>;
+};
+
+//------------------------------------------------------------------------------
+
+struct NodeIdentifier : public NodeMaker<NodeIdentifier> {
+  using pattern = Atom<LEX_IDENTIFIER>;
+
+  std::string text() const {
+    return tok_a->lex->text();
+  }
+};
+
+//------------------------------------------------------------------------------
+
+struct NodeString : public NodeMaker<NodeString> {
+  using pattern = Atom<LEX_STRING>;
+};
+
+//------------------------------------------------------------------------------
+
+struct NodeConstant : public NodeMaker<NodeConstant> {
+  using pattern = Oneof<
+    Atom<LEX_FLOAT>,
+    Atom<LEX_INT>,
+    Atom<LEX_CHAR>,
+    Atom<LEX_STRING>
+  >;
+};
+
+//------------------------------------------------------------------------------
+
+struct NodeBuiltinTypeBase {
+  static const Token* match(const Token* a, const Token* b) {
+    if (a && ParseNode::builtin_types.contains(a->lex->text())) return a + 1;
+    return nullptr;
+  }
+};
+
+struct NodeBuiltinTypePrefix {
+  static const Token* match(const Token* a, const Token* b) {
+    if (a && ParseNode::builtin_type_prefixes.contains(a->lex->text())) return a + 1;
+    return nullptr;
+  }
+};
+
+struct NodeBuiltinTypeSuffix {
+  static const Token* match(const Token* a, const Token* b) {
+    if (a && ParseNode::builtin_type_suffixes.contains(a->lex->text())) return a + 1;
+    return nullptr;
+  }
+};
+
+//------------------------------------------------------------------------------
+// Our builtin types are any sequence of prefixes followed by a builtin type
+
+struct NodeBuiltinType : public NodeMaker<NodeBuiltinType> {
+  using pattern = Seq<
+    Any<
+      Seq<NodeBuiltinTypePrefix, And<NodeBuiltinTypeBase>>
+    >,
+    NodeBuiltinTypeBase,
+    Opt<NodeBuiltinTypeSuffix>
+  >;
+};
+
+struct NodeClassType : public NodeMaker<NodeClassType> {
+  static const Token* match(const Token* a, const Token* b) {
+    if (a && ParseNode::class_types.contains(a->lex->text())) return a + 1;
+    return nullptr;
+  }
+};
+
+struct NodeStructType : public NodeMaker<NodeStructType> {
+  static const Token* match(const Token* a, const Token* b) {
+    if (a && ParseNode::struct_types.contains(a->lex->text())) return a + 1;
+    return nullptr;
+  }
+};
+
+struct NodeUnionType : public NodeMaker<NodeUnionType> {
+  static const Token* match(const Token* a, const Token* b) {
+    if (a && ParseNode::union_types.contains(a->lex->text())) return a + 1;
+    return nullptr;
+  }
+};
+
+struct NodeEnumType : public NodeMaker<NodeEnumType> {
+  static const Token* match(const Token* a, const Token* b) {
+    if (a && ParseNode::enum_types.contains(a->lex->text())) return a + 1;
+    return nullptr;
+  }
+};
+
+struct NodeTypedefType : public PatternWrapper<NodeTypedefType> {
+  static const Token* match(const Token* a, const Token* b) {
+    if (a && ParseNode::typedef_types.contains(a->lex->text())) return a + 1;
+    return nullptr;
+  }
+};
 
 //------------------------------------------------------------------------------
 // (6.5.4) cast-expression:
@@ -345,6 +487,8 @@ struct NodeBitSuffix : public NodeMaker<NodeBitSuffix> {
   using pattern = Seq< Atom<':'>, NodeExpression >;
 };
 
+//------------------------------------------------------------------------------
+
 struct NodeAsmSuffix : public NodeMaker<NodeAsmSuffix> {
   using pattern = Seq<
     Oneof<
@@ -480,7 +624,7 @@ struct NodeStructName : public NodeMaker<NodeStructName> {
   static const Token* match(const Token* a, const Token* b) {
     auto end = NodeMaker::match(a, b);
     if (end) {
-      auto node = ParseNode::node_stack.back();
+      auto node = ParseNode::stack_back();
       if (auto id = node->child<NodeIdentifier>()) {
         //printf("Adding struct type %s\n", id->text().c_str());
         ParseNode::struct_types.insert(id->text());
@@ -513,7 +657,7 @@ struct NodeUnionName : public NodeMaker<NodeUnionName> {
   static const Token* match(const Token* a, const Token* b) {
     auto end = NodeMaker::match(a, b);
     if (end) {
-      auto node = ParseNode::node_stack.back();
+      auto node = ParseNode::stack_back();
       if (auto id = node->child<NodeIdentifier>()) {
         //printf("Adding union type %s\n", id->text().c_str());
         ParseNode::union_types.insert(id->text());
@@ -547,7 +691,7 @@ struct NodeClassName : public NodeMaker<NodeClassName> {
   static const Token* match(const Token* a, const Token* b) {
     auto end = NodeMaker::match(a, b);
     if (end) {
-      auto node = ParseNode::node_stack.back();
+      auto node = ParseNode::stack_back();
       if (auto id = node->child<NodeIdentifier>()) {
         //printf("Adding class type %s\n", id->text().c_str());
         ParseNode::class_types.insert(id->text());
@@ -598,7 +742,7 @@ struct NodeEnumName : public NodeMaker<NodeEnumName> {
   static const Token* match(const Token* a, const Token* b) {
     auto end = NodeMaker::match(a, b);
     if (end) {
-      auto node = ParseNode::node_stack.back();
+      auto node = ParseNode::stack_back();
       if (auto id = node->child<NodeIdentifier>()) {
         //printf("Adding enum type %s\n", id->text().c_str());
         ParseNode::enum_types.insert(id->text());
@@ -692,21 +836,18 @@ struct NodeFunctionIdentifier : public NodeMaker<NodeFunctionIdentifier> {
 
 struct NodeFunction : public NodeMaker<NodeFunction> {
   using pattern = Seq<
-    NodeQualifiers,
-    Opt<NodeAttribute>,
-    Opt<NodeSpecifier>,
-    NodeQualifiers,
-    Opt<NodeAttribute>,
+    Any<Oneof<
+      NodeQualifier,
+      NodeAttribute,
+      NodeSpecifier
+    >>,
     NodeFunctionIdentifier,
-
     NodeParamList,
     Opt<NodeAsmSuffix>,
-    Opt<NodeAttribute>,
     Opt<NodeKeyword<"const">>,
     Opt<Some<
       Seq<NodeDeclaration, Atom<';'>>
     >>,
-
     Oneof<
       Atom<';'>,
       NodeStatementCompound
@@ -1015,7 +1156,7 @@ struct NodeStatementTypedef : public NodeMaker<NodeStatementTypedef> {
   }
 
   static void extract_type() {
-    auto node = ParseNode::node_stack.back();
+    auto node = ParseNode::stack_back();
     if (!node) return;
 
     //node->dump_tree();
@@ -1045,7 +1186,6 @@ struct NodeStatementTypedef : public NodeMaker<NodeStatementTypedef> {
       return;
     }
 
-    node->dump_tree();
     assert(false);
   }
 
@@ -1071,13 +1211,12 @@ struct NodeStatementGoto : public NodeMaker<NodeStatementGoto> {
 struct NodeStatement : public PatternWrapper<NodeStatement> {
   using pattern = Oneof<
     // All of these have keywords first
+    Seq<NodeClass,  Atom<';'>>,
+    Seq<NodeStruct, Atom<';'>>,
+    Seq<NodeUnion,  Atom<';'>>,
+    Seq<NodeEnum,   Atom<';'>>,
+
     NodeStatementTypedef,
-
-    Seq<NodeClass,                Atom<';'>>,
-    Seq<NodeStruct,               Atom<';'>>,
-    Seq<NodeUnion,                Atom<';'>>,
-    Seq<NodeEnum,                 Atom<';'>>,
-
     NodeStatementFor,
     NodeStatementIf,
     NodeStatementReturn,

@@ -1,5 +1,8 @@
 #include "c_lexer.h"
+
+#include "Lexemes.h"
 #include "Matcheroni.h"
+
 #include <stdint.h>
 #include <stdio.h>
 #include <array>
@@ -64,7 +67,7 @@ Lexeme next_lexeme(const char* cursor, const char* text_end) {
     }
   }
 
-  return Lexeme::invalid();
+  return Lexeme(LEX_INVALID, nullptr, nullptr);
 }
 
 //------------------------------------------------------------------------------

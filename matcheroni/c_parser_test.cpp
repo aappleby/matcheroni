@@ -1,9 +1,10 @@
 #include "c_parser.h"
 
-#include <filesystem>
 #include "ParseNode.h"
-
 #include "Lexemes.h"
+#include "c_lexer.h"
+
+#include <filesystem>
 #include <vector>
 #include <memory.h>
 
@@ -34,6 +35,128 @@ void set_color(uint32_t c) {
   }
 }
 
+
+  /*
+  std::string escape_span() {
+    if (!tok_a || !tok_b) {
+      return "<bad span>";
+    }
+
+    if (tok_a == tok_b) {
+      return "<zero span>";
+    }
+
+    auto lex_a = tok_a->lex;
+    auto lex_b = (tok_b - 1)->lex;
+    auto len = lex_b->span_b - lex_a->span_a;
+
+    std::string result;
+    for (auto i = 0; i < len; i++) {
+      auto c = lex_a->span_a[i];
+      if (c == '\n') {
+        result.push_back('\\');
+        result.push_back('n');
+      }
+      else if (c == '\r') {
+        result.push_back('\\');
+        result.push_back('r');
+      }
+      else if (c == '\t') {
+        result.push_back('\\');
+        result.push_back('t');
+      }
+      else {
+        result.push_back(c);
+      }
+      if (result.size() >= 80) break;
+    }
+
+    return result;
+  }
+
+  //----------------------------------------
+
+  void print_class_name() {
+    const char* name = typeid(*this).name();
+    int name_len = 0;
+    if (sscanf(name, "%d", &name_len)) {
+      while((*name >= '0') && (*name <= '9')) name++;
+      for (int i = 0; i < name_len; i++) {
+        putc(name[i], stdout);
+      }
+    }
+    else {
+      printf("%s", name);
+    }
+  }
+
+  //----------------------------------------
+
+  virtual void dump_tree(int max_depth = 0, int indentation = 0) {
+    if (max_depth && indentation == max_depth) return;
+
+    for (int i = 0; i < indentation; i++) printf(" | ");
+
+    //if (tok_a) set_color(tok_a->lex->color());
+    //if (!field.empty()) printf("%-10.10s : ", field.c_str());
+
+    print_class_name();
+
+    printf(" '%s'\n", escape_span().c_str());
+
+    if (tok_a) set_color(0);
+
+    for (auto c = head; c; c = c->next) {
+      c->dump_tree(max_depth, indentation + 1);
+    }
+  }
+  */
+
+  /*
+  const char* str() const {
+    switch(type) {
+      case LEX_INVALID:    return "LEX_INVALID";
+      case LEX_SPACE:      return "LEX_SPACE";
+      case LEX_NEWLINE:    return "LEX_NEWLINE";
+      case LEX_STRING:     return "LEX_STRING";
+      case LEX_IDENTIFIER: return "LEX_IDENTIFIER";
+      case LEX_COMMENT:    return "LEX_COMMENT";
+      case LEX_PREPROC:    return "LEX_PREPROC";
+      case LEX_FLOAT:      return "LEX_FLOAT";
+      case LEX_INT:        return "LEX_INT";
+      case LEX_PUNCT:      return "LEX_PUNCT";
+      case LEX_CHAR:       return "LEX_CHAR";
+      case LEX_SPLICE:     return "LEX_SPLICE";
+      case LEX_FORMFEED:   return "LEX_FORMFEED";
+      case LEX_EOF:        return "LEX_EOF";
+    }
+    return "<invalid>";
+  }
+  */
+
+  /*
+  uint32_t color() const {
+    switch(type) {
+      case LEX_INVALID    : return 0x0000FF;
+      case LEX_SPACE      : return 0x804040;
+      case LEX_NEWLINE    : return 0x404080;
+      case LEX_STRING     : return 0x4488AA;
+      case LEX_IDENTIFIER : return 0xCCCC40;
+      case LEX_COMMENT    : return 0x66AA66;
+      case LEX_PREPROC    : return 0xCC88CC;
+      case LEX_FLOAT      : return 0xFF88AA;
+      case LEX_INT        : return 0xFF8888;
+      case LEX_PUNCT      : return 0x808080;
+      case LEX_CHAR       : return 0x44DDDD;
+      case LEX_SPLICE     : return 0x00CCFF;
+      case LEX_FORMFEED   : return 0xFF00FF;
+      case LEX_EOF        : return 0xFF00FF;
+    }
+    return 0x0000FF;
+  }
+  */
+
+
 //------------------------------------------------------------------------------
 
 void lex_file(std::string& text, std::vector<Lexeme>& lexemes, std::vector<Token>& tokens) {
@@ -62,7 +185,7 @@ void lex_file(std::string& text, std::vector<Lexeme>& lexemes, std::vector<Token
 
 void dump_lexemes(std::string& text, std::vector<Lexeme>& lexemes) {
   for(auto& l : lexemes) {
-    printf("%-15s ", l.str());
+    //printf("%-15s ", l.str());
 
     int len = l.span_b - l.span_a;
     if (len > 80) len = 80;
@@ -131,24 +254,23 @@ int main(int argc, char** argv) {
   int file_bytes = 0;
 
   for (const auto& path : paths) {
+    auto size = std::filesystem::file_size(path);
+    file_total++;
+
     text.clear();
     lexemes.clear();
     tokens.clear();
     // Don't forget to reset the parser state derrrrrp
-    while(ParseNode::node_stack.top()) {
-      delete ParseNode::node_stack.pop();
+    while(ParseNode::_stack_top) {
+      delete ParseNode::pop();
     }
     ParseNode::reset_types();
 
-    file_total++;
 
     //----------
     // File filters
 
-    if (!path.ends_with(".cpp") &&
-        !path.ends_with(".hpp") &&
-        !path.ends_with(".c") &&
-        !path.ends_with(".h")) continue;
+    if (!path.ends_with(".c")) continue;
 
     if (path.ends_with("pr56982.c")) continue;     // requires jmp_buf
     if (path.ends_with("20210505-1.c")) continue;  // requires jmp_buf
@@ -189,7 +311,6 @@ int main(int argc, char** argv) {
     //----------
 
     io_accum -= timestamp_ms();
-    auto size = std::filesystem::file_size(path);
     text.resize(size);
     memset(text.data(), 0, size);
     FILE* file = fopen(path.c_str(), "rb");
@@ -223,13 +344,13 @@ int main(int argc, char** argv) {
     NodeTranslationUnit::match(token_a, token_b);
     parse_accum += timestamp_ms();
 
-    if (ParseNode::node_stack.top() != 1) {
+    if (ParseNode::_stack_top != 1) {
       printf("Parsing failed: %s\n", path.c_str());
-      printf("Node stack wrong size %ld\n", ParseNode::node_stack._top);
+      printf("Node stack wrong size %ld\n", ParseNode::_stack_top);
       return -1;
     }
 
-    auto root = ParseNode::node_stack.pop();
+    auto root = ParseNode::pop();
     //root->dump_tree();
 
     if (root->tok_a != token_a || root->tok_b != token_b) {
@@ -242,6 +363,8 @@ int main(int argc, char** argv) {
     }
 
     delete root;
+
+    //if (file_keep == 100) break;
   }
 
   printf("\n");

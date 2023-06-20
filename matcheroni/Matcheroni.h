@@ -533,6 +533,16 @@ struct KeyVal {
 
 //------------------------------------------------------------------------------
 
+template<typename NT>
+struct PatternWrapper {
+  template<typename atom>
+  static const atom* match(const atom* a, const atom* b) {
+    return NT::pattern::match(a, b);
+  }
+};
+
+//------------------------------------------------------------------------------
+
 #ifdef MATCHERONI_USE_NAMESPACE
 }; // namespace Matcheroni
 #endif
