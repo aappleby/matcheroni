@@ -60,7 +60,7 @@ Note that you can't nest "pattern" inside itself directly, as "using pattern" do
 
 Matcheroni is based on two fundamental primitives -
 
- - A **"matching function"** is a function of the form ```const atom* match(const atom* a, const atom* b)```, where ```atom``` can be any plain-old-data type and ```a``` and ```b``` are the endpoints of the range of atoms to match against.
+ - A **"matching function"** is a function of the form ```const atom* match(const atom* a, const atom* b)```, where ```atom``` can be any data type you can store in an array and ```a``` and ```b``` are the endpoints of the range of atoms in the array to match against.
 
 Matching functions should return a pointer in the range ```[a, b]``` to indicate success or failure - returning ```a``` means the match succeded but did not consume any input, returning ```b``` means the match consumed all the input, returning ```nullptr``` means the match failed, and any other pointer in the range indicates that the match succeeded and consumed some amount of the input.
 
@@ -98,7 +98,7 @@ Since Matcheroni is based on Parsing Expression Grammars, it includes all the ba
 
 - ```Atom<x, y, ...>``` matches any single "atom" of your input that is equal to one of the template parameters. Atoms can be characters, objects, or whatever as long as you implement ```atom_eq(...)``` for them. Atoms "consume" input and advance the read cursor when they match.
 - ```Seq<x, y, ...>``` matches sequences of other matchers.
-- ```Oneof<x, y, ...>``` returns the result of the first pattern that matches the input. Like parsing expression grammars, there is no backtracking - if ```x``` matches, we will never back up and try ```y```.
+- ```Oneof<x, y, ...>``` returns the result of the first successful sub-matcher. Like parsing expression grammars, there is no backtracking - if ```x``` matches, we will never back up and try ```y```.
 - ```Any<x>``` is equivalent to ```x*``` in regex - it matches zero or more instances of ```x```.
 - ```Some<x>``` is equivalent to ```x+``` in regex - it matches one or more instances of ```x```.
 - ```Opt<x>``` is equivalent to ```x?``` in regex - it matches exactly 0 or 1 instances of ```x```.
@@ -113,7 +113,7 @@ While writing the C lexer and parser demos, I found myself needing some addition
 - ```NotAtom<x, ...>``` is equivalent to ```[^abc]``` in regex, and is faster than ```Seq<Not<Atom<x, ...>>, AnyAtom>```
 - ```Range<x, y>``` is equivalent to ```[x-y]``` in regex.
 - ```Until<x>``` matches anything until X matches, but does not consume X. Equivalent to ```Any<Seq<Not<x>,AnyAtom>>```
-- ```Ref<f>``` allows you to plug arbitrary code into a matcher. The function ```f``` must be of the form ```const atom* match(const atom* a, const atom* b)```
+- ```Ref<f>``` allows you to plug arbitrary code into a tree of matchers as long as ```f``` is a valid matching function.
 - ```StoreBackref<x> / MatchBackref<x>``` works like backreferences in regex, with a caveat - the backref is stored as a static variable _in_ the matcher's struct, so be careful with nesting these as you could clobber a backref on accident.
 - ```EOL``` matches newlines and end-of-file, but does not advance past it.
 - ```Lit<x>``` matches a C string literal (only valid for ```const char``` atoms)
