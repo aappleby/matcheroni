@@ -3,9 +3,9 @@ Matcheroni is a minimal, zero-dependency (not even stdlib), header-only library 
 
 Matcheroni is a generalization of [Parsing Expression Grammars](https://en.wikipedia.org/wiki/Parsing_expression_grammar) and can be used in place of regular expressions in most cases.
 
-Matcheroni matchers are tiny - 100s of bytes versus 150k+ for std::regex
+Matcheroni matchers are tiny - 100s of bytes versus 150k+ for the std::regex library.
 
-Matcheroni matchers are fast - 10x or more vs std::regex
+Matcheroni matchers are fast - 10x or more versus std::regex.
 
 Matcheroni matchers are more readable and more modular than regexes - you can build [large matchers](matcheroni/c_lexer.cpp#L180) out of small simple matchers without affecting performance.
 
