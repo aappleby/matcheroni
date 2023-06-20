@@ -131,6 +131,16 @@ Matcheroni is 0.692946 times faster than hand-written recursive
 Matcheroni is 0.578635 times faster than hand-written non-recursive
 ```
 
+# Caveats
+
+Matcheroni requires C++20, which is a non-starter for some projects. There's not a lot I can do about that, as I'm heavily leveraging some newish template stuff that doesn't have any backwards-compatible equivalents.
+
+Recursive patterns create recursive code that can explode your call stack.
+
+Left-recursive patterns can get stuck in an infinite loop - this is true with most versions of Parsing Expression Grammars, it's a fundamental limitation of the algorithm.
+
+Parsers generated with a real parser generator will probably be faster.
+
 # A non-trivial example
 
 Here's the pattern I use to match C99 integers, plus a few additions from the C++ spec and the GCC extensions:
