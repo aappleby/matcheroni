@@ -12,7 +12,7 @@ Matcheroni matchers are more readable and more modular than regexes - you can bu
 Matcheroni allows you to freely intermingle C++ code with your matcher templates so that you can build parse trees, log stats, or do whatever else you need to do while processing your data.
 
 # Examples
-Matcheroni patterns are roughly equivalent to regular expressions. A regular expression using the std::regex C++ library
+Matcheroni matchers are roughly equivalent to regular expressions. A regular expression using the std::regex C++ library
 ```
 std::regex my_pattern("[abc]+def");
 ```
