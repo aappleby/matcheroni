@@ -53,7 +53,7 @@ Without std::regex, -O3
 Without std::regex, -Os
 -rwxr-xr-x 1 aappleby aappleby  17496 Jun 20 14:18 benchmark
 ```
-So std::regex adds about 150k of code for this example.
+So std::regex adds about 130k-150k of code for this example.
 
 # Fundamentals
 
