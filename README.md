@@ -86,9 +86,10 @@ struct PrintMessage {
 and we could use it like this:
 ```
 using pattern = PrintMessage<Atom<'a'>>;
-
 const std::string text = "This does not start with 'a'";
-pattern::match(text.data(), text.data() + text.size()); // prints "Match failed!"
+
+// prints "Match failed!"
+pattern::match(text.data(), text.data() + text.size()); 
 ```
 
 # Performance
