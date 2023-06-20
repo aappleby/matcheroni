@@ -1,7 +1,9 @@
 # Matcheroni
 Matcheroni is a minimal, zero-dependency (not even stdlib), header-only library for building text matchers, lexers, and parsers out of trees of C++20 templates.
 
-Matcheroni is a generalization of Parsing Expression Grammars that allows you to freely mix hand-written matching code and templated match patterns.
+Matcheroni is a generalization of Parsing Expression Grammars and includes the basic PEG operators.
+
+Matcheroni allows you to freely mix hand-written matching code and templated match patterns.
 
 Matcheroni matchers are tiny - 100s of bytes versus 150k+ for std::regex
 
