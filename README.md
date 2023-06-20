@@ -191,6 +191,8 @@ Note that there's no code or data in the class. That's intentional - the NodeMak
 
 Matcheroni requires C++20, which is a non-starter for some projects. There's not a lot I can do about that, as I'm heavily leveraging some newish template stuff that doesn't have any backwards-compatible equivalents.
 
+Like parsing expression grammars, Matcheroni matchers are greedy - ```Seq<Some<Atom<'a'>>, Atom<'a'>>``` will _always_ fail as ```Some<Atom<'a'>>``` leaves no 'a's behind for the second ```Atom<'a'>``` to match.
+
 Recursive patterns create recursive code that can explode your call stack.
 
 Left-recursive patterns can get stuck in an infinite loop - this is true with most versions of Parsing Expression Grammars, it's a fundamental limitation of the algorithm.
