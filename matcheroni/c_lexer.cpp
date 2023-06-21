@@ -44,7 +44,7 @@ Lexeme next_lexeme(const char* cursor, const char* text_end) {
   };
 
   static LexemeTableEntry matcher_table[] = {
-    { match_never,      LEX_INVALID,    },
+    //{ match_never,      LEX_INVALID,    },
     { match_space,      LEX_SPACE,      },
     { match_newline,    LEX_NEWLINE,    },
     { match_string,     LEX_STRING,     }, // must be before identifier because R"()"
@@ -138,14 +138,22 @@ const char* match_int(const char* a, const char* b) {
   >;
 
   // GCC allows i or j in addition to the normal suffixes for complex-ified types :/...
-  using complex_suffix = Oneof<Atom<'i'>, Atom<'j'>>;
+  using complex_suffix = Atom<'i', 'j'>;
 
   // Octal has to be _after_ bin/hex so we don't prematurely match the prefix
-  using integer_constant = Oneof<
-    Seq<decimal_constant,     Opt<complex_suffix>, Opt<integer_suffix>, Opt<complex_suffix>>,
-    Seq<hexadecimal_constant, Opt<complex_suffix>, Opt<integer_suffix>, Opt<complex_suffix>>,
-    Seq<binary_constant,      Opt<complex_suffix>, Opt<integer_suffix>, Opt<complex_suffix>>,
-    Seq<octal_constant,       Opt<complex_suffix>, Opt<integer_suffix>, Opt<complex_suffix>>
+  using integer_constant =
+  Seq<
+    Oneof<
+      decimal_constant,
+      hexadecimal_constant,
+      binary_constant,
+      octal_constant
+    >,
+    Seq<
+      Opt<complex_suffix>,
+      Opt<integer_suffix>,
+      Opt<complex_suffix>
+    >
   >;
 
   return integer_constant::match(a, b);
@@ -250,7 +258,7 @@ const char* match_float(const char* a, const char* b) {
   using binary_exponent_part = Seq<Atom<'p', 'P'>, Opt<sign>, digit_sequence>;
 
   // GCC allows i or j in addition to the normal suffixes for complex-ified types :/...
-  using complex_suffix = Oneof<Atom<'i'>, Atom<'j'>>;
+  using complex_suffix = Atom<'i', 'j'>;
 
   using decimal_floating_constant = Oneof<
     Seq< Opt<sign>, fractional_constant, Opt<exponent_part>, Opt<complex_suffix>, Opt<floating_suffix>, Opt<complex_suffix> >,

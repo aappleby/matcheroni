@@ -175,7 +175,9 @@ struct Any {
 
   template<typename atom>
   static const atom* match(const atom* a, const atom* b) {
-    while(auto c = P::match(a, b)) a = c;
+    while(auto c = P::match(a, b)) {
+      a = c;
+    }
     return a;
   }
 };
@@ -453,8 +455,7 @@ struct Keyword {
 };
 
 //------------------------------------------------------------------------------
-// Matches larger sets of chars, digraphs, and trigraphs packed into a string
-// literal.
+// Matches larger sets of atoms packed into a string literal.
 
 // Charset<"abcdef">::match("defg") == "efg"
 

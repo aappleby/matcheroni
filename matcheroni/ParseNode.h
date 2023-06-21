@@ -5,6 +5,7 @@
 
 #include "Lexemes.h"
 
+struct ParseNode;
 void set_color(uint32_t c);
 
 //------------------------------------------------------------------------------
@@ -32,12 +33,22 @@ struct Token {
     return lex->is_identifier(lit);
   }
 
+  ParseNode* owner = nullptr;
   const Lexeme* lex;
 };
 
 //------------------------------------------------------------------------------
 
 struct ParseNode {
+
+  inline static int constructor_count = 0;
+  inline static int destructor_count = 0;
+  inline static int instance_count = 0;
+
+  ParseNode() {
+    instance_count++;
+    constructor_count++;
+  }
 
   void init(const Token* a = nullptr, const Token* b = nullptr) {
     this->tok_a = a;
@@ -54,6 +65,8 @@ struct ParseNode {
   }
 
   virtual ~ParseNode() {
+    instance_count--;
+    destructor_count++;
     auto cursor = head;
     while(cursor) {
       auto next = cursor->next;
@@ -290,6 +303,20 @@ struct ParseNode {
     enum_types.clear();
     typedef_types.clear();
   }
+
+  void print_class_name() {
+    const char* name = typeid(*this).name();
+    int name_len = 0;
+    if (sscanf(name, "%d", &name_len)) {
+      while((*name >= '0') && (*name <= '9')) name++;
+      for (int i = 0; i < name_len; i++) {
+        putc(name[i], stdout);
+      }
+    }
+    else {
+      printf("%s", name);
+    }
+  }
 };
 
 //------------------------------------------------------------------------------
@@ -408,8 +435,6 @@ struct Delimited {
 };
 
 //------------------------------------------------------------------------------
-// FIXME we need an alternate OneOf<> for the parser that wraps dead branches
-// with this
 
 template<typename P>
 struct CleanDeadNodes {
@@ -418,12 +443,97 @@ struct CleanDeadNodes {
     auto end = P::match(a, b);
     if (!end) {
       while(ParseNode::_stack_top > old_top) {
-        delete ParseNode::pop();
+        auto d = ParseNode::pop();
+        printf("Dead node ");
+        d->print_class_name();
+        printf("\n");
+        delete d;
       }
     }
     return end;
   }
 };
+
+//------------------------------------------------------------------------------
+
+template <typename P, typename... rest>
+struct Oneof2 {
+  template<typename atom>
+  static const atom* match(const atom* a, const atom* b) {
+    auto old_top = ParseNode::_stack_top;
+    auto c = P::match(a, b);
+    if (!c) {
+      while(ParseNode::_stack_top > old_top) {
+        auto d = ParseNode::pop();
+        //printf("Dead node ");
+        //d->print_class_name();
+        //printf("\n");
+        delete d;
+      }
+    }
+    return c ? c : Oneof2<rest...>::match(a, b);
+  }
+};
+
+template <typename P>
+struct Oneof2<P> {
+  template<typename atom>
+  static const atom* match(const atom* a, const atom* b) {
+    return P::match(a, b);
+  }
+};
+
+template<typename P>
+struct Opt2 {
+  template<typename atom>
+  static const atom* match(const atom* a, const atom* b) {
+    auto old_top = ParseNode::_stack_top;
+    auto c = P::match(a, b);
+    if (!c) {
+      while(ParseNode::_stack_top > old_top) {
+        auto d = ParseNode::pop();
+        printf("Dead node ");
+        d->print_class_name();
+        printf("\n");
+        delete d;
+      }
+    }
+    return c ? c : a;
+  }
+};
+
+
+template<typename P, typename... rest>
+struct Seq2 {
+
+  template<typename atom>
+  static const atom* match(const atom* a, const atom* b) {
+    auto old_top = ParseNode::_stack_top;
+    auto c = P::match(a, b);
+    if (!c) {
+      while(ParseNode::_stack_top > old_top) {
+        auto d = ParseNode::pop();
+        printf("Dead node ");
+        d->print_class_name();
+        printf("\n");
+        delete d;
+      }
+    }
+    return c ? Seq2<rest...>::match(c, b) : nullptr;
+  }
+};
+
+template<typename P>
+struct Seq2<P> {
+
+  template<typename atom>
+  static const atom* match(const atom* a, const atom* b) {
+    return P::match(a, b);
+  }
+};
+
+
+
 
 //------------------------------------------------------------------------------
 

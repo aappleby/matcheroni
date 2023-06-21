@@ -215,7 +215,7 @@ void dump_lexemes(std::string& text, std::vector<Lexeme>& lexemes) {
 
 //------------------------------------------------------------------------------
 
-int main(int argc, char** argv) {
+int test_parser(int argc, char** argv) {
   printf("Matcheroni c_parser_test\n");
 
   std::vector<std::string> paths;
@@ -252,6 +252,9 @@ int main(int argc, char** argv) {
   int file_pass = 0;
   int file_keep = 0;
   int file_bytes = 0;
+
+  int total_instances = 0;
+  int dead_instances = 0;
 
   for (const auto& path : paths) {
     auto size = std::filesystem::file_size(path);
@@ -362,10 +365,16 @@ int main(int argc, char** argv) {
       file_pass++;
     }
 
+    total_instances += ParseNode::instance_count;
+
     delete root;
 
     //if (file_keep == 100) break;
   }
+
+  printf("Total instances %d\n", total_instances);
+  printf("Constructor %d\n", ParseNode::constructor_count);
+  printf("Destructor  %d\n", ParseNode::destructor_count);
 
   printf("\n");
   printf("IO took      %7.2f msec\n", io_accum);
@@ -396,6 +405,13 @@ int main(int argc, char** argv) {
   }
 
   return 0;
+}
+
+//------------------------------------------------------------------------------
+
+int main(int argc, char** argv) {
+  //for (int i = 0; i < 100; i++) test_parser(argc, argv);
+  test_parser(argc, argv);
 }
 
 //------------------------------------------------------------------------------

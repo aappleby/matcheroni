@@ -23,6 +23,22 @@
           "ignoreFailures": true
         }
       ]
+    },
+    {
+      "name": "benchmark",
+      "preLaunchTask": "build_matcheroni",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/bin/benchmark",
+      "cwd": "${workspaceFolder}",
+      "setupCommands": [
+        {
+          // Display content in STL containers pretty
+          "description": "Enable pretty-printing for gdb",
+          "text": "-enable-pretty-printing",
+          "ignoreFailures": true
+        }
+      ]
     }
   ]
 }
