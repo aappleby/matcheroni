@@ -444,9 +444,9 @@ struct CleanDeadNodes {
     if (!end) {
       while(ParseNode::_stack_top > old_top) {
         auto d = ParseNode::pop();
-        printf("Dead node ");
-        d->print_class_name();
-        printf("\n");
+        //printf("Dead node ");
+        //d->print_class_name();
+        //printf("\n");
         delete d;
       }
     }
@@ -492,9 +492,9 @@ struct Opt2 {
     if (!c) {
       while(ParseNode::_stack_top > old_top) {
         auto d = ParseNode::pop();
-        printf("Dead node ");
-        d->print_class_name();
-        printf("\n");
+        //printf("Dead node ");
+        //d->print_class_name();
+        //printf("\n");
         delete d;
       }
     }
@@ -513,9 +513,9 @@ struct Seq2 {
     if (!c) {
       while(ParseNode::_stack_top > old_top) {
         auto d = ParseNode::pop();
-        printf("Dead node ");
-        d->print_class_name();
-        printf("\n");
+        //printf("Dead node ");
+        //d->print_class_name();
+        //printf("\n");
         delete d;
       }
     }

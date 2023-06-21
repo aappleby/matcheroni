@@ -35,7 +35,7 @@ const char* match_eof        (const char* a, const char* b);
 
 Lexeme next_lexeme(const char* cursor, const char* text_end) {
   struct LexemeTableEntry {
-    matcher<char> match  = nullptr;
+    matcher<const char> match  = nullptr;
     LexemeType    lexeme = LEX_INVALID;
   };
 
