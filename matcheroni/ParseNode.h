@@ -52,11 +52,6 @@ struct ParseNode {
     constructor_count++;
   }
 
-  void init(Token* a = nullptr, Token* b = nullptr) {
-    this->tok_a = a;
-    this->tok_b = b;
-  }
-
   void init(Token* a, Token* b, ParseNode** children, size_t child_count) {
     this->tok_a = a;
     this->tok_b = b;
@@ -145,6 +140,21 @@ struct ParseNode {
       head = node;
       tail = node;
     }
+  }
+
+  //----------------------------------------
+
+  static void uproot(Token& t) {
+    auto p = t.owner;
+    if (!p) return;
+
+    while (p->parent) p = p->parent;
+
+    for (auto c = p->tok_a; c < p->tok_b; c++) {
+      c->owner = nullptr;
+    }
+
+    delete p;
   }
 
   //----------------------------------------
@@ -371,9 +381,11 @@ struct NodeLeaf : public ParseNode {
 
     auto node = new NT();
 
+    /*
     for (auto c = a; c < end; c++) {
       c->owner = node;
     }
+    */
 
     node->init(a, end, &_stack[old_top], new_top - old_top);
 
@@ -446,10 +458,14 @@ inline ParseNodeIterator end(const ParseNode* parent) {
 //------------------------------------------------------------------------------
 
 inline int atom_cmp(Token& a, const LexemeType& b) {
+  if (a.owner) ParseNode::uproot(a);
+
   return int(a.lex->type) - int(b);
 }
 
 inline int atom_cmp(Token& a, const char& b) {
+  if (a.owner) ParseNode::uproot(a);
+
   int len_cmp = a.lex->len() - 1;
   if (len_cmp != 0) return len_cmp;
   return int(a.lex->span_a[0]) - int(b);
@@ -457,6 +473,8 @@ inline int atom_cmp(Token& a, const char& b) {
 
 template<int N>
 inline bool atom_cmp(Token& a, const StringParam<N>& b) {
+  if (a.owner) ParseNode::uproot(a);
+
   int len_cmp = int(a.lex->len()) - int(b.len);
   if (len_cmp != 0) return len_cmp;
 
