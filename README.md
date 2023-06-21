@@ -90,13 +90,13 @@ using pattern = PrintMessage<Atom<'a'>>;
 const std::string text = "This does not start with 'a'";
 
 // prints "Match failed!"
-pattern::match(text.data(), text.data() + text.size()); 
+pattern::match(text.data(), text.data() + text.size());
 ```
 
 # Built-in matchers
 Since Matcheroni is based on Parsing Expression Grammars, it includes all the basic rules you'd expect:
 
-- ```Atom<x, y, ...>``` matches any single "atom" of your input that is equal to one of the template parameters. Atoms can be characters, objects, or whatever as long as you implement ```atom_eq(...)``` for them. Atoms "consume" input and advance the read cursor when they match.
+- ```Atom<x, y, ...>``` matches any single "atom" of your input that is equal to one of the template parameters. Atoms can be characters, objects, or whatever as long as you implement ```atom_cmp(...)``` for them. Atoms "consume" input and advance the read cursor when they match.
 - ```Seq<x, y, ...>``` matches sequences of other matchers.
 - ```Oneof<x, y, ...>``` returns the result of the first successful sub-matcher. Like parsing expression grammars, there is no backtracking - if ```x``` matches, we will never back up and try ```y```.
 - ```Any<x>``` is equivalent to ```x*``` in regex - it matches zero or more instances of ```x```.

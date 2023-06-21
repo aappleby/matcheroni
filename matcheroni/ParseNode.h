@@ -9,6 +9,8 @@ struct ParseNode;
 void set_color(uint32_t c);
 
 //------------------------------------------------------------------------------
+// Tokens associate lexemes with parse nodes.
+// Tokens store bookkeeping data during parsing.
 
 struct Token {
   Token(const Lexeme* lex) : lex(lex) {}
@@ -50,12 +52,12 @@ struct ParseNode {
     constructor_count++;
   }
 
-  void init(const Token* a = nullptr, const Token* b = nullptr) {
+  void init(Token* a = nullptr, Token* b = nullptr) {
     this->tok_a = a;
     this->tok_b = b;
   }
 
-  void init(const Token* a, const Token* b, ParseNode** children, size_t child_count) {
+  void init(Token* a, Token* b, ParseNode** children, size_t child_count) {
     this->tok_a = a;
     this->tok_b = b;
 
@@ -169,8 +171,8 @@ struct ParseNode {
 
   //----------------------------------------
 
-  const Token* tok_a = nullptr;
-  const Token* tok_b = nullptr;
+  Token* tok_a = nullptr;
+  Token* tok_b = nullptr;
 
   ParseNode* parent = nullptr;
   ParseNode* prev   = nullptr;
@@ -324,7 +326,7 @@ struct ParseNode {
 template<typename NT>
 struct NodeMaker : public ParseNode {
 
-  static const Token* match(const Token* a, const Token* b) {
+  static Token* match(Token* a, Token* b) {
     auto old_top = _stack_top;
     auto end = NT::pattern::match(a, b);
     auto new_top = _stack_top;
@@ -337,6 +339,80 @@ struct NodeMaker : public ParseNode {
     }
 
     auto node = new NT();
+    node->init(a, end, &_stack[old_top], new_top - old_top);
+
+    for (auto i = old_top; i < _stack_top; i++) {
+      _stack[i] = nullptr;
+    }
+    _stack_top = old_top;
+
+    push(node);
+    return end;
+  }
+};
+
+//------------------------------------------------------------------------------
+// A NodeLeaf should own tokens and have no other nodes under it.
+
+template<typename NT>
+struct NodeLeaf : public ParseNode {
+
+  static Token* match(Token* a, Token* b) {
+    auto old_top = _stack_top;
+    auto end = NT::pattern::match(a, b);
+    auto new_top = _stack_top;
+
+    if (!end) {
+      while(_stack_top > old_top) {
+        delete pop();
+      }
+      return nullptr;
+    }
+
+    auto node = new NT();
+
+    for (auto c = a; c < end; c++) {
+      c->owner = node;
+    }
+
+    node->init(a, end, &_stack[old_top], new_top - old_top);
+
+    for (auto i = old_top; i < _stack_top; i++) {
+      _stack[i] = nullptr;
+    }
+    _stack_top = old_top;
+
+    push(node);
+    return end;
+  }
+};
+
+//------------------------------------------------------------------------------
+// Every token under a NodeBranch should be owned by a NodeLeaf
+
+template<typename NT>
+struct NodeBranch : public ParseNode {
+
+  static Token* match(Token* a, Token* b) {
+    auto old_top = _stack_top;
+    auto end = NT::pattern::match(a, b);
+    auto new_top = _stack_top;
+
+    if (!end) {
+      while(_stack_top > old_top) {
+        delete pop();
+      }
+      return nullptr;
+    }
+
+    auto node = new NT();
+
+    /*
+    for (auto c = a; c < end; c++) {
+      c->owner = node;
+    }
+    */
+
     node->init(a, end, &_stack[old_top], new_top - old_top);
 
     for (auto i = old_top; i < _stack_top; i++) {
@@ -369,27 +445,32 @@ inline ParseNodeIterator end(const ParseNode* parent) {
 
 //------------------------------------------------------------------------------
 
-inline bool atom_eq(const Token& a, const LexemeType& b) {
-  return a.lex->type == b;
+inline int atom_cmp(Token& a, const LexemeType& b) {
+  return int(a.lex->type) - int(b);
 }
 
-inline bool atom_eq(const Token& a, const char& b) {
-  return a.lex->len() == 1 && (*a.lex->span_a == b);
+inline int atom_cmp(Token& a, const char& b) {
+  int len_cmp = a.lex->len() - 1;
+  if (len_cmp != 0) return len_cmp;
+  return int(a.lex->span_a[0]) - int(b);
 }
 
 template<int N>
-inline bool atom_eq(const Token& a, const StringParam<N>& b) {
-  if (a.lex->len() != b.len) return false;
+inline bool atom_cmp(Token& a, const StringParam<N>& b) {
+  int len_cmp = int(a.lex->len()) - int(b.len);
+  if (len_cmp != 0) return len_cmp;
+
   for (auto i = 0; i < b.len; i++) {
-    if (a.lex->span_a[i] != b.value[i]) return false;
+    int cmp = int(a.lex->span_a[i]) - int(b.value[i]);
+    if (cmp) return cmp;
   }
 
-  return true;
+  return 0;
 }
 
 //------------------------------------------------------------------------------
 
-inline const Token* find_matching_delim(char ldelim, char rdelim, const Token* a, const Token* b) {
+inline Token* find_matching_delim(char ldelim, char rdelim, Token* a, Token* b) {
   if (*a->lex->span_a != ldelim) return nullptr;
   a++;
 
@@ -418,7 +499,7 @@ inline const Token* find_matching_delim(char ldelim, char rdelim, const Token* a
 
 template<char ldelim, char rdelim, typename P>
 struct Delimited {
-  static const Token* match(const Token* a, const Token* b) {
+  static Token* match(Token* a, Token* b) {
     if (!a || !a->is_punct(ldelim)) return nullptr;
     auto new_b = find_matching_delim(ldelim, rdelim, a, b);
     if (!new_b || !new_b->is_punct(rdelim)) return nullptr;
@@ -438,7 +519,7 @@ struct Delimited {
 
 template<typename P>
 struct CleanDeadNodes {
-  static const Token* match(const Token* a, const Token* b) {
+  static Token* match(Token* a, Token* b) {
     auto old_top = ParseNode::_stack_top;
     auto end = P::match(a, b);
     if (!end) {
@@ -459,7 +540,7 @@ struct CleanDeadNodes {
 template <typename P, typename... rest>
 struct Oneof2 {
   template<typename atom>
-  static const atom* match(const atom* a, const atom* b) {
+  static atom* match(atom* a, atom* b) {
     auto old_top = ParseNode::_stack_top;
     auto c = P::match(a, b);
     if (!c) {
@@ -478,7 +559,7 @@ struct Oneof2 {
 template <typename P>
 struct Oneof2<P> {
   template<typename atom>
-  static const atom* match(const atom* a, const atom* b) {
+  static atom* match(atom* a, atom* b) {
     return P::match(a, b);
   }
 };
@@ -486,7 +567,7 @@ struct Oneof2<P> {
 template<typename P>
 struct Opt2 {
   template<typename atom>
-  static const atom* match(const atom* a, const atom* b) {
+  static atom* match(atom* a, atom* b) {
     auto old_top = ParseNode::_stack_top;
     auto c = P::match(a, b);
     if (!c) {
@@ -507,7 +588,7 @@ template<typename P, typename... rest>
 struct Seq2 {
 
   template<typename atom>
-  static const atom* match(const atom* a, const atom* b) {
+  static atom* match(atom* a, atom* b) {
     auto old_top = ParseNode::_stack_top;
     auto c = P::match(a, b);
     if (!c) {
@@ -527,7 +608,7 @@ template<typename P>
 struct Seq2<P> {
 
   template<typename atom>
-  static const atom* match(const atom* a, const atom* b) {
+  static atom* match(atom* a, atom* b) {
     return P::match(a, b);
   }
 };

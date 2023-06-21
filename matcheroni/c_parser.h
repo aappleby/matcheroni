@@ -40,7 +40,7 @@ using opt_comma_separated = Opt2<comma_separated<P>>;
 template<StringParam lit>
 struct Operator {
 
-  static const Token* match(const Token* a, const Token* b) {
+  static Token* match(Token* a, Token* b) {
     if (!a || a == b) return nullptr;
     if (a + sizeof(lit.value) > b) return nullptr;
 
@@ -55,26 +55,26 @@ struct Operator {
 //------------------------------------------------------------------------------
 
 template<StringParam lit>
-struct NodeOperator : public NodeMaker<NodeOperator<lit>> {
+struct NodeOperator : public NodeLeaf<NodeOperator<lit>> {
   using pattern = Operator<lit>;
 };
 
 //------------------------------------------------------------------------------
 
 template<StringParam lit>
-struct NodeKeyword : public NodeMaker<NodeKeyword<lit>> {
+struct NodeKeyword : public NodeLeaf<NodeKeyword<lit>> {
   using pattern = Keyword<lit>;
 };
 
 //------------------------------------------------------------------------------
 
-struct NodePreproc : public NodeMaker<NodePreproc> {
+struct NodePreproc : public NodeLeaf<NodePreproc> {
   using pattern = Atom<LEX_PREPROC>;
 };
 
 //------------------------------------------------------------------------------
 
-struct NodeIdentifier : public NodeMaker<NodeIdentifier> {
+struct NodeIdentifier : public NodeLeaf<NodeIdentifier> {
   using pattern = Atom<LEX_IDENTIFIER>;
 
   std::string text() const {
@@ -84,13 +84,13 @@ struct NodeIdentifier : public NodeMaker<NodeIdentifier> {
 
 //------------------------------------------------------------------------------
 
-struct NodeString : public NodeMaker<NodeString> {
+struct NodeString : public NodeLeaf<NodeString> {
   using pattern = Atom<LEX_STRING>;
 };
 
 //------------------------------------------------------------------------------
 
-struct NodeConstant : public NodeMaker<NodeConstant> {
+struct NodeConstant : public NodeLeaf<NodeConstant> {
   using pattern = Oneof2<
     Atom<LEX_FLOAT>,
     Atom<LEX_INT>,
@@ -102,21 +102,21 @@ struct NodeConstant : public NodeMaker<NodeConstant> {
 //------------------------------------------------------------------------------
 
 struct NodeBuiltinTypeBase {
-  static const Token* match(const Token* a, const Token* b) {
+  static Token* match(Token* a, Token* b) {
     if (a && ParseNode::builtin_types.contains(a->lex->text())) return a + 1;
     return nullptr;
   }
 };
 
 struct NodeBuiltinTypePrefix {
-  static const Token* match(const Token* a, const Token* b) {
+  static Token* match(Token* a, Token* b) {
     if (a && ParseNode::builtin_type_prefixes.contains(a->lex->text())) return a + 1;
     return nullptr;
   }
 };
 
 struct NodeBuiltinTypeSuffix {
-  static const Token* match(const Token* a, const Token* b) {
+  static Token* match(Token* a, Token* b) {
     if (a && ParseNode::builtin_type_suffixes.contains(a->lex->text())) return a + 1;
     return nullptr;
   }
@@ -125,7 +125,7 @@ struct NodeBuiltinTypeSuffix {
 //------------------------------------------------------------------------------
 // Our builtin types are any sequence of prefixes followed by a builtin type
 
-struct NodeBuiltinType : public NodeMaker<NodeBuiltinType> {
+struct NodeBuiltinType : public NodeLeaf<NodeBuiltinType> {
   using pattern = Seq2<
     Any<
       Seq2<NodeBuiltinTypePrefix, And<NodeBuiltinTypeBase>>
@@ -135,36 +135,36 @@ struct NodeBuiltinType : public NodeMaker<NodeBuiltinType> {
   >;
 };
 
-struct NodeClassType : public NodeMaker<NodeClassType> {
-  static const Token* match(const Token* a, const Token* b) {
+struct NodeClassType : public NodeLeaf<NodeClassType> {
+  static Token* match(Token* a, Token* b) {
     if (a && ParseNode::class_types.contains(a->lex->text())) return a + 1;
     return nullptr;
   }
 };
 
-struct NodeStructType : public NodeMaker<NodeStructType> {
-  static const Token* match(const Token* a, const Token* b) {
+struct NodeStructType : public NodeLeaf<NodeStructType> {
+  static Token* match(Token* a, Token* b) {
     if (a && ParseNode::struct_types.contains(a->lex->text())) return a + 1;
     return nullptr;
   }
 };
 
-struct NodeUnionType : public NodeMaker<NodeUnionType> {
-  static const Token* match(const Token* a, const Token* b) {
+struct NodeUnionType : public NodeLeaf<NodeUnionType> {
+  static Token* match(Token* a, Token* b) {
     if (a && ParseNode::union_types.contains(a->lex->text())) return a + 1;
     return nullptr;
   }
 };
 
-struct NodeEnumType : public NodeMaker<NodeEnumType> {
-  static const Token* match(const Token* a, const Token* b) {
+struct NodeEnumType : public NodeLeaf<NodeEnumType> {
+  static Token* match(Token* a, Token* b) {
     if (a && ParseNode::enum_types.contains(a->lex->text())) return a + 1;
     return nullptr;
   }
 };
 
-struct NodeTypedefType : public PatternWrapper<NodeTypedefType> {
-  static const Token* match(const Token* a, const Token* b) {
+struct NodeTypedefType : public NodeLeaf<NodeTypedefType> {
+  static Token* match(Token* a, Token* b) {
     if (a && ParseNode::typedef_types.contains(a->lex->text())) return a + 1;
     return nullptr;
   }
@@ -175,11 +175,11 @@ struct NodeTypedefType : public PatternWrapper<NodeTypedefType> {
 //   unary-expression
 //   ( type-name ) cast-expression
 
-struct NodeExpressionCast : public NodeMaker<NodeExpressionCast> {
+struct NodeExpressionCast : public NodeBranch<NodeExpressionCast> {
   using pattern = Seq2<
-    Atom<'('>,
+    NodeOperator<"(">,
     NodeTypeName,
-    Atom<')'>
+    NodeOperator<")">
   >;
 };
 
@@ -264,7 +264,7 @@ struct NodeExpressionSoup : public PatternWrapper<NodeExpressionSoup> {
     "||", "-", "!", ".", "*", "/", "&", "%", "^", "+", "<", "=", ">", "|", "~",
   };
 
-  static const Token* match_operator(const char* lit, const Token* a, const Token* b) {
+  static Token* match_operator(const char* lit, Token* a, Token* b) {
     auto len = strlen(lit);
     if (!a || a == b) return nullptr;
     if (a + len > b) return nullptr;
@@ -276,7 +276,7 @@ struct NodeExpressionSoup : public PatternWrapper<NodeExpressionSoup> {
     return a + len;
   }
 
-  static const Token* match_operators(const Token* a, const Token* b) {
+  static Token* match_operators(Token* a, Token* b) {
     if (!a || a == b) return nullptr;
 
     int op_count = sizeof(all_operators) / sizeof(all_operators[0]);
@@ -334,7 +334,7 @@ struct NodeQualifier : public PatternWrapper<NodeQualifier> {
     "static", "thread_local", "__thread", /*"typedef",*/ "virtual", "volatile",
   };
 
-  static const Token* match_qualifier(const Token* a, const Token* b) {
+  static Token* match_qualifier(Token* a, Token* b) {
     if (!a || a == b) return nullptr;
     int qual_count = sizeof(qualifiers) / sizeof(qualifiers[0]);
 
@@ -622,7 +622,7 @@ struct NodeStructName : public NodeMaker<NodeStructName> {
   >;
 
   // We specialize match() to dig out typedef'd identifiers
-  static const Token* match(const Token* a, const Token* b) {
+  static Token* match(Token* a, Token* b) {
     auto end = NodeMaker::match(a, b);
     if (end) {
       auto node = ParseNode::stack_back();
@@ -655,7 +655,7 @@ struct NodeUnionName : public NodeMaker<NodeUnionName> {
   >;
 
   // We specialize match() to dig out typedef'd identifiers
-  static const Token* match(const Token* a, const Token* b) {
+  static Token* match(Token* a, Token* b) {
     auto end = NodeMaker::match(a, b);
     if (end) {
       auto node = ParseNode::stack_back();
@@ -689,7 +689,7 @@ struct NodeClassName : public NodeMaker<NodeClassName> {
   >;
 
   // We specialize match() to dig out typedef'd identifiers
-  static const Token* match(const Token* a, const Token* b) {
+  static Token* match(Token* a, Token* b) {
     auto end = NodeMaker::match(a, b);
     if (end) {
       auto node = ParseNode::stack_back();
@@ -740,7 +740,7 @@ struct NodeEnumName : public NodeMaker<NodeEnumName> {
   >;
 
   // We specialize match() to dig out typedef'd identifiers
-  static const Token* match(const Token* a, const Token* b) {
+  static Token* match(Token* a, Token* b) {
     auto end = NodeMaker::match(a, b);
     if (end) {
       auto node = ParseNode::stack_back();
@@ -1190,7 +1190,7 @@ struct NodeStatementTypedef : public NodeMaker<NodeStatementTypedef> {
     assert(false);
   }
 
-  static const Token* match(const Token* a, const Token* b) {
+  static Token* match(Token* a, Token* b) {
     auto end = NodeMaker::match(a, b);
     if (end) extract_type();
     return end;
@@ -1242,7 +1242,7 @@ struct NodeStatement : public PatternWrapper<NodeStatement> {
 
 template<typename P>
 struct ProgressBar {
-  static const Token* match(const Token* a, const Token* b) {
+  static Token* match(Token* a, Token* b) {
     printf("%.40s\n", a->lex->span_a);
     return P::match(a, b);
   }

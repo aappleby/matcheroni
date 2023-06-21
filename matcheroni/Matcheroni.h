@@ -1,6 +1,8 @@
 #ifndef __MATCHERONI_H__
 #define __MATCHERONI_H__
 
+#include <compare>
+
 #ifdef MATCHERONI_USE_NAMESPACE
 namespace matcheroni {
 #endif
@@ -18,17 +20,12 @@ using matcher = atom* (*) (atom* a, atom* b);
 //------------------------------------------------------------------------------
 // Matcheroni needs some way to compare different types of atoms - for
 // convenience, comparators for "const char" are provided here.
+// Comparators should return <0 for a<b, ==0 for a==b, and >0 for a>b.
 
-inline bool atom_eq(const char& a, const char& b) {
-  return a == b;
-}
+// enum class _Ord : type { equivalent = 0, less = -1, greater = 1 };
 
-inline bool atom_lte(const char& a, const char& b) {
-  return a <= b;
-}
-
-inline bool atom_gte(const char& a, const char& b) {
-  return a >= b;
+inline int atom_cmp(const char& a, const char& b) {
+  return int(a) - int(b);
 }
 
 //------------------------------------------------------------------------------
@@ -67,7 +64,7 @@ struct Atom<C, rest...> {
   template<typename atom>
   static atom* match(atom* a, atom* b) {
     if (!a || a == b) return nullptr;
-    if (atom_eq(*a, C)) {
+    if (atom_cmp(*a, C) == 0) {
       return a + 1;
     } else {
       return Atom<rest...>::match(a, b);
@@ -80,7 +77,7 @@ struct Atom<C> {
   template<typename atom>
   static atom* match(atom* a, atom* b) {
     if (!a || a == b) return nullptr;
-    if (atom_eq(*a, C)) {
+    if (atom_cmp(*a, C) == 0) {
       return a + 1;
     } else {
       return nullptr;
@@ -289,7 +286,7 @@ struct NotAtom {
   template<typename atom>
   static atom* match(atom* a, atom* b) {
     if (!a || a == b) return nullptr;
-    if (atom_eq(*a, C)) return nullptr;
+    if (atom_cmp(*a, C) == 0) return nullptr;
     return NotAtom<rest...>::match(a, b);
   }
 };
@@ -299,22 +296,21 @@ struct NotAtom<C> {
   template<typename atom>
   static atom* match(atom* a, atom* b) {
     if (!a || a == b) return nullptr;
-    return atom_eq(*a, C) ? nullptr : a + 1;
+    return atom_cmp(*a, C) == 0 ? nullptr : a + 1;
   }
 };
 
 //------------------------------------------------------------------------------
-// Ranges of atoms, inclusive. Equivalent to [a-z] in regex.
+// Ranges of atoms, inclusive.
 
 template<auto RA, decltype(RA) RB>
 struct Range {
   template<typename atom>
   static atom* match(atom* a, atom* b) {
     if (!a || a == b) return nullptr;
-    if (atom_gte(*a, RA) && atom_lte(*a, RB)) {
-      return a + 1;
-    }
-    return nullptr;
+    if (atom_cmp(*a, RA) < 0) return nullptr;
+    if (atom_cmp(*a, RB) > 0) return nullptr;
+    return a + 1;
   }
 };
 
@@ -379,7 +375,7 @@ struct MatchBackref {
     int size = StoreBackref<P>::size;
     if (a + size > b) return nullptr;
     for (int i = 0; i < size; i++) {
-      if(!atom_eq(a[i], start[i])) return nullptr;
+      if(atom_cmp(a[i], start[i]) != 0) return nullptr;
     }
     return a + size;
   }
@@ -436,9 +432,7 @@ struct Lit {
 //------------------------------------------------------------------------------
 // Matches string literals as if they were atoms. Does ___NOT___ include the
 // trailing null.
-// You'll need to define
-// template<int N> bool atom_eq(Token& a, StringParam<N>& b)
-// to use this.
+// You'll need to define atom_cmp(atom& a, StringParam<N>& b) to use this.
 
 template<StringParam lit>
 struct Keyword {
@@ -446,7 +440,7 @@ struct Keyword {
   template<typename atom>
   static atom* match(atom* a, atom* b) {
     if (!a || a == b) return nullptr;
-    if (atom_eq(*a, lit)) {
+    if (atom_cmp(*a, lit) == 0) {
       return a + 1;
     } else {
       return nullptr;

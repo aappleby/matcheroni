@@ -338,8 +338,8 @@ int test_parser(int argc, char** argv) {
 
     //dump_lexemes(path, text, lexemes);
 
-    const Token* token_a = tokens.data();
-    const Token* token_b = tokens.data() + tokens.size() - 1;
+    Token* token_a = tokens.data();
+    Token* token_b = tokens.data() + tokens.size() - 1;
 
     //printf("%04d: Parsing %s\n", file_pass, path.c_str());
 
