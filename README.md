@@ -60,7 +60,7 @@ Note that you can't nest "pattern" inside itself directly, as "using pattern" do
 
 Matcheroni is based on two fundamental primitives -
 
- - A **"matching function"** is a function of the form ```const atom* match(const atom* a, const atom* b)```, where ```atom``` can be any data type you can store in an array and ```a``` and ```b``` are the endpoints of the range of atoms in the array to match against.
+ - A **"matching function"** is a function of the form ```atom* match(atom* a, atom* b)```, where ```atom``` can be any data type you can store in an array and ```a``` and ```b``` are the endpoints of the range of atoms in the array to match against.
 
 Matching functions should return a pointer in the range ```[a, b]``` to indicate success or failure - returning ```a``` means the match succeded but did not consume any input, returning ```b``` means the match consumed all the input, returning ```nullptr``` means the match failed, and any other pointer in the range indicates that the match succeeded and consumed some amount of the input.
 
@@ -116,9 +116,9 @@ While writing the C lexer and parser demos, I found myself needing some addition
 - ```Ref<f>``` allows you to plug arbitrary code into a tree of matchers as long as ```f``` is a valid matching function.
 - ```StoreBackref<x> / MatchBackref<x>``` works like backreferences in regex, with a caveat - the backref is stored as a static variable _in_ the matcher's struct, so be careful with nesting these as you could clobber a backref on accident.
 - ```EOL``` matches newlines and end-of-file, but does not advance past it.
-- ```Lit<x>``` matches a C string literal (only valid for ```const char``` atoms)
+- ```Lit<x>``` matches a C string literal (only valid for ```char``` atoms)
 - ```Keyword<x>``` matches a C string literal as if it was a single atom - this is only useful if your atom type can represent whole strings.
-- ```Charset<x>``` matches any ```const char``` atom in the string literal ```x```, which can be much more concise than ```Atom<'a', 'b', 'c', 'd', ...>```
+- ```Charset<x>``` matches any ```char``` atom in the string literal ```x```, which can be much more concise than ```Atom<'a', 'b', 'c', 'd', ...>```
 - ```Map<x, ...>``` differs from the other matchers in that expects ```x``` to define both ```match()``` and ```match_key()```. ```Map<>``` is like ```Oneof<>``` except that it checks ```match_key()``` first and then returns the result of ```match()``` if the key pattern matched. It does _not_ check other alternatives once the key pattern matches. This should allow for more performant matchers, but I haven't used it much yet.
 
 # Performance
