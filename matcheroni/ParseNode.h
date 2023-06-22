@@ -1,3 +1,13 @@
+
+#if 0
+TOKEN RING
+top ptr
+alt ptr
+bulldozing forward clears top
+like packrat
+never delete a match because it's still a match'
+#endif
+
 #pragma once
 #include <typeinfo>
 #include <set>
@@ -13,7 +23,11 @@ void set_color(uint32_t c);
 // Tokens store bookkeeping data during parsing.
 
 struct Token {
-  Token(const Lexeme* lex) : lex(lex) {}
+  Token(const Lexeme* lex) {
+    this->top = nullptr;
+    this->alt = nullptr;
+    this->lex = lex;
+  }
 
   bool is_valid() const {
     return lex->type != LEX_INVALID;
@@ -35,9 +49,38 @@ struct Token {
     return lex->is_identifier(lit);
   }
 
-  ParseNode* owner = nullptr;
+  ParseNode* top;
+  ParseNode* alt;
   const Lexeme* lex;
 };
+
+//------------------------------------------------------------------------------
+
+inline int atom_cmp(Token& a, const LexemeType& b) {
+  a.top = nullptr;
+  return int(a.lex->type) - int(b);
+}
+
+inline int atom_cmp(Token& a, const char& b) {
+  a.top = nullptr;
+  int len_cmp = a.lex->len() - 1;
+  if (len_cmp != 0) return len_cmp;
+  return int(a.lex->span_a[0]) - int(b);
+}
+
+template<int N>
+inline bool atom_cmp(Token& a, const StringParam<N>& b) {
+  a.top = nullptr;
+  int len_cmp = int(a.lex->len()) - int(b.len);
+  if (len_cmp != 0) return len_cmp;
+
+  for (auto i = 0; i < b.len; i++) {
+    int cmp = int(a.lex->span_a[i]) - int(b.value[i]);
+    if (cmp) return cmp;
+  }
+
+  return 0;
+}
 
 //------------------------------------------------------------------------------
 
@@ -52,24 +95,25 @@ struct ParseNode {
     constructor_count++;
   }
 
-  void init(Token* a, Token* b, ParseNode** children, size_t child_count) {
-    this->tok_a = a;
-    this->tok_b = b;
-
-    for (auto i = 0; i < child_count; i++) {
-      append(children[i]);
-    }
-  }
-
   virtual ~ParseNode() {
+    //printf("Deleting parsenode\n");
+
     instance_count--;
     destructor_count++;
+
     auto cursor = head;
     while(cursor) {
       auto next = cursor->next;
-      delete cursor;
+      cursor->parent = nullptr;
+      cursor->prev = nullptr;
+      cursor->next = nullptr;
       cursor = next;
     }
+  }
+
+  ParseNode* top() {
+    if (parent) return parent->top();
+    return this;
   }
 
   //----------------------------------------
@@ -127,8 +171,7 @@ struct ParseNode {
   //----------------------------------------
 
   void append(ParseNode* node) {
-    if (!node) return;
-
+    assert(node && node->parent == nullptr);
     node->parent = this;
 
     if (tail) {
@@ -140,21 +183,6 @@ struct ParseNode {
       head = node;
       tail = node;
     }
-  }
-
-  //----------------------------------------
-
-  static void uproot(Token& t) {
-    auto p = t.owner;
-    if (!p) return;
-
-    while (p->parent) p = p->parent;
-
-    for (auto c = p->tok_a; c < p->tok_b; c++) {
-      c->owner = nullptr;
-    }
-
-    delete p;
   }
 
   //----------------------------------------
@@ -184,44 +212,12 @@ struct ParseNode {
   Token* tok_a = nullptr;
   Token* tok_b = nullptr;
 
+  ParseNode* alt    = nullptr;
   ParseNode* parent = nullptr;
   ParseNode* prev   = nullptr;
   ParseNode* next   = nullptr;
   ParseNode* head   = nullptr;
   ParseNode* tail   = nullptr;
-
-  //----------------------------------------
-
-  static void push(ParseNode* n) {
-    if (_stack_top == stack_size) {
-      printf("Node stack overflow, size %d\n", stack_size);
-      exit(1);
-    }
-
-    assert(_stack[_stack_top] == nullptr);
-    _stack[_stack_top] = n;
-    _stack_top++;
-  }
-
-  static ParseNode* pop() {
-    assert(_stack_top);
-    _stack_top--;
-    ParseNode* result = _stack[_stack_top];
-    _stack[_stack_top] = nullptr;
-    return result;
-  }
-
-  static void pop_to(size_t new_top) {
-    while (_stack_top > new_top) pop();
-  }
-
-  static ParseNode* stack_back() {
-    return _stack[_stack_top - 1];
-  }
-
-  static const int stack_size = 8192;
-  inline static ParseNode*  _stack[stack_size] = {0};
-  inline static size_t _stack_top = 0;
 
   //----------------------------------------
 
@@ -337,102 +333,46 @@ template<typename NT>
 struct NodeMaker : public ParseNode {
 
   static Token* match(Token* a, Token* b) {
-    auto old_top = _stack_top;
-    auto end = NT::pattern::match(a, b);
-    auto new_top = _stack_top;
 
-    if (!end) {
-      while(_stack_top > old_top) {
-        delete pop();
+    // See if there's a node on the token that we can reuse
+    for (auto c = a->alt; c; c = c->alt) {
+      if (typeid(*c) == typeid(NT)) {
+        // Yep, there is - flip it to the top of the token and jump to its end
+        printf("yay reuse\n");
+        c->parent = nullptr;
+        a->top = c;
+        return c->tok_b;
       }
+    }
+
+    // No reusable node, make a new one if we match.
+
+    auto end = NT::pattern::match(a, b);
+    if (!end) {
       return nullptr;
     }
 
     auto node = new NT();
-    node->init(a, end, &_stack[old_top], new_top - old_top);
+    node->tok_a = a;
+    node->tok_b = end;
 
-    for (auto i = old_top; i < _stack_top; i++) {
-      _stack[i] = nullptr;
-    }
-    _stack_top = old_top;
-
-    push(node);
-    return end;
-  }
-};
-
-//------------------------------------------------------------------------------
-// A NodeLeaf should own tokens and have no other nodes under it.
-
-template<typename NT>
-struct NodeLeaf : public ParseNode {
-
-  static Token* match(Token* a, Token* b) {
-    auto old_top = _stack_top;
-    auto end = NT::pattern::match(a, b);
-    auto new_top = _stack_top;
-
-    if (!end) {
-      while(_stack_top > old_top) {
-        delete pop();
+    // Append all the tops under the new node to it
+    auto cursor = a;
+    while (cursor < end) {
+      if (cursor->top) {
+        node->append(cursor->top);
+        cursor = cursor->top->tok_b;
       }
-      return nullptr;
-    }
-
-    auto node = new NT();
-
-    /*
-    for (auto c = a; c < end; c++) {
-      c->owner = node;
-    }
-    */
-
-    node->init(a, end, &_stack[old_top], new_top - old_top);
-
-    for (auto i = old_top; i < _stack_top; i++) {
-      _stack[i] = nullptr;
-    }
-    _stack_top = old_top;
-
-    push(node);
-    return end;
-  }
-};
-
-//------------------------------------------------------------------------------
-// Every token under a NodeBranch should be owned by a NodeLeaf
-
-template<typename NT>
-struct NodeBranch : public ParseNode {
-
-  static Token* match(Token* a, Token* b) {
-    auto old_top = _stack_top;
-    auto end = NT::pattern::match(a, b);
-    auto new_top = _stack_top;
-
-    if (!end) {
-      while(_stack_top > old_top) {
-        delete pop();
+      else {
+        cursor++;
       }
-      return nullptr;
     }
 
-    auto node = new NT();
+    // And now A's top becomes our new node
+    a->top = node;
+    node->alt = a->alt;
+    a->alt = node;
 
-    /*
-    for (auto c = a; c < end; c++) {
-      c->owner = node;
-    }
-    */
-
-    node->init(a, end, &_stack[old_top], new_top - old_top);
-
-    for (auto i = old_top; i < _stack_top; i++) {
-      _stack[i] = nullptr;
-    }
-    _stack_top = old_top;
-
-    push(node);
     return end;
   }
 };
@@ -453,37 +393,6 @@ inline ParseNodeIterator begin(const ParseNode* parent) {
 
 inline ParseNodeIterator end(const ParseNode* parent) {
   return ParseNodeIterator(nullptr);
-}
-
-//------------------------------------------------------------------------------
-
-inline int atom_cmp(Token& a, const LexemeType& b) {
-  if (a.owner) ParseNode::uproot(a);
-
-  return int(a.lex->type) - int(b);
-}
-
-inline int atom_cmp(Token& a, const char& b) {
-  if (a.owner) ParseNode::uproot(a);
-
-  int len_cmp = a.lex->len() - 1;
-  if (len_cmp != 0) return len_cmp;
-  return int(a.lex->span_a[0]) - int(b);
-}
-
-template<int N>
-inline bool atom_cmp(Token& a, const StringParam<N>& b) {
-  if (a.owner) ParseNode::uproot(a);
-
-  int len_cmp = int(a.lex->len()) - int(b.len);
-  if (len_cmp != 0) return len_cmp;
-
-  for (auto i = 0; i < b.len; i++) {
-    int cmp = int(a.lex->span_a[i]) - int(b.value[i]);
-    if (cmp) return cmp;
-  }
-
-  return 0;
 }
 
 //------------------------------------------------------------------------------
@@ -532,107 +441,6 @@ struct Delimited {
     }
   }
 };
-
-//------------------------------------------------------------------------------
-
-template<typename P>
-struct CleanDeadNodes {
-  static Token* match(Token* a, Token* b) {
-    auto old_top = ParseNode::_stack_top;
-    auto end = P::match(a, b);
-    if (!end) {
-      while(ParseNode::_stack_top > old_top) {
-        auto d = ParseNode::pop();
-        //printf("Dead node ");
-        //d->print_class_name();
-        //printf("\n");
-        delete d;
-      }
-    }
-    return end;
-  }
-};
-
-//------------------------------------------------------------------------------
-
-template <typename P, typename... rest>
-struct Oneof2 {
-  template<typename atom>
-  static atom* match(atom* a, atom* b) {
-    auto old_top = ParseNode::_stack_top;
-    auto c = P::match(a, b);
-    if (!c) {
-      while(ParseNode::_stack_top > old_top) {
-        auto d = ParseNode::pop();
-        //printf("Dead node ");
-        //d->print_class_name();
-        //printf("\n");
-        delete d;
-      }
-    }
-    return c ? c : Oneof2<rest...>::match(a, b);
-  }
-};
-
-template <typename P>
-struct Oneof2<P> {
-  template<typename atom>
-  static atom* match(atom* a, atom* b) {
-    return P::match(a, b);
-  }
-};
-
-template<typename P>
-struct Opt2 {
-  template<typename atom>
-  static atom* match(atom* a, atom* b) {
-    auto old_top = ParseNode::_stack_top;
-    auto c = P::match(a, b);
-    if (!c) {
-      while(ParseNode::_stack_top > old_top) {
-        auto d = ParseNode::pop();
-        //printf("Dead node ");
-        //d->print_class_name();
-        //printf("\n");
-        delete d;
-      }
-    }
-    return c ? c : a;
-  }
-};
-
-
-template<typename P, typename... rest>
-struct Seq2 {
-
-  template<typename atom>
-  static atom* match(atom* a, atom* b) {
-    auto old_top = ParseNode::_stack_top;
-    auto c = P::match(a, b);
-    if (!c) {
-      while(ParseNode::_stack_top > old_top) {
-        auto d = ParseNode::pop();
-        //printf("Dead node ");
-        //d->print_class_name();
-        //printf("\n");
-        delete d;
-      }
-    }
-    return c ? Seq2<rest...>::match(c, b) : nullptr;
-  }
-};
-
-template<typename P>
-struct Seq2<P> {
-
-  template<typename atom>
-  static atom* match(atom* a, atom* b) {
-    return P::match(a, b);
-  }
-};
-
-
-
 
 //------------------------------------------------------------------------------
 
