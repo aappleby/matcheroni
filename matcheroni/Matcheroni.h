@@ -15,7 +15,7 @@ namespace matcheroni {
 // Matchers must always handle null pointers and empty ranges.
 
 template<typename atom>
-using matcher = atom* (*) (atom* a, atom* b);
+using matcher_function = atom* (*) (atom* a, atom* b);
 
 //------------------------------------------------------------------------------
 // Matcheroni needs some way to compare different types of atoms - for

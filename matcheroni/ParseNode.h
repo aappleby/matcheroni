@@ -12,10 +12,13 @@ never delete a match because it's still a match'
 #include <typeinfo>
 #include <set>
 #include <string>
+#include <vector>
+#include <string.h>
 
 #include "Lexemes.h"
 
 struct ParseNode;
+struct MatchMemo;
 void set_color(uint32_t c);
 
 //------------------------------------------------------------------------------
@@ -24,9 +27,9 @@ void set_color(uint32_t c);
 
 struct Token {
   Token(const Lexeme* lex) {
-    this->top = nullptr;
-    this->alt = nullptr;
     this->lex = lex;
+    this->top = nullptr;
+    this->memo = nullptr;
   }
 
   bool is_valid() const {
@@ -49,48 +52,58 @@ struct Token {
     return lex->is_identifier(lit);
   }
 
-  ParseNode* top;
-  ParseNode* alt;
   const Lexeme* lex;
+  ParseNode* top;
+  MatchMemo* memo;
 };
 
 //------------------------------------------------------------------------------
 
-inline int atom_cmp(Token& a, const LexemeType& b) {
-  a.top = nullptr;
-  return int(a.lex->type) - int(b);
-}
+using token_matcher = matcher_function<Token>;
 
-inline int atom_cmp(Token& a, const char& b) {
-  a.top = nullptr;
-  int len_cmp = a.lex->len() - 1;
-  if (len_cmp != 0) return len_cmp;
-  return int(a.lex->span_a[0]) - int(b);
-}
+struct MatchMemo {
+  const std::type_info* type;
+  token_matcher matcher;
+  ParseNode*    node;
+  MatchMemo*    next;
 
-template<int N>
-inline bool atom_cmp(Token& a, const StringParam<N>& b) {
-  a.top = nullptr;
-  int len_cmp = int(a.lex->len()) - int(b.len);
-  if (len_cmp != 0) return len_cmp;
+  static constexpr int slab_size = 1024;
+  inline static int inst_count = 0;
+  inline static std::vector<MatchMemo*> inst_pool;
 
-  for (auto i = 0; i < b.len; i++) {
-    int cmp = int(a.lex->span_a[i]) - int(b.value[i]);
-    if (cmp) return cmp;
+  static MatchMemo* take() {
+    int slab_index = inst_count / slab_size;
+    int inst_index = inst_count % slab_size;
+
+    if (slab_index >= inst_pool.size()) {
+      inst_pool.push_back(new MatchMemo[1024]);
+    }
+
+    auto memo = &inst_pool[slab_index][inst_index];
+    memset(memo, 0, sizeof(MatchMemo));
+
+    inst_count++;
+    return memo;
   }
 
-  return 0;
-}
+  static void clear_pool() {
+    for (auto slab : inst_pool) delete [] slab;
+    inst_pool.clear();
+    inst_count = 0;
+  }
+
+private:
+  MatchMemo() {}
+};
 
 //------------------------------------------------------------------------------
 
 struct ParseNode {
 
-  inline static int constructor_count = 0;
-  inline static int destructor_count = 0;
-  inline static int instance_count = 0;
-
-  ParseNode() {
+  void init(token_matcher matcher, Token* tok_a, Token* tok_b) {
+    this->matcher = matcher;
+    this->tok_a = tok_a;
+    this->tok_b = tok_b;
     instance_count++;
     constructor_count++;
   }
@@ -111,9 +124,21 @@ struct ParseNode {
     }
   }
 
+  //----------------------------------------
+
   ParseNode* top() {
     if (parent) return parent->top();
     return this;
+  }
+
+  //----------------------------------------
+
+  int node_count() const {
+    int accum = 1;
+    for (auto c = head; c; c = c->next) {
+      accum += c->node_count();
+    }
+    return accum;
   }
 
   //----------------------------------------
@@ -168,21 +193,72 @@ struct ParseNode {
     return dynamic_cast<const P*>(this);
   };
 
-  //----------------------------------------
-
-  void append(ParseNode* node) {
-    assert(node && node->parent == nullptr);
-    node->parent = this;
-
-    if (tail) {
-      tail->next = node;
-      node->prev = tail;
-      tail = node;
+  void print_class_name() {
+    const char* name = typeid(*this).name();
+    int name_len = 0;
+    if (sscanf(name, "%d", &name_len)) {
+      while((*name >= '0') && (*name <= '9')) name++;
+      for (int i = 0; i < name_len; i++) {
+        putc(name[i], stdout);
+      }
     }
     else {
-      head = node;
-      tail = node;
+      printf("%s", name);
     }
+  }
+
+  //----------------------------------------
+
+  void detach_children() {
+    auto c = head;
+    while(c) {
+      auto next = c->next;
+      c->next = nullptr;
+      c->prev = nullptr;
+      c->parent = nullptr;
+      c = next;
+    }
+    head = nullptr;
+    tail = nullptr;
+  }
+
+  //----------------------------------------
+  // Attach all the tops under this node to it.
+
+  void attach_children() {
+
+    auto cursor = tok_a;
+    while (cursor < tok_b) {
+      if (cursor->top) {
+        auto child = cursor->top;
+        if (child->parent) child->parent->detach_children();
+
+        child->parent = this;
+        if (tail) {
+          tail->next = child;
+          child->prev = tail;
+          tail = child;
+        }
+        else {
+          head = child;
+          tail = child;
+        }
+
+        cursor = child->tok_b;
+      }
+      else {
+        cursor++;
+      }
+    }
+  }
+
+  //----------------------------------------
+
+  void reattach_children() {
+    // Run our matcher to move all our children to the top
+    auto end = matcher(tok_a, tok_b);
+    assert(end == tok_b);
+    attach_children();
   }
 
   //----------------------------------------
@@ -209,10 +285,14 @@ struct ParseNode {
 
   //----------------------------------------
 
+  inline static int constructor_count = 0;
+  inline static int destructor_count = 0;
+  inline static int instance_count = 0;
+
+  token_matcher matcher = nullptr;
   Token* tok_a = nullptr;
   Token* tok_b = nullptr;
 
-  ParseNode* alt    = nullptr;
   ParseNode* parent = nullptr;
   ParseNode* prev   = nullptr;
   ParseNode* next   = nullptr;
@@ -311,23 +391,40 @@ struct ParseNode {
     enum_types.clear();
     typedef_types.clear();
   }
-
-  void print_class_name() {
-    const char* name = typeid(*this).name();
-    int name_len = 0;
-    if (sscanf(name, "%d", &name_len)) {
-      while((*name >= '0') && (*name <= '9')) name++;
-      for (int i = 0; i < name_len; i++) {
-        putc(name[i], stdout);
-      }
-    }
-    else {
-      printf("%s", name);
-    }
-  }
 };
 
 //------------------------------------------------------------------------------
+
+inline int atom_cmp(Token& a, const LexemeType& b) {
+  a.top = nullptr;
+  return int(a.lex->type) - int(b);
+}
+
+inline int atom_cmp(Token& a, const char& b) {
+  a.top = nullptr;
+  int len_cmp = a.lex->len() - 1;
+  if (len_cmp != 0) return len_cmp;
+  return int(a.lex->span_a[0]) - int(b);
+}
+
+template<int N>
+inline bool atom_cmp(Token& a, const StringParam<N>& b) {
+  a.top = nullptr;
+  int len_cmp = int(a.lex->len()) - int(b.len);
+  if (len_cmp != 0) return len_cmp;
+
+  for (auto i = 0; i < b.len; i++) {
+    int cmp = int(a.lex->span_a[i]) - int(b.value[i]);
+    if (cmp) return cmp;
+  }
+
+  return 0;
+}
+
+//------------------------------------------------------------------------------
+
+//#define USE_MEMO
+//#define MEMOIZE_UNMATCHES
 
 template<typename NT>
 struct NodeMaker : public ParseNode {
@@ -335,43 +432,74 @@ struct NodeMaker : public ParseNode {
   static Token* match(Token* a, Token* b) {
 
     // See if there's a node on the token that we can reuse
-    for (auto c = a->alt; c; c = c->alt) {
-      if (typeid(*c) == typeid(NT)) {
-        // Yep, there is - flip it to the top of the token and jump to its end
-        printf("yay reuse\n");
-        c->parent = nullptr;
-        a->top = c;
-        return c->tok_b;
+    NT* node = nullptr;
+
+#ifdef USE_MEMO
+    for (auto memo = a->memo; memo; memo = memo->next) {
+      /*if (typeid(*c) == typeid(NT))*/
+      if (memo->matcher == (token_matcher)NT::pattern::match) {
+#ifdef MEMOIZE_UNMATCHES
+        if (memo->node) {
+          // Memo has a node, reuse it
+          node = dynamic_cast<NT*>(memo->node);
+          assert(node);
+        }
+        else {
+          //static int fail_count = 0;
+          //printf("faaaail! %d\n", fail_count++);
+          // Memo had no node, match already going to fail
+          return nullptr;
+        }
+#else
+        // Memo has a node, reuse it
+        node = dynamic_cast<NT*>(memo->node);
+        assert(node);
+#endif
+        break;
       }
     }
 
-    // No reusable node, make a new one if we match.
+    if (node) {
+      // Yep, there is - reconnect its children if needed
+      //printf("yay reuse\n");
+      if (!node->head) {
+        //printf("reused node was disconnected\n");
+        auto end = NT::pattern::match(a, b);
+        assert(end);
+        node->attach_children();
+      }
+      // And now our new node becomes token A's top.
+      a->top = node;
+      return node->tok_b;
+    }
+#endif
 
+    // No node. Create a new node if the pattern matches, bail if it doesn't.
     auto end = NT::pattern::match(a, b);
-    if (!end) {
-      return nullptr;
+
+    if (end) {
+      node = new NT();
+      node->init(NT::pattern::match, a, end);
+      node->attach_children();
+      // And now our new node becomes token A's top.
+      a->top = node;
     }
 
-    auto node = new NT();
-    node->tok_a = a;
-    node->tok_b = end;
-
-    // Append all the tops under the new node to it
-    auto cursor = a;
-    while (cursor < end) {
-      if (cursor->top) {
-        node->append(cursor->top);
-        cursor = cursor->top->tok_b;
-      }
-      else {
-        cursor++;
-      }
+    // Storing failed matches does not currently appear to be worth it.
+#if 1
+#ifdef MEMOIZE_UNMATCHES
+    {
+#else
+    if (node) {
+#endif
+      auto memo = MatchMemo::take();
+      memo->type    = &typeid(NT);
+      memo->matcher = NT::pattern::match;
+      memo->node    = node;
+      memo->next    = a->memo;
+      a->memo       = memo;
     }
-
-    // And now A's top becomes our new node
-    a->top = node;
-    node->alt = a->alt;
-    a->alt = node;
+#endif
 
     return end;
   }

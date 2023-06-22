@@ -10,6 +10,21 @@
 
 //------------------------------------------------------------------------------
 
+double io_accum = 0;
+double lex_accum = 0;
+double parse_accum = 0;
+
+int file_total = 0;
+int file_pass = 0;
+int file_keep = 0;
+int file_bytes = 0;
+
+std::string text;
+std::vector<Lexeme> lexemes;
+std::vector<Token> tokens;
+
+//------------------------------------------------------------------------------
+
 double timestamp_ms() {
   using clock = std::chrono::high_resolution_clock;
   using nano = std::chrono::nanoseconds;
@@ -169,39 +184,45 @@ void dump_lexeme(const Lexeme& l) {
       putc(l.span_a[i], stdout);
     }
   }
-
-  printf("\n");
 }
 
 void dump_lexemes(std::vector<Lexeme>& lexemes) {
-  for(auto& l : lexemes) dump_lexeme(l);
+  for(auto& l : lexemes) {
+    dump_lexeme(l);
+    printf("\n");
+  }
 }
+
+//------------------------------------------------------------------------------
 
 void dump_tokens(std::vector<Token>& tokens) {
   for (auto& t : tokens) {
+    // Dump token
     printf("tok %p - ", &t);
-    if (t.top) {
-      printf("top %p -> %p ", t.top, t.top->tok_b);
-    }
-    else {
-      printf("top %p", t.top);
-    }
-    if (t.top) {
-      t.top->print_class_name();
-    }
-    printf(" ");
     if (t.lex->is_eof()) {
-      printf("<eof>\n");
+      printf("<eof>");
     }
     else {
       dump_lexeme(*t.lex);
     }
-    for (auto a = t.alt; a; a = a->alt) {
-      if (a == t.top) continue;
-      printf("                     ");
-      printf("alt %p -> %p ", a, a->tok_b);
-      a->print_class_name();
-      printf("\n");
+    printf("\n");
+
+    // Dump top node
+    printf("  ");
+    if (t.top) {
+      printf("top %p -> ", t.top);
+      t.top->print_class_name();
+      printf(" -> %p ", t.top->tok_b);
+    }
+    else {
+      printf("top %p", t.top);
+    }
+    printf("\n");
+
+    // Dump memo
+    for (auto memo = t.memo; memo; memo = memo->next) {
+      printf("  ");
+      printf("memo %s -> %p\n", memo->type->name(), memo->node);
     }
   }
 }
@@ -259,22 +280,9 @@ bool should_skip(const std::string& path) {
 
 //------------------------------------------------------------------------------
 
-double io_accum = 0;
-double lex_accum = 0;
-double parse_accum = 0;
-
-int file_total = 0;
-int file_pass = 0;
-int file_keep = 0;
-int file_bytes = 0;
-
-std::string text;
-std::vector<Lexeme> lexemes;
-std::vector<Token> tokens;
-
-//------------------------------------------------------------------------------
-
 int test_parser(const std::string& path) {
+  bool verbose = false;
+
   text.reserve(65536);
   lexemes.reserve(65536);
   tokens.reserve(65536);
@@ -291,6 +299,7 @@ int test_parser(const std::string& path) {
     printf("Could not open %s!\n", path.c_str());
   }
   auto r = fread(text.data(), 1, size, file);
+  fclose(file);
   io_accum += timestamp_ms();
 
   if (text.find("#define") != std::string::npos) {
@@ -326,7 +335,7 @@ int test_parser(const std::string& path) {
   auto end = NodeTranslationUnit::match(token_a, token_b);
   parse_accum += timestamp_ms();
 
-  dump_tokens(tokens);
+  if (verbose) dump_tokens(tokens);
 
   //----------------------------------------
   // Sanity check parse result
@@ -358,14 +367,24 @@ teardown:
     file_pass++;
   }
 
-  dump_tree(root);
-  //delete root;
+  if (verbose) dump_tree(root);
 
+  if (verbose) {
+    printf("Node count %d\n", root->node_count());
+  }
+
+  // Clear all the nodes out of the memo on each token
   for (auto& tok : tokens) {
-    for (auto a = tok.alt; a; a = a->alt) {
-      delete a;
+    auto memo = tok.memo;
+    while(memo) {
+      auto next = memo->next;
+      delete memo->node;
+      memo = next;
     }
   }
+
+  // Clear the memo pool
+  MatchMemo::clear_pool();
 
   // Don't forget to reset the parser state derrrrrp
   ParseNode::reset_types();
@@ -381,21 +400,24 @@ teardown:
 int test_parser(int argc, char** argv) {
   printf("Matcheroni c_parser_test\n");
 
+  double total_time = 0;
+  total_time -= timestamp_ms();
+
   std::vector<std::string> paths;
   const char* base_path = argc > 1 ? argv[1] : "tests";
 
-#if 1
+#if 0
 
-  test_parser("tests/scratch.c");
+  //test_parser("tests/scratch.c");
   //test_parser("tests/basic_inputs.h");
-  //test_parser("mini_tests/csmith_5.cpp");
+  test_parser("mini_tests/csmith_1088.c");
   //test_parser("../gcc/gcc/tree-inline.h");
   //test_parser("../gcc/gcc/testsuite/gcc.c-torture/execute/921110-1.c");
   file_total++;
 
 #else
 
-  //base_path = "mini_tests";
+  base_path = "mini_tests";
   printf("Parsing all source files in %s\n", base_path);
   using rdit = std::filesystem::recursive_directory_iterator;
   for (const auto& f : rdit(base_path)) {
@@ -407,9 +429,13 @@ int test_parser(int argc, char** argv) {
     file_total++;
     if (should_skip(path)) continue;
     test_parser(path);
+
+    if (file_total == 10) break;
   }
 
 #endif
+
+  total_time += timestamp_ms();
 
   printf("Constructor %d\n", ParseNode::constructor_count);
   printf("Destructor  %d\n", ParseNode::destructor_count);
@@ -418,6 +444,7 @@ int test_parser(int argc, char** argv) {
   printf("IO took      %7.2f msec\n", io_accum);
   printf("Lexing took  %7.2f msec\n", lex_accum);
   printf("Parsing took %7.2f msec\n", parse_accum);
+  printf("Total time   %7.2f msec\n", total_time);
   printf("\n");
   printf("Files total    %d\n", file_total);
   printf("Files filtered %d\n", file_total - file_keep);
@@ -449,7 +476,6 @@ int test_parser(int argc, char** argv) {
 //------------------------------------------------------------------------------
 
 int main(int argc, char** argv) {
-  //for (int i = 0; i < 100; i++) test_parser(argc, argv);
   test_parser(argc, argv);
 }
 
