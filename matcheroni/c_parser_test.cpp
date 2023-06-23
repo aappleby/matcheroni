@@ -13,11 +13,13 @@
 double io_accum = 0;
 double lex_accum = 0;
 double parse_accum = 0;
+double cleanup_accum = 0;
 
 int file_total = 0;
 int file_pass = 0;
 int file_keep = 0;
 int file_bytes = 0;
+int file_lines = 0;
 
 std::string text;
 std::vector<Lexeme> lexemes;
@@ -296,9 +298,11 @@ int test_parser(const std::string& path) {
   fclose(file);
   io_accum += timestamp_ms();
 
-  if (text.find("#define") != std::string::npos) {
-    return -1;
-  }
+  for (auto c : text) if (c == '\n') file_lines++;
+
+  //if (text.find("#define") != std::string::npos) {
+  //  return -1;
+  //}
 
   file_keep++;
   file_bytes += size;
@@ -342,12 +346,14 @@ int test_parser(const std::string& path) {
     goto teardown;
   }
 
+  /*
   for (auto& tok : tokens) {
     if (tok.top && tok.top->top() != root) {
       parse_failed = true;
       goto teardown;
     }
   }
+  */
 
   //----------------------------------------
   // Tear down parse tree and clean up
@@ -368,6 +374,9 @@ teardown:
   }
 
   // Clear all the nodes off the tokens
+  cleanup_accum -= timestamp_ms();
+  ParseNode::clear_slabs();
+  /*
   for (auto& tok : tokens) {
     //dump_tree(tok.top);
     tok.top = nullptr;
@@ -378,6 +387,8 @@ teardown:
       c = next;
     }
   }
+  */
+  cleanup_accum += timestamp_ms();
 
   // Don't forget to reset the parser state derrrrrp
   ParseNode::reset_types();
@@ -430,20 +441,25 @@ int test_parser(int argc, char** argv) {
 
   total_time += timestamp_ms();
 
-  printf("Step over count %d\n", ParseNode::step_over_count);
+  //printf("Step over count %d\n", ParseNode::step_over_count);
   printf("Constructor %d\n", ParseNode::constructor_count);
-  printf("Destructor  %d\n", ParseNode::destructor_count);
+  //printf("Destructor  %d\n", ParseNode::destructor_count);
 
   printf("\n");
-  printf("IO took      %7.2f msec\n", io_accum);
-  printf("Lexing took  %7.2f msec\n", lex_accum);
-  printf("Parsing took %7.2f msec\n", parse_accum);
-  printf("Total time   %7.2f msec\n", total_time);
-  printf("\n");
+  printf("IO time        %f msec\n", io_accum);
+  printf("Lexing time    %f msec\n", lex_accum);
+  printf("Parsing time   %f msec\n", parse_accum);
+  printf("Cleanup time   %f msec\n", cleanup_accum);
+  printf("Total time     %f msec\n", total_time);
+  printf("Max node size  %ld\n", ParseNode::max_size);
   printf("Files total    %d\n", file_total);
   printf("Files filtered %d\n", file_total - file_keep);
   printf("Files kept     %d\n", file_keep);
   printf("Files bytes    %d\n", file_bytes);
+  printf("Files lines    %d\n", file_lines);
+  printf("Average line   %f bytes\n", double(file_bytes) / double(file_lines));
+  printf("Bytes/sec      %f\n", 1000.0 * double(file_bytes) / double(total_time));
+  printf("Lines/sec      %f\n", 1000.0 * double(file_lines) / double(total_time));
   printf("Files pass     %d\n", file_pass);
   printf("Files fail     %d\n", file_keep - file_pass);
 

@@ -1,3 +1,6 @@
+// CONTEXT
+// TOP TYPEID
+
 #pragma once
 
 #include "ParseNode.h"
@@ -258,31 +261,61 @@ struct NodeExpression : public NodeMaker<NodeExpression> {
 //------------------------------------------------------------------------------
 
 struct NodeExpressionSoup : public PatternWrapper<NodeExpressionSoup> {
-  inline static const char* all_operators[] = {
-    "->*", "<<=", "<=>", ">>=", "--", "-=", "->", "::", "!=", ".*", "*=", "/=",
-    "&&", "&=", "%=", "^=", "++", "+=", "<<", "<=", "==", ">=", ">>", "|=",
-    "||", "-", "!", ".", "*", "/", "&", "%", "^", "+", "<", "=", ">", "|", "~",
+  constexpr inline static const char* op3 = "->*<<=<=>>>=";
+
+  inline static const char* op2[] = {
+    "--",
+    "-=",
+    "->",
+    "::",
+    "!=",
+    ".*",
+    "*=",
+    "/=",
+    "&&",
+    "&=",
+    "%=",
+    "^=",
+    "++",
+    "+=",
+    "<<",
+    "<=",
+    "==",
+    ">=",
+    ">>",
+    "|=",
+    "||",
   };
 
-  static Token* match_operator(const char* lit, Token* a, Token* b) {
-    auto len = strlen(lit);
-    if (!a || a == b) return nullptr;
-    if (a + len > b) return nullptr;
-
-    for (auto i = 0; i < len; i++) {
-      if (!a[i].is_punct(lit[i])) return nullptr;
-    }
-
-    return a + len;
-  }
+  constexpr inline static const char* op1 = "-!.*/&%^+<=>|~";
 
   static Token* match_operators(Token* a, Token* b) {
-    if (!a || a == b) return nullptr;
+    if (b-a >= 3) {
+      constexpr auto op_count = strlen(op3) / 3;
+      for (auto j = 0; j < op_count; j++) {
+        bool match = true;
+        if (a->lex->span_a[0] != op3[j * 3 + 0]) match = false;
+        if (a->lex->span_a[1] != op3[j * 3 + 0]) match = false;
+        if (a->lex->span_a[2] != op3[j * 3 + 0]) match = false;
+        if (match) return a + 3;
+      }
+    }
 
-    int op_count = sizeof(all_operators) / sizeof(all_operators[0]);
-    for (int i = 0; i < op_count; i++) {
-      if (auto end = match_operator(all_operators[i], a, b)) {
-        return end;
+    if (b-a >= 2) {
+      constexpr auto op_count = sizeof(op2) / sizeof(op2[0]);
+      for (auto j = 0; j < op_count; j++) {
+        bool match = true;
+        for (auto i = 0; i < 2; i++) {
+          if (a[i].lex->span_a[0] != op2[j][i]) match = false;
+        }
+        if (match) return a + 2;
+      }
+    }
+
+    if (b-a >= 1) {
+      constexpr auto op_count = strlen(op1);
+      for (auto j = 0; j < op_count; j++) {
+        if (a->lex->span_a[0] == op1[j]) return a + 1;
       }
     }
 

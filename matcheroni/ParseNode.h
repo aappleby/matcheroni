@@ -30,7 +30,7 @@ struct Token {
   Token(const Lexeme* lex) {
     this->lex = lex;
     this->top = nullptr;
-    this->alt = nullptr;
+    //this->alt = nullptr;
   }
 
   bool is_valid() const {
@@ -55,7 +55,7 @@ struct Token {
 
   const Lexeme* lex;
   ParseNode* top;
-  ParseNode* alt;
+  //ParseNode* alt;
 };
 
 using token_matcher = matcher_function<Token>;
@@ -64,16 +64,57 @@ using token_matcher = matcher_function<Token>;
 
 struct ParseNode {
 
+#if 1
+  static constexpr size_t slab_size = 16*1024*1024;
+  inline static std::vector<uint8_t*> slabs;
+  inline static size_t slab_cursor;
+  inline static size_t current_size = 0;
+  inline static size_t max_size = 0;
+
+  static void* bump(size_t size) {
+    auto slab = slabs.empty() ? nullptr : slabs.back();
+    if (!slab || (slab_cursor + size > slab_size)) {
+      slab = new uint8_t[slab_size];
+      slab_cursor = 0;
+      slabs.push_back(slab);
+    }
+
+    auto result = slab + slab_cursor;
+    slab_cursor += size;
+
+    current_size += size;
+    if (current_size > max_size) max_size = current_size;
+
+    return result;
+  }
+
+  static void clear_slabs() {
+    for (auto s : slabs) delete [] s;
+    slabs.clear();
+    current_size = 0;
+  }
+
+  void* operator new(std::size_t size)   {
+    return bump(size);
+  }
+  void* operator new[](std::size_t size) { return bump(size); }
+  void  operator delete(void*)   {}
+  void  operator delete[](void*) {}
+#else
+  static void clear_slabs() {}
+#endif
+
   //uint32_t sentinel = 12345678;
 
-  void init(token_matcher matcher, Token* tok_a, Token* tok_b) {
-    this->matcher = matcher;
+  void init(Token* tok_a, Token* tok_b) {
+    //this->matcher = matcher;
     this->tok_a = tok_a;
     this->tok_b = tok_b;
-    this->alt = nullptr;
+    //this->alt = nullptr;
     //instance_count++;
-    //constructor_count++;
+    constructor_count++;
   }
+
 
   virtual ~ParseNode() {
     //assert(sentinel == 12345678);
@@ -81,7 +122,7 @@ struct ParseNode {
     //printf("Deleting parsenode\n");
 
     //instance_count--;
-    //destructor_count++;
+    destructor_count++;
 
     /*
     auto cursor = head;
@@ -95,10 +136,12 @@ struct ParseNode {
 
   //----------------------------------------
 
+  /*
   ParseNode* top() {
     if (parent) return parent->top();
     return this;
   }
+  */
 
   //----------------------------------------
 
@@ -184,7 +227,7 @@ struct ParseNode {
       auto next = c->next;
       c->next = nullptr;
       c->prev = nullptr;
-      c->parent = nullptr;
+      //c->parent = nullptr;
       c = next;
     }
     head = nullptr;
@@ -194,7 +237,7 @@ struct ParseNode {
   //----------------------------------------
   // Attach all the tops under this node to it.
 
-  inline static int step_over_count = 0;
+  //inline static int step_over_count = 0;
 
   void attach_children() {
 
@@ -204,10 +247,10 @@ struct ParseNode {
         auto child = cursor->top;
         cursor->top = nullptr;
 
-        assert(!child->parent);
+        //assert(!child->parent);
         //if (child->parent) child->parent->detach_children();
 
-        child->parent = this;
+        //child->parent = this;
         if (tail) {
           tail->next = child;
           child->prev = tail;
@@ -229,12 +272,14 @@ struct ParseNode {
 
   //----------------------------------------
 
+  /*
   void reattach_children() {
     // Run our matcher to move all our children to the top
     auto end = matcher(tok_a, tok_b);
     assert(end == tok_b);
     attach_children();
   }
+  */
 
   //----------------------------------------
 
@@ -262,18 +307,18 @@ struct ParseNode {
 
   inline static int constructor_count = 0;
   inline static int destructor_count = 0;
-  inline static int instance_count = 0;
+  //inline static int instance_count = 0;
 
-  token_matcher matcher = nullptr;
+  //token_matcher matcher = nullptr;
   Token* tok_a = nullptr;
   Token* tok_b = nullptr;
 
-  ParseNode* parent = nullptr;
+  //ParseNode* parent = nullptr;
   ParseNode* prev   = nullptr;
   ParseNode* next   = nullptr;
   ParseNode* head   = nullptr;
   ParseNode* tail   = nullptr;
-  ParseNode* alt    = nullptr;
+  //ParseNode* alt    = nullptr;
 
   //----------------------------------------
 
@@ -417,12 +462,13 @@ struct NodeMaker : public ParseNode {
 
     if (end) {
       node = new NT();
-      node->init(NT::pattern::match, a, end);
+      //node->init(NT::pattern::match, a, end);
+      node->init(a, end);
       node->attach_children();
 
       // And now our new node becomes token A's top.
-      node->alt = a->alt;
-      a->alt = node;
+      //node->alt = a->alt;
+      //a->alt = node;
       a->top = node;
     }
 
