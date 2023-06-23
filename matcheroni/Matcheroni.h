@@ -101,7 +101,6 @@ struct AnyAtom {
 
 template<typename P, typename... rest>
 struct Seq {
-
   template<typename atom>
   static atom* match(atom* a, atom* b) {
     auto c = P::match(a, b);
@@ -111,7 +110,6 @@ struct Seq {
 
 template<typename P>
 struct Seq<P> {
-
   template<typename atom>
   static atom* match(atom* a, atom* b) {
     return P::match(a, b);
@@ -149,11 +147,11 @@ struct Oneof<P> {
 // Opt<Atom<'a'>>::match("abcd") == "bcd"
 // Opt<Atom<'a'>>::match("bcde") == "bcde"
 
-template<typename P>
+template<typename... rest>
 struct Opt {
   template<typename atom>
   static atom* match(atom* a, atom* b) {
-    auto c = P::match(a, b);
+    auto c = Oneof<rest...>::match(a, b);
     return c ? c : a;
   }
 };
@@ -167,12 +165,11 @@ struct Opt {
 // Any<Atom<'a'>>::match("aaaab") == "b"
 // Any<Atom<'a'>>::match("bbbbc") == "bbbbc"
 
-template<typename P>
+template <typename... rest>
 struct Any {
-
   template<typename atom>
   static atom* match(atom* a, atom* b) {
-    while(auto c = P::match(a, b)) {
+    while(auto c = Oneof<rest...>::match(a, b)) {
       a = c;
     }
     return a;
@@ -185,12 +182,16 @@ struct Any {
 // Some<Atom<'a'>>::match("aaaab") == "b"
 // Some<Atom<'a'>>::match("bbbbc") == nullptr
 
-template<typename P>
+template<typename...rest>
 struct Some {
   template<typename atom>
   static atom* match(atom* a, atom* b) {
-    auto c = P::match(a, b);
-    return c ? Any<P>::match(c, b) : nullptr;
+    a = Oneof<rest...>::match(a, b);
+    if (!a) return nullptr;
+    while(auto c = Oneof<rest...>::match(a, b)) {
+      a = c;
+    }
+    return a;
   }
 };
 
@@ -367,7 +368,6 @@ struct StoreBackref {
 
 template<typename P>
 struct MatchBackref {
-
   template<typename atom>
   static atom* match(atom* a, atom* b) {
     if (!a || a == b) return nullptr;
@@ -415,7 +415,6 @@ struct StringParam {
 
 template<StringParam lit>
 struct Lit {
-
   template<typename atom>
   static atom* match(atom* a, atom* b) {
     if (!a || a == b) return nullptr;
@@ -436,7 +435,6 @@ struct Lit {
 
 template<StringParam lit>
 struct Keyword {
-
   template<typename atom>
   static atom* match(atom* a, atom* b) {
     if (!a || a == b) return nullptr;
@@ -455,7 +453,6 @@ struct Keyword {
 
 template<StringParam chars>
 struct Charset {
-
   template<typename atom>
   static atom* match(atom* a, atom* b) {
     if (!a || a == b) return nullptr;
@@ -466,7 +463,6 @@ struct Charset {
     }
     return nullptr;
   }
-
 };
 
 //------------------------------------------------------------------------------

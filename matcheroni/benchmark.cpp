@@ -63,7 +63,7 @@ struct MatchingParens {
     using pattern =
     Seq<
       Atom<'('>,
-      Any<Oneof<MatchingParens, NotAtom<')'>>>,
+      Any<MatchingParens, NotAtom<')'>>,
       Atom<')'>
     >;
     return pattern::match(a, b);
@@ -76,7 +76,7 @@ const char* matcheroni_match_parens(const char* a, const char* b) {
   using pattern =
   Seq<
     Atom<'('>,
-    Any<Oneof<Ref<matcheroni_match_parens>, NotAtom<')'>>>,
+    Any<Ref<matcheroni_match_parens>, NotAtom<')'>>,
     Atom<')'>
   >;
   return pattern::match(a, b);

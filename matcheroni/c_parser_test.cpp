@@ -434,7 +434,7 @@ int test_parser(int argc, char** argv) {
     if (should_skip(path)) continue;
     test_parser(path);
 
-    //if (file_total == 10) break;
+    //if (file_total == 100) break;
   }
 
 #endif

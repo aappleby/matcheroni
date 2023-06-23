@@ -109,10 +109,10 @@ template<auto ldelim, auto rdelim>
 using DelimitedSpan =
 Seq<
   Atom<ldelim>,
-  Any<Oneof<
+  Any<
     AnySpan,
     NotAtom<rdelim>
-  >>,
+  >,
   Atom<rdelim>
 >;
 

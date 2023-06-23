@@ -201,7 +201,7 @@ const char* match_identifier(const char* a, const char* b) {
     Ref<match_utf8>  // Lots of GCC test files for unicode
   >;
 
-  using identifier = Seq<nondigit, Any<Oneof<digit, nondigit>>>;
+  using identifier = Seq<nondigit, Any<digit, nondigit>>;
 
   return identifier::match(a, b);
 }
@@ -434,10 +434,10 @@ const char* match_splice(const char* a, const char* b) {
 const char* match_preproc(const char* a, const char* b) {
   using pattern = Seq<
     Atom<'#'>,
-    Any<Oneof<
+    Any<
       Ref<match_splice>,
       NotAtom<'\n'>
-    >>
+    >
   >;
   return pattern::match(a, b);
 }
