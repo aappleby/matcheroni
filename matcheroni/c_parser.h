@@ -1267,7 +1267,7 @@ public:
 
   void load(const std::string& path);
   void lex();
-  bool parse();
+  ParseNode* parse();
 
   void dump_stats();
   void dump_lexemes();
@@ -1277,6 +1277,11 @@ public:
 
   std::vector<Lexeme> lexemes;
   std::vector<Token>  tokens;
+
+  Token* tok_a = nullptr;
+  Token* tok_b = nullptr;
+
+  ParseNode* root = nullptr;
 
   int file_total = 0;
   int file_pass = 0;

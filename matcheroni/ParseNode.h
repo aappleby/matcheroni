@@ -452,51 +452,38 @@ inline bool atom_cmp(Token& a, const StringParam<N>& b) {
 //#define USE_MEMO
 //#define MEMOIZE_UNMATCHES
 
-struct NodeArraySuffix;
+// The optimization below does not actually improve performance in this
+// parser, though it could be significant in other ones.
+
+// Parseroni C parser without:
+// Total time     27887.913728 msec
+// Constructor 565766993
+
+// Parseroni C parser with:
+// Total time     28685.710080 msec
+// Constructor 559067842
+
+// See if there's a node on the token that we can reuse
+/*
+if (a->top) {
+  if (typeid(*(a->top)) == typeid(NT)) {
+    return a->top->tok_b;
+  }
+}
+// No node. Create a new node if the pattern matches, bail if it doesn't.
+*/
 
 template<typename NT>
 struct NodeMaker : public ParseNode {
 
   static Token* match(void* ctx, Token* a, Token* b) {
-
-    // The optimization below does not actually improve performance in this
-    // parser, though it could be significant in other ones.
-
-    // Parseroni C parser without:
-    // Total time     27887.913728 msec
-    // Constructor 565766993
-
-    // Parseroni C parser with:
-    // Total time     28685.710080 msec
-    // Constructor 559067842
-
-    // See if there's a node on the token that we can reuse
-    /*
-    if (a->top) {
-      if (typeid(*(a->top)) == typeid(NT)) {
-        return a->top->tok_b;
-      }
-    }
-    */
-
-
-    NT* node = nullptr;
-
-    // No node. Create a new node if the pattern matches, bail if it doesn't.
     auto end = NT::pattern::match(ctx, a, b);
-
     if (end) {
-      node = new NT();
-      //node->init(NT::pattern::match, a, end);
+      NT* node = new NT();
       node->init(a, end);
       node->attach_children();
-
-      // And now our new node becomes token A's top.
-      //node->alt = a->alt;
-      //a->alt = node;
       a->top = node;
     }
-
     return end;
   }
 };

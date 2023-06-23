@@ -94,8 +94,8 @@ int test_parser(int argc, char** argv) {
 
     printf("%04d: Parsing %s\n", parser.file_pass, path.c_str());
 
-    auto parse_ok = parser.parse();
-    if (!parse_ok) {
+    auto root = parser.parse();
+    if (!root) {
       printf("Parsing failed: %s\n", path.c_str());
     }
 
