@@ -21,6 +21,8 @@ public:
   Token* match_builtin_type_prefix(Token* a, Token* b);
   Token* match_builtin_type_suffix(Token* a, Token* b);
 
+  Token* match_class_type(Token* a, Token* b);
+
   void dump_stats();
   void dump_lexemes();
   void dump_tokens();
@@ -45,6 +47,8 @@ public:
   double lex_accum = 0;
   double parse_accum = 0;
   double cleanup_accum = 0;
+
+  IdentifierSet class_types;
 };
 
 //------------------------------------------------------------------------------
@@ -149,8 +153,8 @@ struct NodeConstant : public NodeMaker<NodeConstant> {
 // Our builtin types are any sequence of prefixes followed by a builtin type
 
 struct NodeBuiltinType : public NodeMaker<NodeBuiltinType> {
-  using match_prefix = Ref<&C99Parser::match_builtin_type_prefix>;
   using match_base   = Ref<&C99Parser::match_builtin_type_base>;
+  using match_prefix = Ref<&C99Parser::match_builtin_type_prefix>;
   using match_suffix = Ref<&C99Parser::match_builtin_type_suffix>;
 
   using pattern = Seq<
@@ -160,12 +164,12 @@ struct NodeBuiltinType : public NodeMaker<NodeBuiltinType> {
   >;
 };
 
-struct NodeClassType : public NodeMaker<NodeClassType> {
-  static Token* match(void* ctx, Token* a, Token* b) {
-    if (a && ParseNode::class_types.contains(a->lex->text())) return a + 1;
-    return nullptr;
-  }
-};
+//struct NodeClassType : public NodeMaker<NodeClassType> {
+//  static Token* match(void* ctx, Token* a, Token* b) {
+//    if (a && ParseNode::class_types.contains(a->lex->text())) return a + 1;
+//    return nullptr;
+//  }
+//};
 
 struct NodeStructType : public NodeMaker<NodeStructType> {
   static Token* match(void* ctx, Token* a, Token* b) {
@@ -738,7 +742,10 @@ struct NodeClassName : public NodeMaker<NodeClassName> {
       auto node = a->top;
       if (auto id = node->child<NodeIdentifier>()) {
         //printf("Adding class type %s\n", id->text().c_str());
-        ParseNode::class_types.insert(id->text());
+
+        ((C99Parser*)ctx)->class_types.insert(id->text());
+
+        //ParseNode::class_types.insert(id->text());
       }
     }
     return end;
@@ -902,9 +909,11 @@ struct NodeFunction : public NodeMaker<NodeFunction> {
 //------------------------------------------------------------------------------
 
 struct NodeConstructor : public NodeMaker<NodeConstructor> {
+  using match_class_type = Ref<&C99Parser::match_class_type>;
+
   using pattern = Seq<
     Oneof<
-      NodeClassType,
+      match_class_type,
       NodeStructType
     >,
     NodeParamList,

@@ -243,14 +243,14 @@ struct ParseNode {
 
   //----------------------------------------
 
-  inline static IdentifierSet class_types;
+  //inline static IdentifierSet class_types;
   inline static IdentifierSet struct_types;
   inline static IdentifierSet union_types;
   inline static IdentifierSet enum_types;
   inline static IdentifierSet typedef_types;
 
   static void reset_types() {
-    class_types.clear();
+    //class_types.clear();
     struct_types.clear();
     union_types.clear();
     enum_types.clear();
