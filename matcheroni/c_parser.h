@@ -262,31 +262,7 @@ struct NodeExpression : public NodeMaker<NodeExpression> {
 
 struct NodeExpressionSoup : public PatternWrapper<NodeExpressionSoup> {
   constexpr inline static const char* op3 = "->*<<=<=>>>=";
-
-  inline static const char* op2[] = {
-    "--",
-    "-=",
-    "->",
-    "::",
-    "!=",
-    ".*",
-    "*=",
-    "/=",
-    "&&",
-    "&=",
-    "%=",
-    "^=",
-    "++",
-    "+=",
-    "<<",
-    "<=",
-    "==",
-    ">=",
-    ">>",
-    "|=",
-    "||",
-  };
-
+  constexpr inline static const char* op2 = "---=->::!=.**=/=&&&=%=^=+++=<<<===>=>>|=||";
   constexpr inline static const char* op1 = "-!.*/&%^+<=>|~";
 
   static Token* match_operators(Token* a, Token* b) {
@@ -295,27 +271,28 @@ struct NodeExpressionSoup : public PatternWrapper<NodeExpressionSoup> {
       for (auto j = 0; j < op_count; j++) {
         bool match = true;
         if (a->lex->span_a[0] != op3[j * 3 + 0]) match = false;
-        if (a->lex->span_a[1] != op3[j * 3 + 0]) match = false;
-        if (a->lex->span_a[2] != op3[j * 3 + 0]) match = false;
+        if (a->lex->span_a[1] != op3[j * 3 + 1]) match = false;
+        if (a->lex->span_a[2] != op3[j * 3 + 2]) match = false;
         if (match) return a + 3;
       }
     }
 
     if (b-a >= 2) {
-      constexpr auto op_count = sizeof(op2) / sizeof(op2[0]);
+      constexpr auto op_count = strlen(op2) / 2;
       for (auto j = 0; j < op_count; j++) {
         bool match = true;
-        for (auto i = 0; i < 2; i++) {
-          if (a[i].lex->span_a[0] != op2[j][i]) match = false;
-        }
+        if (a->lex->span_a[0] != op2[j * 2 + 0]) match = false;
+        if (a->lex->span_a[1] != op2[j * 2 + 1]) match = false;
         if (match) return a + 2;
       }
     }
 
     if (b-a >= 1) {
-      constexpr auto op_count = strlen(op1);
+      constexpr auto op_count = strlen(op1) / 1;
       for (auto j = 0; j < op_count; j++) {
-        if (a->lex->span_a[0] == op1[j]) return a + 1;
+        bool match = true;
+        if (a->lex->span_a[0] != op1[j * 1 + 0]) match = false;
+        if (match) return a + 1;
       }
     }
 

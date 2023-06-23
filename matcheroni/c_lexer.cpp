@@ -43,6 +43,8 @@ Lexeme next_lexeme(const char* cursor, const char* text_end) {
     [LEX_INVALID] = 1
   };
 
+  /*
+  // I think I sorted these in probability order...
   static LexemeTableEntry matcher_table[] = {
     //{ match_never,      LEX_INVALID,    },
     { match_space,      LEX_SPACE,      },
@@ -66,6 +68,22 @@ Lexeme next_lexeme(const char* cursor, const char* text_end) {
       return Lexeme(matcher_table[i].lexeme, cursor, end);
     }
   }
+  */
+
+  if (auto end = match_space      (cursor, text_end)) return Lexeme(LEX_SPACE     , cursor, end);
+  if (auto end = match_newline    (cursor, text_end)) return Lexeme(LEX_NEWLINE   , cursor, end);
+  if (auto end = match_string     (cursor, text_end)) return Lexeme(LEX_STRING    , cursor, end);
+  if (auto end = match_identifier (cursor, text_end)) return Lexeme(LEX_IDENTIFIER, cursor, end);
+  if (auto end = match_comment    (cursor, text_end)) return Lexeme(LEX_COMMENT   , cursor, end);
+  if (auto end = match_preproc    (cursor, text_end)) return Lexeme(LEX_PREPROC   , cursor, end);
+  if (auto end = match_float      (cursor, text_end)) return Lexeme(LEX_FLOAT     , cursor, end);
+  if (auto end = match_int        (cursor, text_end)) return Lexeme(LEX_INT       , cursor, end);
+  if (auto end = match_punct      (cursor, text_end)) return Lexeme(LEX_PUNCT     , cursor, end);
+  if (auto end = match_char       (cursor, text_end)) return Lexeme(LEX_CHAR      , cursor, end);
+  if (auto end = match_splice     (cursor, text_end)) return Lexeme(LEX_SPLICE    , cursor, end);
+  if (auto end = match_formfeed   (cursor, text_end)) return Lexeme(LEX_FORMFEED  , cursor, end);
+  if (auto end = match_eof        (cursor, text_end)) return Lexeme(LEX_EOF       , cursor, end);
+
 
   return Lexeme(LEX_INVALID, nullptr, nullptr);
 }
