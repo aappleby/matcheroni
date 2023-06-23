@@ -34,42 +34,6 @@ const char* match_eof        (const char* a, const char* b);
 //------------------------------------------------------------------------------
 
 Lexeme next_lexeme(const char* cursor, const char* text_end) {
-  struct LexemeTableEntry {
-    matcher_function<const char> match  = nullptr;
-    LexemeType    lexeme = LEX_INVALID;
-  };
-
-  static int blep[] = {
-    [LEX_INVALID] = 1
-  };
-
-  /*
-  // I think I sorted these in probability order...
-  static LexemeTableEntry matcher_table[] = {
-    //{ match_never,      LEX_INVALID,    },
-    { match_space,      LEX_SPACE,      },
-    { match_newline,    LEX_NEWLINE,    },
-    { match_string,     LEX_STRING,     }, // must be before identifier because R"()"
-    { match_identifier, LEX_IDENTIFIER, },
-    { match_comment,    LEX_COMMENT,    }, // must be before punct
-    { match_preproc,    LEX_PREPROC,    }, // must be before punct
-    { match_float,      LEX_FLOAT,      }, // must be before int
-    { match_int,        LEX_INT,        }, // must be before punct
-    { match_punct,      LEX_PUNCT,      },
-    { match_char,       LEX_CHAR,       },
-    { match_splice,     LEX_SPLICE,     },
-    { match_formfeed,   LEX_FORMFEED,   },
-    { match_eof,        LEX_EOF,        },
-  };
-
-  const int matcher_count = sizeof(matcher_table) / sizeof(matcher_table[0]);
-  for (int i = 0; i < matcher_count; i++) {
-    if (auto end = matcher_table[i].match(cursor, text_end)) {
-      return Lexeme(matcher_table[i].lexeme, cursor, end);
-    }
-  }
-  */
-
   if (auto end = match_space      (cursor, text_end)) return Lexeme(LEX_SPACE     , cursor, end);
   if (auto end = match_newline    (cursor, text_end)) return Lexeme(LEX_NEWLINE   , cursor, end);
   if (auto end = match_string     (cursor, text_end)) return Lexeme(LEX_STRING    , cursor, end);
@@ -83,8 +47,6 @@ Lexeme next_lexeme(const char* cursor, const char* text_end) {
   if (auto end = match_splice     (cursor, text_end)) return Lexeme(LEX_SPLICE    , cursor, end);
   if (auto end = match_formfeed   (cursor, text_end)) return Lexeme(LEX_FORMFEED  , cursor, end);
   if (auto end = match_eof        (cursor, text_end)) return Lexeme(LEX_EOF       , cursor, end);
-
-
   return Lexeme(LEX_INVALID, nullptr, nullptr);
 }
 
