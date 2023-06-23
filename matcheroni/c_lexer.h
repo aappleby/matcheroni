@@ -3,6 +3,6 @@
 //------------------------------------------------------------------------------
 
 struct Lexeme;
-Lexeme next_lexeme(const char* cursor, const char* end);
+Lexeme next_lexeme(void* ctx, const char* cursor, const char* end);
 
 //------------------------------------------------------------------------------

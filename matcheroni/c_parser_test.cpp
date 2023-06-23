@@ -157,7 +157,7 @@ void lex_file(std::string& text, std::vector<Lexeme>& lexemes, std::vector<Token
 
   const char* cursor = text_a;
   while(cursor) {
-    auto lex = next_lexeme(cursor, text_b);
+    auto lex = next_lexeme(nullptr, cursor, text_b);
     lexemes.push_back(lex);
     if (lex.type == LEX_EOF) {
       break;
@@ -330,7 +330,7 @@ int test_parser(const std::string& path) {
   printf("%04d: Parsing %s\n", file_pass, path.c_str());
 
   parse_accum -= timestamp_ms();
-  auto end = NodeTranslationUnit::match(token_a, token_b);
+  auto end = NodeTranslationUnit::match(nullptr, token_a, token_b);
   parse_accum += timestamp_ms();
 
   if (verbose) dump_tokens(tokens);

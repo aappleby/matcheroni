@@ -452,7 +452,7 @@ struct NodeArraySuffix;
 template<typename NT>
 struct NodeMaker : public ParseNode {
 
-  static Token* match(Token* a, Token* b) {
+  static Token* match(void* ctx, Token* a, Token* b) {
 
     // The optimization below does not actually improve performance in this
     // parser, though it could be significant in other ones.
@@ -478,7 +478,7 @@ struct NodeMaker : public ParseNode {
     NT* node = nullptr;
 
     // No node. Create a new node if the pattern matches, bail if it doesn't.
-    auto end = NT::pattern::match(a, b);
+    auto end = NT::pattern::match(ctx, a, b);
 
     if (end) {
       node = new NT();
@@ -516,7 +516,7 @@ inline ParseNodeIterator end(const ParseNode* parent) {
 
 //------------------------------------------------------------------------------
 
-inline Token* find_matching_delim(char ldelim, char rdelim, Token* a, Token* b) {
+inline Token* find_matching_delim(void* ctx, char ldelim, char rdelim, Token* a, Token* b) {
   if (*a->lex->span_a != ldelim) return nullptr;
   a++;
 
@@ -526,9 +526,9 @@ inline Token* find_matching_delim(char ldelim, char rdelim, Token* a, Token* b) 
     // Note that we _don't_ recurse through <> because they're not guaranteed
     // to be delimiters. Annoying aspect of C. :/
 
-    if (a && a->is_punct('(')) a = find_matching_delim('(', ')', a, b);
-    if (a && a->is_punct('{')) a = find_matching_delim('{', '}', a, b);
-    if (a && a->is_punct('[')) a = find_matching_delim('[', ']', a, b);
+    if (a && a->is_punct('(')) a = find_matching_delim(ctx, '(', ')', a, b);
+    if (a && a->is_punct('{')) a = find_matching_delim(ctx, '{', '}', a, b);
+    if (a && a->is_punct('[')) a = find_matching_delim(ctx, '[', ']', a, b);
 
     if (!a) return nullptr;
     a++;
@@ -545,13 +545,13 @@ inline Token* find_matching_delim(char ldelim, char rdelim, Token* a, Token* b) 
 
 template<char ldelim, char rdelim, typename P>
 struct Delimited {
-  static Token* match(Token* a, Token* b) {
+  static Token* match(void* ctx, Token* a, Token* b) {
     if (!a || !a->is_punct(ldelim)) return nullptr;
-    auto new_b = find_matching_delim(ldelim, rdelim, a, b);
+    auto new_b = find_matching_delim(ctx, ldelim, rdelim, a, b);
     if (!new_b || !new_b->is_punct(rdelim)) return nullptr;
 
     if (!new_b) return nullptr;
-    if (auto end = P::match(a + 1, new_b)) {
+    if (auto end = P::match(ctx, a + 1, new_b)) {
       if (end != new_b) return nullptr;
       return new_b + 1;
     }

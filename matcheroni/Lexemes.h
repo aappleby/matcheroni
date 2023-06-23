@@ -140,8 +140,8 @@ struct SQuoteSpan : public PatternWrapper<SQuoteSpan> {
   using pattern = DelimitedSpan<'\'', '\''>;
 };
 
-inline const char* find_matching_delim(const char* a, const char* b) {
-  return AnySpan::match(a, b);
+inline const char* find_matching_delim(void* ctx, const char* a, const char* b) {
+  return AnySpan::match(ctx, a, b);
   /*
   char ldelim = *a++;
 

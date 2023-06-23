@@ -66,32 +66,32 @@ struct MatchingParens {
       Any<MatchingParens, NotAtom<')'>>,
       Atom<')'>
     >;
-    return pattern::match(a, b);
+    return pattern::match(ctx, a, b);
   }
 };
 */
 
 __attribute__((noinline))
-const char* matcheroni_match_parens(const char* a, const char* b) {
+const char* matcheroni_match_parens(void* ctx, const char* a, const char* b) {
   using pattern =
   Seq<
     Atom<'('>,
     Any<Ref<matcheroni_match_parens>, NotAtom<')'>>,
     Atom<')'>
   >;
-  return pattern::match(a, b);
+  return pattern::match(ctx, a, b);
 }
 
 //------------------------------------------------------------------------------
 
 __attribute__((noinline))
-static const char* recursive_matching_parens(const char* a, const char* b) {
+static const char* recursive_matching_parens(void* ctx, const char* a, const char* b) {
   if (*a != '(') return nullptr;
   a++;
   while (a != b) {
     if (*a == ')') return a + 1;
     else if (*a == '(') {
-      if (auto end = recursive_matching_parens(a, b)) {
+      if (auto end = recursive_matching_parens(ctx, a, b)) {
         a = end;
       }
       else {
@@ -106,7 +106,7 @@ static const char* recursive_matching_parens(const char* a, const char* b) {
 }
 
 __attribute__((noinline))
-static const char* nonrecursive_matching_parens(const char* a, const char* b) {
+static const char* nonrecursive_matching_parens(void* ctx, const char* a, const char* b) {
   if (*a != '(') return nullptr;
   a++;
   int depth = 1;
@@ -161,7 +161,7 @@ void benchmark_paired_parens() {
         auto end1 = recursive_matching_parens(a, b);
         auto end2 = nonrecursive_matching_parens(a, b);
         auto end3 = unrolled_matcheroni_matching_parens(a, b);
-        auto end4 = MatchingParens::match(a, b);
+        auto end4 = MatchingParens::match(ctx, a, b);
 
         if (end1 != end2 || end2 != end3 || end3 != end4) {
           printf("mismatch?\n");
@@ -169,7 +169,7 @@ void benchmark_paired_parens() {
         }
         */
 
-        if (auto end = recursive_matching_parens(a, b)) {
+        if (auto end = recursive_matching_parens(nullptr, a, b)) {
           h_matches++;
           a = end;
         }
@@ -191,7 +191,7 @@ void benchmark_paired_parens() {
           x++;
         }
 
-        if (auto end = matcheroni_match_parens(a, b)) {
+        if (auto end = matcheroni_match_parens(nullptr, a, b)) {
           m_matches++;
           a = end;
         }
@@ -302,7 +302,7 @@ void benchmark_paren_letters() {
       const char* a = buf.data();
       const char* b = buf.data() + buf.size();
       while(a != b) {
-        if (auto end = matcher::match(a, b)) {
+        if (auto end = matcher::match(nullptr, a, b)) {
           m_matches++;
           a = end;
         }
@@ -327,7 +327,7 @@ int main(int argc, char** argv) {
   const char* b = a + temp.size();
 
   while(a != b) {
-    if (auto end = MatchingParens::match(a, b)) {
+    if (auto end = MatchingParens::match(ctx, a, b)) {
       a = end;
     }
     else {

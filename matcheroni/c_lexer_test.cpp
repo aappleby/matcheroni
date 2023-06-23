@@ -162,7 +162,7 @@ bool test_lex(const std::string& path, const std::string& text, bool echo) {
   auto time_a = timestamp_ms();
   while(cursor) {
 
-    auto lexeme = next_lexeme(cursor, text_b);
+    auto lexeme = next_lexeme(nullptr, cursor, text_b);
 
     if (lexeme.is_eof()) {
       break;

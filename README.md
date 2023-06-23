@@ -51,7 +51,7 @@ const char* matcheroni_match_parens(const char* a, const char* b) {
     Any<Ref<matcheroni_match_parens>, NotAtom<')'>>,
     Atom<')'>
   >;
-  return pattern::match(a, b);
+  return pattern::match(ctx, a, b);
 }
 ```
 Note that you can't nest "pattern" inside itself directly, as "using pattern" doesn't count as a declaration. Wrapping it in a function or class works though.
@@ -60,7 +60,7 @@ Note that you can't nest "pattern" inside itself directly, as "using pattern" do
 
 Matcheroni is based on two fundamental primitives -
 
- - A **"matching function"** is a function of the form ```atom* match(atom* a, atom* b)```, where ```atom``` can be any data type you can store in an array and ```a``` and ```b``` are the endpoints of the range of atoms in the array to match against.
+ - A **"matching function"** is a function of the form ```atom* match(void* ctx, atom* a, atom* b)```, where ```atom``` can be any data type you can store in an array and ```a``` and ```b``` are the endpoints of the range of atoms in the array to match against.
 
 Matching functions should return a pointer in the range ```[a, b]``` to indicate success or failure - returning ```a``` means the match succeded but did not consume any input, returning ```b``` means the match consumed all the input, returning ```nullptr``` means the match failed, and any other pointer in the range indicates that the match succeeded and consumed some amount of the input.
 
@@ -72,7 +72,7 @@ Matcheroni includes [built-in matchers for most regex-like tasks](matcheroni/Mat
 template<typename P>
 struct PrintMessage {
   static const char* match(const char* a, const char* b) {
-    const char* result = P::match(a, b);
+    const char* result = P::match(ctx, a, b);
     if (result) {
       printf("Match succeeded!\n");
     }
@@ -108,7 +108,6 @@ Since Matcheroni is based on Parsing Expression Grammars, it includes all the ba
 # Additional built-in matchers for convenience
 While writing the C lexer and parser demos, I found myself needing some additional pieces:
 
-- ```SomeOf<x, ...>``` is just ```Some<Of<x, ...>>```
 - ```Rep<N, x>``` matches ```x``` N times.
 - ```NotAtom<x, ...>``` is equivalent to ```[^abc]``` in regex, and is faster than ```Seq<Not<Atom<x, ...>>, AnyAtom>```
 - ```Range<x, y>``` is equivalent to ```[x-y]``` in regex.
@@ -266,6 +265,6 @@ const char* match_int(const char* a, const char* b) {
     >
   >;
 
-  return integer_constant::match(a, b);
+  return integer_constant::match(ctx, a, b);
 }
 ```
