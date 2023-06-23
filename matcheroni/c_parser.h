@@ -348,8 +348,19 @@ struct NodeQualifier : public PatternWrapper<NodeQualifier> {
     if (!a || a == b) return nullptr;
     int qual_count = sizeof(qualifiers) / sizeof(qualifiers[0]);
 
-    auto end = match_text(qualifiers, qual_count, a->lex->span_a, a->lex->span_b);
-    return (end == a->lex->span_b) ? a + 1 : nullptr;
+    auto aa = a->lex->span_a;
+    auto ab = a->lex->span_b;
+
+    for (auto i = 0; i < qual_count; i++) {
+      auto text = qualifiers[i];
+      auto c = aa;
+      for (; c < ab && (*c == *text) && *text; c++, text++);
+      if (*text == 0) {
+        return (c == a->lex->span_b) ? a + 1 : nullptr;
+      }
+    }
+
+    return nullptr;
   }
 
   // This is the slowest matcher in the app, why?
