@@ -454,7 +454,27 @@ struct NodeMaker : public ParseNode {
 
   static Token* match(Token* a, Token* b) {
 
+    // The optimization below does not actually improve performance in this
+    // parser, though it could be significant in other ones.
+
+    // Parseroni C parser without:
+    // Total time     27887.913728 msec
+    // Constructor 565766993
+
+    // Parseroni C parser with:
+    // Total time     28685.710080 msec
+    // Constructor 559067842
+
     // See if there's a node on the token that we can reuse
+    /*
+    if (a->top) {
+      if (typeid(*(a->top)) == typeid(NT)) {
+        return a->top->tok_b;
+      }
+    }
+    */
+
+
     NT* node = nullptr;
 
     // No node. Create a new node if the pattern matches, bail if it doesn't.
