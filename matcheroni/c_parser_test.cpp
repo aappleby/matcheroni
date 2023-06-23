@@ -401,8 +401,35 @@ teardown:
 
 //------------------------------------------------------------------------------
 
+struct Fooper {
+
+  int x = 177;
+
+  const char* match(const char* a, const char* b) {
+    printf("In Fooper::match, x is %d\n", x);
+    return nullptr;
+  }
+
+  using pattern = Ref<&Fooper::match>;
+};
+
+//------------------------------------------------------------------------------
+
 int test_parser(int argc, char** argv) {
   printf("Matcheroni c_parser_test\n");
+
+  /*
+  {
+    Fooper f;
+    f.x = 992;
+
+    const std::string text = "Hello world";
+
+    Fooper::pattern::match(&f, text.data(), text.data() + text.size());
+
+    exit(0);
+  }
+  */
 
   double total_time = 0;
   total_time -= timestamp_ms();

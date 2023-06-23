@@ -1,8 +1,6 @@
 #ifndef __MATCHERONI_H__
 #define __MATCHERONI_H__
 
-#include <compare>
-
 #ifdef MATCHERONI_USE_NAMESPACE
 namespace matcheroni {
 #endif
@@ -15,7 +13,7 @@ namespace matcheroni {
 // Matchers must always handle null pointers and empty ranges.
 
 template<typename atom>
-using matcher_function = atom* (*) (atom* a, atom* b);
+using matcher_function = atom* (*) (void* ctx, atom* a, atom* b);
 
 //------------------------------------------------------------------------------
 // Matcheroni needs some way to compare different types of atoms - for
@@ -296,16 +294,35 @@ struct Until {
 };
 
 //------------------------------------------------------------------------------
-// References to bare matcher functions.
+// Reference to a global matcher functions.
 
 // const char* my_special_matcher(const char* a, const char* b);
 // using pattern = Ref<my_special_matcher>;
 
-template<auto& M>
-struct Ref {
-  template<typename atom>
+template <auto F>
+struct Ref;
+
+template<typename atom, atom* (*F)(void* ctx, atom* a, atom* b)>
+struct Ref<F> {
   static atom* match(void* ctx, atom* a, atom* b) {
-    return M(ctx, a, b);
+    return F(ctx, a, b);
+  }
+};
+
+//------------------------------------------------------------------------------
+// Reference to a member matcher function.
+
+// struct Foo {
+//   const char* match(const char* a, const char* b);
+// };
+//
+// using pattern = Ref<&Foo::match>;
+
+template <typename T, typename atom, atom* (T::*F)(atom* a, atom* b)>
+struct Ref<F>
+{
+  static atom* match(void* ctx, atom* a, atom* b) {
+    return (((T*)ctx)->*F)(a, b);
   }
 };
 
