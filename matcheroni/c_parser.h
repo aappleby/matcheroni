@@ -1260,38 +1260,26 @@ struct NodeStatement : public PatternWrapper<NodeStatement> {
 
 //------------------------------------------------------------------------------
 
-template<typename P>
-struct ProgressBar {
-  static Token* match(void* ctx, Token* a, Token* b) {
-    printf("%.40s\n", a->lex->span_a);
-    return P::match(ctx, a, b);
-  }
-};
+class C99Parser {
+public:
+  void reset();
 
-struct NodeToplevelDeclaration : public PatternWrapper<NodeToplevelDeclaration> {
-  using pattern =
-  Oneof<
-    Atom<';'>,
-    NodeStatementTypedef,
-    Seq<NodeStruct,   Atom<';'>>,
-    Seq<NodeUnion,    Atom<';'>>,
-    Seq<NodeTemplate, Atom<';'>>,
-    Seq<NodeClass,    Atom<';'>>,
-    Seq<NodeEnum,     Atom<';'>>,
-    NodeFunction,
-    Seq<NodeDeclaration, Atom<';'>>
-  >;
-};
+  void load(const std::string& path);
+  void lex();
+  Token* parse(Token* a, Token* b);
 
-struct NodeTranslationUnit : public NodeMaker<NodeTranslationUnit> {
-  using pattern = Any<
-    //ProgressBar<
-      Oneof<
-        NodePreproc,
-        NodeToplevelDeclaration
-      >
-    //>
-  >;
+  void dump_lexemes();
+  void dump_tokens();
+
+  std::string text;
+
+  std::vector<Lexeme> lexemes;
+  std::vector<Token>  tokens;
+
+  double io_accum = 0;
+  double lex_accum = 0;
+  double parse_accum = 0;
+  double cleanup_accum = 0;
 };
 
 //------------------------------------------------------------------------------

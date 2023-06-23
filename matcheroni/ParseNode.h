@@ -64,10 +64,10 @@ using token_matcher = matcher_function<Token>;
 
 struct ParseNode {
 
-#if 1
   static constexpr size_t slab_size = 16*1024*1024;
   inline static std::vector<uint8_t*> slabs;
-  inline static size_t slab_cursor;
+  inline static size_t slab_cursor = 0;
+  inline static size_t slab_cursor_old = 0;
   inline static size_t current_size = 0;
   inline static size_t max_size = 0;
 
@@ -76,10 +76,12 @@ struct ParseNode {
     if (!slab || (slab_cursor + size > slab_size)) {
       slab = new uint8_t[slab_size];
       slab_cursor = 0;
+      slab_cursor_old = 0;
       slabs.push_back(slab);
     }
 
     auto result = slab + slab_cursor;
+    slab_cursor_old = slab_cursor;
     slab_cursor += size;
 
     current_size += size;
@@ -97,12 +99,15 @@ struct ParseNode {
   void* operator new(std::size_t size)   {
     return bump(size);
   }
-  void* operator new[](std::size_t size) { return bump(size); }
-  void  operator delete(void*)   {}
-  void  operator delete[](void*) {}
-#else
-  static void clear_slabs() {}
-#endif
+  void* operator new[](std::size_t size) {
+    return bump(size);
+  }
+
+  void  operator delete(void*)   {
+  }
+
+  void  operator delete[](void*) {
+  }
 
   //uint32_t sentinel = 12345678;
 

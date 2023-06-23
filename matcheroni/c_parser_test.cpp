@@ -10,20 +10,11 @@
 
 //------------------------------------------------------------------------------
 
-double io_accum = 0;
-double lex_accum = 0;
-double parse_accum = 0;
-double cleanup_accum = 0;
-
 int file_total = 0;
 int file_pass = 0;
 int file_keep = 0;
 int file_bytes = 0;
 int file_lines = 0;
-
-std::string text;
-std::vector<Lexeme> lexemes;
-std::vector<Token> tokens;
 
 //------------------------------------------------------------------------------
 
@@ -41,187 +32,6 @@ double timestamp_ms() {
   return (now_nanos - origin) * 1.0e-6;
 }
 
-//------------------------------------------------------------------------------
-
-void set_color(uint32_t c) {
-  if (c) {
-    printf("\u001b[38;2;%d;%d;%dm", (c >> 0) & 0xFF, (c >> 8) & 0xFF, (c >> 16) & 0xFF);
-  }
-  else {
-    printf("\u001b[0m");
-  }
-}
-
-const char* lex_to_str(const Lexeme& lex) {
-  switch(lex.type) {
-    case LEX_INVALID:    return "LEX_INVALID";
-    case LEX_SPACE:      return "LEX_SPACE";
-    case LEX_NEWLINE:    return "LEX_NEWLINE";
-    case LEX_STRING:     return "LEX_STRING";
-    case LEX_IDENTIFIER: return "LEX_IDENTIFIER";
-    case LEX_COMMENT:    return "LEX_COMMENT";
-    case LEX_PREPROC:    return "LEX_PREPROC";
-    case LEX_FLOAT:      return "LEX_FLOAT";
-    case LEX_INT:        return "LEX_INT";
-    case LEX_PUNCT:      return "LEX_PUNCT";
-    case LEX_CHAR:       return "LEX_CHAR";
-    case LEX_SPLICE:     return "LEX_SPLICE";
-    case LEX_FORMFEED:   return "LEX_FORMFEED";
-    case LEX_EOF:        return "LEX_EOF";
-  }
-  return "<invalid>";
-}
-
-uint32_t lex_to_color(const Lexeme& lex) {
-  switch(lex.type) {
-    case LEX_INVALID    : return 0x0000FF;
-    case LEX_SPACE      : return 0x804040;
-    case LEX_NEWLINE    : return 0x404080;
-    case LEX_STRING     : return 0x4488AA;
-    case LEX_IDENTIFIER : return 0xCCCC40;
-    case LEX_COMMENT    : return 0x66AA66;
-    case LEX_PREPROC    : return 0xCC88CC;
-    case LEX_FLOAT      : return 0xFF88AA;
-    case LEX_INT        : return 0xFF8888;
-    case LEX_PUNCT      : return 0x808080;
-    case LEX_CHAR       : return 0x44DDDD;
-    case LEX_SPLICE     : return 0x00CCFF;
-    case LEX_FORMFEED   : return 0xFF00FF;
-    case LEX_EOF        : return 0xFF00FF;
-  }
-  return 0x0000FF;
-}
-
-std::string escape_span(ParseNode* n) {
-  if (!n->tok_a || !n->tok_b) {
-    return "<bad span>";
-  }
-
-  if (n->tok_a == n->tok_b) {
-    return "<zero span>";
-  }
-
-  auto lex_a = n->tok_a->lex;
-  auto lex_b = (n->tok_b - 1)->lex;
-  auto len = lex_b->span_b - lex_a->span_a;
-
-  std::string result;
-  for (auto i = 0; i < len; i++) {
-    auto c = lex_a->span_a[i];
-    if (c == '\n') {
-      result.push_back('\\');
-      result.push_back('n');
-    }
-    else if (c == '\r') {
-      result.push_back('\\');
-      result.push_back('r');
-    }
-    else if (c == '\t') {
-      result.push_back('\\');
-      result.push_back('t');
-    }
-    else {
-      result.push_back(c);
-    }
-    if (result.size() >= 80) break;
-  }
-
-  return result;
-}
-
-
-void dump_tree(ParseNode* n, int max_depth, int indentation) {
-  if (max_depth && indentation == max_depth) return;
-
-  for (int i = 0; i < indentation; i++) printf(" | ");
-
-  if (n->tok_a) set_color(lex_to_color(*(n->tok_a->lex)));
-  //if (!field.empty()) printf("%-10.10s : ", field.c_str());
-
-  n->print_class_name();
-
-  printf(" '%s'\n", escape_span(n).c_str());
-
-  if (n->tok_a) set_color(0);
-
-  for (auto c = n->head; c; c = c->next) {
-    dump_tree(c, max_depth, indentation + 1);
-  }
-}
-
-//------------------------------------------------------------------------------
-
-void lex_file(std::string& text, std::vector<Lexeme>& lexemes, std::vector<Token>& tokens) {
-  auto text_a = text.data();
-  auto text_b = text_a + text.size();
-
-  const char* cursor = text_a;
-  while(cursor) {
-    auto lex = next_lexeme(nullptr, cursor, text_b);
-    lexemes.push_back(lex);
-    if (lex.type == LEX_EOF) {
-      break;
-    }
-    cursor = lex.span_b;
-  }
-
-  for (auto i = 0; i < lexemes.size(); i++) {
-    auto l = &lexemes[i];
-    if (!l->is_gap() && !l->is_preproc()) {
-      tokens.push_back(Token(l));
-    }
-  }
-}
-
-//------------------------------------------------------------------------------
-
-void dump_lexeme(const Lexeme& l) {
-  int len = l.span_b - l.span_a;
-  for (int i = 0; i < len; i++) {
-    auto c = l.span_a[i];
-    if (c == '\n' || c == '\t' || c == '\r') {
-      putc('@', stdout);
-    }
-    else {
-      putc(l.span_a[i], stdout);
-    }
-  }
-}
-
-void dump_lexemes(std::vector<Lexeme>& lexemes) {
-  for(auto& l : lexemes) {
-    dump_lexeme(l);
-    printf("\n");
-  }
-}
-
-//------------------------------------------------------------------------------
-
-void dump_tokens(std::vector<Token>& tokens) {
-  for (auto& t : tokens) {
-    // Dump token
-    printf("tok %p - ", &t);
-    if (t.lex->is_eof()) {
-      printf("<eof>");
-    }
-    else {
-      dump_lexeme(*t.lex);
-    }
-    printf("\n");
-
-    // Dump top node
-    printf("  ");
-    if (t.top) {
-      printf("top %p -> ", t.top);
-      t.top->print_class_name();
-      printf(" -> %p ", t.top->tok_b);
-    }
-    else {
-      printf("top %p", t.top);
-    }
-    printf("\n");
-  }
-}
 
 //------------------------------------------------------------------------------
 // File filters
@@ -276,69 +86,61 @@ bool should_skip(const std::string& path) {
 
 //------------------------------------------------------------------------------
 
+C99Parser parser;
+
 int test_parser(const std::string& path) {
   bool verbose = false;
 
-  text.reserve(65536);
-  lexemes.reserve(65536);
-  tokens.reserve(65536);
+  parser.text.reserve(65536);
+  parser.lexemes.reserve(65536);
+  parser.tokens.reserve(65536);
 
   //----------------------------------------
   // Read the source file
 
-  io_accum -= timestamp_ms();
-  auto size = std::filesystem::file_size(path);
-  text.resize(size);
-  memset(text.data(), 0, size);
-  FILE* file = fopen(path.c_str(), "rb");
-  if (!file) {
-    printf("Could not open %s!\n", path.c_str());
-  }
-  auto r = fread(text.data(), 1, size, file);
-  fclose(file);
-  io_accum += timestamp_ms();
+  parser.load(path);
 
-  for (auto c : text) if (c == '\n') file_lines++;
+  for (auto c : parser.text) if (c == '\n') file_lines++;
 
   //if (text.find("#define") != std::string::npos) {
   //  return -1;
   //}
 
   file_keep++;
-  file_bytes += size;
+  file_bytes += parser.text.size();
 
   //----------------------------------------
   // Lex the source file
 
   //printf("Lexing %s\n", path.c_str());
 
-  lex_accum -= timestamp_ms();
-  lex_file(text, lexemes, tokens);
-  lex_accum += timestamp_ms();
+  parser.lex_accum -= timestamp_ms();
+  parser.lex();
+  parser.lex_accum += timestamp_ms();
 
-  assert(tokens.back().lex->is_eof());
+  assert(parser.tokens.back().lex->is_eof());
 
   //dump_lexemes(lexemes);
   //return 0;
 
-  Token* token_a = tokens.data();
-  Token* token_b = tokens.data() + tokens.size() - 1;
+  Token* token_a = parser.tokens.data();
+  Token* token_b = parser.tokens.data() + parser.tokens.size() - 1;
 
   //----------------------------------------
   // Parse the source file
 
   printf("%04d: Parsing %s\n", file_pass, path.c_str());
 
-  parse_accum -= timestamp_ms();
-  auto end = NodeTranslationUnit::match(nullptr, token_a, token_b);
-  parse_accum += timestamp_ms();
+  parser.parse_accum -= timestamp_ms();
+  parser.parse(token_a, token_b);
+  parser.parse_accum += timestamp_ms();
 
-  if (verbose) dump_tokens(tokens);
+  if (verbose) parser.dump_tokens();
 
   //----------------------------------------
   // Sanity check parse result
 
-  ParseNode* root = tokens[0].top;
+  ParseNode* root = parser.tokens[0].top;
   bool parse_failed = false;
 
   if (!root) {
@@ -374,62 +176,17 @@ teardown:
   }
 
   // Clear all the nodes off the tokens
-  cleanup_accum -= timestamp_ms();
-  ParseNode::clear_slabs();
-  /*
-  for (auto& tok : tokens) {
-    //dump_tree(tok.top);
-    tok.top = nullptr;
-    auto c = tok.alt;
-    while(c) {
-      auto next = c->alt;
-      delete c;
-      c = next;
-    }
-  }
-  */
-  cleanup_accum += timestamp_ms();
-
-  // Don't forget to reset the parser state derrrrrp
-  ParseNode::reset_types();
-  text.clear();
-  lexemes.clear();
-  tokens.clear();
+  parser.cleanup_accum -= timestamp_ms();
+  parser.reset();
+  parser.cleanup_accum += timestamp_ms();
 
   return 0;
 }
 
 //------------------------------------------------------------------------------
 
-struct Fooper {
-
-  int x = 177;
-
-  const char* match(const char* a, const char* b) {
-    printf("In Fooper::match, x is %d\n", x);
-    return nullptr;
-  }
-
-  using pattern = Ref<&Fooper::match>;
-};
-
-//------------------------------------------------------------------------------
-
 int test_parser(int argc, char** argv) {
   printf("Matcheroni c_parser_test\n");
-
-  /*
-  {
-    Fooper f;
-    f.x = 992;
-
-    const std::string text = "Hello world";
-
-    Fooper::pattern::match(&f, text.data(), text.data() + text.size());
-
-    exit(0);
-  }
-  */
 
   double total_time = 0;
   total_time -= timestamp_ms();
@@ -473,11 +230,12 @@ int test_parser(int argc, char** argv) {
   //printf("Destructor  %d\n", ParseNode::destructor_count);
 
   printf("\n");
-  printf("IO time        %f msec\n", io_accum);
-  printf("Lexing time    %f msec\n", lex_accum);
-  printf("Parsing time   %f msec\n", parse_accum);
-  printf("Cleanup time   %f msec\n", cleanup_accum);
+  printf("IO time        %f msec\n", parser.io_accum);
+  printf("Lexing time    %f msec\n", parser.lex_accum);
+  printf("Parsing time   %f msec\n", parser.parse_accum);
+  printf("Cleanup time   %f msec\n", parser.cleanup_accum);
   printf("Total time     %f msec\n", total_time);
+  printf("Overhead time  %f msec\n", total_time - parser.io_accum - parser.lex_accum - parser.parse_accum - parser.cleanup_accum);
   printf("Max node size  %ld\n", ParseNode::max_size);
   printf("Files total    %d\n", file_total);
   printf("Files filtered %d\n", file_total - file_keep);
