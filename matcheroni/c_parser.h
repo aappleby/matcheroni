@@ -1262,12 +1262,14 @@ struct NodeStatement : public PatternWrapper<NodeStatement> {
 
 class C99Parser {
 public:
+  C99Parser();
   void reset();
 
   void load(const std::string& path);
   void lex();
-  Token* parse(Token* a, Token* b);
+  bool parse();
 
+  void dump_stats();
   void dump_lexemes();
   void dump_tokens();
 
@@ -1275,6 +1277,12 @@ public:
 
   std::vector<Lexeme> lexemes;
   std::vector<Token>  tokens;
+
+  int file_total = 0;
+  int file_pass = 0;
+  int file_keep = 0;
+  int file_bytes = 0;
+  int file_lines = 0;
 
   double io_accum = 0;
   double lex_accum = 0;
