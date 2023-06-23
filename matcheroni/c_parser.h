@@ -6,6 +6,49 @@
 #include "ParseNode.h"
 #include <string.h>
 
+//------------------------------------------------------------------------------
+
+class C99Parser {
+public:
+  C99Parser();
+  void reset();
+
+  void load(const std::string& path);
+  void lex();
+  ParseNode* parse();
+
+  Token* match_builtin_type_base  (Token* a, Token* b);
+  Token* match_builtin_type_prefix(Token* a, Token* b);
+  Token* match_builtin_type_suffix(Token* a, Token* b);
+
+  void dump_stats();
+  void dump_lexemes();
+  void dump_tokens();
+
+  std::string text;
+
+  std::vector<Lexeme> lexemes;
+  std::vector<Token>  tokens;
+
+  Token* tok_a = nullptr;
+  Token* tok_b = nullptr;
+
+  ParseNode* root = nullptr;
+
+  int file_total = 0;
+  int file_pass = 0;
+  int file_keep = 0;
+  int file_bytes = 0;
+  int file_lines = 0;
+
+  double io_accum = 0;
+  double lex_accum = 0;
+  double parse_accum = 0;
+  double cleanup_accum = 0;
+};
+
+//------------------------------------------------------------------------------
+
 struct NodeAbstractDeclarator;
 struct NodeClass;
 struct NodeConstructor;
@@ -103,38 +146,17 @@ struct NodeConstant : public NodeMaker<NodeConstant> {
 };
 
 //------------------------------------------------------------------------------
-
-struct NodeBuiltinTypeBase {
-  static Token* match(void* ctx, Token* a, Token* b) {
-    if (a && ParseNode::builtin_types.contains(a->lex->text())) return a + 1;
-    return nullptr;
-  }
-};
-
-struct NodeBuiltinTypePrefix {
-  static Token* match(void* ctx, Token* a, Token* b) {
-    if (a && ParseNode::builtin_type_prefixes.contains(a->lex->text())) return a + 1;
-    return nullptr;
-  }
-};
-
-struct NodeBuiltinTypeSuffix {
-  static Token* match(void* ctx, Token* a, Token* b) {
-    if (a && ParseNode::builtin_type_suffixes.contains(a->lex->text())) return a + 1;
-    return nullptr;
-  }
-};
-
-//------------------------------------------------------------------------------
 // Our builtin types are any sequence of prefixes followed by a builtin type
 
 struct NodeBuiltinType : public NodeMaker<NodeBuiltinType> {
+  using match_prefix = Ref<&C99Parser::match_builtin_type_prefix>;
+  using match_base   = Ref<&C99Parser::match_builtin_type_base>;
+  using match_suffix = Ref<&C99Parser::match_builtin_type_suffix>;
+
   using pattern = Seq<
-    Any<
-      Seq<NodeBuiltinTypePrefix, And<NodeBuiltinTypeBase>>
-    >,
-    NodeBuiltinTypeBase,
-    Opt<NodeBuiltinTypeSuffix>
+    Any<Seq<match_prefix, And<match_base>>>,
+    match_base,
+    Opt<match_suffix>
   >;
 };
 
@@ -1256,43 +1278,6 @@ struct NodeStatement : public PatternWrapper<NodeStatement> {
     // Extra semicolons
     Atom<';'>
   >;
-};
-
-//------------------------------------------------------------------------------
-
-class C99Parser {
-public:
-  C99Parser();
-  void reset();
-
-  void load(const std::string& path);
-  void lex();
-  ParseNode* parse();
-
-  void dump_stats();
-  void dump_lexemes();
-  void dump_tokens();
-
-  std::string text;
-
-  std::vector<Lexeme> lexemes;
-  std::vector<Token>  tokens;
-
-  Token* tok_a = nullptr;
-  Token* tok_b = nullptr;
-
-  ParseNode* root = nullptr;
-
-  int file_total = 0;
-  int file_pass = 0;
-  int file_keep = 0;
-  int file_bytes = 0;
-  int file_lines = 0;
-
-  double io_accum = 0;
-  double lex_accum = 0;
-  double parse_accum = 0;
-  double cleanup_accum = 0;
 };
 
 //------------------------------------------------------------------------------

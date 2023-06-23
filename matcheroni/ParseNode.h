@@ -1,13 +1,4 @@
 
-#if 0
-TOKEN RING
-top ptr
-alt ptr
-bulldozing forward clears top
-like packrat
-never delete a match because it's still a match'
-#endif
-
 #pragma once
 #include <typeinfo>
 #include <set>
@@ -18,9 +9,7 @@ never delete a match because it's still a match'
 #include "Lexemes.h"
 
 struct ParseNode;
-void set_color(uint32_t c);
-
-void dump_tree(ParseNode* n, int max_depth = 0, int indentation = 0);
+typedef std::set<std::string> IdentifierSet;
 
 //------------------------------------------------------------------------------
 // Tokens associate lexemes with parse nodes.
@@ -30,7 +19,6 @@ struct Token {
   Token(const Lexeme* lex) {
     this->lex = lex;
     this->top = nullptr;
-    //this->alt = nullptr;
   }
 
   bool is_valid() const {
@@ -55,7 +43,6 @@ struct Token {
 
   const Lexeme* lex;
   ParseNode* top;
-  //ParseNode* alt;
 };
 
 using token_matcher = matcher_function<Token>;
@@ -109,44 +96,39 @@ struct ParseNode {
   void  operator delete[](void*) {
   }
 
-  //uint32_t sentinel = 12345678;
-
   void init(Token* tok_a, Token* tok_b) {
-    //this->matcher = matcher;
     this->tok_a = tok_a;
     this->tok_b = tok_b;
-    //this->alt = nullptr;
-    //instance_count++;
     constructor_count++;
-  }
 
+    // Attach all the tops under this node to it.
+    auto cursor = tok_a;
+    while (cursor < tok_b) {
+      if (cursor->top) {
+        auto child = cursor->top;
+        cursor->top = nullptr;
+
+        if (tail) {
+          tail->next = child;
+          child->prev = tail;
+          tail = child;
+        }
+        else {
+          head = child;
+          tail = child;
+        }
+
+        cursor = child->tok_b;
+      }
+      else {
+        cursor++;
+      }
+    }
+  }
 
   virtual ~ParseNode() {
-    //assert(sentinel == 12345678);
-    //sentinel = 77777777;
-    //printf("Deleting parsenode\n");
-
-    //instance_count--;
     destructor_count++;
-
-    /*
-    auto cursor = head;
-    while(cursor) {
-      auto next = cursor->next;
-      delete cursor;
-      cursor = next;
-    }
-    */
   }
-
-  //----------------------------------------
-
-  /*
-  ParseNode* top() {
-    if (parent) return parent->top();
-    return this;
-  }
-  */
 
   //----------------------------------------
 
@@ -226,68 +208,6 @@ struct ParseNode {
 
   //----------------------------------------
 
-  void detach_children() {
-    auto c = head;
-    while(c) {
-      auto next = c->next;
-      c->next = nullptr;
-      c->prev = nullptr;
-      //c->parent = nullptr;
-      c = next;
-    }
-    head = nullptr;
-    tail = nullptr;
-  }
-
-  //----------------------------------------
-  // Attach all the tops under this node to it.
-
-  //inline static int step_over_count = 0;
-
-  void attach_children() {
-
-    auto cursor = tok_a;
-    while (cursor < tok_b) {
-      if (cursor->top) {
-        auto child = cursor->top;
-        cursor->top = nullptr;
-
-        //assert(!child->parent);
-        //if (child->parent) child->parent->detach_children();
-
-        //child->parent = this;
-        if (tail) {
-          tail->next = child;
-          child->prev = tail;
-          tail = child;
-        }
-        else {
-          head = child;
-          tail = child;
-        }
-
-        cursor = child->tok_b;
-      }
-      else {
-        //step_over_count++;
-        cursor++;
-      }
-    }
-  }
-
-  //----------------------------------------
-
-  /*
-  void reattach_children() {
-    // Run our matcher to move all our children to the top
-    auto end = matcher(tok_a, tok_b);
-    assert(end == tok_b);
-    attach_children();
-  }
-  */
-
-  //----------------------------------------
-
   void sanity() {
     // All our children should be sane.
     for (auto cursor = head; cursor; cursor = cursor->next) {
@@ -312,97 +232,16 @@ struct ParseNode {
 
   inline static int constructor_count = 0;
   inline static int destructor_count = 0;
-  //inline static int instance_count = 0;
 
-  //token_matcher matcher = nullptr;
   Token* tok_a = nullptr;
   Token* tok_b = nullptr;
 
-  //ParseNode* parent = nullptr;
   ParseNode* prev   = nullptr;
   ParseNode* next   = nullptr;
   ParseNode* head   = nullptr;
   ParseNode* tail   = nullptr;
-  //ParseNode* alt    = nullptr;
 
   //----------------------------------------
-
-  typedef std::set<std::string> IdentifierSet;
-
-  inline static IdentifierSet builtin_types = {
-    "void",
-    "bool",
-    "char", "short", "int", "long",
-    "float", "double",
-    "signed", "unsigned",
-    "uint8_t", "uint16_t", "uint32_t", "uint64_t",
-    "int8_t", "int16_t", "int32_t", "int64_t",
-    "_Bool",
-    "_Complex", // yes this is both a prefix and a type :P
-    "__real__",
-    "__imag__",
-    "__builtin_va_list",
-    "wchar_t",
-
-    // technically part of the c library, but it shows up in stdarg test files
-    "va_list",
-
-    // used in fprintf.c torture test
-    "FILE",
-
-    // used in fputs-lib.c torture test
-    "size_t",
-
-    // pr60003.c fails if this is included, pr56982.c fails if it isn't
-    //"jmp_buf",
-
-    // gcc stuff
-    "__int128",
-    "__SIZE_TYPE__",
-    "__PTRDIFF_TYPE__",
-    "__WCHAR_TYPE__",
-    "__WINT_TYPE__",
-    "__INTMAX_TYPE__",
-    "__UINTMAX_TYPE__",
-    "__SIG_ATOMIC_TYPE__",
-    "__INT8_TYPE__",
-    "__INT16_TYPE__",
-    "__INT32_TYPE__",
-    "__INT64_TYPE__",
-    "__UINT8_TYPE__",
-    "__UINT16_TYPE__",
-    "__UINT32_TYPE__",
-    "__UINT64_TYPE__",
-    "__INT_LEAST8_TYPE__",
-    "__INT_LEAST16_TYPE__",
-    "__INT_LEAST32_TYPE__",
-    "__INT_LEAST64_TYPE__",
-    "__UINT_LEAST8_TYPE__",
-    "__UINT_LEAST16_TYPE__",
-    "__UINT_LEAST32_TYPE__",
-    "__UINT_LEAST64_TYPE__",
-    "__INT_FAST8_TYPE__",
-    "__INT_FAST16_TYPE__",
-    "__INT_FAST32_TYPE__",
-    "__INT_FAST64_TYPE__",
-    "__UINT_FAST8_TYPE__",
-    "__UINT_FAST16_TYPE__",
-    "__UINT_FAST32_TYPE__",
-    "__UINT_FAST64_TYPE__",
-    "__INTPTR_TYPE__",
-    "__UINTPTR_TYPE__",
-  };
-
-  inline static IdentifierSet builtin_type_prefixes = {
-    "signed", "unsigned", "short", "long", "_Complex",
-    "__signed__", "__unsigned__",
-    "__complex__", "__real__", "__imag__",
-  };
-
-  inline static IdentifierSet builtin_type_suffixes = {
-    // Why, GCC, why?
-    "_Complex", "__complex__",
-  };
 
   inline static IdentifierSet class_types;
   inline static IdentifierSet struct_types;
@@ -481,7 +320,6 @@ struct NodeMaker : public ParseNode {
     if (end) {
       NT* node = new NT();
       node->init(a, end);
-      node->attach_children();
       a->top = node;
     }
     return end;
