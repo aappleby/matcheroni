@@ -21,7 +21,25 @@ public:
   Token* match_builtin_type_prefix(Token* a, Token* b);
   Token* match_builtin_type_suffix(Token* a, Token* b);
 
-  Token* match_class_type(Token* a, Token* b);
+  Token* match_class_type  (Token* a, Token* b);
+  Token* match_struct_type (Token* a, Token* b);
+  Token* match_union_type  (Token* a, Token* b);
+  Token* match_enum_type   (Token* a, Token* b);
+  Token* match_typedef_type(Token* a, Token* b);
+
+  template<typename T>
+  Token* make_node(Token* a, Token* b) {
+    auto end = T::pattern::match(this, a, b);
+    if (end) {
+      T* node = new T();
+      node->init(a, end);
+      a->top = node;
+    }
+    return end;
+  }
+
+  template<typename T>
+  using node_maker = Ref<&C99Parser::make_node<T>>;
 
   void dump_stats();
   void dump_lexemes();
@@ -49,6 +67,10 @@ public:
   double cleanup_accum = 0;
 
   IdentifierSet class_types;
+  IdentifierSet struct_types;
+  IdentifierSet union_types;
+  IdentifierSet enum_types;
+  IdentifierSet typedef_types;
 };
 
 //------------------------------------------------------------------------------
@@ -162,41 +184,6 @@ struct NodeBuiltinType : public NodeMaker<NodeBuiltinType> {
     match_base,
     Opt<match_suffix>
   >;
-};
-
-//struct NodeClassType : public NodeMaker<NodeClassType> {
-//  static Token* match(void* ctx, Token* a, Token* b) {
-//    if (a && ParseNode::class_types.contains(a->lex->text())) return a + 1;
-//    return nullptr;
-//  }
-//};
-
-struct NodeStructType : public NodeMaker<NodeStructType> {
-  static Token* match(void* ctx, Token* a, Token* b) {
-    if (a && ParseNode::struct_types.contains(a->lex->text())) return a + 1;
-    return nullptr;
-  }
-};
-
-struct NodeUnionType : public NodeMaker<NodeUnionType> {
-  static Token* match(void* ctx, Token* a, Token* b) {
-    if (a && ParseNode::union_types.contains(a->lex->text())) return a + 1;
-    return nullptr;
-  }
-};
-
-struct NodeEnumType : public NodeMaker<NodeEnumType> {
-  static Token* match(void* ctx, Token* a, Token* b) {
-    if (a && ParseNode::enum_types.contains(a->lex->text())) return a + 1;
-    return nullptr;
-  }
-};
-
-struct NodeTypedefType : public NodeMaker<NodeTypedefType> {
-  static Token* match(void* ctx, Token* a, Token* b) {
-    if (a && ParseNode::typedef_types.contains(a->lex->text())) return a + 1;
-    return nullptr;
-  }
 };
 
 //------------------------------------------------------------------------------
@@ -485,7 +472,7 @@ struct NodeSpecifier : public NodeMaker<NodeSpecifier> {
       Seq<Keyword<"struct">, NodeIdentifier>,
       Seq<Keyword<"enum">,   NodeIdentifier>,
       NodeBuiltinType,
-      NodeTypedefType,
+      Ref<&C99Parser::match_typedef_type>,
       /*
       // If this was C++, we would need to match these directly
       NodeClassType,
@@ -675,7 +662,7 @@ struct NodeStructName : public NodeMaker<NodeStructName> {
       auto node = a->top;
       if (auto id = node->child<NodeIdentifier>()) {
         //printf("Adding struct type %s\n", id->text().c_str());
-        ParseNode::struct_types.insert(id->text());
+        ((C99Parser*)ctx)->struct_types.insert(id->text());
       }
     }
     return end;
@@ -708,7 +695,7 @@ struct NodeUnionName : public NodeMaker<NodeUnionName> {
       auto node = a->top;
       if (auto id = node->child<NodeIdentifier>()) {
         //printf("Adding union type %s\n", id->text().c_str());
-        ParseNode::union_types.insert(id->text());
+        ((C99Parser*)ctx)->union_types.insert(id->text());
       }
     }
     return end;
@@ -796,7 +783,7 @@ struct NodeEnumName : public NodeMaker<NodeEnumName> {
       auto node = a->top;
       if (auto id = node->child<NodeIdentifier>()) {
         //printf("Adding enum type %s\n", id->text().c_str());
-        ParseNode::enum_types.insert(id->text());
+        ((C99Parser*)ctx)->enum_types.insert(id->text());
       }
     }
     return end;
@@ -909,12 +896,13 @@ struct NodeFunction : public NodeMaker<NodeFunction> {
 //------------------------------------------------------------------------------
 
 struct NodeConstructor : public NodeMaker<NodeConstructor> {
-  using match_class_type = Ref<&C99Parser::match_class_type>;
+  using match_class_type  = Ref<&C99Parser::match_class_type>;
+  using match_struct_type = Ref<&C99Parser::match_struct_type>;
 
   using pattern = Seq<
     Oneof<
       match_class_type,
-      NodeStructType
+      match_struct_type
     >,
     NodeParamList,
     Oneof<
@@ -1185,56 +1173,56 @@ struct NodeStatementTypedef : public NodeMaker<NodeStatementTypedef> {
     Atom<';'>
   >;
 
-  static void extract_declarator(const NodeDeclarator* decl) {
+  static void extract_declarator(void* ctx, const NodeDeclarator* decl) {
     if (auto id = decl->child<NodeIdentifier>()) {
       auto text = id->text();
       //printf("Adding typedef %s\n", text.c_str());
-      ParseNode::typedef_types.insert(text);
+      ((C99Parser*)ctx)->typedef_types.insert(text);
     }
 
     for (auto child : decl) {
       if (auto decl = child->as<NodeDeclarator>()) {
-        extract_declarator(decl);
+        extract_declarator(ctx, decl);
       }
     }
   }
 
-  static void extract_declarator_list(const NodeDeclaratorList* decls) {
+  static void extract_declarator_list(void* ctx, const NodeDeclaratorList* decls) {
     if (!decls) return;
     for (auto child : decls) {
       if (auto decl = child->as<NodeDeclarator>()) {
-        extract_declarator(decl);
+        extract_declarator(ctx, decl);
       }
     }
   }
 
-  static void extract_type(Token* a, Token* b) {
+  static void extract_type(void* ctx, Token* a, Token* b) {
     auto node = a->top;
 
     //node->dump_tree();
 
     if (auto type = node->child<NodeStruct>()) {
-      extract_declarator_list(type->child<NodeDeclaratorList>());
+      extract_declarator_list(ctx, type->child<NodeDeclaratorList>());
       return;
     }
 
     if (auto type = node->child<NodeUnion>()) {
-      extract_declarator_list(type->child<NodeDeclaratorList>());
+      extract_declarator_list(ctx, type->child<NodeDeclaratorList>());
       return;
     }
 
     if (auto type = node->child<NodeClass>()) {
-      extract_declarator_list(type->child<NodeDeclaratorList>());
+      extract_declarator_list(ctx, type->child<NodeDeclaratorList>());
       return;
     }
 
     if (auto type = node->child<NodeEnum>()) {
-      extract_declarator_list(type->child<NodeDeclaratorList>());
+      extract_declarator_list(ctx, type->child<NodeDeclaratorList>());
       return;
     }
 
     if (auto type = node->child<NodeDeclaration>()) {
-      extract_declarator_list(type->child<NodeDeclaratorList>());
+      extract_declarator_list(ctx, type->child<NodeDeclaratorList>());
       return;
     }
 
@@ -1243,7 +1231,7 @@ struct NodeStatementTypedef : public NodeMaker<NodeStatementTypedef> {
 
   static Token* match(void* ctx, Token* a, Token* b) {
     auto end = NodeMaker::match(ctx, a, b);
-    if (end) extract_type(a, b);
+    if (end) extract_type(ctx, a, b);
     return end;
   }
 };
