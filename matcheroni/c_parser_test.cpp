@@ -128,7 +128,7 @@ std::string escape_span(ParseNode* n) {
 }
 
 
-void dump_tree(ParseNode* n, int max_depth = 0, int indentation = 0) {
+void dump_tree(ParseNode* n, int max_depth, int indentation) {
   if (max_depth && indentation == max_depth) return;
 
   for (int i = 0; i < indentation; i++) printf(" | ");
@@ -218,12 +218,6 @@ void dump_tokens(std::vector<Token>& tokens) {
       printf("top %p", t.top);
     }
     printf("\n");
-
-    // Dump memo
-    for (auto memo = t.memo; memo; memo = memo->next) {
-      printf("  ");
-      printf("memo %s -> %p\n", memo->type->name(), memo->node);
-    }
   }
 }
 
@@ -373,18 +367,17 @@ teardown:
     printf("Node count %d\n", root->node_count());
   }
 
-  // Clear all the nodes out of the memo on each token
+  // Clear all the nodes off the tokens
   for (auto& tok : tokens) {
-    auto memo = tok.memo;
-    while(memo) {
-      auto next = memo->next;
-      delete memo->node;
-      memo = next;
+    //dump_tree(tok.top);
+    tok.top = nullptr;
+    auto c = tok.alt;
+    while(c) {
+      auto next = c->alt;
+      delete c;
+      c = next;
     }
   }
-
-  // Clear the memo pool
-  MatchMemo::clear_pool();
 
   // Don't forget to reset the parser state derrrrrp
   ParseNode::reset_types();
@@ -430,13 +423,14 @@ int test_parser(int argc, char** argv) {
     if (should_skip(path)) continue;
     test_parser(path);
 
-    if (file_total == 10) break;
+    //if (file_total == 10) break;
   }
 
 #endif
 
   total_time += timestamp_ms();
 
+  printf("Step over count %d\n", ParseNode::step_over_count);
   printf("Constructor %d\n", ParseNode::constructor_count);
   printf("Destructor  %d\n", ParseNode::destructor_count);
 

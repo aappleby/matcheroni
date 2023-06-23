@@ -18,8 +18,9 @@ never delete a match because it's still a match'
 #include "Lexemes.h"
 
 struct ParseNode;
-struct MatchMemo;
 void set_color(uint32_t c);
+
+void dump_tree(ParseNode* n, int max_depth = 0, int indentation = 0);
 
 //------------------------------------------------------------------------------
 // Tokens associate lexemes with parse nodes.
@@ -29,7 +30,7 @@ struct Token {
   Token(const Lexeme* lex) {
     this->lex = lex;
     this->top = nullptr;
-    this->memo = nullptr;
+    this->alt = nullptr;
   }
 
   bool is_valid() const {
@@ -54,74 +55,42 @@ struct Token {
 
   const Lexeme* lex;
   ParseNode* top;
-  MatchMemo* memo;
+  ParseNode* alt;
 };
-
-//------------------------------------------------------------------------------
 
 using token_matcher = matcher_function<Token>;
-
-struct MatchMemo {
-  const std::type_info* type;
-  token_matcher matcher;
-  ParseNode*    node;
-  MatchMemo*    next;
-
-  static constexpr int slab_size = 1024;
-  inline static int inst_count = 0;
-  inline static std::vector<MatchMemo*> inst_pool;
-
-  static MatchMemo* take() {
-    int slab_index = inst_count / slab_size;
-    int inst_index = inst_count % slab_size;
-
-    if (slab_index >= inst_pool.size()) {
-      inst_pool.push_back(new MatchMemo[1024]);
-    }
-
-    auto memo = &inst_pool[slab_index][inst_index];
-    memset(memo, 0, sizeof(MatchMemo));
-
-    inst_count++;
-    return memo;
-  }
-
-  static void clear_pool() {
-    for (auto slab : inst_pool) delete [] slab;
-    inst_pool.clear();
-    inst_count = 0;
-  }
-
-private:
-  MatchMemo() {}
-};
 
 //------------------------------------------------------------------------------
 
 struct ParseNode {
 
+  //uint32_t sentinel = 12345678;
+
   void init(token_matcher matcher, Token* tok_a, Token* tok_b) {
     this->matcher = matcher;
     this->tok_a = tok_a;
     this->tok_b = tok_b;
-    instance_count++;
-    constructor_count++;
+    this->alt = nullptr;
+    //instance_count++;
+    //constructor_count++;
   }
 
   virtual ~ParseNode() {
+    //assert(sentinel == 12345678);
+    //sentinel = 77777777;
     //printf("Deleting parsenode\n");
 
-    instance_count--;
-    destructor_count++;
+    //instance_count--;
+    //destructor_count++;
 
+    /*
     auto cursor = head;
     while(cursor) {
       auto next = cursor->next;
-      cursor->parent = nullptr;
-      cursor->prev = nullptr;
-      cursor->next = nullptr;
+      delete cursor;
       cursor = next;
     }
+    */
   }
 
   //----------------------------------------
@@ -225,13 +194,18 @@ struct ParseNode {
   //----------------------------------------
   // Attach all the tops under this node to it.
 
+  inline static int step_over_count = 0;
+
   void attach_children() {
 
     auto cursor = tok_a;
     while (cursor < tok_b) {
       if (cursor->top) {
         auto child = cursor->top;
-        if (child->parent) child->parent->detach_children();
+        cursor->top = nullptr;
+
+        assert(!child->parent);
+        //if (child->parent) child->parent->detach_children();
 
         child->parent = this;
         if (tail) {
@@ -247,6 +221,7 @@ struct ParseNode {
         cursor = child->tok_b;
       }
       else {
+        //step_over_count++;
         cursor++;
       }
     }
@@ -298,6 +273,7 @@ struct ParseNode {
   ParseNode* next   = nullptr;
   ParseNode* head   = nullptr;
   ParseNode* tail   = nullptr;
+  ParseNode* alt    = nullptr;
 
   //----------------------------------------
 
@@ -426,6 +402,8 @@ inline bool atom_cmp(Token& a, const StringParam<N>& b) {
 //#define USE_MEMO
 //#define MEMOIZE_UNMATCHES
 
+struct NodeArraySuffix;
+
 template<typename NT>
 struct NodeMaker : public ParseNode {
 
@@ -434,46 +412,6 @@ struct NodeMaker : public ParseNode {
     // See if there's a node on the token that we can reuse
     NT* node = nullptr;
 
-#ifdef USE_MEMO
-    for (auto memo = a->memo; memo; memo = memo->next) {
-      /*if (typeid(*c) == typeid(NT))*/
-      if (memo->matcher == (token_matcher)NT::pattern::match) {
-#ifdef MEMOIZE_UNMATCHES
-        if (memo->node) {
-          // Memo has a node, reuse it
-          node = dynamic_cast<NT*>(memo->node);
-          assert(node);
-        }
-        else {
-          //static int fail_count = 0;
-          //printf("faaaail! %d\n", fail_count++);
-          // Memo had no node, match already going to fail
-          return nullptr;
-        }
-#else
-        // Memo has a node, reuse it
-        node = dynamic_cast<NT*>(memo->node);
-        assert(node);
-#endif
-        break;
-      }
-    }
-
-    if (node) {
-      // Yep, there is - reconnect its children if needed
-      //printf("yay reuse\n");
-      if (!node->head) {
-        //printf("reused node was disconnected\n");
-        auto end = NT::pattern::match(a, b);
-        assert(end);
-        node->attach_children();
-      }
-      // And now our new node becomes token A's top.
-      a->top = node;
-      return node->tok_b;
-    }
-#endif
-
     // No node. Create a new node if the pattern matches, bail if it doesn't.
     auto end = NT::pattern::match(a, b);
 
@@ -481,25 +419,12 @@ struct NodeMaker : public ParseNode {
       node = new NT();
       node->init(NT::pattern::match, a, end);
       node->attach_children();
+
       // And now our new node becomes token A's top.
+      node->alt = a->alt;
+      a->alt = node;
       a->top = node;
     }
-
-    // Storing failed matches does not currently appear to be worth it.
-#if 1
-#ifdef MEMOIZE_UNMATCHES
-    {
-#else
-    if (node) {
-#endif
-      auto memo = MatchMemo::take();
-      memo->type    = &typeid(NT);
-      memo->matcher = NT::pattern::match;
-      memo->node    = node;
-      memo->next    = a->memo;
-      a->memo       = memo;
-    }
-#endif
 
     return end;
   }
