@@ -30,6 +30,16 @@ inline int atom_cmp(const char& a, const char& b) {
 // Matchers will often need to compare literal strings of text, so some helpers
 // are provided here as well.
 
+inline int cmp_span_lit(const char* aa, const char* ab, const char* b) {
+  while(1) {
+    auto ca = aa == ab ? 0 : *aa;
+    auto cb = *b;
+    if (ca != cb || ca == 0) return ca - cb;
+    aa++;
+    b++;
+  }
+}
+
 inline const char* match_text(const char* text, const char* a, const char* b) {
   auto c = a;
   for (;c < b && (*c == *text) && *text; c++, text++);

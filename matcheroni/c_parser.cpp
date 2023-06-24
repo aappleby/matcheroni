@@ -5,80 +5,107 @@
 
 //------------------------------------------------------------------------------
 
-IdentifierSet builtin_type_base = {
-  "void",
-  "bool",
-  "char", "short", "int", "long",
-  "float", "double",
-  "signed", "unsigned",
-  "uint8_t", "uint16_t", "uint32_t", "uint64_t",
-  "int8_t", "int16_t", "int32_t", "int64_t",
+// MUST BE SORTED CASE-SENSITIVE
+constexpr const char* builtin_type_base[] = {
+  "FILE", // used in fprintf.c torture test
   "_Bool",
   "_Complex", // yes this is both a prefix and a type :P
-  "__real__",
-  "__imag__",
-  "__builtin_va_list",
-  "wchar_t",
-
-  // technically part of the c library, but it shows up in stdarg test files
-  "va_list",
-
-  // used in fprintf.c torture test
-  "FILE",
-
-  // used in fputs-lib.c torture test
-  "size_t",
-
-  // pr60003.c fails if this is included, pr56982.c fails if it isn't
-  //"jmp_buf",
-
-  // gcc stuff
-  "__int128",
-  "__SIZE_TYPE__",
-  "__PTRDIFF_TYPE__",
-  "__WCHAR_TYPE__",
-  "__WINT_TYPE__",
-  "__INTMAX_TYPE__",
-  "__UINTMAX_TYPE__",
-  "__SIG_ATOMIC_TYPE__",
-  "__INT8_TYPE__",
   "__INT16_TYPE__",
   "__INT32_TYPE__",
   "__INT64_TYPE__",
-  "__UINT8_TYPE__",
-  "__UINT16_TYPE__",
-  "__UINT32_TYPE__",
-  "__UINT64_TYPE__",
-  "__INT_LEAST8_TYPE__",
-  "__INT_LEAST16_TYPE__",
-  "__INT_LEAST32_TYPE__",
-  "__INT_LEAST64_TYPE__",
-  "__UINT_LEAST8_TYPE__",
-  "__UINT_LEAST16_TYPE__",
-  "__UINT_LEAST32_TYPE__",
-  "__UINT_LEAST64_TYPE__",
-  "__INT_FAST8_TYPE__",
+  "__INT8_TYPE__",
+  "__INTMAX_TYPE__",
+  "__INTPTR_TYPE__",
   "__INT_FAST16_TYPE__",
   "__INT_FAST32_TYPE__",
   "__INT_FAST64_TYPE__",
-  "__UINT_FAST8_TYPE__",
+  "__INT_FAST8_TYPE__",
+  "__INT_LEAST16_TYPE__",
+  "__INT_LEAST32_TYPE__",
+  "__INT_LEAST64_TYPE__",
+  "__INT_LEAST8_TYPE__",
+  "__PTRDIFF_TYPE__",
+  "__SIG_ATOMIC_TYPE__",
+  "__SIZE_TYPE__",
+  "__UINT16_TYPE__",
+  "__UINT32_TYPE__",
+  "__UINT64_TYPE__",
+  "__UINT8_TYPE__",
+  "__UINTMAX_TYPE__",
+  "__UINTPTR_TYPE__",
   "__UINT_FAST16_TYPE__",
   "__UINT_FAST32_TYPE__",
   "__UINT_FAST64_TYPE__",
-  "__INTPTR_TYPE__",
-  "__UINTPTR_TYPE__",
+  "__UINT_FAST8_TYPE__",
+  "__UINT_LEAST16_TYPE__",
+  "__UINT_LEAST32_TYPE__",
+  "__UINT_LEAST64_TYPE__",
+  "__UINT_LEAST8_TYPE__",
+  "__WCHAR_TYPE__",
+  "__WINT_TYPE__",
+  "__builtin_va_list",
+  "__imag__",
+  "__int128",
+  "__real__",
+  "bool",
+  "char",
+  "double",
+  "float",
+  "int",
+  "int16_t",
+  "int32_t",
+  "int64_t",
+  "int8_t",
+  "long",
+  "short",
+  "signed",
+  "size_t", // used in fputs-lib.c torture test
+  "uint16_t",
+  "uint32_t",
+  "uint64_t",
+  "uint8_t",
+  "unsigned",
+  "va_list", // technically part of the c library, but it shows up in stdarg test files
+  "void",
+  "wchar_t",
 };
 
-IdentifierSet builtin_type_prefixes = {
-  "signed", "unsigned", "short", "long", "_Complex",
-  "__signed__", "__unsigned__",
-  "__complex__", "__real__", "__imag__",
+constexpr int topbit(int x) {
+  for (int i = 0x40000000; i; i = i >> 1) {
+    if (x & i) return i;
+  }
+  return 0;
+}
+
+constexpr int builtin_type_base_count  = sizeof(builtin_type_base) / sizeof(builtin_type_base[0]);
+constexpr int builtin_type_base_topbit = topbit(builtin_type_base_count);
+
+// MUST BE SORTED CASE-SENSITIVE
+const char* builtin_type_prefix[] = {
+  "_Complex",
+  "__complex__",
+  "__imag__",
+  "__real__",
+  "__signed__",
+  "__unsigned__",
+  "long",
+  "short",
+  "signed",
+  "unsigned",
 };
 
-IdentifierSet builtin_type_suffixes = {
+constexpr int builtin_type_prefix_count  = sizeof(builtin_type_prefix) / sizeof(builtin_type_prefix[0]);
+constexpr int builtin_type_prefix_topbit = topbit(builtin_type_prefix_count);
+
+// MUST BE SORTED CASE-SENSITIVE
+const char* builtin_type_suffix[] = {
   // Why, GCC, why?
-  "_Complex", "__complex__",
+  "_Complex",
+  "__complex__",
 };
+
+constexpr int builtin_type_suffix_count  = sizeof(builtin_type_suffix) / sizeof(builtin_type_suffix[0]);
+constexpr int builtin_type_suffix_topbit = topbit(builtin_type_suffix_count);
 
 //------------------------------------------------------------------------------
 
@@ -280,17 +307,71 @@ ParseNode* C99Parser::parse() {
 //------------------------------------------------------------------------------
 
 Token* C99Parser::match_builtin_type_base(Token* a, Token* b) {
-  if (a && builtin_type_base.contains(a->lex->text())) return a + 1;
-  return nullptr;
+  if (!a || a == b) return nullptr;
+
+  int bit = builtin_type_base_topbit;
+  int index = 0;
+
+  auto taa = a->lex->span_a;
+  auto tab = a->lex->span_b;
+
+  while(1) {
+    auto tb = builtin_type_base[index | bit];
+    auto c = cmp_span_lit(taa, tab, tb);
+    if (c == 0) return a + 1;
+    if (c > 0) index |= bit;
+    if (bit == 0) return nullptr;
+    bit >>= 1;
+  }
 }
 
 Token* C99Parser::match_builtin_type_prefix(Token* a, Token* b) {
-  if (a && builtin_type_prefixes.contains(a->lex->text())) return a + 1;
+  if (!a || a == b) return nullptr;
+
+  /*
+  if (builtin_type_prefix.contains(a->lex->text())) return a + 1;
+  */
+
+
+  int bit = builtin_type_prefix_topbit;
+  int index = 0;
+
+  auto taa = a->lex->span_a;
+  auto tab = a->lex->span_b;
+
+  while(1) {
+    auto tb = builtin_type_prefix[index | bit];
+    auto c = cmp_span_lit(taa, tab, tb);
+    if (c == 0) return a + 1;
+    if (c > 0) index |= bit;
+    if (bit == 0) return nullptr;
+    bit >>= 1;
+  }
+
+  /*
+  auto taa = a->lex->span_a;
+  auto tab = a->lex->span_b;
+
+  for (auto tb : builtin_type_prefix) {
+    if (cmp_span_lit(taa, tab, tb) == 0) return a + 1;
+  }
+  */
+
+
   return nullptr;
 }
 
 Token* C99Parser::match_builtin_type_suffix(Token* a, Token* b) {
-  if (a && builtin_type_suffixes.contains(a->lex->text())) return a + 1;
+  if (!a || a == b) return nullptr;
+  //if (builtin_type_suffix.contains(a->lex->text())) return a + 1;
+
+  auto taa = a->lex->span_a;
+  auto tab = a->lex->span_b;
+
+  for (auto tb : builtin_type_suffix) {
+    if (cmp_span_lit(taa, tab, tb) == 0) return a + 1;
+  }
+
   return nullptr;
 }
 

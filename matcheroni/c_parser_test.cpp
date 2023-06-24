@@ -104,8 +104,10 @@ int test_parser(int argc, char** argv) {
 
 #endif
 
+
   printf("\n");
   parser.dump_stats();
+  printf("text count %d\n", Lexeme::text_count);
 
   return 0;
 }

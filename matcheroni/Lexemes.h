@@ -38,7 +38,10 @@ struct Lexeme {
     return int(span_b - span_a);
   }
 
+  // this gets called 189 million times in the big test...
+  inline static int text_count = 0;
   std::string text() const {
+    text_count++;
     return std::string(span_a, span_b);
   }
 

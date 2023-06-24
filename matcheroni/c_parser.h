@@ -111,7 +111,6 @@ using opt_comma_separated = Opt<comma_separated<P>>;
 
 template<StringParam lit>
 struct Operator {
-
   static Token* match(void* ctx, Token* a, Token* b) {
     if (!a || a == b) return nullptr;
     if (a + sizeof(lit.value) > b) return nullptr;
