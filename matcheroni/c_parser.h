@@ -186,6 +186,7 @@ public:
   Token* match_builtin_type_prefix(Token* a, Token* b);
   Token* match_builtin_type_suffix(Token* a, Token* b);
 
+  Token* match_type (const std::vector<std::string>& types, Token* a, Token* b);
   Token* match_class_type  (Token* a, Token* b);
   Token* match_struct_type (Token* a, Token* b);
   Token* match_union_type  (Token* a, Token* b);
@@ -231,19 +232,23 @@ public:
   double parse_accum = 0;
   double cleanup_accum = 0;
 
-  void add_class_type(const std::string& t) {
-    if (std::find(class_types.begin(), class_types.end(), t) == class_types.end()) {
-      class_types.push_back(t);
+  void add_type(const std::string& t, std::vector<std::string>& types) {
+    if (std::find(types.begin(), types.end(), t) == types.end()) {
+      types.push_back(t);
     }
   }
 
-  std::vector<std::string> class_types;
+  void add_class_type  (const std::string& t) { add_type(t, class_types); }
+  void add_struct_type (const std::string& t) { add_type(t, struct_types); }
+  void add_union_type  (const std::string& t) { add_type(t, union_types); }
+  void add_enum_type   (const std::string& t) { add_type(t, enum_types); }
+  void add_typedef_type(const std::string& t) { add_type(t, typedef_types); }
 
-  //IdentifierSet class_types;
-  IdentifierSet struct_types;
-  IdentifierSet union_types;
-  IdentifierSet enum_types;
-  IdentifierSet typedef_types;
+  std::vector<std::string> class_types;
+  std::vector<std::string> struct_types;
+  std::vector<std::string> union_types;
+  std::vector<std::string> enum_types;
+  std::vector<std::string> typedef_types;
 };
 
 //------------------------------------------------------------------------------
@@ -813,7 +818,7 @@ struct NodeStructName : public NodeMaker<NodeStructName> {
       auto node = a->top;
       if (auto id = node->child<NodeIdentifier>()) {
         //printf("Adding struct type %s\n", id->text().c_str());
-        ((C99Parser*)ctx)->struct_types.insert(id->text());
+        ((C99Parser*)ctx)->add_struct_type(id->text());
       }
     }
     return end;
@@ -846,7 +851,7 @@ struct NodeUnionName : public NodeMaker<NodeUnionName> {
       auto node = a->top;
       if (auto id = node->child<NodeIdentifier>()) {
         //printf("Adding union type %s\n", id->text().c_str());
-        ((C99Parser*)ctx)->union_types.insert(id->text());
+        ((C99Parser*)ctx)->add_union_type(id->text());
       }
     }
     return end;
@@ -931,7 +936,7 @@ struct NodeEnumName : public NodeMaker<NodeEnumName> {
       auto node = a->top;
       if (auto id = node->child<NodeIdentifier>()) {
         //printf("Adding enum type %s\n", id->text().c_str());
-        ((C99Parser*)ctx)->enum_types.insert(id->text());
+        ((C99Parser*)ctx)->add_enum_type(id->text());
       }
     }
     return end;
@@ -1323,9 +1328,8 @@ struct NodeStatementTypedef : public NodeMaker<NodeStatementTypedef> {
 
   static void extract_declarator(void* ctx, const NodeDeclarator* decl) {
     if (auto id = decl->child<NodeIdentifier>()) {
-      auto text = id->text();
-      //printf("Adding typedef %s\n", text.c_str());
-      ((C99Parser*)ctx)->typedef_types.insert(text);
+      //printf("Adding typedef %s\n", id->text().c_str());
+      ((C99Parser*)ctx)->add_typedef_type(id->text());
     }
 
     for (auto child : decl) {

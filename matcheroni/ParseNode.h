@@ -9,7 +9,6 @@
 #include "Lexemes.h"
 
 struct ParseNode;
-typedef std::set<std::string> IdentifierSet;
 
 //------------------------------------------------------------------------------
 // Tokens associate lexemes with parse nodes.
