@@ -6,6 +6,13 @@
 #include "ParseNode.h"
 #include <string.h>
 
+constexpr inline int topbit(int x) {
+  for (int i = 0x40000000; i; i = i >> 1) {
+    if (x & i) return i;
+  }
+  return 0;
+}
+
 //------------------------------------------------------------------------------
 
 class C99Parser {
@@ -348,31 +355,62 @@ struct NodeAttribute : public NodeMaker<NodeAttribute> {
 //------------------------------------------------------------------------------
 
 struct NodeQualifier : public PatternWrapper<NodeQualifier> {
-  inline static const char* qualifiers[] = {
-    "__const", "__extension__", "__inline__", "__inline", "__restrict__",
-    "__restrict", "__stdcall", "__volatile__", "__volatile", "_Noreturn",
-    "_Thread_local", "auto", "const", "consteval", "constexpr", "constinit",
-    "explicit", "extern", "inline", "mutable", "register", "restrict",
-    "static", "thread_local", "__thread", /*"typedef",*/ "virtual", "volatile",
+  constexpr inline static const char* qualifiers[] = {
+    "_Noreturn",
+    "_Thread_local",
+    "__const",
+    "__extension__",
+    "__inline",
+    "__inline__",
+    "__restrict",
+    "__restrict__",
+    "__stdcall",
+    "__thread",
+    "__volatile",
+    "__volatile__",
+    "auto",
+    "const",
+    "consteval",
+    "constexpr",
+    "constinit",
+    "explicit",
+    "extern",
+    "inline",
+    "mutable",
+    "register",
+    "restrict",
+    "static",
+    "thread_local",
+    "virtual",
+    "volatile",
+    /*"typedef",*/
   };
+
+  constexpr inline static int qualifiers_count  = sizeof(qualifiers) / sizeof(qualifiers[0]);
+  constexpr inline static int qualifiers_topbit = topbit(qualifiers_count);
 
   static Token* match_qualifier(void* ctx, Token* a, Token* b) {
     if (!a || a == b) return nullptr;
-    int qual_count = sizeof(qualifiers) / sizeof(qualifiers[0]);
 
-    auto aa = a->lex->span_a;
-    auto ab = a->lex->span_b;
+    int bit = qualifiers_topbit;
+    int index = 0;
 
-    for (auto i = 0; i < qual_count; i++) {
-      auto text = qualifiers[i];
-      auto c = aa;
-      for (; c < ab && (*c == *text) && *text; c++, text++);
-      if (*text == 0) {
-        return (c == a->lex->span_b) ? a + 1 : nullptr;
+    auto taa = a->lex->span_a;
+    auto tab = a->lex->span_b;
+
+    while(1) {
+      auto new_index = index | bit;
+      if (new_index < qualifiers_count) {
+        auto tb = qualifiers[new_index];
+        auto c = cmp_span_lit(taa, tab, tb);
+        if (c == 0) {
+          return a + 1;
+        }
+        if (c > 0) index = new_index;
       }
+      if (bit == 0) return nullptr;
+      bit >>= 1;
     }
-
-    return nullptr;
   }
 
   // This is the slowest matcher in the app, why?

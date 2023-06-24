@@ -40,6 +40,8 @@ struct Lexeme {
 
   // this gets called 189 million times in the big test...
   inline static int text_count = 0;
+
+  // called by nodeidentifier::text and the class/struct/union/enum/typedef type lookups
   std::string text() const {
     text_count++;
     return std::string(span_a, span_b);

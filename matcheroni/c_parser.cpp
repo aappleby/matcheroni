@@ -70,13 +70,6 @@ constexpr const char* builtin_type_base[] = {
   "wchar_t",
 };
 
-constexpr int topbit(int x) {
-  for (int i = 0x40000000; i; i = i >> 1) {
-    if (x & i) return i;
-  }
-  return 0;
-}
-
 constexpr int builtin_type_base_count  = sizeof(builtin_type_base) / sizeof(builtin_type_base[0]);
 constexpr int builtin_type_base_topbit = topbit(builtin_type_base_count);
 
@@ -316,10 +309,13 @@ Token* C99Parser::match_builtin_type_base(Token* a, Token* b) {
   auto tab = a->lex->span_b;
 
   while(1) {
-    auto tb = builtin_type_base[index | bit];
-    auto c = cmp_span_lit(taa, tab, tb);
-    if (c == 0) return a + 1;
-    if (c > 0) index |= bit;
+    auto new_index = index | bit;
+    if (new_index < builtin_type_base_count) {
+      auto tb = builtin_type_base[new_index];
+      auto c = cmp_span_lit(taa, tab, tb);
+      if (c == 0) return a + 1;
+      if (c > 0) index = new_index;
+    }
     if (bit == 0) return nullptr;
     bit >>= 1;
   }
@@ -328,11 +324,6 @@ Token* C99Parser::match_builtin_type_base(Token* a, Token* b) {
 Token* C99Parser::match_builtin_type_prefix(Token* a, Token* b) {
   if (!a || a == b) return nullptr;
 
-  /*
-  if (builtin_type_prefix.contains(a->lex->text())) return a + 1;
-  */
-
-
   int bit = builtin_type_prefix_topbit;
   int index = 0;
 
@@ -340,30 +331,22 @@ Token* C99Parser::match_builtin_type_prefix(Token* a, Token* b) {
   auto tab = a->lex->span_b;
 
   while(1) {
-    auto tb = builtin_type_prefix[index | bit];
-    auto c = cmp_span_lit(taa, tab, tb);
-    if (c == 0) return a + 1;
-    if (c > 0) index |= bit;
+    auto new_index = index | bit;
+    if (new_index < builtin_type_prefix_count) {
+      auto tb = builtin_type_prefix[new_index];
+      auto c = cmp_span_lit(taa, tab, tb);
+      if (c == 0) return a + 1;
+      if (c > 0) index = new_index;
+    }
     if (bit == 0) return nullptr;
     bit >>= 1;
   }
-
-  /*
-  auto taa = a->lex->span_a;
-  auto tab = a->lex->span_b;
-
-  for (auto tb : builtin_type_prefix) {
-    if (cmp_span_lit(taa, tab, tb) == 0) return a + 1;
-  }
-  */
-
 
   return nullptr;
 }
 
 Token* C99Parser::match_builtin_type_suffix(Token* a, Token* b) {
   if (!a || a == b) return nullptr;
-  //if (builtin_type_suffix.contains(a->lex->text())) return a + 1;
 
   auto taa = a->lex->span_a;
   auto tab = a->lex->span_b;
