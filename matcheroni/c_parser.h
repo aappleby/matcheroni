@@ -8,6 +8,7 @@
 #include <array>
 
 //------------------------------------------------------------------------------
+// Sorted string table matcher thing.
 
 template<const auto& table>
 struct SST;
@@ -230,7 +231,15 @@ public:
   double parse_accum = 0;
   double cleanup_accum = 0;
 
-  IdentifierSet class_types;
+  void add_class_type(const std::string& t) {
+    if (std::find(class_types.begin(), class_types.end(), t) == class_types.end()) {
+      class_types.push_back(t);
+    }
+  }
+
+  std::vector<std::string> class_types;
+
+  //IdentifierSet class_types;
   IdentifierSet struct_types;
   IdentifierSet union_types;
   IdentifierSet enum_types;
@@ -871,10 +880,7 @@ struct NodeClassName : public NodeMaker<NodeClassName> {
       auto node = a->top;
       if (auto id = node->child<NodeIdentifier>()) {
         //printf("Adding class type %s\n", id->text().c_str());
-
-        ((C99Parser*)ctx)->class_types.insert(id->text());
-
-        //ParseNode::class_types.insert(id->text());
+        ((C99Parser*)ctx)->add_class_type(id->text());
       }
     }
     return end;

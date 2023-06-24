@@ -208,17 +208,28 @@ struct NodeEnumType    : public ParseNode {};
 struct NodeTypedefType : public ParseNode {};
 
 Token* C99Parser::match_class_type(Token* a, Token* b) {
-  if (a && class_types.contains(a->lex->text())) {
-    auto end = a + 1;
-    a->top = new NodeClassType();
-    a->top->init(a, end);
-    return end;
+  if (!a || a == b) return nullptr;
+  if (class_types.empty()) return nullptr;
+
+  auto t = a->lex->text();
+
+  for (const auto& c : class_types) {
+    if (c == t) {
+      auto end = a + 1;
+      a->top = new NodeClassType();
+      a->top->init(a, end);
+      return end;
+    }
   }
+
   return nullptr;
 }
 
 Token* C99Parser::match_struct_type(Token* a, Token* b) {
-  if (a && struct_types.contains(a->lex->text())) {
+  if (!a || a == b) return nullptr;
+  if (struct_types.empty()) return nullptr;
+
+  if (struct_types.contains(a->lex->text())) {
     auto end = a + 1;
     a->top = new NodeStructType();
     a->top->init(a, end);
@@ -228,7 +239,10 @@ Token* C99Parser::match_struct_type(Token* a, Token* b) {
 }
 
 Token* C99Parser::match_union_type(Token* a, Token* b) {
-  if (a && union_types.contains(a->lex->text())) {
+  if (!a || a == b) return nullptr;
+  if (union_types.empty()) return nullptr;
+
+  if (union_types.contains(a->lex->text())) {
     auto end = a + 1;
     a->top = new NodeUnionType();
     a->top->init(a, end);
@@ -238,7 +252,10 @@ Token* C99Parser::match_union_type(Token* a, Token* b) {
 }
 
 Token* C99Parser::match_enum_type(Token* a, Token* b) {
-  if (a && enum_types.contains(a->lex->text())) {
+  if (!a || a == b) return nullptr;
+  if (enum_types.empty()) return nullptr;
+
+  if (enum_types.contains(a->lex->text())) {
     auto end = a + 1;
     a->top = new NodeEnumType();
     a->top->init(a, end);
@@ -248,7 +265,10 @@ Token* C99Parser::match_enum_type(Token* a, Token* b) {
 }
 
 Token* C99Parser::match_typedef_type(Token* a, Token* b) {
-  if (a && typedef_types.contains(a->lex->text())) {
+  if (!a || a == b) return nullptr;
+  if (typedef_types.empty()) return nullptr;
+
+  if (typedef_types.contains(a->lex->text())) {
     auto end = a + 1;
     a->top = new NodeTypedefType();
     a->top->init(a, end);
