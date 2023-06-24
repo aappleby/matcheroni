@@ -2,11 +2,12 @@
 #include "c_lexer.h"
 
 #include <filesystem>
+#include <array>
 
 //------------------------------------------------------------------------------
 
 // MUST BE SORTED CASE-SENSITIVE
-constexpr const char* builtin_type_base[] = {
+std::array builtin_type_base = {
   "FILE", // used in fprintf.c torture test
   "_Bool",
   "_Complex", // yes this is both a prefix and a type :P
@@ -70,7 +71,35 @@ constexpr const char* builtin_type_base[] = {
   "wchar_t",
 };
 
-constexpr int builtin_type_base_count  = sizeof(builtin_type_base) / sizeof(builtin_type_base[0]);
+template<typename T, ptrdiff_t N>
+constexpr ptrdiff_t arraysize(const T(&)[N]) { return N; }
+
+template<typename T, ptrdiff_t N>
+constexpr inline int topbit2(const T(&)[N]) {
+  ptrdiff_t x = N;
+  ptrdiff_t bit = 1;
+  ptrdiff_t top = 0;
+  while(x) {
+    if (x & bit) {
+      top = bit;
+      x &= ~bit;
+    }
+    bit <<= 1;
+  }
+  return top;
+}
+
+
+
+
+
+
+
+
+
+
+
+constexpr int builtin_type_base_count  = sizeof(builtin_type_base)/sizeof(builtin_type_base[0]);
 constexpr int builtin_type_base_topbit = topbit(builtin_type_base_count);
 
 // MUST BE SORTED CASE-SENSITIVE
@@ -103,6 +132,9 @@ constexpr int builtin_type_suffix_topbit = topbit(builtin_type_suffix_count);
 //------------------------------------------------------------------------------
 
 double timestamp_ms() {
+  //printf("%d\n", blep.s);
+  //printf("%d\n", blep.t);
+
   using clock = std::chrono::high_resolution_clock;
   using nano = std::chrono::nanoseconds;
 
@@ -291,7 +323,22 @@ ParseNode* C99Parser::parse() {
 
 
 
+const char* sst_lookup(const char* a, const char* b, const char* const* tab, int count, int topbit) {
+  int bit = topbit;
+  int index = 0;
 
+  while(1) {
+    auto new_index = index | bit;
+    if (new_index < builtin_type_base_count) {
+      auto lit = builtin_type_base[new_index];
+      auto c = cmp_span_lit(a, b, lit);
+      if (c == 0) return lit;
+      if (c > 0) index = new_index;
+    }
+    if (bit == 0) return nullptr;
+    bit >>= 1;
+  }
+}
 
 
 
@@ -302,47 +349,19 @@ ParseNode* C99Parser::parse() {
 Token* C99Parser::match_builtin_type_base(Token* a, Token* b) {
   if (!a || a == b) return nullptr;
 
-  int bit = builtin_type_base_topbit;
-  int index = 0;
+  auto result = sst_lookup(a->lex->span_a, a->lex->span_b,
+    builtin_type_base.data(), builtin_type_base_count, builtin_type_base_topbit);
 
-  auto taa = a->lex->span_a;
-  auto tab = a->lex->span_b;
-
-  while(1) {
-    auto new_index = index | bit;
-    if (new_index < builtin_type_base_count) {
-      auto tb = builtin_type_base[new_index];
-      auto c = cmp_span_lit(taa, tab, tb);
-      if (c == 0) return a + 1;
-      if (c > 0) index = new_index;
-    }
-    if (bit == 0) return nullptr;
-    bit >>= 1;
-  }
+  return result ? a + 1 : nullptr;
 }
 
 Token* C99Parser::match_builtin_type_prefix(Token* a, Token* b) {
   if (!a || a == b) return nullptr;
 
-  int bit = builtin_type_prefix_topbit;
-  int index = 0;
+  auto result = sst_lookup(a->lex->span_a, a->lex->span_b,
+    builtin_type_prefix, builtin_type_prefix_count, builtin_type_prefix_topbit);
 
-  auto taa = a->lex->span_a;
-  auto tab = a->lex->span_b;
-
-  while(1) {
-    auto new_index = index | bit;
-    if (new_index < builtin_type_prefix_count) {
-      auto tb = builtin_type_prefix[new_index];
-      auto c = cmp_span_lit(taa, tab, tb);
-      if (c == 0) return a + 1;
-      if (c > 0) index = new_index;
-    }
-    if (bit == 0) return nullptr;
-    bit >>= 1;
-  }
-
-  return nullptr;
+  return result ? a + 1 : nullptr;
 }
 
 Token* C99Parser::match_builtin_type_suffix(Token* a, Token* b) {
