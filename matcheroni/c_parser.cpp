@@ -117,7 +117,7 @@ struct ProgressBar {
   }
 };
 
-struct NodeToplevelDeclaration : public PatternWrapper<NodeToplevelDeclaration> {
+struct NodeToplevelDeclaration {
   using pattern =
   Oneof<
     Atom<';'>,
@@ -132,16 +132,7 @@ struct NodeToplevelDeclaration : public PatternWrapper<NodeToplevelDeclaration> 
   >;
 };
 
-struct NodeTranslationUnit : public NodeMaker<NodeTranslationUnit> {
-  using pattern = Any<
-    //ProgressBar<
-      Oneof<
-        NodePreproc,
-        NodeToplevelDeclaration
-      >
-    //>
-  >;
-};
+struct NodeTranslationUnit : public ParseNode {};
 
 //------------------------------------------------------------------------------
 
@@ -243,8 +234,8 @@ ParseNode* C99Parser::parse() {
   {
     using pattern = Any<
       Oneof<
-        NodePreproc,
-        NodeToplevelDeclaration
+        C99Parser::node_maker<NodePreproc>,
+        NodeToplevelDeclaration::pattern
       >
     >;
 

@@ -140,7 +140,7 @@ struct NodeKeyword : public NodeMaker<NodeKeyword<lit>> {
 
 //------------------------------------------------------------------------------
 
-struct NodePreproc : public NodeMaker<NodePreproc> {
+struct NodePreproc : public ParseNode {
   using pattern = Atom<LEX_PREPROC>;
 };
 
