@@ -5,13 +5,170 @@
 
 #include "ParseNode.h"
 #include <string.h>
+#include <array>
 
-constexpr inline int topbit(int x) {
-  for (int i = 0x40000000; i; i = i >> 1) {
-    if (x & i) return i;
+//------------------------------------------------------------------------------
+
+template<const auto& table>
+struct SST;
+
+template<typename T, auto N, const std::array<T, N>& table>
+struct SST<table> {
+
+  constexpr inline static int top_bit(int x) {
+    for (int b = 31; b >= 0; b--) {
+      if (x & (1 << b)) return (1 << b);
+    }
+    return 0;
   }
-  return 0;
-}
+
+  static const char* match(const char* a, const char* b) {
+    int bit = top_bit(N);
+    int index = 0;
+
+    // I'm not actually sure if 8 is the best tradeoff but it seems OK
+    if (N > 8) {
+      // Binary search for large tables
+      while(1) {
+        auto new_index = index | bit;
+        if (new_index < N) {
+          auto lit = table[new_index];
+          auto c = cmp_span_lit(a, b, lit);
+          if (c == 0) return lit;
+          if (c > 0) index = new_index;
+        }
+        if (bit == 0) return nullptr;
+        bit >>= 1;
+      }
+    }
+    else {
+      // Linear scan for small tables
+      for (auto lit : table) {
+        if (cmp_span_lit(a, b, lit) == 0) return a + 1;
+      }
+    }
+
+    return nullptr;
+  }
+};
+
+//------------------------------------------------------------------------------
+
+// MUST BE SORTED CASE-SENSITIVE
+constexpr std::array builtin_type_base = {
+  "FILE", // used in fprintf.c torture test
+  "_Bool",
+  "_Complex", // yes this is both a prefix and a type :P
+  "__INT16_TYPE__",
+  "__INT32_TYPE__",
+  "__INT64_TYPE__",
+  "__INT8_TYPE__",
+  "__INTMAX_TYPE__",
+  "__INTPTR_TYPE__",
+  "__INT_FAST16_TYPE__",
+  "__INT_FAST32_TYPE__",
+  "__INT_FAST64_TYPE__",
+  "__INT_FAST8_TYPE__",
+  "__INT_LEAST16_TYPE__",
+  "__INT_LEAST32_TYPE__",
+  "__INT_LEAST64_TYPE__",
+  "__INT_LEAST8_TYPE__",
+  "__PTRDIFF_TYPE__",
+  "__SIG_ATOMIC_TYPE__",
+  "__SIZE_TYPE__",
+  "__UINT16_TYPE__",
+  "__UINT32_TYPE__",
+  "__UINT64_TYPE__",
+  "__UINT8_TYPE__",
+  "__UINTMAX_TYPE__",
+  "__UINTPTR_TYPE__",
+  "__UINT_FAST16_TYPE__",
+  "__UINT_FAST32_TYPE__",
+  "__UINT_FAST64_TYPE__",
+  "__UINT_FAST8_TYPE__",
+  "__UINT_LEAST16_TYPE__",
+  "__UINT_LEAST32_TYPE__",
+  "__UINT_LEAST64_TYPE__",
+  "__UINT_LEAST8_TYPE__",
+  "__WCHAR_TYPE__",
+  "__WINT_TYPE__",
+  "__builtin_va_list",
+  "__imag__",
+  "__int128",
+  "__real__",
+  "bool",
+  "char",
+  "double",
+  "float",
+  "int",
+  "int16_t",
+  "int32_t",
+  "int64_t",
+  "int8_t",
+  "long",
+  "short",
+  "signed",
+  "size_t", // used in fputs-lib.c torture test
+  "uint16_t",
+  "uint32_t",
+  "uint64_t",
+  "uint8_t",
+  "unsigned",
+  "va_list", // technically part of the c library, but it shows up in stdarg test files
+  "void",
+  "wchar_t",
+};
+
+// MUST BE SORTED CASE-SENSITIVE
+constexpr std::array builtin_type_prefix = {
+  "_Complex",
+  "__complex__",
+  "__imag__",
+  "__real__",
+  "__signed__",
+  "__unsigned__",
+  "long",
+  "short",
+  "signed",
+  "unsigned",
+};
+
+// MUST BE SORTED CASE-SENSITIVE
+constexpr std::array builtin_type_suffix = {
+  // Why, GCC, why?
+  "_Complex",
+  "__complex__",
+};
+
+constexpr std::array qualifiers = {
+  "_Noreturn",
+  "_Thread_local",
+  "__const",
+  "__extension__",
+  "__inline",
+  "__inline__",
+  "__restrict",
+  "__restrict__",
+  "__stdcall",
+  "__thread",
+  "__volatile",
+  "__volatile__",
+  "auto",
+  "const",
+  "consteval",
+  "constexpr",
+  "constinit",
+  "explicit",
+  "extern",
+  "inline",
+  "mutable",
+  "register",
+  "restrict",
+  "static",
+  "thread_local",
+  "virtual",
+  "volatile",
+};
 
 //------------------------------------------------------------------------------
 
@@ -355,62 +512,10 @@ struct NodeAttribute : public NodeMaker<NodeAttribute> {
 //------------------------------------------------------------------------------
 
 struct NodeQualifier : public PatternWrapper<NodeQualifier> {
-  constexpr inline static const char* qualifiers[] = {
-    "_Noreturn",
-    "_Thread_local",
-    "__const",
-    "__extension__",
-    "__inline",
-    "__inline__",
-    "__restrict",
-    "__restrict__",
-    "__stdcall",
-    "__thread",
-    "__volatile",
-    "__volatile__",
-    "auto",
-    "const",
-    "consteval",
-    "constexpr",
-    "constinit",
-    "explicit",
-    "extern",
-    "inline",
-    "mutable",
-    "register",
-    "restrict",
-    "static",
-    "thread_local",
-    "virtual",
-    "volatile",
-    /*"typedef",*/
-  };
-
-  constexpr inline static int qualifiers_count  = sizeof(qualifiers) / sizeof(qualifiers[0]);
-  constexpr inline static int qualifiers_topbit = topbit(qualifiers_count);
-
   static Token* match_qualifier(void* ctx, Token* a, Token* b) {
     if (!a || a == b) return nullptr;
-
-    int bit = qualifiers_topbit;
-    int index = 0;
-
-    auto taa = a->lex->span_a;
-    auto tab = a->lex->span_b;
-
-    while(1) {
-      auto new_index = index | bit;
-      if (new_index < qualifiers_count) {
-        auto tb = qualifiers[new_index];
-        auto c = cmp_span_lit(taa, tab, tb);
-        if (c == 0) {
-          return a + 1;
-        }
-        if (c > 0) index = new_index;
-      }
-      if (bit == 0) return nullptr;
-      bit >>= 1;
-    }
+    auto result = SST<qualifiers>::match(a->lex->span_a, a->lex->span_b);
+    return result ? a + 1 : nullptr;
   }
 
   // This is the slowest matcher in the app, why?

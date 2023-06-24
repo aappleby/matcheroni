@@ -2,150 +2,6 @@
 #include "c_lexer.h"
 
 #include <filesystem>
-#include <array>
-
-//------------------------------------------------------------------------------
-
-// MUST BE SORTED CASE-SENSITIVE
-constexpr std::array builtin_type_base = {
-  "FILE", // used in fprintf.c torture test
-  "_Bool",
-  "_Complex", // yes this is both a prefix and a type :P
-  "__INT16_TYPE__",
-  "__INT32_TYPE__",
-  "__INT64_TYPE__",
-  "__INT8_TYPE__",
-  "__INTMAX_TYPE__",
-  "__INTPTR_TYPE__",
-  "__INT_FAST16_TYPE__",
-  "__INT_FAST32_TYPE__",
-  "__INT_FAST64_TYPE__",
-  "__INT_FAST8_TYPE__",
-  "__INT_LEAST16_TYPE__",
-  "__INT_LEAST32_TYPE__",
-  "__INT_LEAST64_TYPE__",
-  "__INT_LEAST8_TYPE__",
-  "__PTRDIFF_TYPE__",
-  "__SIG_ATOMIC_TYPE__",
-  "__SIZE_TYPE__",
-  "__UINT16_TYPE__",
-  "__UINT32_TYPE__",
-  "__UINT64_TYPE__",
-  "__UINT8_TYPE__",
-  "__UINTMAX_TYPE__",
-  "__UINTPTR_TYPE__",
-  "__UINT_FAST16_TYPE__",
-  "__UINT_FAST32_TYPE__",
-  "__UINT_FAST64_TYPE__",
-  "__UINT_FAST8_TYPE__",
-  "__UINT_LEAST16_TYPE__",
-  "__UINT_LEAST32_TYPE__",
-  "__UINT_LEAST64_TYPE__",
-  "__UINT_LEAST8_TYPE__",
-  "__WCHAR_TYPE__",
-  "__WINT_TYPE__",
-  "__builtin_va_list",
-  "__imag__",
-  "__int128",
-  "__real__",
-  "bool",
-  "char",
-  "double",
-  "float",
-  "int",
-  "int16_t",
-  "int32_t",
-  "int64_t",
-  "int8_t",
-  "long",
-  "short",
-  "signed",
-  "size_t", // used in fputs-lib.c torture test
-  "uint16_t",
-  "uint32_t",
-  "uint64_t",
-  "uint8_t",
-  "unsigned",
-  "va_list", // technically part of the c library, but it shows up in stdarg test files
-  "void",
-  "wchar_t",
-};
-
-template<typename T, ptrdiff_t N>
-constexpr inline int topbit2(const T(&)[N]) {
-  ptrdiff_t x = N;
-  ptrdiff_t bit = 1;
-  ptrdiff_t top = 0;
-  while(x) {
-    if (x & bit) {
-      top = bit;
-      x &= ~bit;
-    }
-    bit <<= 1;
-  }
-  return top;
-}
-
-template<const auto& F>
-struct SST;
-
-template<typename T, auto N, const std::array<T, N>& F>
-struct SST<F> {
-
-  constexpr inline static int top_bit(int x) {
-    for (int b = 31; b >= 0; b--) {
-      if (x & (1 << b)) return (1 << b);
-    }
-    return 0;
-  }
-
-  static const char* match(const char* a, const char* b) {
-    int bit = top_bit(N);
-    int index = 0;
-
-    while(1) {
-      auto new_index = index | bit;
-      if (new_index < N) {
-        auto lit = F[new_index];
-        auto c = cmp_span_lit(a, b, lit);
-        if (c == 0) return lit;
-        if (c > 0) index = new_index;
-      }
-      if (bit == 0) return nullptr;
-      bit >>= 1;
-    }
-  }
-};
-
-
-
-
-
-
-
-// MUST BE SORTED CASE-SENSITIVE
-constexpr std::array builtin_type_prefix = {
-  "_Complex",
-  "__complex__",
-  "__imag__",
-  "__real__",
-  "__signed__",
-  "__unsigned__",
-  "long",
-  "short",
-  "signed",
-  "unsigned",
-};
-
-// MUST BE SORTED CASE-SENSITIVE
-const char* builtin_type_suffix[] = {
-  // Why, GCC, why?
-  "_Complex",
-  "__complex__",
-};
-
-constexpr int builtin_type_suffix_count  = sizeof(builtin_type_suffix) / sizeof(builtin_type_suffix[0]);
-constexpr int builtin_type_suffix_topbit = topbit(builtin_type_suffix_count);
 
 //------------------------------------------------------------------------------
 
@@ -322,52 +178,23 @@ ParseNode* C99Parser::parse() {
   return root;
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 //------------------------------------------------------------------------------
 
 Token* C99Parser::match_builtin_type_base(Token* a, Token* b) {
   if (!a || a == b) return nullptr;
-
   auto result = SST<builtin_type_base>::match(a->lex->span_a, a->lex->span_b);
-
   return result ? a + 1 : nullptr;
 }
 
 Token* C99Parser::match_builtin_type_prefix(Token* a, Token* b) {
   if (!a || a == b) return nullptr;
-
   auto result = SST<builtin_type_prefix>::match(a->lex->span_a, a->lex->span_b);
-
   return result ? a + 1 : nullptr;
 }
 
 Token* C99Parser::match_builtin_type_suffix(Token* a, Token* b) {
   if (!a || a == b) return nullptr;
-
-  auto taa = a->lex->span_a;
-  auto tab = a->lex->span_b;
-
-  for (auto tb : builtin_type_suffix) {
-    if (cmp_span_lit(taa, tab, tb) == 0) return a + 1;
-  }
-
+  auto result = SST<builtin_type_suffix>::match(a->lex->span_a, a->lex->span_b);
   return nullptr;
 }
 
@@ -429,37 +256,6 @@ Token* C99Parser::match_typedef_type(Token* a, Token* b) {
   }
   return nullptr;
 }
-
-//------------------------------------------------------------------------------
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 //------------------------------------------------------------------------------
 
