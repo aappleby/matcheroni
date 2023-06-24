@@ -72,9 +72,6 @@ constexpr std::array builtin_type_base = {
 };
 
 template<typename T, ptrdiff_t N>
-constexpr ptrdiff_t arraysize(const T(&)[N]) { return N; }
-
-template<typename T, ptrdiff_t N>
 constexpr inline int topbit2(const T(&)[N]) {
   ptrdiff_t x = N;
   ptrdiff_t bit = 1;
@@ -89,27 +86,21 @@ constexpr inline int topbit2(const T(&)[N]) {
   return top;
 }
 
-/*
 template<const auto& F>
-struct Blarp;
+struct SST;
 
 template<typename T, auto N, const std::array<T, N>& F>
-struct Blarp<F> {
-  constexpr inline static int s = N;
-  constexpr inline static int t = topbit(N);
-};
+struct SST<F> {
 
-Blarp<builtin_type_base> blarp;
-*/
+  constexpr inline static int top_bit(int x) {
+    for (int b = 31; b >= 0; b--) {
+      if (x & (1 << b)) return (1 << b);
+    }
+    return 0;
+  }
 
-
-template<const auto& F>
-struct sst_lookup2;
-
-template<typename T, auto N, const std::array<T, N>& F>
-struct sst_lookup2<F> {
-  inline static const char* lookup(const char* a, const char* b) {
-    int bit = topbit(N);
+  static const char* match(const char* a, const char* b) {
+    int bit = top_bit(N);
     int index = 0;
 
     while(1) {
@@ -132,11 +123,8 @@ struct sst_lookup2<F> {
 
 
 
-constexpr int builtin_type_base_count  = sizeof(builtin_type_base)/sizeof(builtin_type_base[0]);
-constexpr int builtin_type_base_topbit = topbit(builtin_type_base_count);
-
 // MUST BE SORTED CASE-SENSITIVE
-const char* builtin_type_prefix[] = {
+constexpr std::array builtin_type_prefix = {
   "_Complex",
   "__complex__",
   "__imag__",
@@ -148,9 +136,6 @@ const char* builtin_type_prefix[] = {
   "signed",
   "unsigned",
 };
-
-constexpr int builtin_type_prefix_count  = sizeof(builtin_type_prefix) / sizeof(builtin_type_prefix[0]);
-constexpr int builtin_type_prefix_topbit = topbit(builtin_type_prefix_count);
 
 // MUST BE SORTED CASE-SENSITIVE
 const char* builtin_type_suffix[] = {
@@ -353,25 +338,6 @@ ParseNode* C99Parser::parse() {
 
 
 
-const char* sst_lookup(const char* a, const char* b, const char* const* tab, int count, int topbit) {
-  int bit = topbit;
-  int index = 0;
-
-  while(1) {
-    auto new_index = index | bit;
-    if (new_index < builtin_type_base_count) {
-      auto lit = builtin_type_base[new_index];
-      auto c = cmp_span_lit(a, b, lit);
-      if (c == 0) return lit;
-      if (c > 0) index = new_index;
-    }
-    if (bit == 0) return nullptr;
-    bit >>= 1;
-  }
-}
-
-
-
 
 
 //------------------------------------------------------------------------------
@@ -379,11 +345,7 @@ const char* sst_lookup(const char* a, const char* b, const char* const* tab, int
 Token* C99Parser::match_builtin_type_base(Token* a, Token* b) {
   if (!a || a == b) return nullptr;
 
-  /*
-  auto result = sst_lookup(a->lex->span_a, a->lex->span_b,
-    builtin_type_base.data(), builtin_type_base_count, builtin_type_base_topbit);
-  */
-  auto result = sst_lookup2<builtin_type_base>::lookup(a->lex->span_a, a->lex->span_b);
+  auto result = SST<builtin_type_base>::match(a->lex->span_a, a->lex->span_b);
 
   return result ? a + 1 : nullptr;
 }
@@ -391,8 +353,7 @@ Token* C99Parser::match_builtin_type_base(Token* a, Token* b) {
 Token* C99Parser::match_builtin_type_prefix(Token* a, Token* b) {
   if (!a || a == b) return nullptr;
 
-  auto result = sst_lookup(a->lex->span_a, a->lex->span_b,
-    builtin_type_prefix, builtin_type_prefix_count, builtin_type_prefix_topbit);
+  auto result = SST<builtin_type_prefix>::match(a->lex->span_a, a->lex->span_b);
 
   return result ? a + 1 : nullptr;
 }
