@@ -7,7 +7,7 @@
 //------------------------------------------------------------------------------
 
 // MUST BE SORTED CASE-SENSITIVE
-std::array builtin_type_base = {
+constexpr std::array builtin_type_base = {
   "FILE", // used in fprintf.c torture test
   "_Bool",
   "_Complex", // yes this is both a prefix and a type :P
@@ -89,9 +89,42 @@ constexpr inline int topbit2(const T(&)[N]) {
   return top;
 }
 
+/*
+template<const auto& F>
+struct Blarp;
+
+template<typename T, auto N, const std::array<T, N>& F>
+struct Blarp<F> {
+  constexpr inline static int s = N;
+  constexpr inline static int t = topbit(N);
+};
+
+Blarp<builtin_type_base> blarp;
+*/
 
 
+template<const auto& F>
+struct sst_lookup2;
 
+template<typename T, auto N, const std::array<T, N>& F>
+struct sst_lookup2<F> {
+  inline static const char* lookup(const char* a, const char* b) {
+    int bit = topbit(N);
+    int index = 0;
+
+    while(1) {
+      auto new_index = index | bit;
+      if (new_index < N) {
+        auto lit = F[new_index];
+        auto c = cmp_span_lit(a, b, lit);
+        if (c == 0) return lit;
+        if (c > 0) index = new_index;
+      }
+      if (bit == 0) return nullptr;
+      bit >>= 1;
+    }
+  }
+};
 
 
 
@@ -132,9 +165,6 @@ constexpr int builtin_type_suffix_topbit = topbit(builtin_type_suffix_count);
 //------------------------------------------------------------------------------
 
 double timestamp_ms() {
-  //printf("%d\n", blep.s);
-  //printf("%d\n", blep.t);
-
   using clock = std::chrono::high_resolution_clock;
   using nano = std::chrono::nanoseconds;
 
@@ -349,8 +379,11 @@ const char* sst_lookup(const char* a, const char* b, const char* const* tab, int
 Token* C99Parser::match_builtin_type_base(Token* a, Token* b) {
   if (!a || a == b) return nullptr;
 
+  /*
   auto result = sst_lookup(a->lex->span_a, a->lex->span_b,
     builtin_type_base.data(), builtin_type_base_count, builtin_type_base_topbit);
+  */
+  auto result = sst_lookup2<builtin_type_base>::lookup(a->lex->span_a, a->lex->span_b);
 
   return result ? a + 1 : nullptr;
 }
