@@ -265,6 +265,19 @@ Token* C99Parser::match_typedef_type(Token* a, Token* b) {
 
 //------------------------------------------------------------------------------
 
+Token* C99Parser::match_struct_name (Token* a, Token* b) {
+  if (auto node = make_node2<NodeStructName>(a, b)) {
+    if (auto id = node->child<NodeIdentifier>()) {
+      //printf("Adding struct type %s\n", id->text().c_str());
+      add_struct_type(id->text());
+    }
+    return node->tok_b;
+  }
+  return nullptr;
+}
+
+//------------------------------------------------------------------------------
+
 void C99Parser::dump_stats() {
   double total_time = io_accum + lex_accum + parse_accum + cleanup_accum;
 

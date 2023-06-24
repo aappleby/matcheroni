@@ -7,6 +7,31 @@
 #include <string.h>
 #include <array>
 
+struct NodeAbstractDeclarator;
+struct NodeAttribute;
+struct NodeClass;
+struct NodeConstructor;
+struct NodeDeclaration;
+struct NodeDeclarator;
+struct NodeEnum;
+struct NodeExpression;
+struct NodeExpressionSoup;
+struct NodeFunction;
+struct NodeIdentifier;
+struct NodeInitializer;
+struct NodeInitializerList;
+struct NodeQualifier;
+struct NodeQualifiers;
+struct NodeSpecifier;
+struct NodeStatement;
+struct NodeStatementCompound;
+struct NodeStatementTypedef;
+struct NodeStruct;
+struct NodeTemplate;
+struct NodeTypeDecl;
+struct NodeTypeName;
+struct NodeUnion;
+
 //------------------------------------------------------------------------------
 // Sorted string table matcher thing.
 
@@ -193,6 +218,11 @@ public:
   Token* match_enum_type   (Token* a, Token* b);
   Token* match_typedef_type(Token* a, Token* b);
 
+
+  Token* match_struct_name (Token* a, Token* b);
+
+
+
   template<typename T>
   Token* make_node(Token* a, Token* b) {
     auto end = T::pattern::match(this, a, b);
@@ -202,6 +232,18 @@ public:
       a->top = node;
     }
     return end;
+  }
+
+  template<typename T>
+  T* make_node2(Token* a, Token* b) {
+    auto end = T::pattern::match(this, a, b);
+    if (end) {
+      T* node = new T();
+      node->init(a, end);
+      a->top = node;
+      return node;
+    }
+    return nullptr;
   }
 
   template<typename T>
@@ -252,28 +294,6 @@ public:
 };
 
 //------------------------------------------------------------------------------
-
-struct NodeAbstractDeclarator;
-struct NodeClass;
-struct NodeConstructor;
-struct NodeDeclaration;
-struct NodeDeclarator;
-struct NodeEnum;
-struct NodeExpression;
-struct NodeExpressionSoup;
-struct NodeFunction;
-struct NodeInitializer;
-struct NodeInitializerList;
-struct NodeQualifier;
-struct NodeSpecifier;
-struct NodeStatement;
-struct NodeStatementCompound;
-struct NodeStatementTypedef;
-struct NodeStruct;
-struct NodeTemplate;
-struct NodeTypeDecl;
-struct NodeTypeName;
-struct NodeUnion;
 
 const char* match_text(const char** lits, int lit_count, const char* a, const char* b);
 
@@ -827,7 +847,7 @@ struct NodeStructName : public NodeMaker<NodeStructName> {
 
 struct NodeStruct : public NodeMaker<NodeStruct> {
   using pattern = Seq<
-    NodeStructName,
+    Ref<&C99Parser::match_struct_name>,
     Opt<NodeFieldList>,
     Any<NodeAttribute>,
     Opt<NodeDeclaratorList>
