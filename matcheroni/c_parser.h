@@ -940,7 +940,7 @@ struct NodeStructName : public NodeMaker<NodeStructName> {
   static Token* match(void* ctx, Token* a, Token* b) {
     auto end = NodeMaker::match(ctx, a, b);
     if (end) {
-      auto node = a->top;
+      auto node = a->node_r;
       if (auto id = node->child<NodeIdentifier>()) {
         //printf("Adding struct type %s\n", id->text().c_str());
         ((C99Parser*)ctx)->add_struct_type(id->text());
@@ -973,7 +973,7 @@ struct NodeUnionName : public NodeMaker<NodeUnionName> {
   static Token* match(void* ctx, Token* a, Token* b) {
     auto end = NodeMaker::match(ctx, a, b);
     if (end) {
-      auto node = a->top;
+      auto node = a->node_r;
       if (auto id = node->child<NodeIdentifier>()) {
         //printf("Adding union type %s\n", id->text().c_str());
         ((C99Parser*)ctx)->add_union_type(id->text());
@@ -1007,7 +1007,7 @@ struct NodeClassName : public NodeMaker<NodeClassName> {
   static Token* match(void* ctx, Token* a, Token* b) {
     auto end = NodeMaker::match(ctx, a, b);
     if (end) {
-      auto node = a->top;
+      auto node = a->node_r;
       if (auto id = node->child<NodeIdentifier>()) {
         //printf("Adding class type %s\n", id->text().c_str());
         ((C99Parser*)ctx)->add_class_type(id->text());
@@ -1058,7 +1058,7 @@ struct NodeEnumName : public NodeMaker<NodeEnumName> {
   static Token* match(void* ctx, Token* a, Token* b) {
     auto end = NodeMaker::match(ctx, a, b);
     if (end) {
-      auto node = a->top;
+      auto node = a->node_r;
       if (auto id = node->child<NodeIdentifier>()) {
         //printf("Adding enum type %s\n", id->text().c_str());
         ((C99Parser*)ctx)->add_enum_type(id->text());
@@ -1472,7 +1472,7 @@ struct NodeStatementTypedef : public NodeMaker<NodeStatementTypedef> {
   }
 
   static void extract_type(void* ctx, Token* a, Token* b) {
-    auto node = a->top;
+    auto node = a->node_r;
 
     //node->dump_tree();
 

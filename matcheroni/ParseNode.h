@@ -17,7 +17,8 @@ struct ParseNode;
 struct Token {
   Token(const Lexeme* lex) {
     this->lex = lex;
-    this->top = nullptr;
+    this->node_r = nullptr;
+    this->node_l = nullptr;
   }
 
   bool is_valid() const {
@@ -41,7 +42,8 @@ struct Token {
   }
 
   const Lexeme* lex;
-  ParseNode* top;
+  ParseNode* node_r; // The parse node _starting_ at this token
+  ParseNode* node_l; // The parse node _ending_ at this token
 };
 
 using token_matcher = matcher_function<Token>;
@@ -113,9 +115,13 @@ struct ParseNode {
     // Attach all the tops under this node to it.
     auto cursor = tok_a;
     while (cursor <= tok_b) {
-      if (cursor->top) {
-        auto child = cursor->top;
-        //cursor->top = nullptr;
+      if (cursor->node_r) {
+        auto child = cursor->node_r;
+        assert(child->tok_a == cursor);
+
+        child->tok_a->node_r = nullptr;
+        child->tok_b->node_l = nullptr;
+
 
         if (tail) {
           tail->next = child;
@@ -134,7 +140,8 @@ struct ParseNode {
       }
     }
 
-    tok_a->top = this;
+    tok_a->node_r = this;
+    tok_b->node_l = this;
   }
 
   virtual ~ParseNode() {
@@ -244,8 +251,8 @@ struct ParseNode {
   inline static int constructor_count = 0;
   inline static int destructor_count = 0;
 
-  Token* tok_a = nullptr;
-  Token* tok_b = nullptr;
+  Token* tok_a = nullptr; // First token, inclusivve
+  Token* tok_b = nullptr; // Last token, inclusive
 
   ParseNode* prev   = nullptr;
   ParseNode* next   = nullptr;
@@ -254,14 +261,21 @@ struct ParseNode {
 };
 
 //------------------------------------------------------------------------------
+// FIXME we could maybe change this back to "a.node_r = nullptr"
 
 inline int atom_cmp(Token& a, const LexemeType& b) {
-  a.top = nullptr;
+  if (a.node_r) {
+    a.node_r->tok_b->node_l = nullptr;
+    a.node_r = nullptr;
+  }
   return int(a.lex->type) - int(b);
 }
 
 inline int atom_cmp(Token& a, const char& b) {
-  a.top = nullptr;
+  if (a.node_r) {
+    a.node_r->tok_b->node_l = nullptr;
+    a.node_r = nullptr;
+  }
   int len_cmp = a.lex->len() - 1;
   if (len_cmp != 0) return len_cmp;
   return int(a.lex->span_a[0]) - int(b);
@@ -269,7 +283,10 @@ inline int atom_cmp(Token& a, const char& b) {
 
 template<int N>
 inline bool atom_cmp(Token& a, const StringParam<N>& b) {
-  a.top = nullptr;
+  if (a.node_r) {
+    a.node_r->tok_b->node_l = nullptr;
+    a.node_r = nullptr;
+  }
   int len_cmp = int(a.lex->len()) - int(b.len);
   if (len_cmp != 0) return len_cmp;
 

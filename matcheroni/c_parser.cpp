@@ -376,13 +376,13 @@ void C99Parser::dump_tokens() {
 
     // Dump top node
     printf("  ");
-    if (t.top) {
-      printf("top %p -> ", t.top);
-      t.top->print_class_name();
-      printf(" -> %p ", t.top->tok_b);
+    if (t.node_r) {
+      printf("top %p -> ", t.node_r);
+      t.node_r->print_class_name();
+      printf(" -> %p ", t.node_r->tok_b);
     }
     else {
-      printf("top %p", t.top);
+      printf("top %p", t.node_r);
     }
     printf("\n");
   }
