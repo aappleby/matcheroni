@@ -61,33 +61,45 @@ int test_parser(int argc, char** argv) {
   std::vector<std::string> paths;
   const char* base_path = argc > 1 ? argv[1] : "tests";
 
+  C99Parser parser;
+
+
 #if 0
 
-  //test_parser("tests/scratch.c");
-  //test_parser("tests/basic_inputs.h");
-  test_parser("mini_tests/csmith_1088.c");
-  //test_parser("../gcc/gcc/tree-inline.h");
-  //test_parser("../gcc/gcc/testsuite/gcc.c-torture/execute/921110-1.c");
-  file_total++;
+  paths = {
+    //"tests/scratch.c",
+    //"tests/basic_inputs.h",
+    //"mini_tests/csmith_1088.c",
+    //"../gcc/gcc/tree-inline.h",
+    //"../gcc/gcc/testsuite/gcc.c-torture/execute/20071029-1.c",
+    "../gcc/gcc/testsuite/gcc.c-torture/execute/complex-5.c",
+  };
 
 #else
 
-  base_path = "mini_tests";
   printf("Parsing all source files in %s\n", base_path);
   using rdit = std::filesystem::recursive_directory_iterator;
   for (const auto& f : rdit(base_path)) {
     if (!f.is_regular_file()) continue;
-    paths.push_back(f.path().native());
+    auto path = f.path().native();
+    if (!should_skip(path)) {
+      paths.push_back(path);
+    }
+    else {
+      parser.file_skip++;
+    }
   }
+#endif
 
-  C99Parser parser;
 
   for (const auto& path : paths) {
-    parser.file_total++;
-    if (should_skip(path)) continue;
-
     //printf("Loading %s\n", path.c_str());
     parser.load(path);
+    if (parser.text.find("#define") != std::string::npos) {
+      //printf("Skipping %s\n", path.c_str());
+      parser.file_skip++;
+      continue;
+    }
 
     //printf("Lexing %s\n", path.c_str());
     parser.lex();
@@ -101,8 +113,6 @@ int test_parser(int argc, char** argv) {
 
     parser.reset();
   }
-
-#endif
 
 
   printf("\n");

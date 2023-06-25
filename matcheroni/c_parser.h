@@ -263,9 +263,9 @@ public:
 
   ParseNode* root = nullptr;
 
-  int file_total = 0;
   int file_pass = 0;
-  int file_keep = 0;
+  int file_fail = 0;
+  int file_skip = 0;
   int file_bytes = 0;
   int file_lines = 0;
 
@@ -823,26 +823,13 @@ struct NodeDeclaratorList : public NodeMaker<NodeDeclaratorList> {
 
 //------------------------------------------------------------------------------
 
-struct NodeStructName : public NodeMaker<NodeStructName> {
+struct NodeStructName : public ParseNode {
   using pattern = Seq<
     Opt<NodeQualifiers>,
     Keyword<"struct">,
     Any<NodeAttribute>, // This has to be here, there are a lot of struct __attrib__() foo {};
     Opt<NodeIdentifier>
   >;
-
-  // We specialize match() to dig out typedef'd identifiers
-  static Token* match(void* ctx, Token* a, Token* b) {
-    auto end = NodeMaker::match(ctx, a, b);
-    if (end) {
-      auto node = a->top;
-      if (auto id = node->child<NodeIdentifier>()) {
-        //printf("Adding struct type %s\n", id->text().c_str());
-        ((C99Parser*)ctx)->add_struct_type(id->text());
-      }
-    }
-    return end;
-  }
 };
 
 struct NodeStruct : public NodeMaker<NodeStruct> {
@@ -1348,7 +1335,6 @@ struct NodeStatementTypedef : public NodeMaker<NodeStatementTypedef> {
 
   static void extract_declarator(void* ctx, const NodeDeclarator* decl) {
     if (auto id = decl->child<NodeIdentifier>()) {
-      //printf("Adding typedef %s\n", id->text().c_str());
       ((C99Parser*)ctx)->add_typedef_type(id->text());
     }
 

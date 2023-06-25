@@ -11,10 +11,10 @@
       "request": "launch",
       "program": "${workspaceFolder}/bin/c_parser_test",
       "cwd": "${workspaceFolder}",
+      //"args" : ["tests"],
+      //"args" : ["mini_tests"],
       //"args" : ["../gcc/gcc"],
       "args" : ["../gcc/gcc/testsuite/gcc.c-torture"],
-      //"args" : ["mini_tests"],
-      //"args" : ["tests"],
       "setupCommands": [
         {
           // Display content in STL containers pretty

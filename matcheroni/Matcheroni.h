@@ -194,12 +194,19 @@ template<typename...rest>
 struct Some {
   template<typename atom>
   static atom* match(void* ctx, atom* a, atom* b) {
-    a = Oneof<rest...>::match(ctx, a, b);
-    if (!a) return nullptr;
-    while(auto c = Oneof<rest...>::match(ctx, a, b)) {
-      a = c;
-    }
-    return a;
+    auto c = Any<rest...>::match(ctx, a, b);
+    return c == a ? nullptr : c;
+  }
+};
+
+//------------------------------------------------------------------------------
+
+template<typename P>
+struct NonEmpty {
+  template<typename atom>
+  static atom* match(void* ctx, atom* a, atom* b) {
+    auto c = P::match(ctx, a, b);
+    return c == a ? nullptr : c;
   }
 };
 

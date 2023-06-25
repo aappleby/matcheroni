@@ -3,6 +3,8 @@
 
 #include <filesystem>
 
+void dump_tree(ParseNode* n, int max_depth = 0, int indentation = 0);
+
 //------------------------------------------------------------------------------
 
 double timestamp_ms() {
@@ -100,13 +102,7 @@ void C99Parser::load(const std::string& path) {
 
   for (auto c : text) if (c == '\n') file_lines++;
 
-  //if (text.find("#define") != std::string::npos) {
-  //  return -1;
-  //}
-
   io_accum += timestamp_ms();
-
-  file_keep++;
   file_bytes += text.size();
 }
 
@@ -146,35 +142,38 @@ void C99Parser::lex() {
 //------------------------------------------------------------------------------
 
 ParseNode* C99Parser::parse() {
-  parse_accum -= timestamp_ms();
-
-  //auto result = NodeTranslationUnit::match(this, tok_a, tok_b);
 
   NodeTranslationUnit* root = nullptr;
 
   auto cursor = tok_a;
 
-  {
-    using pattern = Any<
-      Oneof<
-        C99Parser::node_maker<NodePreproc>,
-        NodeToplevelDeclaration::pattern
-      >
-    >;
+  using pattern = Any<
+    Oneof<
+      C99Parser::node_maker<NodePreproc>,
+      NodeToplevelDeclaration::pattern
+    >
+  >;
 
-    cursor = pattern::match(this, cursor, tok_b);
-    if (cursor) {
+  parse_accum -= timestamp_ms();
+  cursor = pattern::match(this, cursor, tok_b);
+  parse_accum += timestamp_ms();
+
+  if (cursor) {
+    root = new NodeTranslationUnit();
+    root->init(tok_a, tok_b);
+
+    if (cursor != tok_b) {
+      file_fail++;
+      dump_tree(root);
+      printf("fail!\n");
       assert(cursor == tok_b);
-      root = new NodeTranslationUnit();
-      root->init(tok_a, tok_b);
+    }
+    else {
+      file_pass++;
     }
   }
 
-  parse_accum += timestamp_ms();
-
-  if (root) file_pass++;
   this->root = root;
-
   return root;
 }
 
@@ -195,7 +194,7 @@ Token* C99Parser::match_builtin_type_prefix(Token* a, Token* b) {
 Token* C99Parser::match_builtin_type_suffix(Token* a, Token* b) {
   if (!a || a == b) return nullptr;
   auto result = SST<builtin_type_suffix>::match(a->lex->span_a, a->lex->span_b);
-  return nullptr;
+  return result ? a + 1 : nullptr;
 }
 
 //------------------------------------------------------------------------------
@@ -212,7 +211,7 @@ Token* C99Parser::match_type(const std::vector<std::string>& types, Token* a, To
   if (types.empty()) return nullptr;
 
   auto t = a->lex->text();
-  for (const auto& c : class_types) {
+  for (const auto& c : types) {
     if (c == t) return a + 1;
   }
   return nullptr;
@@ -281,7 +280,7 @@ Token* C99Parser::match_struct_name (Token* a, Token* b) {
 void C99Parser::dump_stats() {
   double total_time = io_accum + lex_accum + parse_accum + cleanup_accum;
 
-  if (file_keep == 10000 && ParseNode::constructor_count != 565766993) {
+  if (file_pass == 10000 && ParseNode::constructor_count != 565766993) {
     set_color(0x008080FF);
     printf("############## NODE COUNT MISMATCH\n");
     set_color(0);
@@ -297,16 +296,14 @@ void C99Parser::dump_stats() {
   printf("\n");
   printf("Total nodes    %d\n", ParseNode::constructor_count);
   printf("Node pool      %ld bytes\n", ParseNode::max_size);
-  printf("Files total    %d\n", file_total);
-  printf("Files filtered %d\n", file_total - file_keep);
-  printf("Files kept     %d\n", file_keep);
-  printf("Files bytes    %d\n", file_bytes);
-  printf("Files lines    %d\n", file_lines);
-  printf("Files pass     %d\n", file_pass);
-  printf("Files fail     %d\n", file_keep - file_pass);
+  printf("File pass      %d\n", file_pass);
+  printf("File fail      %d\n", file_fail);
+  printf("File skip      %d\n", file_skip);
+  printf("File bytes     %d\n", file_bytes);
+  printf("File lines     %d\n", file_lines);
   printf("Average line   %f bytes\n", double(file_bytes) / double(file_lines));
 
-  if (file_keep != file_pass) {
+  if (file_fail) {
     set_color(0x008080FF);
     printf("##################\n");
     printf("##     FAIL     ##\n");
