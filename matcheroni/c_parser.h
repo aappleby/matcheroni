@@ -460,9 +460,9 @@ struct NodeExpressionSoup {
     Some<
       NodeGccCompoundExpression,
       NodeExpressionCall,
-      NodeExpressionCast, // must be before NodeExpressionParen
+      NodeExpressionCast,    // must be before NodeExpressionParen
       NodeExpressionParen,
-      NodeInitializerList, // must be before NodeExpressionBraces
+      NodeInitializerList,   // must be before NodeExpressionBraces
       NodeExpressionBraces,
       NodeExpressionSubscript,
       NodeKeyword<"sizeof">,
@@ -546,7 +546,11 @@ struct NodeExpressionSoup {
       NodeOperator<"<">,
       NodeOperator<"=">,
       NodeOperator<">">,
-      NodeOperator<"|">
+      NodeOperator<"|">,
+      NodeOperator<"-">,
+      NodeOperator<"*">,
+      NodeOperator<"&">,
+      NodeOperator<"+">
     >,
     NodeExpressionSoup
   >;
