@@ -84,8 +84,8 @@ struct SST<table> {
 };
 
 //------------------------------------------------------------------------------
-
 // MUST BE SORTED CASE-SENSITIVE
+
 constexpr std::array builtin_type_base = {
   "FILE", // used in fprintf.c torture test
   "_Bool",
@@ -171,6 +171,7 @@ constexpr std::array builtin_type_suffix = {
   "__complex__",
 };
 
+// MUST BE SORTED CASE-SENSITIVE
 constexpr std::array qualifiers = {
   "_Noreturn",
   "_Thread_local",
@@ -248,41 +249,13 @@ public:
   Token* match_enum_type   (Token* a, Token* b) { return match_type(enum_types,    a, b); }
   Token* match_typedef_type(Token* a, Token* b) { return match_type(typedef_types, a, b); }
 
-  template<typename T>
-  Token* make_node(Token* a, Token* b) {
-    auto end = T::pattern::match(this, a, b);
-    if (end) {
-      T* node = new T();
-      node->init(a, end);
-    }
-    return end;
-  }
-
-  template<typename T>
-  T* make_node2(Token* a, Token* b) {
-    auto end = T::pattern::match(this, a, b);
-    if (end) {
-      T* node = new T();
-      node->init(a, end);
-      return node;
-    }
-    return nullptr;
-  }
-
-  template<typename T>
-  using node_maker = Ref<&C99Parser::make_node<T>>;
-
   void dump_stats();
   void dump_lexemes();
   void dump_tokens();
 
   std::string text;
-
   std::vector<Lexeme> lexemes;
   std::vector<Token>  tokens;
-
-  Token* tok_a = nullptr;
-  Token* tok_b = nullptr;
 
   ParseNode* root = nullptr;
 
@@ -303,10 +276,6 @@ public:
   std::vector<std::string> enum_types;
   std::vector<std::string> typedef_types;
 };
-
-//------------------------------------------------------------------------------
-
-const char* match_text(const char** lits, int lit_count, const char* a, const char* b);
 
 //------------------------------------------------------------------------------
 
@@ -348,7 +317,7 @@ struct NodeKeyword : public NodeMaker<NodeKeyword<lit>> {
 
 //------------------------------------------------------------------------------
 
-struct NodePreproc : public ParseNode {
+struct NodePreproc : public NodeMaker<NodePreproc> {
   using pattern = Atom<LEX_PREPROC>;
 };
 
@@ -459,35 +428,15 @@ struct NodeGccCompoundExpression : public NodeMaker<NodeGccCompoundExpression> {
 };
 
 //------------------------------------------------------------------------------
-// pr68249.c - ternary option can be empty
-// pr49474.c - ternary branches can be comma-lists
-
-struct NodeExpressionTernary : public PatternWrapper<NodeExpressionTernary> {
-
-  using pattern = Seq<
-    NodeExpressionSoup,
-    Opt<Seq<
-      NodeOperator<"?">,
-      Opt<comma_separated<NodeExpression>>,
-      NodeOperator<":">,
-      Opt<comma_separated<NodeExpression>>
-    >>
-  >;
-};
-
-//------------------------------------------------------------------------------
-
-struct NodeExpression : public NodeMaker<NodeExpression> {
-  using pattern = NodeExpressionTernary;
-};
-
-//------------------------------------------------------------------------------
 // This captures all expresion forms, but does _not_ bother to put them into a
 // tree or do operator precedence or anything.
 
 // FIXME - replace with some other parser
 
-struct NodeExpressionSoup : public PatternWrapper<NodeExpressionSoup> {
+struct NodeExpressionTernary : public ParseNode {
+};
+
+struct NodeExpressionSoup : public ParseNode {
   constexpr inline static const char* op3 = "->*<<=<=>>>=";
   constexpr inline static const char* op2 = "---=->::!=.**=/=&&&=%=^=+++=<<<===>=>>|=||";
   constexpr inline static const char* op1 = "-!.*/&%^+<=>|~";
@@ -541,6 +490,32 @@ struct NodeExpressionSoup : public PatternWrapper<NodeExpressionSoup> {
       Ref<NodeExpressionSoup::match_operators>
     >
   >;
+
+  // pr68249.c - ternary option can be empty
+  // pr49474.c - ternary branches can be comma-lists
+  using ternary_pattern =
+  Seq<
+    NodeOperator<"?">,
+    Opt<comma_separated<NodeExpressionSoup>>,
+    NodeOperator<":">,
+    Opt<comma_separated<NodeExpressionSoup>>
+  >;
+
+  static Token* match(void* ctx, Token* a, Token* b) {
+    auto end = pattern::match(ctx, a, b);
+
+    if (auto end2 = ternary_pattern::match(ctx, end, b)) {
+      auto node = new NodeExpressionTernary();
+      node->init(a, end2);
+      return end2;
+    }
+
+    return end;
+  }
+};
+
+struct NodeExpression : public NodeMaker<NodeExpression> {
+  using pattern = NodeExpressionSoup;
 };
 
 //------------------------------------------------------------------------------

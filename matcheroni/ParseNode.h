@@ -281,9 +281,6 @@ inline bool atom_cmp(Token& a, const StringParam<N>& b) {
 
 //------------------------------------------------------------------------------
 
-//#define USE_MEMO
-//#define MEMOIZE_UNMATCHES
-
 // The optimization below does not actually improve performance in this
 // parser, though it could be significant in other ones.
 
@@ -311,7 +308,7 @@ struct NodeMaker : public ParseNode {
   static Token* match(void* ctx, Token* a, Token* b) {
     auto end = NT::pattern::match(ctx, a, b);
     if (end) {
-      NT* node = new NT();
+      auto node = new NT();
       node->init(a, end);
     }
     return end;

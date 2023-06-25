@@ -137,9 +137,6 @@ void C99Parser::lex() {
   assert(tokens.back().lex->is_eof());
 
   lex_accum += timestamp_ms();
-
-  tok_a = tokens.data();
-  tok_b = tokens.data() + tokens.size() - 1;
 }
 
 //------------------------------------------------------------------------------
@@ -148,15 +145,17 @@ ParseNode* C99Parser::parse() {
 
   NodeTranslationUnit* root = nullptr;
 
-  auto cursor = tok_a;
+  auto tok_a = tokens.data();
+  auto tok_b = tokens.data() + tokens.size() - 1;
 
   using pattern = Any<
     Oneof<
-      C99Parser::node_maker<NodePreproc>,
+      NodePreproc,
       NodeToplevelDeclaration::pattern
     >
   >;
 
+  auto cursor = tok_a;
   parse_accum -= timestamp_ms();
   cursor = pattern::match(this, cursor, tok_b);
   parse_accum += timestamp_ms();
