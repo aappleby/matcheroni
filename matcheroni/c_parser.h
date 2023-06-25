@@ -291,13 +291,13 @@ template<StringParam lit>
 struct Operator {
   static Token* match(void* ctx, Token* a, Token* b) {
     if (!a || a == b) return nullptr;
-    if (a + sizeof(lit.value) > b) return nullptr;
+    if (a + lit.len > b) return nullptr;
 
     for (auto i = 0; i < lit.len; i++) {
       if (!a[i].is_punct(lit.value[i])) return nullptr;
     }
 
-    return a + sizeof(lit.value);
+    return a + lit.len;
   }
 };
 
@@ -433,26 +433,15 @@ struct NodeGccCompoundExpression : public NodeMaker<NodeGccCompoundExpression> {
 
 // FIXME - replace with some other parser
 
-struct NodeExpressionTernary : public ParseNode {};
-struct NodeExpressionScope   : public ParseNode {};
-struct NodeExpressionPtr2Mem : public ParseNode {};
+struct NodeExpressionTernary   : public ParseNode {};
+struct NodeExpressionBinary    : public ParseNode {};
 
-struct NodeExpressionSoup : public ParseNode {
-  constexpr inline static const char* op3 = "<<=<=>>>=";
+struct NodeExpressionSoup {
   constexpr inline static const char* op2 = "---=->!=*=/=&&&=%=^=+++=<<<===>=>>|=||";
   constexpr inline static const char* op1 = "-!.*/&%^+<=>|~";
 
   static Token* match_operators(void* ctx, Token* a, Token* b) {
-    if (b-a >= 3) {
-      constexpr auto op_count = strlen(op3) / 3;
-      for (auto j = 0; j < op_count; j++) {
-        bool match = true;
-        if (a->lex->span_a[0] != op3[j * 3 + 0]) match = false;
-        if (a->lex->span_a[1] != op3[j * 3 + 1]) match = false;
-        if (a->lex->span_a[2] != op3[j * 3 + 2]) match = false;
-        if (match) return a + 3;
-      }
-    }
+    if (!a || a == b) return nullptr;
 
     if (b-a >= 2) {
       constexpr auto op_count = strlen(op2) / 2;
@@ -492,33 +481,34 @@ struct NodeExpressionSoup : public ParseNode {
     >
   >;
 
+  //----------------------------------------
 
-
-
-  // pr68249.c - ternary option can be empty
-  // pr49474.c - ternary branches can be comma-lists
   using ternary_pattern = // Not covered by csmith
   Seq<
+    // pr68249.c - ternary option can be empty
+    // pr49474.c - ternary branches can be comma-lists
     NodeOperator<"?">,
     Opt<comma_separated<NodeExpressionSoup>>,
     NodeOperator<":">,
     Opt<comma_separated<NodeExpressionSoup>>
   >;
 
-  using scope_pattern = // Not covered by torture or csmith
-  Seq<
-    NodeOperator<"::">,
-    NodeExpressionSoup
-  >;
+  //----------------------------------------
 
-  using ptr2mem_pattern = // Not covered by torture or csmith
+  using binary_pattern = // Not covered by torture or csmith
   Seq<
     Oneof<
+      NodeOperator<"<<=">,
+      NodeOperator<">>=">,
       NodeOperator<"->*">,
-      NodeOperator<".*">
+      NodeOperator<"<=>">,
+      NodeOperator<".*">,
+      NodeOperator<"::">
     >,
     NodeExpressionSoup
   >;
+
+  //----------------------------------------
 
   static Token* match(void* ctx, Token* a, Token* b) {
     auto end = pattern::match(ctx, a, b);
@@ -529,14 +519,8 @@ struct NodeExpressionSoup : public ParseNode {
       return end2;
     }
 
-    if (auto end2 = scope_pattern::match(ctx, end, b)) {
-      auto node = new NodeExpressionScope();
-      node->init(a, end2);
-      return end2;
-    }
-
-    if (auto end2 = ptr2mem_pattern::match(ctx, end, b)) {
-      auto node = new NodeExpressionPtr2Mem();
+    if (auto end2 = binary_pattern::match(ctx, end, b)) {
+      auto node = new NodeExpressionBinary();
       node->init(a, end2);
       return end2;
     }
