@@ -437,7 +437,6 @@ struct NodeExpressionTernary   : public ParseNode {};
 struct NodeExpressionBinary    : public ParseNode {};
 
 struct NodeExpressionSoup {
-  //constexpr inline static const char* op2 = "-- -= -> != *= /= && &= %= ^= ++ += << <= == >= >> |= ||";
   constexpr inline static const char* op2 = "--++";
   constexpr inline static const char* op1 = "-!.*/&%^+<=>|~";
 
@@ -521,7 +520,16 @@ struct NodeExpressionSoup {
       NodeOperator<">>">,
       NodeOperator<"|=">,
       NodeOperator<"||">,
-      NodeOperator<"&&">
+      NodeOperator<"&&">,
+      NodeOperator<".">,
+      NodeOperator<"/">,
+      NodeOperator<"&">,
+      NodeOperator<"%">,
+      NodeOperator<"^">,
+      NodeOperator<"<">,
+      NodeOperator<"=">,
+      NodeOperator<">">,
+      NodeOperator<"|">
     >,
     NodeExpressionSoup
   >;
