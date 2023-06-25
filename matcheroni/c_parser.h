@@ -433,8 +433,9 @@ struct NodeGccCompoundExpression : public NodeMaker<NodeGccCompoundExpression> {
 
 // FIXME - replace with some other parser
 
-struct NodeExpressionTernary   : public ParseNode {};
-struct NodeExpressionBinary    : public ParseNode {};
+struct NodeExpressionTernary : public ParseNode {};
+struct NodeExpressionBinary  : public ParseNode {};
+struct NodeExpressionPrefix  : public ParseNode {};
 
 struct NodeExpressionSoup {
   constexpr inline static const char* op2 = "--++";
@@ -479,6 +480,23 @@ struct NodeExpressionSoup {
       NodeConstant,
       Ref<NodeExpressionSoup::match_operators>
     >
+  >;
+
+  //----------------------------------------
+
+  using prefix_pattern =
+  Seq<
+    Oneof<
+      NodeOperator<"++">,
+      NodeOperator<"--">,
+      NodeOperator<"+">,
+      NodeOperator<"-">,
+      NodeOperator<"!">,
+      NodeOperator<"~">,
+      NodeOperator<"*">,
+      NodeOperator<"&">
+    >,
+    NodeExpressionSoup
   >;
 
   //----------------------------------------
@@ -538,6 +556,12 @@ struct NodeExpressionSoup {
   //----------------------------------------
 
   static Token* match(void* ctx, Token* a, Token* b) {
+    if (auto end = prefix_pattern::match(ctx, a, b)) {
+      auto node = new NodeExpressionPrefix();
+      node->init(a, end);
+      return end;
+    }
+
     auto end = pattern::match(ctx, a, b);
 
     if (auto end2 = ternary_pattern::match(ctx, end, b)) {
