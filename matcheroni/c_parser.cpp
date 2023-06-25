@@ -162,7 +162,7 @@ ParseNode* C99Parser::parse() {
 
   if (cursor) {
     root = new NodeTranslationUnit();
-    root->init(tok_a, tok_b);
+    root->init_fixme(tok_a, tok_b - 1);
 
     if (cursor != tok_b) {
       file_fail++;
@@ -204,7 +204,7 @@ Token* C99Parser::match_builtin_type_suffix(Token* a, Token* b) {
 void C99Parser::dump_stats() {
   double total_time = io_accum + lex_accum + parse_accum + cleanup_accum;
 
-  if (file_pass == 10000 && ParseNode::constructor_count != 644939170) {
+  if (file_pass == 10000 && ParseNode::constructor_count != 644917670) {
     set_color(0x008080FF);
     printf("############## NODE COUNT MISMATCH\n");
     set_color(0);
@@ -290,12 +290,8 @@ std::string escape_span(ParseNode* n) {
     return "<bad span>";
   }
 
-  if (n->tok_a == n->tok_b) {
-    return "<zero span>";
-  }
-
   auto lex_a = n->tok_a->lex;
-  auto lex_b = (n->tok_b - 1)->lex;
+  auto lex_b = n->tok_b->lex;
   auto len = lex_b->span_b - lex_a->span_a;
 
   std::string result;

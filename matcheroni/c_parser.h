@@ -563,7 +563,7 @@ struct NodeExpressionSoup {
   static Token* match(void* ctx, Token* a, Token* b) {
     if (auto end = prefix_pattern::match(ctx, a, b)) {
       auto node = new NodeExpressionPrefix();
-      node->init(a, end);
+      node->init_fixme(a, end - 1);
       return end;
     }
 
@@ -571,19 +571,19 @@ struct NodeExpressionSoup {
 
     if (auto end2 = postfix_pattern::match(ctx, end, b)) {
       auto node = new NodeExpressionPostfix();
-      node->init(a, end2);
+      node->init_fixme(a, end2 - 1);
       return end2;
     }
 
     if (auto end2 = ternary_pattern::match(ctx, end, b)) {
       auto node = new NodeExpressionTernary();
-      node->init(a, end2);
+      node->init_fixme(a, end2 - 1);
       return end2;
     }
 
     if (auto end2 = binary_pattern::match(ctx, end, b)) {
       auto node = new NodeExpressionBinary();
-      node->init(a, end2);
+      node->init_fixme(a, end2 - 1);
       return end2;
     }
 
@@ -923,7 +923,7 @@ struct NodeStructType  : public NodeMaker<NodeStructType> {
     auto end = p->match_struct_type(a, b);
     if (end) {
       NodeStructType* node = new NodeStructType();
-      node->init(a, end);
+      node->init_fixme(a, end - 1);
     }
     return end;
   }

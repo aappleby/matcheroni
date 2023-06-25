@@ -103,8 +103,8 @@ struct ParseNode {
 
   //----------------------------------------
 
-  void init(Token* tok_a, Token* tok_b) {
-    assert(tok_a != tok_b);
+  void init_fixme(Token* tok_a, Token* tok_b) {
+    assert(tok_a <= tok_b);
 
     this->tok_a = tok_a;
     this->tok_b = tok_b;
@@ -112,10 +112,10 @@ struct ParseNode {
 
     // Attach all the tops under this node to it.
     auto cursor = tok_a;
-    while (cursor < tok_b) {
+    while (cursor <= tok_b) {
       if (cursor->top) {
         auto child = cursor->top;
-        cursor->top = nullptr;
+        //cursor->top = nullptr;
 
         if (tail) {
           tail->next = child;
@@ -127,7 +127,7 @@ struct ParseNode {
           tail = child;
         }
 
-        cursor = child->tok_b;
+        cursor = child->tok_b + 1;
       }
       else {
         cursor++;
@@ -312,7 +312,7 @@ struct NodeMaker : public ParseNode {
     auto end = NT::pattern::match(ctx, a, b);
     if (end && end != a) {
       auto node = new NT();
-      node->init(a, end);
+      node->init_fixme(a, end-1);
     }
     return end;
   }
