@@ -438,7 +438,7 @@ struct NodeExpressionBinary    : public ParseNode {};
 
 struct NodeExpressionSoup {
   constexpr inline static const char* op2 = "--++";
-  constexpr inline static const char* op1 = "-!.*/&%^+<=>|~";
+  constexpr inline static const char* op1 = "-!*&+~";
 
   static Token* match_operators(void* ctx, Token* a, Token* b) {
     if (!a || a == b) return nullptr;
@@ -498,6 +498,7 @@ struct NodeExpressionSoup {
   using binary_pattern = // Not covered by torture or csmith
   Seq<
     Oneof<
+      NodeOperator<"...">,
       NodeOperator<"<<=">,
       NodeOperator<">>=">,
       NodeOperator<"->*">,
