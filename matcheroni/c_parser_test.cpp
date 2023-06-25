@@ -37,6 +37,14 @@ bool should_skip(const std::string& path) {
     "pr65241.c",
     "pr34091.c",
 
+    // no code?
+    "stpcpy-chk-lib.c",
+    "mempcpy-chk-lib.c",
+    "strstr-lib.c",
+    "strcpy-lib.c",
+    "memchr-lib.c",
+    "snprintf-chk-lib.c",
+
     // __builtin_types_compatible_p (int[5], int[])
     "builtin-types-compatible-p.c",
 
@@ -75,7 +83,7 @@ int test_parser(int argc, char** argv) {
     //"mini_tests/csmith_1088.c",
     //"../gcc/gcc/tree-inline.h",
     //"../gcc/gcc/testsuite/gcc.c-torture/execute/20071029-1.c",
-    "../gcc/gcc/testsuite/gcc.c-torture/compile/20090917-1.c",
+    "../gcc/gcc/testsuite/gcc.c-torture/execute/builtins/sprintf-lib.c",
   };
 
   verbose = true;
@@ -110,6 +118,10 @@ int test_parser(int argc, char** argv) {
 
     //printf("Lexing %s\n", path.c_str());
     parser.lex();
+    if (parser.tokens.empty() || parser.tokens[0].lex->is_eof()) {
+      parser.file_skip++;
+      continue;
+    }
 
     printf("%04d: Parsing %s\n", parser.file_pass, path.c_str());
     auto root = parser.parse();

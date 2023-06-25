@@ -104,6 +104,8 @@ struct ParseNode {
   //----------------------------------------
 
   void init(Token* tok_a, Token* tok_b) {
+    assert(tok_a != tok_b);
+
     this->tok_a = tok_a;
     this->tok_b = tok_b;
     constructor_count++;
@@ -306,8 +308,9 @@ template<typename NT>
 struct NodeMaker : public ParseNode {
 
   static Token* match(void* ctx, Token* a, Token* b) {
+    if (!a || a == b) return nullptr;
     auto end = NT::pattern::match(ctx, a, b);
-    if (end) {
+    if (end && end != a) {
       auto node = new NT();
       node->init(a, end);
     }
