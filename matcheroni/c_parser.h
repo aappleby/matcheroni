@@ -436,23 +436,13 @@ struct NodeGccCompoundExpression : public NodeMaker<NodeGccCompoundExpression> {
 struct NodeExpressionTernary : public ParseNode {};
 struct NodeExpressionBinary  : public ParseNode {};
 struct NodeExpressionPrefix  : public ParseNode {};
+struct NodeExpressionPostfix : public ParseNode {};
 
 struct NodeExpressionSoup {
-  constexpr inline static const char* op2 = "--++";
   constexpr inline static const char* op1 = "-!*&+~";
 
   static Token* match_operators(void* ctx, Token* a, Token* b) {
     if (!a || a == b) return nullptr;
-
-    if (b-a >= 2) {
-      constexpr auto op_count = strlen(op2) / 2;
-      for (auto j = 0; j < op_count; j++) {
-        bool match = true;
-        if (a->lex->span_a[0] != op2[j * 2 + 0]) match = false;
-        if (a->lex->span_a[1] != op2[j * 2 + 1]) match = false;
-        if (match) return a + 2;
-      }
-    }
 
     if (b-a >= 1) {
       constexpr auto op_count = strlen(op1) / 1;
@@ -497,6 +487,14 @@ struct NodeExpressionSoup {
       NodeOperator<"&">
     >,
     NodeExpressionSoup
+  >;
+
+  //----------------------------------------
+
+  using postfix_pattern =
+  Oneof<
+    NodeOperator<"++">,
+    NodeOperator<"--">
   >;
 
   //----------------------------------------
@@ -563,6 +561,12 @@ struct NodeExpressionSoup {
     }
 
     auto end = pattern::match(ctx, a, b);
+
+    if (auto end2 = postfix_pattern::match(ctx, end, b)) {
+      auto node = new NodeExpressionPostfix();
+      node->init(a, end2);
+      return end2;
+    }
 
     if (auto end2 = ternary_pattern::match(ctx, end, b)) {
       auto node = new NodeExpressionTernary();
