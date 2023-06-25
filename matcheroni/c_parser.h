@@ -433,12 +433,13 @@ struct NodeGccCompoundExpression : public NodeMaker<NodeGccCompoundExpression> {
 
 // FIXME - replace with some other parser
 
-struct NodeExpressionTernary : public ParseNode {
-};
+struct NodeExpressionTernary : public ParseNode {};
+struct NodeExpressionScope   : public ParseNode {};
+struct NodeExpressionPtr2Mem : public ParseNode {};
 
 struct NodeExpressionSoup : public ParseNode {
-  constexpr inline static const char* op3 = "->*<<=<=>>>=";
-  constexpr inline static const char* op2 = "---=->::!=.**=/=&&&=%=^=+++=<<<===>=>>|=||";
+  constexpr inline static const char* op3 = "<<=<=>>>=";
+  constexpr inline static const char* op2 = "---=->!=*=/=&&&=%=^=+++=<<<===>=>>|=||";
   constexpr inline static const char* op1 = "-!.*/&%^+<=>|~";
 
   static Token* match_operators(void* ctx, Token* a, Token* b) {
@@ -491,9 +492,12 @@ struct NodeExpressionSoup : public ParseNode {
     >
   >;
 
+
+
+
   // pr68249.c - ternary option can be empty
   // pr49474.c - ternary branches can be comma-lists
-  using ternary_pattern =
+  using ternary_pattern = // Not covered by csmith
   Seq<
     NodeOperator<"?">,
     Opt<comma_separated<NodeExpressionSoup>>,
@@ -501,11 +505,38 @@ struct NodeExpressionSoup : public ParseNode {
     Opt<comma_separated<NodeExpressionSoup>>
   >;
 
+  using scope_pattern = // Not covered by torture or csmith
+  Seq<
+    NodeOperator<"::">,
+    NodeExpressionSoup
+  >;
+
+  using ptr2mem_pattern = // Not covered by torture or csmith
+  Seq<
+    Oneof<
+      NodeOperator<"->*">,
+      NodeOperator<".*">
+    >,
+    NodeExpressionSoup
+  >;
+
   static Token* match(void* ctx, Token* a, Token* b) {
     auto end = pattern::match(ctx, a, b);
 
     if (auto end2 = ternary_pattern::match(ctx, end, b)) {
       auto node = new NodeExpressionTernary();
+      node->init(a, end2);
+      return end2;
+    }
+
+    if (auto end2 = scope_pattern::match(ctx, end, b)) {
+      auto node = new NodeExpressionScope();
+      node->init(a, end2);
+      return end2;
+    }
+
+    if (auto end2 = ptr2mem_pattern::match(ctx, end, b)) {
+      auto node = new NodeExpressionPtr2Mem();
       node->init(a, end2);
       return end2;
     }
