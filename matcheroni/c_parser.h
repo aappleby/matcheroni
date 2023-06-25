@@ -153,15 +153,18 @@ constexpr std::array builtin_type_base = {
 // MUST BE SORTED CASE-SENSITIVE
 constexpr std::array builtin_type_prefix = {
   "_Complex",
+  "__complex",
   "__complex__",
+  "__imag",
   "__imag__",
+  "__real",
   "__real__",
   "__signed__",
   "__unsigned__",
   "long",
   "short",
   "signed",
-  "unsigned",
+  "unsigned"
 };
 
 // MUST BE SORTED CASE-SENSITIVE
@@ -650,6 +653,7 @@ struct NodePointer : public NodeMaker<NodePointer> {
 
 struct NodeParam : public NodeMaker<NodeParam> {
   using pattern = Oneof<
+    NodeOperator<"...">,
     Seq<
       Opt<NodeQualifiers>,
       NodeSpecifier,
@@ -659,8 +663,7 @@ struct NodeParam : public NodeMaker<NodeParam> {
         NodeAbstractDeclarator
       >
     >,
-    NodeIdentifier,
-    NodeOperator<"...">
+    NodeIdentifier
   >;
 };
 
@@ -1514,7 +1517,8 @@ struct NodeStatementTypedef : public NodeMaker<NodeStatementTypedef> {
 struct NodeStatementGoto : public NodeMaker<NodeStatementGoto> {
   using pattern = Seq<
     Keyword<"goto">,
-    NodeExpression
+    NodeExpression,
+    Atom<';'>
   >;
 };
 
@@ -1535,6 +1539,7 @@ struct NodeStatement : public PatternWrapper<NodeStatement> {
     NodeStatementSwitch,
     NodeStatementDoWhile,
     NodeStatementWhile,
+    NodeStatementGoto,
     NodeStatementAsm,
 
     // These don't - but they might confuse a keyword with an identifier...
