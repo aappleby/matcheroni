@@ -437,7 +437,8 @@ struct NodeExpressionTernary   : public ParseNode {};
 struct NodeExpressionBinary    : public ParseNode {};
 
 struct NodeExpressionSoup {
-  constexpr inline static const char* op2 = "---=->!=*=/=&&&=%=^=+++=<<<===>=>>|=||";
+  //constexpr inline static const char* op2 = "-- -= -> != *= /= && &= %= ^= ++ += << <= == >= >> |= ||";
+  constexpr inline static const char* op2 = "--&=%=^=+++=<<<===>=>>|=||";
   constexpr inline static const char* op1 = "-!.*/&%^+<=>|~";
 
   static Token* match_operators(void* ctx, Token* a, Token* b) {
@@ -495,6 +496,8 @@ struct NodeExpressionSoup {
 
   //----------------------------------------
 
+  //constexpr inline static const char* op2 = "-- &= %= ^= ++ += << <= == >= >> |= ||";
+
   using binary_pattern = // Not covered by torture or csmith
   Seq<
     Oneof<
@@ -503,7 +506,13 @@ struct NodeExpressionSoup {
       NodeOperator<"->*">,
       NodeOperator<"<=>">,
       NodeOperator<".*">,
-      NodeOperator<"::">
+      NodeOperator<"::">,
+      NodeOperator<"-=">,
+      NodeOperator<"->">,
+      NodeOperator<"!=">,
+      NodeOperator<"*=">,
+      NodeOperator<"/=">,
+      NodeOperator<"&&">
     >,
     NodeExpressionSoup
   >;
