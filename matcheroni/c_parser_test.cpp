@@ -2,6 +2,8 @@
 
 #include <filesystem>
 
+void dump_tree(ParseNode* n, int max_depth = 0, int indentation = 0);
+
 //------------------------------------------------------------------------------
 // File filters
 
@@ -63,6 +65,7 @@ int test_parser(int argc, char** argv) {
 
   C99Parser parser;
 
+  bool verbose = false;
 
 #if 0
 
@@ -72,8 +75,10 @@ int test_parser(int argc, char** argv) {
     //"mini_tests/csmith_1088.c",
     //"../gcc/gcc/tree-inline.h",
     //"../gcc/gcc/testsuite/gcc.c-torture/execute/20071029-1.c",
-    "../gcc/gcc/testsuite/gcc.c-torture/execute/complex-5.c",
+    "../gcc/gcc/testsuite/gcc.c-torture/compile/20090917-1.c",
   };
+
+  verbose = true;
 
 #else
 
@@ -93,6 +98,8 @@ int test_parser(int argc, char** argv) {
 
 
   for (const auto& path : paths) {
+    parser.reset();
+
     //printf("Loading %s\n", path.c_str());
     parser.load(path);
     if (parser.text.find("#define") != std::string::npos) {
@@ -105,13 +112,13 @@ int test_parser(int argc, char** argv) {
     parser.lex();
 
     printf("%04d: Parsing %s\n", parser.file_pass, path.c_str());
-
     auto root = parser.parse();
     if (!root) {
       printf("Parsing failed: %s\n", path.c_str());
     }
-
-    parser.reset();
+    else {
+      if (verbose) dump_tree(root);
+    }
   }
 
 

@@ -2,6 +2,9 @@
 #include "c_lexer.h"
 
 #include <filesystem>
+#include <vector>
+
+#include <cstring>
 
 void dump_tree(ParseNode* n, int max_depth = 0, int indentation = 0);
 
@@ -75,7 +78,7 @@ void C99Parser::reset() {
   text.clear();
   lexemes.clear();
   tokens.clear();
-  ParseNode::clear_slabs();
+  ParseNode::slabs.reset();
 
   class_types.clear();
   struct_types.clear();
@@ -198,84 +201,6 @@ Token* C99Parser::match_builtin_type_suffix(Token* a, Token* b) {
 }
 
 //------------------------------------------------------------------------------
-// FIXME should not be using text() here to avoid a temporary string allocation
-
-struct NodeClassType   : public ParseNode {};
-struct NodeStructType  : public ParseNode {};
-struct NodeUnionType   : public ParseNode {};
-struct NodeEnumType    : public ParseNode {};
-struct NodeTypedefType : public ParseNode {};
-
-Token* C99Parser::match_type(const std::vector<std::string>& types, Token* a, Token* b) {
- if (!a || a == b) return nullptr;
-  if (types.empty()) return nullptr;
-
-  auto t = a->lex->text();
-  for (const auto& c : types) {
-    if (c == t) return a + 1;
-  }
-  return nullptr;
-}
-
-Token* C99Parser::match_class_type(Token* a, Token* b) {
-  if (auto end = match_type(class_types, a, b)) {
-    a->top = new NodeClassType();
-    a->top->init(a, end);
-    return end;
-  }
-  return nullptr;
-}
-
-Token* C99Parser::match_struct_type(Token* a, Token* b) {
-  if (auto end = match_type(struct_types, a, b)) {
-    a->top = new NodeStructType();
-    a->top->init(a, end);
-    return end;
-  }
-  return nullptr;
-}
-
-Token* C99Parser::match_union_type(Token* a, Token* b) {
-  if (auto end = match_type(union_types, a, b)) {
-    a->top = new NodeUnionType();
-    a->top->init(a, end);
-    return end;
-  }
-  return nullptr;
-}
-
-Token* C99Parser::match_enum_type(Token* a, Token* b) {
-  if (auto end = match_type(enum_types, a, b)) {
-    a->top = new NodeEnumType();
-    a->top->init(a, end);
-    return end;
-  }
-  return nullptr;
-}
-
-Token* C99Parser::match_typedef_type(Token* a, Token* b) {
-  if (auto end = match_type(typedef_types, a, b)) {
-    a->top = new NodeTypedefType();
-    a->top->init(a, end);
-    return end;
-  }
-  return nullptr;
-}
-
-//------------------------------------------------------------------------------
-
-Token* C99Parser::match_struct_name (Token* a, Token* b) {
-  if (auto node = make_node2<NodeStructName>(a, b)) {
-    if (auto id = node->child<NodeIdentifier>()) {
-      //printf("Adding struct type %s\n", id->text().c_str());
-      add_struct_type(id->text());
-    }
-    return node->tok_b;
-  }
-  return nullptr;
-}
-
-//------------------------------------------------------------------------------
 
 void C99Parser::dump_stats() {
   double total_time = io_accum + lex_accum + parse_accum + cleanup_accum;
@@ -295,7 +220,7 @@ void C99Parser::dump_stats() {
   printf("Lines/sec      %f\n", 1000.0 * double(file_lines) / double(total_time));
   printf("\n");
   printf("Total nodes    %d\n", ParseNode::constructor_count);
-  printf("Node pool      %ld bytes\n", ParseNode::max_size);
+  printf("Node pool      %ld bytes\n", ParseNode::slabs.max_size);
   printf("File pass      %d\n", file_pass);
   printf("File fail      %d\n", file_fail);
   printf("File skip      %d\n", file_skip);

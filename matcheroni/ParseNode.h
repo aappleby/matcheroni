@@ -48,26 +48,30 @@ using token_matcher = matcher_function<Token>;
 
 //------------------------------------------------------------------------------
 
-struct ParseNode {
+struct SlabAllocator {
 
-  static constexpr size_t slab_size = 16*1024*1024;
-  inline static std::vector<uint8_t*> slabs;
-  inline static size_t slab_cursor = 0;
-  inline static size_t slab_cursor_old = 0;
-  inline static size_t current_size = 0;
-  inline static size_t max_size = 0;
+  SlabAllocator() {
+    top_slab = new uint8_t[slab_size];
+    slab_cursor = 0;
+    current_size = 0;
+    max_size = 0;
+  }
 
-  static void* bump(size_t size) {
-    auto slab = slabs.empty() ? nullptr : slabs.back();
-    if (!slab || (slab_cursor + size > slab_size)) {
-      slab = new uint8_t[slab_size];
+  void reset() {
+    for (auto s : old_slabs) delete [] s;
+    old_slabs.clear();
+    slab_cursor = 0;
+    current_size = 0;
+  }
+
+  void* bump(size_t size) {
+    if (slab_cursor + size > slab_size) {
+      old_slabs.push_back(top_slab);
+      top_slab = new uint8_t[slab_size];
       slab_cursor = 0;
-      slab_cursor_old = 0;
-      slabs.push_back(slab);
     }
 
-    auto result = slab + slab_cursor;
-    slab_cursor_old = slab_cursor;
+    auto result = top_slab + slab_cursor;
     slab_cursor += size;
 
     current_size += size;
@@ -76,24 +80,28 @@ struct ParseNode {
     return result;
   }
 
-  static void clear_slabs() {
-    for (auto s : slabs) delete [] s;
-    slabs.clear();
-    current_size = 0;
-  }
+  static constexpr size_t slab_size = 16*1024*1024;
+  std::vector<uint8_t*> old_slabs;
+  uint8_t* top_slab;
+  size_t   slab_cursor;
+  size_t   current_size;
+  size_t   max_size;
+};
 
-  void* operator new(std::size_t size)   {
-    return bump(size);
-  }
-  void* operator new[](std::size_t size) {
-    return bump(size);
-  }
+//------------------------------------------------------------------------------
 
-  void  operator delete(void*)   {
-  }
+struct ParseNode {
 
-  void  operator delete[](void*) {
-  }
+  //----------------------------------------
+
+  inline static SlabAllocator slabs;
+
+  static void* operator new(std::size_t size)   { return slabs.bump(size); }
+  static void* operator new[](std::size_t size) { return slabs.bump(size); }
+  static void  operator delete(void*)           { }
+  static void  operator delete[](void*)         { }
+
+  //----------------------------------------
 
   void init(Token* tok_a, Token* tok_b) {
     this->tok_a = tok_a;
@@ -123,6 +131,8 @@ struct ParseNode {
         cursor++;
       }
     }
+
+    tok_a->top = this;
   }
 
   virtual ~ParseNode() {
@@ -303,7 +313,6 @@ struct NodeMaker : public ParseNode {
     if (end) {
       NT* node = new NT();
       node->init(a, end);
-      a->top = node;
     }
     return end;
   }

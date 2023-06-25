@@ -32,6 +32,11 @@ struct NodeTypeDecl;
 struct NodeTypeName;
 struct NodeUnion;
 
+struct NodeClassType   : public ParseNode {};
+struct NodeUnionType   : public ParseNode {};
+struct NodeEnumType    : public ParseNode {};
+struct NodeTypedefType : public ParseNode {};
+
 //------------------------------------------------------------------------------
 // Sorted string table matcher thing.
 
@@ -211,17 +216,37 @@ public:
   Token* match_builtin_type_prefix(Token* a, Token* b);
   Token* match_builtin_type_suffix(Token* a, Token* b);
 
-  Token* match_type (const std::vector<std::string>& types, Token* a, Token* b);
-  Token* match_class_type  (Token* a, Token* b);
-  Token* match_struct_type (Token* a, Token* b);
-  Token* match_union_type  (Token* a, Token* b);
-  Token* match_enum_type   (Token* a, Token* b);
-  Token* match_typedef_type(Token* a, Token* b);
+  //----------------------------------------------------------------------------
 
+  void add_type(const std::string& t, std::vector<std::string>& types) {
+    if (std::find(types.begin(), types.end(), t) == types.end()) {
+      types.push_back(t);
+    }
+  }
 
-  Token* match_struct_name (Token* a, Token* b);
+  Token* match_type(const std::vector<std::string>& types, Token* a, Token* b) {
+    if (!a || a == b) return nullptr;
+    if (types.empty()) return nullptr;
+    for (const auto& c : types) {
+      auto r = cmp_span_lit(a->lex->span_a, a->lex->span_b, c.c_str());
+      if (r == 0) return a + 1;
+    }
+    return nullptr;
+  }
 
+  //----------------------------------------------------------------------------
 
+  void add_class_type  (const std::string& t) { add_type(t, class_types); }
+  void add_struct_type (const std::string& t) { add_type(t, struct_types); }
+  void add_union_type  (const std::string& t) { add_type(t, union_types); }
+  void add_enum_type   (const std::string& t) { add_type(t, enum_types); }
+  void add_typedef_type(const std::string& t) { add_type(t, typedef_types); }
+
+  Token* match_class_type  (Token* a, Token* b) { return match_type(class_types,   a, b); }
+  Token* match_struct_type (Token* a, Token* b) { return match_type(struct_types,  a, b); }
+  Token* match_union_type  (Token* a, Token* b) { return match_type(union_types,   a, b); }
+  Token* match_enum_type   (Token* a, Token* b) { return match_type(enum_types,    a, b); }
+  Token* match_typedef_type(Token* a, Token* b) { return match_type(typedef_types, a, b); }
 
   template<typename T>
   Token* make_node(Token* a, Token* b) {
@@ -229,7 +254,6 @@ public:
     if (end) {
       T* node = new T();
       node->init(a, end);
-      a->top = node;
     }
     return end;
   }
@@ -240,7 +264,6 @@ public:
     if (end) {
       T* node = new T();
       node->init(a, end);
-      a->top = node;
       return node;
     }
     return nullptr;
@@ -273,18 +296,6 @@ public:
   double lex_accum = 0;
   double parse_accum = 0;
   double cleanup_accum = 0;
-
-  void add_type(const std::string& t, std::vector<std::string>& types) {
-    if (std::find(types.begin(), types.end(), t) == types.end()) {
-      types.push_back(t);
-    }
-  }
-
-  void add_class_type  (const std::string& t) { add_type(t, class_types); }
-  void add_struct_type (const std::string& t) { add_type(t, struct_types); }
-  void add_union_type  (const std::string& t) { add_type(t, union_types); }
-  void add_enum_type   (const std::string& t) { add_type(t, enum_types); }
-  void add_typedef_type(const std::string& t) { add_type(t, typedef_types); }
 
   std::vector<std::string> class_types;
   std::vector<std::string> struct_types;
@@ -346,6 +357,7 @@ struct NodePreproc : public ParseNode {
 struct NodeIdentifier : public NodeMaker<NodeIdentifier> {
   using pattern = Atom<LEX_IDENTIFIER>;
 
+  // used by "add_*_type"
   std::string text() const {
     return tok_a->lex->text();
   }
@@ -436,6 +448,7 @@ struct NodeExpressionSubscript : public NodeMaker<NodeExpressionSubscript> {
 };
 
 //------------------------------------------------------------------------------
+// This is a weird ({...}) thing that GCC supports
 
 struct NodeGccCompoundExpression : public NodeMaker<NodeGccCompoundExpression> {
   using pattern = Seq<
@@ -446,10 +459,10 @@ struct NodeGccCompoundExpression : public NodeMaker<NodeGccCompoundExpression> {
 };
 
 //------------------------------------------------------------------------------
+// pr68249.c - ternary option can be empty
+// pr49474.c - ternary branches can be comma-lists
 
 struct NodeExpressionTernary : public PatternWrapper<NodeExpressionTernary> {
-  // pr68249.c - ternary option can be empty
-  // pr49474.c - ternary branches can be comma-lists
 
   using pattern = Seq<
     NodeExpressionSoup,
@@ -469,6 +482,10 @@ struct NodeExpression : public NodeMaker<NodeExpression> {
 };
 
 //------------------------------------------------------------------------------
+// This captures all expresion forms, but does _not_ bother to put them into a
+// tree or do operator precedence or anything.
+
+// FIXME - replace with some other parser
 
 struct NodeExpressionSoup : public PatternWrapper<NodeExpressionSoup> {
   constexpr inline static const char* op3 = "->*<<=<=>>>=";
@@ -527,9 +544,9 @@ struct NodeExpressionSoup : public PatternWrapper<NodeExpressionSoup> {
 };
 
 //------------------------------------------------------------------------------
+// 20010911-1.c - Attribute can be empty
 
 struct NodeAttribute : public NodeMaker<NodeAttribute> {
-  // 20010911-1.c - Attribute can be empty
 
   using pattern = Seq<
     Oneof<
@@ -640,9 +657,13 @@ struct NodeAtomicType : public NodeMaker<NodeAtomicType> {
 
 //------------------------------------------------------------------------------
 
+struct NodeClassName;
+struct NodeStructType;
+
 struct NodeSpecifier : public NodeMaker<NodeSpecifier> {
   using pattern = Seq<
     Oneof<
+      // FIXME shouldn't these be match_class_name or whatev?
       Seq<Keyword<"class">,  NodeIdentifier>,
       Seq<Keyword<"union">,  NodeIdentifier>,
       Seq<Keyword<"struct">, NodeIdentifier>,
@@ -823,18 +844,63 @@ struct NodeDeclaratorList : public NodeMaker<NodeDeclaratorList> {
 
 //------------------------------------------------------------------------------
 
-struct NodeStructName : public ParseNode {
+struct NodeStructType  : public NodeMaker<NodeStructType> {
+
+  /*
+  static Token* match_type(void* ctx, Token* a, Token* b) {
+    auto p = ((C99Parser*)ctx);
+    return p->match_struct_type(a, b);
+  }
+
+  using pattern = Ref<&C99Parser::match_struct_type>;
+  */
+
+  /*
+  static Token* match(void* ctx, Token* a, Token* b) {
+    auto end = Ref<&C99Parser::match_struct_type>::match(ctx, a, b);
+    if (end) {
+      NodeStructType* node = new NodeStructType();
+      node->init(a, end);
+    }
+    return end;
+  }
+  */
+
+  static Token* match(void* ctx, Token* a, Token* b) {
+    auto p = ((C99Parser*)ctx);
+    auto end = p->match_struct_type(a, b);
+    if (end) {
+      NodeStructType* node = new NodeStructType();
+      node->init(a, end);
+    }
+    return end;
+  }
+};
+
+struct NodeStructName : public NodeMaker<NodeStructName> {
   using pattern = Seq<
     Opt<NodeQualifiers>,
     Keyword<"struct">,
     Any<NodeAttribute>, // This has to be here, there are a lot of struct __attrib__() foo {};
     Opt<NodeIdentifier>
   >;
+
+  static Token* match(void* ctx, Token* a, Token* b) {
+    auto end = NodeMaker::match(ctx, a, b);
+    if (end) {
+      auto node = a->top;
+      if (auto id = node->child<NodeIdentifier>()) {
+        //printf("Adding struct type %s\n", id->text().c_str());
+        ((C99Parser*)ctx)->add_struct_type(id->text());
+      }
+    }
+    return end;
+  }
 };
 
 struct NodeStruct : public NodeMaker<NodeStruct> {
   using pattern = Seq<
-    Ref<&C99Parser::match_struct_name>,
+    NodeStructName,
     Opt<NodeFieldList>,
     Any<NodeAttribute>,
     Opt<NodeDeclaratorList>
@@ -1057,12 +1123,11 @@ struct NodeFunction : public NodeMaker<NodeFunction> {
 
 struct NodeConstructor : public NodeMaker<NodeConstructor> {
   using match_class_type  = Ref<&C99Parser::match_class_type>;
-  using match_struct_type = Ref<&C99Parser::match_struct_type>;
 
   using pattern = Seq<
     Oneof<
-      match_class_type,
-      match_struct_type
+      //match_class_type,
+      NodeStructType
     >,
     NodeParamList,
     Oneof<
