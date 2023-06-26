@@ -129,11 +129,17 @@ struct MatchOpPrefix {
     if (!a || a == b) return nullptr;
     if (a + lit.str_len > b) return nullptr;
 
+    /*
     for (auto i = 0; i < lit.str_len; i++) {
       if (!a[i].is_punct(lit.str_val[i])) return nullptr;
     }
+    */
+    for (auto i = 0; i < lit.str_len; i++) {
+      if (a->lex->span_a[i] != lit.str_val[i]) return nullptr;
+    }
 
     auto end = a + lit.str_len;
+
     constexpr int precedence = prefix_precedence(lit.str_val);
     static_assert(precedence > 0);
     auto node = new NodeOperator(precedence);
@@ -149,7 +155,7 @@ struct MatchOpBinary {
     if (a + lit.str_len > b) return nullptr;
 
     for (auto i = 0; i < lit.str_len; i++) {
-      if (!a[i].is_punct(lit.str_val[i])) return nullptr;
+      if (a->lex->span_a[i] != lit.str_val[i]) return nullptr;
     }
 
     auto end = a + lit.str_len;
@@ -168,7 +174,7 @@ struct MatchOpSuffix {
     if (a + lit.str_len > b) return nullptr;
 
     for (auto i = 0; i < lit.str_len; i++) {
-      if (!a[i].is_punct(lit.str_val[i])) return nullptr;
+      if (a->lex->span_a[i] != lit.str_val[i]) return nullptr;
     }
 
     auto end = a + lit.str_len;
