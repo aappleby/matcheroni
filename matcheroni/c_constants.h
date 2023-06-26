@@ -1,5 +1,6 @@
 #pragma once
 #include <array>
+#include <string.h>
 #include "Matcheroni.h"
 
 //------------------------------------------------------------------------------
@@ -210,3 +211,73 @@ constexpr std::array binary_operators = {
   "|=",
   "||",
 };
+
+
+constexpr int prefix_precedence(const char* op) {
+  if (strcmp(op, "++")  == 0) return 3;
+  if (strcmp(op, "--")  == 0) return 3;
+  if (strcmp(op, "+")   == 0) return 3;
+  if (strcmp(op, "-")   == 0) return 3;
+  if (strcmp(op, "!")   == 0) return 3;
+  if (strcmp(op, "~")   == 0) return 3;
+  if (strcmp(op, "*")   == 0) return 3;
+  if (strcmp(op, "&")   == 0) return 3;
+
+  // 2 type(a) type{a}
+  // 3 (type)a sizeof a sizeof(a) co_await a
+  // 3 new a new a[] delete a delete a[]
+  // 16 throw a co_yield a
+  return 0;
+}
+
+constexpr int binary_precedence(const char* op) {
+  if (strcmp(op, "::")  == 0) return 1;
+  if (strcmp(op, ".")   == 0) return 2;
+  if (strcmp(op, "->")  == 0) return 2;
+  if (strcmp(op, ".*")  == 0) return 4;
+  if (strcmp(op, "->*") == 0) return 4;
+  if (strcmp(op, "*")   == 0) return 5;
+  if (strcmp(op, "/")   == 0) return 5;
+  if (strcmp(op, "%")   == 0) return 5;
+  if (strcmp(op, "+")   == 0) return 6;
+  if (strcmp(op, "-")   == 0) return 6;
+  if (strcmp(op, "<<")  == 0) return 7;
+  if (strcmp(op, ">>")  == 0) return 7;
+  if (strcmp(op, "<=>") == 0) return 8;
+  if (strcmp(op, "<")   == 0) return 9;
+  if (strcmp(op, "<=")  == 0) return 9;
+  if (strcmp(op, ">")   == 0) return 9;
+  if (strcmp(op, ">=")  == 0) return 9;
+  if (strcmp(op, "==")  == 0) return 10;
+  if (strcmp(op, "!=")  == 0) return 10;
+  if (strcmp(op, "&")   == 0) return 11;
+  if (strcmp(op, "^")   == 0) return 12;
+  if (strcmp(op, "|")   == 0) return 13;
+  if (strcmp(op, "&&")  == 0) return 14;
+  if (strcmp(op, "||")  == 0) return 15;
+  if (strcmp(op, "?")   == 0) return 16;
+  if (strcmp(op, ":")   == 0) return 16;
+  if (strcmp(op, "=")   == 0) return 16;
+  if (strcmp(op, "+=")  == 0) return 16;
+  if (strcmp(op, "-=")  == 0) return 16;
+  if (strcmp(op, "*=")  == 0) return 16;
+  if (strcmp(op, "/=")  == 0) return 16;
+  if (strcmp(op, "%=")  == 0) return 16;
+  if (strcmp(op, "<<=") == 0) return 16;
+  if (strcmp(op, ">>=") == 0) return 16;
+  if (strcmp(op, "&=")  == 0) return 16;
+  if (strcmp(op, "^=")  == 0) return 16;
+  if (strcmp(op, "|=")  == 0) return 16;
+  if (strcmp(op, ",")   == 0) return 17;
+  return 0;
+}
+
+constexpr int suffix_precedence(const char* op) {
+  if (strcmp(op, "++")  == 0) return 2;
+  if (strcmp(op, "--")  == 0) return 2;
+  if (strcmp(op, "(")   == 0) return 2;
+  if (strcmp(op, ")")   == 0) return 2;
+  if (strcmp(op, "[")   == 0) return 2;
+  if (strcmp(op, "]")   == 0) return 2;
+  return 0;
+}

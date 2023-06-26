@@ -2,7 +2,6 @@
 
 #include "ParseNode.h"
 #include "c_constants.h"
-#include <string.h>
 
 struct NodeAbstractDeclarator;
 struct NodeAttribute;
@@ -111,77 +110,6 @@ public:
 
 //------------------------------------------------------------------------------
 
-constexpr int prefix_precedence(const char* op) {
-  if (strcmp(op, "++")  == 0) return 3;
-  if (strcmp(op, "--")  == 0) return 3;
-  if (strcmp(op, "+")   == 0) return 3;
-  if (strcmp(op, "-")   == 0) return 3;
-  if (strcmp(op, "!")   == 0) return 3;
-  if (strcmp(op, "~")   == 0) return 3;
-  if (strcmp(op, "*")   == 0) return 3;
-  if (strcmp(op, "&")   == 0) return 3;
-
-  // 2 type(a) type{a}
-  // 3 (type)a sizeof a sizeof(a) co_await a
-  // 3 new a new a[] delete a delete a[]
-  // 16 throw a co_yield a
-  return 0;
-}
-
-constexpr int binary_precedence(const char* op) {
-  if (strcmp(op, "::")  == 0) return 1;
-  if (strcmp(op, ".")   == 0) return 2;
-  if (strcmp(op, "->")  == 0) return 2;
-  if (strcmp(op, ".*")  == 0) return 4;
-  if (strcmp(op, "->*") == 0) return 4;
-  if (strcmp(op, "*")   == 0) return 5;
-  if (strcmp(op, "/")   == 0) return 5;
-  if (strcmp(op, "%")   == 0) return 5;
-  if (strcmp(op, "+")   == 0) return 6;
-  if (strcmp(op, "-")   == 0) return 6;
-  if (strcmp(op, "<<")  == 0) return 7;
-  if (strcmp(op, ">>")  == 0) return 7;
-  if (strcmp(op, "<=>") == 0) return 8;
-  if (strcmp(op, "<")   == 0) return 9;
-  if (strcmp(op, "<=")  == 0) return 9;
-  if (strcmp(op, ">")   == 0) return 9;
-  if (strcmp(op, ">=")  == 0) return 9;
-  if (strcmp(op, "==")  == 0) return 10;
-  if (strcmp(op, "!=")  == 0) return 10;
-  if (strcmp(op, "&")   == 0) return 11;
-  if (strcmp(op, "^")   == 0) return 12;
-  if (strcmp(op, "|")   == 0) return 13;
-  if (strcmp(op, "&&")  == 0) return 14;
-  if (strcmp(op, "||")  == 0) return 15;
-  if (strcmp(op, "?")   == 0) return 16;
-  if (strcmp(op, ":")   == 0) return 16;
-  if (strcmp(op, "=")   == 0) return 16;
-  if (strcmp(op, "+=")  == 0) return 16;
-  if (strcmp(op, "-=")  == 0) return 16;
-  if (strcmp(op, "*=")  == 0) return 16;
-  if (strcmp(op, "/=")  == 0) return 16;
-  if (strcmp(op, "%=")  == 0) return 16;
-  if (strcmp(op, "<<=") == 0) return 16;
-  if (strcmp(op, ">>=") == 0) return 16;
-  if (strcmp(op, "&=")  == 0) return 16;
-  if (strcmp(op, "^=")  == 0) return 16;
-  if (strcmp(op, "|=")  == 0) return 16;
-  if (strcmp(op, ",")   == 0) return 17;
-  return 0;
-}
-
-constexpr int suffix_precedence(const char* op) {
-  if (strcmp(op, "++")  == 0) return 2;
-  if (strcmp(op, "--")  == 0) return 2;
-  if (strcmp(op, "(")   == 0) return 2;
-  if (strcmp(op, ")")   == 0) return 2;
-  if (strcmp(op, "[")   == 0) return 2;
-  if (strcmp(op, "]")   == 0) return 2;
-  return 0;
-}
-
-//------------------------------------------------------------------------------
-
 template<typename P>
 using comma_separated = Seq<P, Any<Seq<Atom<','>, P>>, Opt<Atom<','>> >;
 
@@ -206,14 +134,66 @@ struct Operator {
 
 //------------------------------------------------------------------------------
 
-template<StringParam lit>
-struct NodeOperator : public NodeMaker<NodeOperator<lit>> {
-  using pattern = Operator<lit>;
+struct NodeOperator : public ParseNode {
+  NodeOperator(int precedence) : precedence(precedence) {}
+  const int precedence;
 };
 
-//------------------------------------------------------------------------------
+template<StringParam lit>
+struct MatchOpPrefix {
+  static Token* match(void* ctx, Token* a, Token* b) {
+    if (!a || a == b) return nullptr;
+    if (a + lit.str_len > b) return nullptr;
 
-struct NodeOperator2 : public ParseNode {
+    for (auto i = 0; i < lit.str_len; i++) {
+      if (!a[i].is_punct(lit.str_val[i])) return nullptr;
+    }
+
+    auto end = a + lit.str_len;
+    constexpr int precedence = prefix_precedence(lit.str_val);
+    static_assert(precedence > 0);
+    auto node = new NodeOperator(precedence);
+    node->init(a, end - 1);
+    return end;
+  }
+};
+
+template<StringParam lit>
+struct MatchOpBinary {
+  static Token* match(void* ctx, Token* a, Token* b) {
+    if (!a || a == b) return nullptr;
+    if (a + lit.str_len > b) return nullptr;
+
+    for (auto i = 0; i < lit.str_len; i++) {
+      if (!a[i].is_punct(lit.str_val[i])) return nullptr;
+    }
+
+    auto end = a + lit.str_len;
+    constexpr int precedence = binary_precedence(lit.str_val);
+    static_assert(precedence > 0);
+    auto node = new NodeOperator(precedence);
+    node->init(a, end - 1);
+    return end;
+  }
+};
+
+template<StringParam lit>
+struct MatchOpSuffix {
+  static Token* match(void* ctx, Token* a, Token* b) {
+    if (!a || a == b) return nullptr;
+    if (a + lit.str_len > b) return nullptr;
+
+    for (auto i = 0; i < lit.str_len; i++) {
+      if (!a[i].is_punct(lit.str_val[i])) return nullptr;
+    }
+
+    auto end = a + lit.str_len;
+    constexpr int precedence = suffix_precedence(lit.str_val);
+    static_assert(precedence > 0);
+    auto node = new NodeOperator(precedence);
+    node->init(a, end - 1);
+    return end;
+  }
 };
 
 //------------------------------------------------------------------------------
@@ -279,9 +259,9 @@ struct NodeBuiltinType : public NodeMaker<NodeBuiltinType> {
 
 struct NodeExpressionCast : public NodeMaker<NodeExpressionCast> {
   using pattern = Seq<
-    NodeOperator<"(">,
+    Atom<'('>,
     NodeTypeName,
-    NodeOperator<")">
+    Atom<')'>
   >;
 };
 
@@ -390,23 +370,23 @@ struct NodeExpressionSoup {
 
   using prefix_op =
   Oneof<
-    NodeOperator<"++">,
-    NodeOperator<"--">,
-    NodeOperator<"+">,
-    NodeOperator<"-">,
-    NodeOperator<"!">,
-    NodeOperator<"~">,
-    NodeOperator<"*">,
-    NodeOperator<"&">
+    MatchOpPrefix<"++">,
+    MatchOpPrefix<"--">,
+    MatchOpPrefix<"+">,
+    MatchOpPrefix<"-">,
+    MatchOpPrefix<"!">,
+    MatchOpPrefix<"~">,
+    MatchOpPrefix<"*">,
+    MatchOpPrefix<"&">
   >;
 
 
   //----------------------------------------
 
-  using postfix_op =
+  using suffix_op =
   Oneof<
-    NodeOperator<"++">,
-    NodeOperator<"--">
+    MatchOpSuffix<"++">,
+    MatchOpSuffix<"--">
   >;
 
   //----------------------------------------
@@ -415,9 +395,9 @@ struct NodeExpressionSoup {
   Seq<
     // pr68249.c - ternary option can be empty
     // pr49474.c - ternary branches can be comma-lists
-    NodeOperator<"?">,
+    MatchOpBinary<"?">,
     Opt<comma_separated<NodeExpressionSoup>>,
-    NodeOperator<":">,
+    MatchOpBinary<":">,
     Opt<comma_separated<NodeExpressionSoup>>
   >;
 
@@ -425,43 +405,42 @@ struct NodeExpressionSoup {
 
   using binary_op =
   Oneof<
-    NodeOperator<"...">,
-    NodeOperator<"<<=">,
-    NodeOperator<">>=">,
-    NodeOperator<"->*">,
-    NodeOperator<"<=>">,
-    NodeOperator<".*">,
-    NodeOperator<"::">,
-    NodeOperator<"-=">,
-    NodeOperator<"->">,
-    NodeOperator<"!=">,
-    NodeOperator<"*=">,
-    NodeOperator<"/=">,
-    NodeOperator<"&=">,
-    NodeOperator<"%=">,
-    NodeOperator<"^=">,
-    NodeOperator<"+=">,
-    NodeOperator<"<<">,
-    NodeOperator<"<=">,
-    NodeOperator<"==">,
-    NodeOperator<">=">,
-    NodeOperator<">>">,
-    NodeOperator<"|=">,
-    NodeOperator<"||">,
-    NodeOperator<"&&">,
-    NodeOperator<".">,
-    NodeOperator<"/">,
-    NodeOperator<"&">,
-    NodeOperator<"%">,
-    NodeOperator<"^">,
-    NodeOperator<"<">,
-    NodeOperator<"=">,
-    NodeOperator<">">,
-    NodeOperator<"|">,
-    NodeOperator<"-">,
-    NodeOperator<"*">,
-    NodeOperator<"&">,
-    NodeOperator<"+">
+    MatchOpBinary<"<<=">,
+    MatchOpBinary<">>=">,
+    MatchOpBinary<"->*">,
+    MatchOpBinary<"<=>">,
+    MatchOpBinary<".*">,
+    MatchOpBinary<"::">,
+    MatchOpBinary<"-=">,
+    MatchOpBinary<"->">,
+    MatchOpBinary<"!=">,
+    MatchOpBinary<"*=">,
+    MatchOpBinary<"/=">,
+    MatchOpBinary<"&=">,
+    MatchOpBinary<"%=">,
+    MatchOpBinary<"^=">,
+    MatchOpBinary<"+=">,
+    MatchOpBinary<"<<">,
+    MatchOpBinary<"<=">,
+    MatchOpBinary<"==">,
+    MatchOpBinary<">=">,
+    MatchOpBinary<">>">,
+    MatchOpBinary<"|=">,
+    MatchOpBinary<"||">,
+    MatchOpBinary<"&&">,
+    MatchOpBinary<".">,
+    MatchOpBinary<"/">,
+    MatchOpBinary<"&">,
+    MatchOpBinary<"%">,
+    MatchOpBinary<"^">,
+    MatchOpBinary<"<">,
+    MatchOpBinary<"=">,
+    MatchOpBinary<">">,
+    MatchOpBinary<"|">,
+    MatchOpBinary<"-">,
+    MatchOpBinary<"*">,
+    MatchOpBinary<"&">,
+    MatchOpBinary<"+">
   >;
 
   using binary_pattern = // Not covered by torture or csmith
@@ -474,7 +453,7 @@ struct NodeExpressionSoup {
 
   static Token* match(void* ctx, Token* a, Token* b) {
     using prefix_pattern = Seq<prefix_op, NodeExpressionSoup>;
-    using postfix_pattern = Some<postfix_op>;
+    using postfix_pattern = Some<suffix_op>;
 
     if (auto end = prefix_pattern::match(ctx, a, b)) {
       auto node = new NodeExpressionPrefix();
@@ -520,9 +499,11 @@ struct NodeAttribute : public NodeMaker<NodeAttribute> {
       NodeKeyword<"__attribute__">,
       NodeKeyword<"__attribute">
     >,
-    NodeOperator<"((">,
+    Atom<'('>,
+    Atom<'('>,
     Opt<comma_separated<NodeExpression>>,
-    NodeOperator<"))">,
+    Atom<')'>,
+    Atom<')'>,
     Opt<NodeAttribute>
   >;
 };
@@ -556,9 +537,9 @@ struct NodeQualifiers : public NodeMaker<NodeQualifiers> {
 struct NodePointer : public NodeMaker<NodePointer> {
   using pattern =
   Seq<
-    NodeOperator<"*">,
+    MatchOpPrefix<"*">,
     Any<
-      NodeOperator<"*">,
+      MatchOpPrefix<"*">,
       NodeQualifier
     >
   >;
@@ -568,7 +549,7 @@ struct NodePointer : public NodeMaker<NodePointer> {
 
 struct NodeParam : public NodeMaker<NodeParam> {
   using pattern = Oneof<
-    NodeOperator<"...">,
+    Seq<Atom<'.'>, Atom<'.'>, Atom<'.'>>,
     Seq<
       Opt<NodeQualifiers>,
       NodeSpecifier,
@@ -1217,6 +1198,11 @@ struct NodeStatementCase : public NodeMaker<NodeStatementCase> {
   using pattern = Seq<
     Keyword<"case">,
     NodeExpression,
+    Opt<Seq<
+      // case 1...2: - this is supported by GCC?
+      Atom<'.'>, Atom<'.'>, Atom<'.'>,
+      NodeExpression
+    >>,
     Atom<':'>,
     Any<Seq<
       Not<Keyword<"case">>,
