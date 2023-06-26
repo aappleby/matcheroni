@@ -356,7 +356,9 @@ void dump_lexeme(const Lexeme& l) {
 
 void C99Parser::dump_lexemes() {
   for(auto& l : lexemes) {
+    printf("{");
     dump_lexeme(l);
+    printf("}");
     printf("\n");
   }
 }

@@ -33,17 +33,19 @@ const char* match_eof        (void* ctx, const char* a, const char* b);
 
 //------------------------------------------------------------------------------
 
+// Match char needs to come before match identifier because of its possible L'_' prefix...
+
 Lexeme next_lexeme(void* ctx, const char* cursor, const char* text_end) {
   if (auto end = match_space      (ctx, cursor, text_end)) return Lexeme(LEX_SPACE     , cursor, end);
   if (auto end = match_newline    (ctx, cursor, text_end)) return Lexeme(LEX_NEWLINE   , cursor, end);
   if (auto end = match_string     (ctx, cursor, text_end)) return Lexeme(LEX_STRING    , cursor, end);
+  if (auto end = match_char       (ctx, cursor, text_end)) return Lexeme(LEX_CHAR      , cursor, end);
   if (auto end = match_identifier (ctx, cursor, text_end)) return Lexeme(LEX_IDENTIFIER, cursor, end);
   if (auto end = match_comment    (ctx, cursor, text_end)) return Lexeme(LEX_COMMENT   , cursor, end);
   if (auto end = match_preproc    (ctx, cursor, text_end)) return Lexeme(LEX_PREPROC   , cursor, end);
   if (auto end = match_float      (ctx, cursor, text_end)) return Lexeme(LEX_FLOAT     , cursor, end);
   if (auto end = match_int        (ctx, cursor, text_end)) return Lexeme(LEX_INT       , cursor, end);
   if (auto end = match_punct      (ctx, cursor, text_end)) return Lexeme(LEX_PUNCT     , cursor, end);
-  if (auto end = match_char       (ctx, cursor, text_end)) return Lexeme(LEX_CHAR      , cursor, end);
   if (auto end = match_splice     (ctx, cursor, text_end)) return Lexeme(LEX_SPLICE    , cursor, end);
   if (auto end = match_formfeed   (ctx, cursor, text_end)) return Lexeme(LEX_FORMFEED  , cursor, end);
   if (auto end = match_eof        (ctx, cursor, text_end)) return Lexeme(LEX_EOF       , cursor, end);

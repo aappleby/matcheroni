@@ -75,7 +75,7 @@ int test_parser(int argc, char** argv) {
 
   bool verbose = false;
 
-#if 0
+#if 0git co
 
   paths = {
     //"tests/scratch.c",
