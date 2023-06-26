@@ -182,7 +182,6 @@ struct MatchOpSuffix {
 
 //------------------------------------------------------------------------------
 
-/*
 struct NodeKeyword : public ParseNode {
   NodeKeyword(const char* keyword) : keyword(keyword) {}
   const char* keyword;
@@ -202,7 +201,6 @@ struct MatchKeyword {
     }
   }
 };
-*/
 
 //------------------------------------------------------------------------------
 
@@ -337,12 +335,20 @@ struct NodeExpressionCore    : public ParseNode {};
 struct NodeExpressionPostfix : public ParseNode {};
 struct NodeExpression        : public ParseNode {};
 
+struct NodeExpressionSizeof  : public NodeMaker<NodeExpressionSizeof> {
+  using pattern = Oneof<
+    Seq<Keyword<"sizeof">, NodeExpressionCast>,
+    Seq<Keyword<"sizeof">, NodeExpressionParen>,
+    Seq<Keyword<"sizeof">, MatchExpression>
+  >;
+};
+
 struct MatchExpression {
 
   using prefix_op =
   Oneof<
-    Keyword<"sizeof">,
     NodeExpressionCast,
+    MatchKeyword<"__real">,
     MatchOpPrefix<"++">,
     MatchOpPrefix<"--">,
     MatchOpPrefix<"+">,
@@ -419,6 +425,7 @@ struct MatchExpression {
     }
 
     using core = Oneof<
+      NodeExpressionSizeof,
       NodeExpressionGccCompound,
       NodeExpressionParen,
       NodeInitializerList,
@@ -442,10 +449,13 @@ struct MatchExpression {
       cursor = end;
     }
 
+    // We have prefix-core-suffix, wrap it in an Expression
     if (cursor) {
       auto node = new NodeExpression();
       node->init(a, cursor - 1);
     }
+
+    // And see if we can chain it to a ternary or binary op.
 
     using ternary_pattern = // Not covered by csmith
     Seq<
@@ -457,18 +467,17 @@ struct MatchExpression {
       Opt<comma_separated<MatchExpression>>
     >;
 
-    if (auto end = ternary_pattern::match(ctx, cursor, b)) {
-      cursor = end;
-      auto node = new NodeExpressionTernary();
-      node->init(a, cursor - 1);
-    }
-
     using binary_pattern = Seq<binary_op, MatchExpression>;
 
-    if (auto end = binary_pattern::match(ctx, cursor, b)) {
+    if (auto end = ternary_pattern::match(ctx, cursor, b)) {
+      auto node = new NodeExpressionTernary();
+      node->init(a, end - 1);
       cursor = end;
+    }
+    else if (auto end = binary_pattern::match(ctx, cursor, b)) {
       auto node = new NodeExpressionBinary();
-      node->init(a, cursor - 1);
+      node->init(a, end - 1);
+      cursor = end;
     }
 
     return cursor;
