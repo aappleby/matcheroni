@@ -3,6 +3,8 @@
 #include "ParseNode.h"
 #include "c_constants.h"
 
+void dump_tree(ParseNode* n, int max_depth, int indentation);
+
 struct NodeAbstractDeclarator;
 struct NodeAttribute;
 struct NodeClass;
@@ -135,7 +137,7 @@ struct MatchOpPrefix {
     }
     */
     for (auto i = 0; i < lit.str_len; i++) {
-      if (a->lex->span_a[i] != lit.str_val[i]) return nullptr;
+      if (!a->lex[i].is_punct(lit.str_val[i])) return nullptr;
     }
 
     auto end = a + lit.str_len;
@@ -155,7 +157,7 @@ struct MatchOpBinary {
     if (a + lit.str_len > b) return nullptr;
 
     for (auto i = 0; i < lit.str_len; i++) {
-      if (a->lex->span_a[i] != lit.str_val[i]) return nullptr;
+      if (!a->lex[i].is_punct(lit.str_val[i])) return nullptr;
     }
 
     auto end = a + lit.str_len;
@@ -174,7 +176,7 @@ struct MatchOpSuffix {
     if (a + lit.str_len > b) return nullptr;
 
     for (auto i = 0; i < lit.str_len; i++) {
-      if (a->lex->span_a[i] != lit.str_val[i]) return nullptr;
+      if (!a->lex[i].is_punct(lit.str_val[i])) return nullptr;
     }
 
     auto end = a + lit.str_len;
