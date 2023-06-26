@@ -104,6 +104,7 @@ constexpr std::array builtin_type_base = {
   "int64_t",
   "int8_t",
   "long",
+  "ptrdiff_t",
   "short",
   "signed",
   "size_t", // used in fputs-lib.c torture test
