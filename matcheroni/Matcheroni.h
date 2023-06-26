@@ -399,11 +399,11 @@ struct EOL {
 
 template<int N>
 struct StringParam {
-  constexpr static auto len = N-1;
   constexpr StringParam(const char (&str)[N]) {
-    for (int i = 0; i < len; i++) value[i] = str[i];
+    for (int i = 0; i < N; i++) str_val[i] = str[i];
   }
-  char value[len];
+  constexpr static auto str_len = N-1;
+  char str_val[str_len + 1];
 };
 
 //------------------------------------------------------------------------------
@@ -416,12 +416,12 @@ struct Lit {
   template<typename atom>
   static atom* match(void* ctx, atom* a, atom* b) {
     if (!a || a == b) return nullptr;
-    if (a + sizeof(lit.value) > b) return nullptr;
+    if (a + lit.str_len > b) return nullptr;
 
-    for (auto i = 0; i < lit.len; i++) {
-      if (a[i] != lit.value[i]) return nullptr;
+    for (auto i = 0; i < lit.str_len; i++) {
+      if (a[i] != lit.str_val[i]) return nullptr;
     }
-    return a + sizeof(lit.value);
+    return a + lit.str_len;
   }
 };
 
@@ -454,8 +454,8 @@ struct Charset {
   template<typename atom>
   static atom* match(void* ctx, atom* a, atom* b) {
     if (!a || a == b) return nullptr;
-    for (auto i = 0; i < sizeof(chars.value); i++) {
-      if (*a == chars.value[i]) {
+    for (auto i = 0; i < chars.str_len; i++) {
+      if (*a == chars.str_val[i]) {
         return a + 1;
       }
     }

@@ -105,7 +105,7 @@ struct ParseNode {
 
   //----------------------------------------
 
-  void init_fixme(Token* tok_a, Token* tok_b) {
+  void init(Token* tok_a, Token* tok_b) {
     assert(tok_a <= tok_b);
 
     this->tok_a = tok_a;
@@ -287,11 +287,11 @@ inline bool atom_cmp(Token& a, const StringParam<N>& b) {
     a.node_r->tok_b->node_l = nullptr;
     a.node_r = nullptr;
   }
-  int len_cmp = int(a.lex->len()) - int(b.len);
+  int len_cmp = int(a.lex->len()) - int(b.str_len);
   if (len_cmp != 0) return len_cmp;
 
-  for (auto i = 0; i < b.len; i++) {
-    int cmp = int(a.lex->span_a[i]) - int(b.value[i]);
+  for (auto i = 0; i < b.str_len; i++) {
+    int cmp = int(a.lex->span_a[i]) - int(b.str_val[i]);
     if (cmp) return cmp;
   }
 
@@ -329,7 +329,7 @@ struct NodeMaker : public ParseNode {
     auto end = NT::pattern::match(ctx, a, b);
     if (end && end != a) {
       auto node = new NT();
-      node->init_fixme(a, end-1);
+      node->init(a, end-1);
     }
     return end;
   }

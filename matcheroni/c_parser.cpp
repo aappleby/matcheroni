@@ -162,7 +162,7 @@ ParseNode* C99Parser::parse() {
 
   if (cursor) {
     root = new NodeTranslationUnit();
-    root->init_fixme(tok_a, tok_b - 1);
+    root->init(tok_a, tok_b - 1);
 
     if (cursor != tok_b) {
       file_fail++;
