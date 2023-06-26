@@ -244,14 +244,13 @@ const char* match_float(void* ctx, const char* a, const char* b) {
   using complex_suffix = Atom<'i', 'j'>;
 
   using decimal_floating_constant = Oneof<
-    Seq< Opt<sign>, fractional_constant, Opt<exponent_part>, Opt<complex_suffix>, Opt<floating_suffix>, Opt<complex_suffix> >,
-    Seq< Opt<sign>, digit_sequence, exponent_part,           Opt<complex_suffix>, Opt<floating_suffix>, Opt<complex_suffix> >
+    Seq< fractional_constant, Opt<exponent_part>, Opt<complex_suffix>, Opt<floating_suffix>, Opt<complex_suffix> >,
+    Seq< digit_sequence, exponent_part,           Opt<complex_suffix>, Opt<floating_suffix>, Opt<complex_suffix> >
   >;
 
   using hexadecimal_prefix         = Oneof<Lit<"0x">, Lit<"0X">>;
 
   using hexadecimal_floating_constant = Seq<
-    Opt<sign>,
     hexadecimal_prefix,
     Oneof<hexadecimal_fractional_constant, hexadecimal_digit_sequence>,
     binary_exponent_part,
