@@ -118,22 +118,6 @@ using opt_comma_separated = Opt<comma_separated<P>>;
 
 //------------------------------------------------------------------------------
 
-template<StringParam lit>
-struct Operator {
-  static Token* match(void* ctx, Token* a, Token* b) {
-    if (!a || a == b) return nullptr;
-    if (a + lit.str_len > b) return nullptr;
-
-    for (auto i = 0; i < lit.str_len; i++) {
-      if (!a[i].is_punct(lit.str_val[i])) return nullptr;
-    }
-
-    return a + lit.str_len;
-  }
-};
-
-//------------------------------------------------------------------------------
-
 struct NodeOperator : public ParseNode {
   NodeOperator(int precedence) : precedence(precedence) {}
   const int precedence;
@@ -198,10 +182,27 @@ struct MatchOpSuffix {
 
 //------------------------------------------------------------------------------
 
-template<StringParam lit>
-struct NodeKeyword : public NodeMaker<NodeKeyword<lit>> {
-  using pattern = Keyword<lit>;
+/*
+struct NodeKeyword : public ParseNode {
+  NodeKeyword(const char* keyword) : keyword(keyword) {}
+  const char* keyword;
 };
+
+template<StringParam lit>
+struct MatchKeyword {
+  static Token* match(void* ctx, Token* a, Token* b) {
+    if (!a || a == b) return nullptr;
+    if (atom_cmp(*a, lit) == 0) {
+      auto end = a + 1;
+      auto node = new NodeKeyword(lit.str_val);
+      node->init(a, end - 1);
+      return end;
+    } else {
+      return nullptr;
+    }
+  }
+};
+*/
 
 //------------------------------------------------------------------------------
 
@@ -359,7 +360,7 @@ struct NodeExpressionSoup {
       NodeInitializerList,   // must be before NodeExpressionBraces
       NodeExpressionBraces,
       NodeExpressionSubscript,
-      NodeKeyword<"sizeof">,
+      Keyword<"sizeof">,
       NodeIdentifier,
       NodeConstant,
       Ref<NodeExpressionSoup::match_operators>
@@ -496,8 +497,8 @@ struct NodeAttribute : public NodeMaker<NodeAttribute> {
 
   using pattern = Seq<
     Oneof<
-      NodeKeyword<"__attribute__">,
-      NodeKeyword<"__attribute">
+      Keyword<"__attribute__">,
+      Keyword<"__attribute">
     >,
     Atom<'('>,
     Atom<'('>,
@@ -519,8 +520,8 @@ struct NodeQualifier : public PatternWrapper<NodeQualifier> {
 
   // This is the slowest matcher in the app, why?
   using pattern = Oneof<
-    Seq<NodeKeyword<"_Alignas">, Atom<'('>, Oneof<NodeTypeDecl, NodeConstant>, Atom<')'>>,
-    Seq<NodeKeyword<"__declspec">, Atom<'('>, NodeIdentifier, Atom<')'>>,
+    Seq<Keyword<"_Alignas">, Atom<'('>, Oneof<NodeTypeDecl, NodeConstant>, Atom<')'>>,
+    Seq<Keyword<"__declspec">, Atom<'('>, NodeIdentifier, Atom<')'>>,
     NodeAttribute,
     Ref<match_qualifier>
   >;
@@ -1056,7 +1057,7 @@ struct NodeFunction : public NodeMaker<NodeFunction> {
     NodeFunctionIdentifier,
     NodeParamList,
     Opt<NodeAsmSuffix>,
-    Opt<NodeKeyword<"const">>,
+    Opt<Keyword<"const">>,
     Opt<Some<
       Seq<NodeDeclaration, Atom<';'>>
     >>,
@@ -1295,11 +1296,11 @@ struct NodeAsmRefs : public NodeMaker<NodeAsmRefs> {
 struct NodeAsmQualifiers : public NodeMaker<NodeAsmQualifiers> {
   using pattern =
   Some<
-    NodeKeyword<"volatile">,
-    NodeKeyword<"__volatile">,
-    NodeKeyword<"__volatile__">,
-    NodeKeyword<"inline">,
-    NodeKeyword<"goto">
+    Keyword<"volatile">,
+    Keyword<"__volatile">,
+    Keyword<"__volatile__">,
+    Keyword<"inline">,
+    Keyword<"goto">
   >;
 };
 
