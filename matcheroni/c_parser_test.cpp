@@ -83,7 +83,7 @@ int test_parser(int argc, char** argv) {
     //"mini_tests/csmith_1088.c",
     //"../gcc/gcc/tree-inline.h",
     //"../gcc/gcc/testsuite/gcc.c-torture/execute/20071029-1.c",
-    "../gcc/gcc/testsuite/gcc.c-torture/execute/pr80692.c",
+    "../gcc/gcc/testsuite/gcc.c-torture/compile/20071107-1.c",
   };
 
   verbose = true;

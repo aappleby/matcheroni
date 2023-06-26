@@ -318,6 +318,7 @@ struct NodeExpressionSubscript : public NodeMaker<NodeExpressionSubscript> {
 
 struct NodeExpressionGccCompound : public NodeMaker<NodeExpressionGccCompound> {
   using pattern = Seq<
+    Opt<Keyword<"__extension__">>,
     Atom<'('>,
     NodeStatementCompound,
     Atom<')'>
@@ -366,7 +367,10 @@ struct NodeExpressionAlignof  : public NodeMaker<NodeExpressionAlignof> {
 
 struct NodeExpressionOffsetof  : public NodeMaker<NodeExpressionOffsetof> {
   using pattern = Seq<
-    Keyword<"__builtin_offsetof">,
+    Oneof<
+      Keyword<"offsetof">,
+      Keyword<"__builtin_offsetof">
+    >,
     Atom<'('>,
     NodeTypeName,
     Atom<','>,
