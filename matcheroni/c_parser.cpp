@@ -150,8 +150,8 @@ ParseNode* C99Parser::parse() {
 
   using pattern = Any<
     Oneof<
-      NodePreproc,
-      NodeToplevelDeclaration::pattern
+      Trace<"preproc", NodePreproc>,
+      Trace<"decl", NodeToplevelDeclaration::pattern>
     >
   >;
 

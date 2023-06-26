@@ -39,6 +39,8 @@ inline void print_typeid_name(const char* name) {
 inline static int trace_enabled = 1;
 inline static int indent_depth = 0;
 
+#ifdef MATCHERONI_ENABLE_TRACE
+
 template<StringParam doco, typename NT>
 struct Trace {
   template<typename atom>
@@ -78,6 +80,18 @@ struct Trace {
     return end;
   }
 };
+
+#else
+
+template<StringParam doco, typename NT>
+struct Trace {
+  template<typename atom>
+  static atom* match(void* ctx, atom* a, atom* b) {
+    return NT::match(ctx, a, b);
+  }
+};
+
+#endif
 
 template<typename NT>
 struct TraceEnable {

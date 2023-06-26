@@ -819,8 +819,8 @@ struct NodeDeclaratorList : public NodeMaker<NodeDeclaratorList> {
         NodeBitSuffix
       >,
       Opt<Seq<
-        Atom<'='>,
-        NodeInitializer
+        Trace<"eq", Atom<'='>>,
+        Trace<"init", NodeInitializer>
       >>
     >
   >;
@@ -1037,11 +1037,12 @@ struct NodeTypeDecl : public NodeMaker<NodeTypeDecl> {
 //------------------------------------------------------------------------------
 
 struct NodeDesignation : public NodeMaker<NodeDesignation> {
-  using pattern =
+  using pattern = Trace<"desig",
   Some<
     Seq<Atom<'['>, NodeConstant, Atom<']'>>,
+    Seq<Atom<'['>, NodeIdentifier, Atom<']'>>,
     Seq<Atom<'.'>, NodeIdentifier>
-  >;
+  >>;
 };
 
 struct NodeInitializerList : public NodeMaker<NodeInitializerList> {
@@ -1126,18 +1127,18 @@ struct NodeConstructor : public NodeMaker<NodeConstructor> {
 struct NodeDeclaration : public NodeMaker<NodeDeclaration> {
   using pattern = Seq<
     // FIXME this is messy
-    Opt<NodeAttribute>,
+    Trace<"attrib", Opt<NodeAttribute>>,
     Opt<NodeQualifiers>,
     Opt<NodeAttribute>,
 
     // this is getting ridiculous
     Oneof<
       Seq<
-        NodeSpecifier,
+        Trace<"specifier", NodeSpecifier>,
         Opt<NodeAttribute>,
         Opt<NodeQualifiers>,
         Opt<NodeAttribute>,
-        Opt<NodeDeclaratorList>
+        Trace<"declarator", Opt<NodeDeclaratorList>>
       >,
       Seq<
         Opt<NodeSpecifier>,
