@@ -230,7 +230,7 @@ struct NodeIdentifier : public NodeMaker<NodeIdentifier> {
 //------------------------------------------------------------------------------
 
 struct NodeString : public NodeMaker<NodeString> {
-  using pattern = Atom<LEX_STRING>;
+  using pattern = Some<Atom<LEX_STRING>>;
 };
 
 //------------------------------------------------------------------------------
@@ -240,7 +240,7 @@ struct NodeConstant : public NodeMaker<NodeConstant> {
     Atom<LEX_FLOAT>,
     Atom<LEX_INT>,
     Atom<LEX_CHAR>,
-    Atom<LEX_STRING>
+    Some<Atom<LEX_STRING>>
   >;
 };
 

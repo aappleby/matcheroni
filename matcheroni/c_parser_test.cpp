@@ -83,7 +83,7 @@ int test_parser(int argc, char** argv) {
     //"mini_tests/csmith_1088.c",
     //"../gcc/gcc/tree-inline.h",
     //"../gcc/gcc/testsuite/gcc.c-torture/execute/20071029-1.c",
-    "../gcc/gcc/testsuite/gcc.c-torture/execute/20061031-1.c",
+    "../gcc/gcc/testsuite/gcc.c-torture/execute/builtins/strpcpy.c",
   };
 
   verbose = true;
@@ -132,6 +132,8 @@ int test_parser(int argc, char** argv) {
       parser.file_skip++;
       continue;
     }
+
+    //parser.dump_lexemes();
 
     printf("%04d: Parsing %s\n", parser.file_pass, path.c_str());
     auto root = parser.parse();
