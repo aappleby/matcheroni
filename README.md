@@ -172,13 +172,13 @@ struct NodeStatementFor : public NodeMaker<NodeStatementFor> {
     Keyword<"for">,
     Atom<'('>,
     Opt<comma_separated<Oneof<
-      NodeExpression,
+      MatchExpression,
       NodeDeclaration
     >>>,
     Atom<';'>,
-    Opt<comma_separated<NodeExpression>>,
+    Opt<comma_separated<MatchExpression>>,
     Atom<';'>,
-    Opt<comma_separated<NodeExpression>>,
+    Opt<comma_separated<MatchExpression>>,
     Atom<')'>,
     NodeStatement
   >;
