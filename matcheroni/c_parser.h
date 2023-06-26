@@ -1140,11 +1140,11 @@ struct NodeStatementFor : public NodeMaker<NodeStatementFor> {
   using pattern = Seq<
     Keyword<"for">,
     Atom<'('>,
-    Opt<comma_separated<Oneof<
-      MatchExpression,
-      NodeDeclaration
-    >>>,
-    Atom<';'>,
+    Oneof<
+      Seq<comma_separated<MatchExpression>, Atom<';'>>,
+      Seq<comma_separated<NodeDeclaration>, Atom<';'>>,
+      Atom<';'>
+    >,
     Opt<comma_separated<MatchExpression>>,
     Atom<';'>,
     Opt<comma_separated<MatchExpression>>,

@@ -1,6 +1,79 @@
 #ifndef __MATCHERONI_H__
 #define __MATCHERONI_H__
 
+#include <typeinfo>
+#include <string.h>
+#include <stdio.h>
+
+//------------------------------------------------------------------------------
+// Not a matcher, but a template helper that allows us to use strings as
+// template parameters. The parameter behaves as a fixed-length character array
+// that does ___NOT___ include the trailing null.
+
+template<int N>
+struct StringParam {
+  constexpr StringParam(const char (&str)[N]) {
+    for (int i = 0; i < N; i++) str_val[i] = str[i];
+  }
+  constexpr static auto str_len = N-1;
+  char str_val[str_len + 1];
+};
+
+// print_typeid_name(typeid(T).name());
+
+inline void print_typeid_name(const char* name) {
+  int name_len = 0;
+  if (sscanf(name, "%d", &name_len)) {
+    while((*name >= '0') && (*name <= '9')) name++;
+    for (int i = 0; i < name_len; i++) {
+      putc(name[i], stdout);
+    }
+  }
+  else {
+    printf("%s", name);
+  }
+}
+
+inline static int trace_enabled = 0;
+inline static int indent_depth = 0;
+
+template<StringParam doco, typename NT>
+struct Trace {
+  template<typename atom>
+  static atom* match(void* ctx, atom* a, atom* b) {
+    if (trace_enabled) {
+      for (int i = 0; i < indent_depth; i++) printf("|   ");
+      printf("%s", doco.str_val);
+      printf("?\n");
+    }
+
+    indent_depth += 1;
+    auto end = NT::match(ctx, a, b);
+    indent_depth -= 1;
+
+    if (trace_enabled) {
+      for (int i = 0; i < indent_depth; i++) printf("|   ");
+      printf("%s", doco.str_val);
+      printf(end ? " OK\n" : " XXX\n");
+    }
+
+    return end;
+  }
+};
+
+template<typename NT>
+struct TraceEnable {
+  template<typename atom>
+  static atom* match(void* ctx, atom* a, atom* b) {
+    trace_enabled++;
+    auto end = NT::match(ctx, a, b);
+    trace_enabled--;
+    return end;
+  }
+};
+
+
+
 #ifdef MATCHERONI_USE_NAMESPACE
 namespace matcheroni {
 #endif
@@ -390,20 +463,6 @@ struct EOL {
     if (*a == atom('\n')) return a;
     return nullptr;
   }
-};
-
-//------------------------------------------------------------------------------
-// Not a matcher, but a template helper that allows us to use strings as
-// template parameters. The parameter behaves as a fixed-length character array
-// that does ___NOT___ include the trailing null.
-
-template<int N>
-struct StringParam {
-  constexpr StringParam(const char (&str)[N]) {
-    for (int i = 0; i < N; i++) str_val[i] = str[i];
-  }
-  constexpr static auto str_len = N-1;
-  char str_val[str_len + 1];
 };
 
 //------------------------------------------------------------------------------

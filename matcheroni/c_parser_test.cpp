@@ -83,7 +83,7 @@ int test_parser(int argc, char** argv) {
     //"mini_tests/csmith_1088.c",
     //"../gcc/gcc/tree-inline.h",
     //"../gcc/gcc/testsuite/gcc.c-torture/execute/20071029-1.c",
-    "../gcc/gcc/testsuite/gcc.c-torture/execute/20011113-1.c",
+    "../gcc/gcc/testsuite/gcc.c-torture/execute/980526-1.c",
   };
 
   verbose = true;
@@ -110,11 +110,21 @@ int test_parser(int argc, char** argv) {
 
     //printf("Loading %s\n", path.c_str());
     parser.load(path);
+
+    // can't handle defines yet
     if (parser.text.find("#define") != std::string::npos) {
       //printf("Skipping %s\n", path.c_str());
       parser.file_skip++;
       continue;
     }
+
+    // va_arg is a macro
+    if (parser.text.find("va_arg") != std::string::npos) {
+      //printf("Skipping %s\n", path.c_str());
+      parser.file_skip++;
+      continue;
+    }
+
 
     //printf("Lexing %s\n", path.c_str());
     parser.lex();

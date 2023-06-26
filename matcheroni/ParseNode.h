@@ -321,11 +321,11 @@ if (a->top) {
 // No node. Create a new node if the pattern matches, bail if it doesn't.
 */
 
+void set_color(uint32_t c);
+
 template<typename NT>
 struct NodeMaker : public ParseNode {
-
   static Token* match(void* ctx, Token* a, Token* b) {
-    if (!a || a == b) return nullptr;
     auto end = NT::pattern::match(ctx, a, b);
     if (end && end != a) {
       auto node = new NT();

@@ -92,6 +92,7 @@ constexpr std::array builtin_type_base = {
   "__builtin_va_list",
   "__imag__",
   "__int128",
+  "__label__",
   "__real__",
   "bool",
   "char",
