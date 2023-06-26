@@ -362,6 +362,9 @@ struct MatchExpression {
   Oneof<
     NodeExpressionCast,
     MatchKeyword<"__real">,
+    MatchKeyword<"__real__">,
+    MatchKeyword<"__imag">,
+    MatchKeyword<"__imag__">,
     MatchOpPrefix<"++">,
     MatchOpPrefix<"--">,
     MatchOpPrefix<"+">,
