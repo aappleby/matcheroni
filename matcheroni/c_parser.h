@@ -336,10 +336,23 @@ struct NodeExpressionPostfix : public ParseNode {};
 struct NodeExpression        : public ParseNode {};
 
 struct NodeExpressionSizeof  : public NodeMaker<NodeExpressionSizeof> {
-  using pattern = Oneof<
-    Seq<Keyword<"sizeof">, NodeExpressionCast>,
-    Seq<Keyword<"sizeof">, NodeExpressionParen>,
-    Seq<Keyword<"sizeof">, MatchExpression>
+  using pattern = Seq<
+    Keyword<"sizeof">,
+    Oneof<
+      NodeExpressionCast,
+      NodeExpressionParen,
+      MatchExpression
+    >
+  >;
+};
+
+struct NodeExpressionAlignof  : public NodeMaker<NodeExpressionAlignof> {
+  using pattern = Seq<
+    Keyword<"__alignof__">,
+    Oneof<
+      NodeExpressionCast,
+      NodeExpressionParen
+    >
   >;
 };
 
@@ -426,6 +439,7 @@ struct MatchExpression {
 
     using core = Oneof<
       NodeExpressionSizeof,
+      NodeExpressionAlignof,
       NodeExpressionGccCompound,
       NodeExpressionParen,
       NodeInitializerList,
