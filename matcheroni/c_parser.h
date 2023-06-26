@@ -384,6 +384,7 @@ struct MatchExpression {
   using prefix_op =
   Oneof<
     NodeExpressionCast,
+    MatchKeyword<"__extension__">,
     MatchKeyword<"__real">,
     MatchKeyword<"__real__">,
     MatchKeyword<"__imag">,
