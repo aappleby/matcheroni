@@ -364,6 +364,17 @@ struct NodeExpressionAlignof  : public NodeMaker<NodeExpressionAlignof> {
   >;
 };
 
+struct NodeExpressionOffsetof  : public NodeMaker<NodeExpressionOffsetof> {
+  using pattern = Seq<
+    Keyword<"__builtin_offsetof">,
+    Atom<'('>,
+    NodeTypeName,
+    Atom<','>,
+    MatchExpression,
+    Atom<')'>
+  >;
+};
+
 struct MatchExpression {
 
   using prefix_op =
@@ -451,6 +462,7 @@ struct MatchExpression {
     using core = Oneof<
       NodeExpressionSizeof,
       NodeExpressionAlignof,
+      NodeExpressionOffsetof,
       NodeExpressionGccCompound,
       NodeExpressionParen,
       NodeInitializerList,
