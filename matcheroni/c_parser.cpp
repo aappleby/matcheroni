@@ -3,7 +3,7 @@
 
 #include <filesystem>
 #include <vector>
-
+#include <stdint.h>
 #include <cstring>
 
 void dump_tree(ParseNode* n, int max_depth = 0, int indentation = 0);
@@ -284,6 +284,26 @@ uint32_t lex_to_color(const Lexeme& lex) {
     case LEX_EOF        : return 0xFF00FF;
   }
   return 0x0000FF;
+}
+
+void print_escaped(const char* s, int len, unsigned int color) {
+  set_color(color);
+  while(len) {
+    auto c = *s++;
+    if      (c == 0)    break;
+    else if (c == ' ')  putc(' ', stdout);
+    else if (c == '\n') putc(' ', stdout);
+    else if (c == '\r') putc(' ', stdout);
+    else if (c == '\t') putc(' ', stdout);
+    else                putc(c,   stdout);
+    len--;
+  }
+  while(len--) putc('#', stdout);
+  set_color(0);
+
+  //for (int i = 32; i < 256; i++) putc(i, stdout);
+
+  return;
 }
 
 std::string escape_span(ParseNode* n) {

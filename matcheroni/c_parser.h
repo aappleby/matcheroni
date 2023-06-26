@@ -1348,20 +1348,16 @@ struct NodeStatementAsm : public NodeMaker<NodeStatementAsm> {
     Opt<NodeAsmQualifiers>,
     Atom<'('>,
     NodeString, // assembly code
-    Atom<':'>,
-    Opt<NodeAsmRefs>, // output operands
-    Opt<Seq<
-      Atom<':'>,
-      Opt<NodeAsmRefs>, // input operands
-      Opt<Seq<
-        Atom<':'>,
-        Opt<NodeAsmRefs>, // clobbers
-        Opt<Seq<
-          Atom<':'>,
-          Opt<comma_separated<NodeIdentifier>> // GotoLabels
-        >>
-      >>
-    >>,
+    SeqOpt<
+      // output operands
+      Seq<Atom<':'>, Opt<NodeAsmRefs>>,
+      // input operands
+      Seq<Atom<':'>, Opt<NodeAsmRefs>>,
+      // clobbers
+      Seq<Atom<':'>, Opt<NodeAsmRefs>>,
+      // GotoLabels
+      Seq<Atom<':'>, Opt<comma_separated<NodeIdentifier>>>
+    >,
     Atom<')'>,
     Atom<';'>
   >;

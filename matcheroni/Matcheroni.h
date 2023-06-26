@@ -5,6 +5,8 @@
 #include <string.h>
 #include <stdio.h>
 
+void print_escaped(const char* s, int len, unsigned int color);
+
 //------------------------------------------------------------------------------
 // Not a matcher, but a template helper that allows us to use strings as
 // template parameters. The parameter behaves as a fixed-length character array
@@ -34,14 +36,18 @@ inline void print_typeid_name(const char* name) {
   }
 }
 
-inline static int trace_enabled = 0;
+inline static int trace_enabled = 1;
 inline static int indent_depth = 0;
 
 template<StringParam doco, typename NT>
 struct Trace {
   template<typename atom>
   static atom* match(void* ctx, atom* a, atom* b) {
+    static constexpr int context_len = 40;
     if (trace_enabled) {
+      printf("[");
+      print_escaped(a->lex->span_a, context_len, 0x404040);
+      printf("] ");
       for (int i = 0; i < indent_depth; i++) printf("|   ");
       printf("%s", doco.str_val);
       printf("?\n");
@@ -52,6 +58,18 @@ struct Trace {
     indent_depth -= 1;
 
     if (trace_enabled) {
+      printf("[");
+      if (end) {
+        int match_len = end->lex->span_a - a->lex->span_a;
+        if (match_len > context_len) match_len = context_len;
+        int left_len = context_len - match_len;
+        print_escaped(a->lex->span_a, match_len,  0x60C000);
+        print_escaped(end->lex->span_a, left_len, 0x404040);
+      }
+      else {
+        print_escaped(a->lex->span_a, context_len, 0x2020A0);
+      }
+      printf("] ");
       for (int i = 0; i < indent_depth; i++) printf("|   ");
       printf("%s", doco.str_val);
       printf(end ? " OK\n" : " XXX\n");
@@ -269,6 +287,28 @@ struct Some {
   static atom* match(void* ctx, atom* a, atom* b) {
     auto c = Any<rest...>::match(ctx, a, b);
     return c == a ? nullptr : c;
+  }
+};
+
+//------------------------------------------------------------------------------
+// A sequence of optional items that must match in order if present.
+// SeqOpt<Atom<'a'>, Atom<'b'>, Atom<'c'>> will match "a", "ab", and "abc" but
+// not "bc" or "c".
+
+template<typename P, typename... rest>
+struct SeqOpt {
+  template<typename atom>
+  static atom* match(void* ctx, atom* a, atom* b) {
+    auto c = Opt<P>::match(ctx, a, b);
+    return (c == a) ? a : SeqOpt<rest...>::match(ctx, c, b);
+  }
+};
+
+template<typename P>
+struct SeqOpt<P> {
+  template<typename atom>
+  static atom* match(void* ctx, atom* a, atom* b) {
+    return Opt<P>::match(ctx, a, b);
   }
 };
 
