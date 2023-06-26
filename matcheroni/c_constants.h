@@ -56,6 +56,9 @@ constexpr std::array builtin_type_base = {
   "FILE", // used in fprintf.c torture test
   "_Bool",
   "_Complex", // yes this is both a prefix and a type :P
+  "_Decimal128",
+  "_Decimal32",
+  "_Decimal64",
   "__INT16_TYPE__",
   "__INT32_TYPE__",
   "__INT64_TYPE__",

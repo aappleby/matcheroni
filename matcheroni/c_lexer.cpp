@@ -214,6 +214,7 @@ const char* match_identifier(void* ctx, const char* a, const char* b) {
 const char* match_float(void* ctx, const char* a, const char* b) {
   using floating_suffix = Oneof<
     Atom<'f'>, Atom<'l'>, Atom<'F'>, Atom<'L'>,
+    // Decimal floats, GCC thing
     Lit<"df">, Lit<"dd">, Lit<"dl">,
     Lit<"DF">, Lit<"DD">, Lit<"DL">
   >;
