@@ -67,7 +67,7 @@ int test_parser(int argc, char** argv) {
 
   bool verbose = false;
 
-#if 0
+#if 1
 
   paths = {
     //"tests/scratch.c",
@@ -75,7 +75,7 @@ int test_parser(int argc, char** argv) {
     //"mini_tests/csmith_1088.c",
     //"../gcc/gcc/tree-inline.h",
     //"../gcc/gcc/testsuite/gcc.c-torture/execute/20071029-1.c",
-    "../gcc/gcc/testsuite/gcc.c-torture/execute/pr64718.c",
+    "../gcc/gcc/testsuite/gcc.c-torture/execute/20011113-1.c",
   };
 
   verbose = true;
@@ -136,7 +136,11 @@ int test_parser(int argc, char** argv) {
       printf("Parsing failed: %s\n", path.c_str());
     }
     else {
-      if (verbose) dump_tree(root);
+      if (verbose) {
+        printf("\n");
+        printf("Dumping tree:\n");
+        dump_tree(root);
+      }
     }
 
 

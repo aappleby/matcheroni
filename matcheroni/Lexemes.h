@@ -21,6 +21,7 @@ enum LexemeType {
   LEX_CHAR,
   LEX_SPLICE,
   LEX_FORMFEED,
+  LEX_BOF,
   LEX_EOF,
   LEX_LAST
 };

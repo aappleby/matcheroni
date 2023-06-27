@@ -48,15 +48,15 @@ struct ProgressBar {
 struct NodeToplevelDeclaration {
   using pattern =
   Oneof<
-    Atom<';'>,
+    NodeAtom<';'>,
     NodeStatementTypedef,
-    Seq<NodeStruct,   Atom<';'>>,
-    Seq<NodeUnion,    Atom<';'>>,
-    Seq<NodeTemplate, Atom<';'>>,
-    Seq<NodeClass,    Atom<';'>>,
-    Seq<NodeEnum,     Atom<';'>>,
+    Seq<NodeStruct,   NodeAtom<';'>>,
+    Seq<NodeUnion,    NodeAtom<';'>>,
+    Seq<NodeTemplate, NodeAtom<';'>>,
+    Seq<NodeClass,    NodeAtom<';'>>,
+    Seq<NodeEnum,     NodeAtom<';'>>,
     NodeFunction,
-    Seq<NodeDeclaration, Atom<';'>>
+    Seq<NodeDeclaration, NodeAtom<';'>>
   >;
 };
 
@@ -117,6 +117,8 @@ void C99Parser::lex() {
   auto text_a = text.data();
   auto text_b = text_a + text.size();
 
+  lexemes.push_back(Lexeme(LEX_BOF, nullptr, nullptr));
+
   const char* cursor = text_a;
   while(cursor) {
     auto lex = next_lexeme(nullptr, cursor, text_b);
@@ -150,8 +152,8 @@ ParseNode* C99Parser::parse() {
 
   using pattern = Any<
     Oneof<
-      Trace<"preproc", NodePreproc>,
-      Trace<"decl", NodeToplevelDeclaration::pattern>
+      NodePreproc,
+      NodeToplevelDeclaration::pattern
     >
   >;
 
@@ -162,7 +164,7 @@ ParseNode* C99Parser::parse() {
 
   if (cursor) {
     root = new NodeTranslationUnit();
-    root->init(tok_a, tok_b - 1);
+    root->init_span(tok_a, tok_b - 1);
 
     if (cursor != tok_b) {
       file_fail++;
@@ -343,7 +345,7 @@ std::string escape_span(const ParseNode* n) {
 void dump_tree(const ParseNode* n, int max_depth, int indentation) {
   if (max_depth && indentation == max_depth) return;
 
-  printf("%p %p ", n->tok_a, n->tok_b);
+  printf("%p {%p-%p} ", n, n->tok_a, n->tok_b);
 
   for (int i = 0; i < indentation; i++) printf(" | ");
 
@@ -363,19 +365,6 @@ void dump_tree(const ParseNode* n, int max_depth, int indentation) {
 
 //------------------------------------------------------------------------------
 
-void dump_lexeme(const Lexeme& l) {
-  int len = l.span_b - l.span_a;
-  for (int i = 0; i < len; i++) {
-    auto c = l.span_a[i];
-    if (c == '\n' || c == '\t' || c == '\r') {
-      putc('@', stdout);
-    }
-    else {
-      putc(l.span_a[i], stdout);
-    }
-  }
-}
-
 void C99Parser::dump_lexemes() {
   for(auto& l : lexemes) {
     printf("{");
@@ -389,26 +378,7 @@ void C99Parser::dump_lexemes() {
 
 void C99Parser::dump_tokens() {
   for (auto& t : tokens) {
-    // Dump token
-    printf("tok %p - ", &t);
-    if (t.lex->is_eof()) {
-      printf("<eof>");
-    }
-    else {
-      dump_lexeme(*t.lex);
-    }
-
-    // Dump top node
-    printf("  ");
-    if (t.node_r) {
-      printf("top %p -> ", t.node_r);
-      t.node_r->print_class_name();
-      printf(" -> %p ", t.node_r->tok_b);
-    }
-    else {
-      printf("top %p", t.node_r);
-    }
-    printf("\n");
+    dump_token(t);
   }
 }
 
