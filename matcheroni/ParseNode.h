@@ -8,6 +8,8 @@
 struct Lexeme;
 struct Token;
 struct ParseNode;
+struct NodeBase;
+struct NodeSpan;
 
 void dump_lexeme(const Lexeme& l);
 void dump_token(const Token& t);
@@ -45,13 +47,13 @@ struct Token {
     return lex->is_identifier(lit);
   }
 
+  ParseNode* top();
+
   const Lexeme* lex;
-  ParseNode* base;
-  ParseNode* span;
+  NodeBase* base;
+  NodeSpan* span;
   void* pad; // make size 32 for convenience
 };
-
-using token_matcher = matcher_function<Token>;
 
 //------------------------------------------------------------------------------
 
@@ -66,65 +68,7 @@ struct ParseNode {
   static void  operator delete(void*)           { }
   static void  operator delete[](void*)         { }
 
-  //----------------------------------------
-
-  void init_base(Token* tok_a, Token* tok_b) {
-    constructor_count++;
-    assert(tok_a <= tok_b);
-
-    for (auto c = tok_a; c <= tok_b; c++) {
-      c->base = this;
-      c->span = nullptr;
-    }
-
-    this->tok_a = tok_a;
-    this->tok_b = tok_b;
-  }
-
-  //----------------------------------------
-
-  void init_span(Token* tok_a, Token* tok_b) {
-    constructor_count++;
-    assert(tok_a <= tok_b);
-
-    // Check that the token range is solidly filled with parse nodes
-    for (auto c = tok_a; c <= tok_b; c++) {
-      assert(c->base);
-    }
-
-    {
-      auto c = tok_a;
-      while(1) {
-        assert(c <= tok_b);
-
-        if (c->span) {
-          c = c->span->tok_b;
-        }
-        else if (c->base) {
-          c = c->base->tok_b;
-        }
-        else {
-          assert(false);
-        }
-
-        if (c == tok_b) break;
-      }
-    }
-
-    this->tok_a = tok_a;
-    this->tok_b = tok_b;
-
-    // Attach all the tops under this node to it.
-    auto cursor = tok_a;
-    while (cursor <= tok_b) {
-      auto child = cursor->span ? cursor->span : cursor->base;
-      attach_child(child);
-      cursor = child->tok_b + 1;
-    }
-
-    tok_a->span = this;
-    tok_b->span = this;
-  }
+  virtual ~ParseNode() {}
 
   //----------------------------------------
 
@@ -184,14 +128,14 @@ struct ParseNode {
 
   //----------------------------------------
 
-  ParseNode* left_span() {
+  ParseNode* left_neighbor() {
     if (this == nullptr) return nullptr;
-    return (tok_a - 1)->span;
+    return (tok_a - 1)->top();
   }
 
-  ParseNode* right_span() {
+  ParseNode* right_neighbor() {
     if (this == nullptr) return nullptr;
-    return (tok_b + 1)->span;
+    return (tok_b + 1)->top();
   }
 
   //----------------------------------------
@@ -298,6 +242,189 @@ struct ParseNode {
 
 //------------------------------------------------------------------------------
 
+struct NodeBase : public ParseNode {
+
+  void init_base(Token* tok_a, Token* tok_b) {
+    constructor_count++;
+    assert(tok_a <= tok_b);
+
+    for (auto c = tok_a; c <= tok_b; c++) {
+      c->base = this;
+      c->span = nullptr;
+    }
+
+    this->tok_a = tok_a;
+    this->tok_b = tok_b;
+  }
+};
+
+//------------------------------------------------------------------------------
+
+struct NodeSpan : public ParseNode {
+
+  void init_span(Token* tok_a, Token* tok_b) {
+    constructor_count++;
+    assert(tok_a <= tok_b);
+
+    // Check that the token range is solidly filled with parse nodes
+    for (auto c = tok_a; c <= tok_b; c++) {
+      assert(c->base);
+    }
+
+    {
+      auto c = tok_a;
+      while(1) {
+        assert(c <= tok_b);
+
+        if (c->span) {
+          c = c->span->tok_b;
+        }
+        else if (c->base) {
+          c = c->base->tok_b;
+        }
+        else {
+          assert(false);
+        }
+
+        if (c == tok_b) break;
+      }
+    }
+
+    this->tok_a = tok_a;
+    this->tok_b = tok_b;
+
+    // Attach all the tops under this node to it.
+    auto cursor = tok_a;
+    while (cursor <= tok_b) {
+      ParseNode* child = cursor->top();
+      attach_child(child);
+      cursor = child->tok_b + 1;
+    }
+
+    tok_a->span = this;
+    tok_b->span = this;
+  }
+
+  //----------------------------------------
+
+};
+
+//------------------------------------------------------------------------------
+
+template<typename NT>
+struct NodeBaseMaker : public NodeBase {
+  static Token* match(void* ctx, Token* a, Token* b) {
+    auto end = NT::pattern::match(ctx, a, b);
+    if (end && end != a) {
+      auto node = new NT();
+      node->init_base(a, end-1);
+    }
+    return end;
+  }
+};
+
+template<typename NT>
+struct NodeSpanMaker : public NodeSpan {
+  static Token* match(void* ctx, Token* a, Token* b) {
+    auto end = NT::pattern::match(ctx, a, b);
+    if (end && end != a) {
+      auto node = new NT();
+      node->init_span(a, end-1);
+    }
+    return end;
+  }
+};
+
+//------------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//------------------------------------------------------------------------------
+
 inline void dump_lexeme(const Lexeme& l) {
   int len = l.span_b - l.span_a;
   for (int i = 0; i < len; i++) {
@@ -393,41 +520,13 @@ if (a->top) {
 // No node. Create a new node if the pattern matches, bail if it doesn't.
 */
 
+
 //------------------------------------------------------------------------------
 
-struct NodeBase : public ParseNode {
-  template<typename P, typename NT>
-  static Token* match(void* ctx, Token* a, Token* b) {
-    auto end = P::match(ctx, a, b);
-    if (end && end != a) {
-      auto node = new NT();
-      node->init_base(a, end-1);
-    }
-    return end;
-  }
-};
-
-struct NodeSpan : public ParseNode {
-  template<typename P, typename NT>
-  static Token* match(void* ctx, Token* a, Token* b) {
-    auto end = P::match(ctx, a, b);
-    if (end && end != a) {
-      auto node = new NT();
-      node->init_span(a, end-1);
-    }
-    return end;
-  }
-};
-
-template<typename NT>
-struct NodeBaseMaker : public NodeBase {
-  using match = NodeBase::match<NT::pattern, NT>;
-};
-
-template<typename NT>
-struct NodeSpanMaker : public NodeSpan {
-  using match = NodeSpan::match<NT::pattern, NT>;
-};
+inline ParseNode* Token::top() {
+  if (span) return span;
+  return base;
+}
 
 //------------------------------------------------------------------------------
 
@@ -524,22 +623,17 @@ struct NodeDispenser {
 
 //------------------------------------------------------------------------------
 
-template <auto... rest>
-struct NodeAtom : public NodeBaseMaker<NodeAtom<rest...>> {
-  using pattern = Atom<rest...>;
-};
-
 template<StringParam lit>
 struct NodeKeyword : public NodeBaseMaker<NodeKeyword<lit>> {
   using pattern = Keyword<lit>;
 };
 
 template<StringParam lit>
-struct NodePunctuator : public NodeBaseMaker<NodePunctuator<lit>> {
+struct NodePunc : public NodeBaseMaker<NodePunc<lit>> {
   static Token* match(void* ctx, Token* a, Token* b) {
     auto end = match_punct(ctx, a, b, lit.str_val, lit.str_len);
     if (end && end != a) {
-      auto node = new NodePunctuator<lit>();
+      auto node = new NodePunc<lit>();
       node->init_base(a, end - 1);
     }
     return end;
@@ -572,61 +666,8 @@ struct NodeConstant : public NodeBaseMaker<NodeConstant> {
   >;
 };
 
-// Our builtin types are any sequence of prefixes followed by a builtin type
-
-struct NodeBuiltinType : public NodeBaseMaker<NodeBuiltinType> {
-  using match_base   = Ref<&C99Parser::match_builtin_type_base>;
-  using match_prefix = Ref<&C99Parser::match_builtin_type_prefix>;
-  using match_suffix = Ref<&C99Parser::match_builtin_type_suffix>;
-
-  using pattern = Seq<
-    Any<Seq<match_prefix, And<match_base>>>,
-    match_base,
-    Opt<match_suffix>
-  >;
-};
-
-template<StringParam lit>
-struct NodeOpPrefix : public NodeBase {
-  static Token* match(void* ctx, Token* a, Token* b) {
-    auto end = match_punct(ctx, a, b, lit.str_val, lit.str_len);
-    if (end) {
-      auto node = new NodeOpPrefix<lit>();
-      node->precedence = prefix_precedence(lit.str_val);
-      node->init(a, end - 1);
-    }
-    return end;
-  }
-};
-
-template<StringParam lit>
-struct NodeOpBinary : public NodeBase {
-  static Token* match(void* ctx, Token* a, Token* b) {
-    auto end = match_punct(ctx, a, b, lit.str_val, lit.str_len);
-    if (end) {
-      auto node = new NodeOpBinary<lit>();
-      node->precedence = binary_precedence(lit.str_val);
-      node->init(a, end - 1);
-    }
-    return end;
-  }
-};
-
-template<StringParam lit>
-struct NodeOpSuffix : public NodeBase {
-  static Token* match(void* ctx, Token* a, Token* b) {
-    auto end = match_punct(ctx, a, b, lit.str_val, lit.str_len);
-    if (end) {
-      auto node = new NodeOpSuffix<lit>();
-      node->precedence = suffix_precedence(lit.str_val);
-      node->init(a, end - 1);
-    }
-    return end;
-  }
-};
-
 template<typename P>
-using comma_separated = Seq<P, Any<Seq<NodeAtom<','>, P>>, Opt<NodeAtom<','>> >;
+using comma_separated = Seq<P, Any<Seq<NodePunc<",">, P>>, Opt<NodePunc<",">> >;
 
 template<typename P>
 using opt_comma_separated = Opt<comma_separated<P>>;

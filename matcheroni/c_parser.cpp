@@ -48,19 +48,19 @@ struct ProgressBar {
 struct NodeToplevelDeclaration {
   using pattern =
   Oneof<
-    NodeAtom<';'>,
+    NodePunc<";">,
     NodeStatementTypedef,
-    Seq<NodeStruct,   NodeAtom<';'>>,
-    Seq<NodeUnion,    NodeAtom<';'>>,
-    Seq<NodeTemplate, NodeAtom<';'>>,
-    Seq<NodeClass,    NodeAtom<';'>>,
-    Seq<NodeEnum,     NodeAtom<';'>>,
+    Seq<NodeStruct,   NodePunc<";">>,
+    Seq<NodeUnion,    NodePunc<";">>,
+    Seq<NodeTemplate, NodePunc<";">>,
+    Seq<NodeClass,    NodePunc<";">>,
+    Seq<NodeEnum,     NodePunc<";">>,
     NodeFunction,
-    Seq<NodeDeclaration, NodeAtom<';'>>
+    Seq<NodeDeclaration, NodePunc<";">>
   >;
 };
 
-struct NodeTranslationUnit : public ParseNode {};
+struct NodeTranslationUnit : public NodeSpan {};
 
 //------------------------------------------------------------------------------
 
