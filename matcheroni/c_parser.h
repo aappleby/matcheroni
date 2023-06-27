@@ -113,7 +113,7 @@ public:
 //------------------------------------------------------------------------------
 
 template<typename P>
-using comma_separated = Seq<P, Any<Seq<Atom<','>, P>>, Opt<Atom<','>> >;
+using comma_separated = Seq<P, Any<Seq<NodeAtom<','>, P>>, Opt<NodeAtom<','>> >;
 
 template<typename P>
 using opt_comma_separated = Opt<comma_separated<P>>;
@@ -141,6 +141,12 @@ inline Token* match_operator(void* ctx, Token* a, Token* b, const char* lit, int
 
 //------------------------------------------------------------------------------
 
+struct NodeEllipsis : public NodeMaker<NodeEllipsis> {
+  using pattern = Seq<Atom<'.'>, Atom<'.'>, Atom<'.'>>;
+};
+
+//------------------------------------------------------------------------------
+
 template<StringParam lit>
 struct NodeOpPrefix : public NodeWithPrecedence {
   using NodeWithPrecedence::NodeWithPrecedence;
@@ -158,20 +164,15 @@ struct NodeOpPrefix : public NodeWithPrecedence {
 //------------------------------------------------------------------------------
 
 template<StringParam lit>
-struct MatchOpBinary {
+struct NodeOpBinary : public NodeWithPrecedence {
+  using NodeWithPrecedence::NodeWithPrecedence;
+
   static Token* match(void* ctx, Token* a, Token* b) {
-    if (!a || a == b) return nullptr;
-    if (a + lit.str_len > b) return nullptr;
-
-    for (auto i = 0; i < lit.str_len; i++) {
-      if (!a->lex[i].is_punct(lit.str_val[i])) return nullptr;
+    auto end = match_operator(ctx, a, b, lit.str_val, lit.str_len);
+    if (end) {
+      auto node = new NodeOpBinary<lit>(binary_precedence(lit.str_val));
+      node->init(a, end - 1);
     }
-
-    auto end = a + lit.str_len;
-    constexpr int precedence = binary_precedence(lit.str_val);
-    static_assert(precedence > 0);
-    auto node = new NodeWithPrecedence(precedence);
-    node->init(a, end - 1);
     return end;
   }
 };
@@ -179,20 +180,15 @@ struct MatchOpBinary {
 //------------------------------------------------------------------------------
 
 template<StringParam lit>
-struct MatchOpSuffix {
+struct NodeOpSuffix : public NodeWithPrecedence {
+  using NodeWithPrecedence::NodeWithPrecedence;
+
   static Token* match(void* ctx, Token* a, Token* b) {
-    if (!a || a == b) return nullptr;
-    if (a + lit.str_len > b) return nullptr;
-
-    for (auto i = 0; i < lit.str_len; i++) {
-      if (!a->lex[i].is_punct(lit.str_val[i])) return nullptr;
+    auto end = match_operator(ctx, a, b, lit.str_val, lit.str_len);
+    if (end) {
+      auto node = new NodeOpSuffix<lit>(suffix_precedence(lit.str_val));
+      node->init(a, end - 1);
     }
-
-    auto end = a + lit.str_len;
-    constexpr int precedence = suffix_precedence(lit.str_val);
-    static_assert(precedence > 0);
-    auto node = new NodeWithPrecedence(precedence);
-    node->init(a, end - 1);
     return end;
   }
 };
@@ -313,12 +309,6 @@ struct NodeExpressionGccCompound : public NodeMaker<NodeExpressionGccCompound> {
 };
 
 //------------------------------------------------------------------------------
-
-struct NodeOpBinary : public ParseNode {
-  int precedence = 0;
-};
-
-//------------------------------------------------------------------------------
 // This captures all expresion forms, but does _not_ bother to put them into a
 // tree or do operator precedence or anything.
 
@@ -408,49 +398,49 @@ Oneof<
   NodeExpressionBraces,
   NodeExpressionParen,
   NodeExpressionSubscript,
-  MatchOpSuffix<"++">,
-  MatchOpSuffix<"--">
+  NodeOpSuffix<"++">,
+  NodeOpSuffix<"--">
 >;
 
 //----------------------------------------
 
 using binary_op =
 Oneof<
-  MatchOpBinary<"<<=">,
-  MatchOpBinary<">>=">,
-  MatchOpBinary<"->*">,
-  MatchOpBinary<"<=>">,
-  MatchOpBinary<".*">,
-  MatchOpBinary<"::">,
-  MatchOpBinary<"-=">,
-  MatchOpBinary<"->">,
-  MatchOpBinary<"!=">,
-  MatchOpBinary<"*=">,
-  MatchOpBinary<"/=">,
-  MatchOpBinary<"&=">,
-  MatchOpBinary<"%=">,
-  MatchOpBinary<"^=">,
-  MatchOpBinary<"+=">,
-  MatchOpBinary<"<<">,
-  MatchOpBinary<"<=">,
-  MatchOpBinary<"==">,
-  MatchOpBinary<">=">,
-  MatchOpBinary<">>">,
-  MatchOpBinary<"|=">,
-  MatchOpBinary<"||">,
-  MatchOpBinary<"&&">,
-  MatchOpBinary<".">,
-  MatchOpBinary<"/">,
-  MatchOpBinary<"&">,
-  MatchOpBinary<"%">,
-  MatchOpBinary<"^">,
-  MatchOpBinary<"<">,
-  MatchOpBinary<"=">,
-  MatchOpBinary<">">,
-  MatchOpBinary<"|">,
-  MatchOpBinary<"-">,
-  MatchOpBinary<"*">,
-  MatchOpBinary<"+">
+  NodeOpBinary<"<<=">,
+  NodeOpBinary<">>=">,
+  NodeOpBinary<"->*">,
+  NodeOpBinary<"<=>">,
+  NodeOpBinary<".*">,
+  NodeOpBinary<"::">,
+  NodeOpBinary<"-=">,
+  NodeOpBinary<"->">,
+  NodeOpBinary<"!=">,
+  NodeOpBinary<"*=">,
+  NodeOpBinary<"/=">,
+  NodeOpBinary<"&=">,
+  NodeOpBinary<"%=">,
+  NodeOpBinary<"^=">,
+  NodeOpBinary<"+=">,
+  NodeOpBinary<"<<">,
+  NodeOpBinary<"<=">,
+  NodeOpBinary<"==">,
+  NodeOpBinary<">=">,
+  NodeOpBinary<">>">,
+  NodeOpBinary<"|=">,
+  NodeOpBinary<"||">,
+  NodeOpBinary<"&&">,
+  NodeOpBinary<".">,
+  NodeOpBinary<"/">,
+  NodeOpBinary<"&">,
+  NodeOpBinary<"%">,
+  NodeOpBinary<"^">,
+  NodeOpBinary<"<">,
+  NodeOpBinary<"=">,
+  NodeOpBinary<">">,
+  NodeOpBinary<"|">,
+  NodeOpBinary<"-">,
+  NodeOpBinary<"*">,
+  NodeOpBinary<"+">
 >;
 
 struct NodeExpressionUnit : public NodeMaker<NodeExpressionUnit> {
@@ -470,20 +460,20 @@ struct MatchExpression {
   static Token* match_binary_op(void* ctx, Token* a, Token* b) {
     if (!a || a == b) return nullptr;
     switch(a->lex->span_a[0]) {
-      case '!': return MatchOpBinary<"!=">::match(ctx, a, b);
-      case '%': return Oneof< MatchOpBinary<"%=">, MatchOpBinary<"%"> >::match(ctx, a, b);
-      case '&': return Oneof< MatchOpBinary<"&&">, MatchOpBinary<"&=">, MatchOpBinary<"&"> >::match(ctx, a, b);
-      case '*': return Oneof< MatchOpBinary<"*=">, MatchOpBinary<"*"> >::match(ctx, a, b);
-      case '+': return Oneof< MatchOpBinary<"+=">, MatchOpBinary<"+"> >::match(ctx, a, b);
-      case '-': return Oneof< MatchOpBinary<"->*">, MatchOpBinary<"->">, MatchOpBinary<"-=">, MatchOpBinary<"-"> >::match(ctx, a, b);
-      case '.': return Oneof< MatchOpBinary<".*">, MatchOpBinary<"."> >::match(ctx, a, b);
-      case '/': return Oneof< MatchOpBinary<"/=">, MatchOpBinary<"/"> >::match(ctx, a, b);
-      case ':': return Oneof< MatchOpBinary<"::"> >::match(ctx, a, b);
-      case '<': return Oneof< MatchOpBinary<"<<=">, MatchOpBinary<"<=>">, MatchOpBinary<"<=">, MatchOpBinary<"<<">, MatchOpBinary<"<"> >::match(ctx, a, b);
-      case '=': return Oneof< MatchOpBinary<"==">, MatchOpBinary<"="> >::match(ctx, a, b);
-      case '>': return Oneof< MatchOpBinary<">>=">, MatchOpBinary<">=">, MatchOpBinary<">>">, MatchOpBinary<">"> >::match(ctx, a, b);
-      case '^': return Oneof< MatchOpBinary<"^=">, MatchOpBinary<"^"> >::match(ctx, a, b);
-      case '|': return Oneof< MatchOpBinary<"||">, MatchOpBinary<"|=">, MatchOpBinary<"|"> >::match(ctx, a, b);
+      case '!': return NodeOpBinary<"!=">::match(ctx, a, b);
+      case '%': return Oneof< NodeOpBinary<"%=">, NodeOpBinary<"%"> >::match(ctx, a, b);
+      case '&': return Oneof< NodeOpBinary<"&&">, NodeOpBinary<"&=">, NodeOpBinary<"&"> >::match(ctx, a, b);
+      case '*': return Oneof< NodeOpBinary<"*=">, NodeOpBinary<"*"> >::match(ctx, a, b);
+      case '+': return Oneof< NodeOpBinary<"+=">, NodeOpBinary<"+"> >::match(ctx, a, b);
+      case '-': return Oneof< NodeOpBinary<"->*">, NodeOpBinary<"->">, NodeOpBinary<"-=">, NodeOpBinary<"-"> >::match(ctx, a, b);
+      case '.': return Oneof< NodeOpBinary<".*">, NodeOpBinary<"."> >::match(ctx, a, b);
+      case '/': return Oneof< NodeOpBinary<"/=">, NodeOpBinary<"/"> >::match(ctx, a, b);
+      case ':': return Oneof< NodeOpBinary<"::"> >::match(ctx, a, b);
+      case '<': return Oneof< NodeOpBinary<"<<=">, NodeOpBinary<"<=>">, NodeOpBinary<"<=">, NodeOpBinary<"<<">, NodeOpBinary<"<"> >::match(ctx, a, b);
+      case '=': return Oneof< NodeOpBinary<"==">, NodeOpBinary<"="> >::match(ctx, a, b);
+      case '>': return Oneof< NodeOpBinary<">>=">, NodeOpBinary<">=">, NodeOpBinary<">>">, NodeOpBinary<">"> >::match(ctx, a, b);
+      case '^': return Oneof< NodeOpBinary<"^=">, NodeOpBinary<"^"> >::match(ctx, a, b);
+      case '|': return Oneof< NodeOpBinary<"||">, NodeOpBinary<"|=">, NodeOpBinary<"|"> >::match(ctx, a, b);
       default:  return nullptr;
     }
   }
@@ -558,9 +548,9 @@ struct MatchExpression {
     Seq<
       // pr68249.c - ternary option can be empty
       // pr49474.c - ternary branches can be comma-lists
-      MatchOpBinary<"?">,
+      NodeOpBinary<"?">,
       Opt<comma_separated<MatchExpression>>,
-      MatchOpBinary<":">,
+      NodeOpBinary<":">,
       Opt<comma_separated<MatchExpression>>
     >;
 
@@ -650,7 +640,7 @@ struct NodePointer : public NodeMaker<NodePointer> {
 
 struct NodeParam : public NodeMaker<NodeParam> {
   using pattern = Oneof<
-    Seq<Atom<'.'>, Atom<'.'>, Atom<'.'>>,
+    NodeEllipsis,
     Seq<
       Opt<NodeQualifiers>,
       NodeSpecifier,
@@ -1074,10 +1064,10 @@ struct NodeEnumerator : public NodeMaker<NodeEnumerator> {
 
 struct NodeEnumerators : public NodeMaker<NodeEnumerators> {
   using pattern = Seq<
-    Atom<'{'>,
+    NodeAtom<'{'>,
     comma_separated<NodeEnumerator>,
-    Opt<Atom<','>>,
-    Atom<'}'>
+    Opt<NodeAtom<','>>,
+    NodeAtom<'}'>
   >;
 };
 
@@ -1104,9 +1094,9 @@ struct NodeTypeDecl : public NodeMaker<NodeTypeDecl> {
 struct NodeDesignation : public NodeMaker<NodeDesignation> {
   using pattern = Trace<"desig",
   Some<
-    Seq<Atom<'['>, NodeConstant, Atom<']'>>,
-    Seq<Atom<'['>, NodeIdentifier, Atom<']'>>,
-    Seq<Atom<'.'>, NodeIdentifier>
+    Seq<NodeAtom<'['>, NodeConstant,   NodeAtom<']'>>,
+    Seq<NodeAtom<'['>, NodeIdentifier, NodeAtom<']'>>,
+    Seq<NodeAtom<'.'>, NodeIdentifier>
   >>;
 };
 
@@ -1302,7 +1292,7 @@ struct NodeStatementCase : public NodeMaker<NodeStatementCase> {
     MatchExpression,
     Opt<Seq<
       // case 1...2: - this is supported by GCC?
-      Atom<'.'>, Atom<'.'>, Atom<'.'>,
+      NodeEllipsis,
       MatchExpression
     >>,
     Atom<':'>,
