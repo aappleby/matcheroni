@@ -160,8 +160,20 @@ struct ParseNode {
 
   //----------------------------------------
 
+  ParseNode* left_neighbor() {
+    if (this == nullptr) return nullptr;
+    return (tok_a - 1)->node_l;
+  }
+
+  ParseNode* right_neighbor() {
+    if (this == nullptr) return nullptr;
+    return (tok_a + 1)->node_r;
+  }
+
+  //----------------------------------------
+
   template<typename P>
-  bool isa() const {
+  bool is_a() const {
     if (this == nullptr) return false;
     return typeid(*this) == typeid(P);
   }
@@ -170,7 +182,7 @@ struct ParseNode {
   P* child() {
     if (this == nullptr) return nullptr;
     for (auto cursor = head; cursor; cursor = cursor->next) {
-      if (cursor->isa<P>()) {
+      if (cursor->is_a<P>()) {
         return dynamic_cast<P*>(cursor);
       }
     }
@@ -181,7 +193,7 @@ struct ParseNode {
   const P* child() const {
     if (this == nullptr) return nullptr;
     for (auto cursor = head; cursor; cursor = cursor->next) {
-      if (cursor->isa<P>()) {
+      if (cursor->is_a<P>()) {
         return dynamic_cast<const P*>(cursor);
       }
     }
@@ -191,7 +203,7 @@ struct ParseNode {
   template<typename P>
   P* search() {
     if (this == nullptr) return nullptr;
-    if (this->isa<P>()) return this->as<P>();
+    if (this->is_a<P>()) return this->as_a<P>();
     for (auto cursor = head; cursor; cursor = cursor->next) {
       if (auto c = cursor->search<P>()) {
         return c;
@@ -201,12 +213,12 @@ struct ParseNode {
   }
 
   template<typename P>
-  P* as() {
+  P* as_a() {
     return dynamic_cast<P*>(this);
   };
 
   template<typename P>
-  const P* as() const {
+  const P* as_a() const {
     return dynamic_cast<const P*>(this);
   };
 
@@ -413,8 +425,8 @@ struct NodeDispenser {
   operator P*() {
     if (child_count == 0) return nullptr;
     if (children[0] == nullptr) return nullptr;
-    if (children[0]->isa<P>()) {
-      P* result = children[0]->as<P>();
+    if (children[0]->is_a<P>()) {
+      P* result = children[0]->as_a<P>();
       children++;
       child_count--;
       return result;

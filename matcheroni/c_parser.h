@@ -120,10 +120,12 @@ using opt_comma_separated = Opt<comma_separated<P>>;
 
 //------------------------------------------------------------------------------
 
-struct NodeOperator : public ParseNode {
-  NodeOperator(int precedence) : precedence(precedence) {}
+struct NodeWithPrecedence : public ParseNode {
+  NodeWithPrecedence(int precedence) : precedence(precedence) {}
   const int precedence;
 };
+
+//------------------------------------------------------------------------------
 
 template<StringParam lit>
 struct MatchOpPrefix {
@@ -144,7 +146,7 @@ struct MatchOpPrefix {
 
     constexpr int precedence = prefix_precedence(lit.str_val);
     static_assert(precedence > 0);
-    auto node = new NodeOperator(precedence);
+    auto node = new NodeWithPrecedence(precedence);
     node->init(a, end - 1);
     return end;
   }
@@ -163,7 +165,7 @@ struct MatchOpBinary {
     auto end = a + lit.str_len;
     constexpr int precedence = binary_precedence(lit.str_val);
     static_assert(precedence > 0);
-    auto node = new NodeOperator(precedence);
+    auto node = new NodeWithPrecedence(precedence);
     node->init(a, end - 1);
     return end;
   }
@@ -182,7 +184,7 @@ struct MatchOpSuffix {
     auto end = a + lit.str_len;
     constexpr int precedence = suffix_precedence(lit.str_val);
     static_assert(precedence > 0);
-    auto node = new NodeOperator(precedence);
+    auto node = new NodeWithPrecedence(precedence);
     node->init(a, end - 1);
     return end;
   }
@@ -341,7 +343,7 @@ struct NodeExpressionTernary : public ParseNode {};
 struct NodeExpressionBinary  : public ParseNode {};
 struct NodeExpressionPrefix  : public ParseNode {};
 struct NodeExpressionCore    : public ParseNode {};
-struct NodeExpressionPostfix : public ParseNode {};
+struct NodeExpressionSuffix  : public ParseNode {};
 struct NodeExpression        : public ParseNode {};
 
 struct NodeExpressionSizeof  : public NodeMaker<NodeExpressionSizeof> {
@@ -379,79 +381,104 @@ struct NodeExpressionOffsetof  : public NodeMaker<NodeExpressionOffsetof> {
   >;
 };
 
+//----------------------------------------
+
+using prefix_op =
+Oneof<
+  NodeExpressionCast,
+  MatchKeyword<"__extension__">,
+  MatchKeyword<"__real">,
+  MatchKeyword<"__real__">,
+  MatchKeyword<"__imag">,
+  MatchKeyword<"__imag__">,
+  MatchOpPrefix<"++">,
+  MatchOpPrefix<"--">,
+  MatchOpPrefix<"+">,
+  MatchOpPrefix<"-">,
+  MatchOpPrefix<"!">,
+  MatchOpPrefix<"~">,
+  MatchOpPrefix<"*">,
+  MatchOpPrefix<"&">
+>;
+
+//----------------------------------------
+
+using core = Oneof<
+  NodeExpressionSizeof,
+  NodeExpressionAlignof,
+  NodeExpressionOffsetof,
+  NodeExpressionGccCompound,
+  NodeExpressionParen,
+  NodeInitializerList,
+  NodeExpressionBraces,
+  NodeIdentifier,
+  NodeConstant
+>;
+
+//----------------------------------------
+
+using suffix_op =
+Oneof<
+  NodeInitializerList,   // must be before NodeExpressionBraces
+  NodeExpressionBraces,
+  NodeExpressionParen,
+  NodeExpressionSubscript,
+  MatchOpSuffix<"++">,
+  MatchOpSuffix<"--">
+>;
+
+//----------------------------------------
+
+using binary_op =
+Oneof<
+  MatchOpBinary<"<<=">,
+  MatchOpBinary<">>=">,
+  MatchOpBinary<"->*">,
+  MatchOpBinary<"<=>">,
+  MatchOpBinary<".*">,
+  MatchOpBinary<"::">,
+  MatchOpBinary<"-=">,
+  MatchOpBinary<"->">,
+  MatchOpBinary<"!=">,
+  MatchOpBinary<"*=">,
+  MatchOpBinary<"/=">,
+  MatchOpBinary<"&=">,
+  MatchOpBinary<"%=">,
+  MatchOpBinary<"^=">,
+  MatchOpBinary<"+=">,
+  MatchOpBinary<"<<">,
+  MatchOpBinary<"<=">,
+  MatchOpBinary<"==">,
+  MatchOpBinary<">=">,
+  MatchOpBinary<">>">,
+  MatchOpBinary<"|=">,
+  MatchOpBinary<"||">,
+  MatchOpBinary<"&&">,
+  MatchOpBinary<".">,
+  MatchOpBinary<"/">,
+  MatchOpBinary<"&">,
+  MatchOpBinary<"%">,
+  MatchOpBinary<"^">,
+  MatchOpBinary<"<">,
+  MatchOpBinary<"=">,
+  MatchOpBinary<">">,
+  MatchOpBinary<"|">,
+  MatchOpBinary<"-">,
+  MatchOpBinary<"*">,
+  MatchOpBinary<"+">
+>;
+
+struct NodeExpressionUnit : public NodeMaker<NodeExpressionUnit> {
+  using pattern = Seq<
+    Any<prefix_op>,
+    core,
+    Any<suffix_op>
+  >;
+};
+
+
 struct MatchExpression {
 
-  using prefix_op =
-  Oneof<
-    NodeExpressionCast,
-    MatchKeyword<"__extension__">,
-    MatchKeyword<"__real">,
-    MatchKeyword<"__real__">,
-    MatchKeyword<"__imag">,
-    MatchKeyword<"__imag__">,
-    MatchOpPrefix<"++">,
-    MatchOpPrefix<"--">,
-    MatchOpPrefix<"+">,
-    MatchOpPrefix<"-">,
-    MatchOpPrefix<"!">,
-    MatchOpPrefix<"~">,
-    MatchOpPrefix<"*">,
-    MatchOpPrefix<"&">
-  >;
-
-
-  //----------------------------------------
-
-  using suffix_op =
-  Oneof<
-    NodeInitializerList,   // must be before NodeExpressionBraces
-    NodeExpressionBraces,
-    NodeExpressionParen,
-    NodeExpressionSubscript,
-    MatchOpSuffix<"++">,
-    MatchOpSuffix<"--">
-  >;
-
-  //----------------------------------------
-
-  using binary_op =
-  Oneof<
-    MatchOpBinary<"<<=">,
-    MatchOpBinary<">>=">,
-    MatchOpBinary<"->*">,
-    MatchOpBinary<"<=>">,
-    MatchOpBinary<".*">,
-    MatchOpBinary<"::">,
-    MatchOpBinary<"-=">,
-    MatchOpBinary<"->">,
-    MatchOpBinary<"!=">,
-    MatchOpBinary<"*=">,
-    MatchOpBinary<"/=">,
-    MatchOpBinary<"&=">,
-    MatchOpBinary<"%=">,
-    MatchOpBinary<"^=">,
-    MatchOpBinary<"+=">,
-    MatchOpBinary<"<<">,
-    MatchOpBinary<"<=">,
-    MatchOpBinary<"==">,
-    MatchOpBinary<">=">,
-    MatchOpBinary<">>">,
-    MatchOpBinary<"|=">,
-    MatchOpBinary<"||">,
-    MatchOpBinary<"&&">,
-    MatchOpBinary<".">,
-    MatchOpBinary<"/">,
-    MatchOpBinary<"&">,
-    MatchOpBinary<"%">,
-    MatchOpBinary<"^">,
-    MatchOpBinary<"<">,
-    MatchOpBinary<"=">,
-    MatchOpBinary<">">,
-    MatchOpBinary<"|">,
-    MatchOpBinary<"-">,
-    MatchOpBinary<"*">,
-    MatchOpBinary<"+">
-  >;
 
   /*
   // This mess only speeds up the CSmith test by 3%
@@ -480,25 +507,14 @@ struct MatchExpression {
   //----------------------------------------
 
   static Token* match(void* ctx, Token* a, Token* b) {
-     Token* cursor = a;
+    Token* cursor = a;
 
+    /*
     if (auto end = Some<prefix_op>::match(ctx, cursor, b)) {
       auto node = new NodeExpressionPrefix();
       node->init(cursor, end - 1);
       cursor = end;
     }
-
-    using core = Oneof<
-      NodeExpressionSizeof,
-      NodeExpressionAlignof,
-      NodeExpressionOffsetof,
-      NodeExpressionGccCompound,
-      NodeExpressionParen,
-      NodeInitializerList,
-      NodeExpressionBraces,
-      NodeIdentifier,
-      NodeConstant
-    >;
 
     if (auto end = core::match(ctx, cursor, b)) {
       auto node = new NodeExpressionCore();
@@ -510,18 +526,71 @@ struct MatchExpression {
     }
 
     if (auto end = Some<suffix_op>::match(ctx, cursor, b)) {
-      auto node = new NodeExpressionPostfix();
+      auto node = new NodeExpressionSuffix();
       node->init(cursor, end - 1);
       cursor = end;
     }
+    */
 
-    // We have prefix-core-suffix, wrap it in an Expression
-    if (cursor) {
-      auto node = new NodeExpression();
-      node->init(a, cursor - 1);
-    }
+    using pattern = Seq<
+      Any<prefix_op>,
+      core,
+      Any<suffix_op>
+    >;
+    cursor = NodeExpressionUnit::match(ctx, a, b);
+    if (!cursor) return nullptr;
 
     // And see if we can chain it to a ternary or binary op.
+
+    using binary_pattern = Seq<binary_op, NodeExpressionUnit>;
+
+    while (auto end = binary_pattern::match(ctx, cursor, b)) {
+
+      while(1) {
+        ParseNode* na = nullptr;
+        NodeWithPrecedence* ox = nullptr;
+        ParseNode* nb = nullptr;
+        NodeWithPrecedence* oy = nullptr;
+        ParseNode* nc = nullptr;
+
+        nc = (end - 1)->node_l;
+        oy = nc ? nc->left_neighbor()->as_a<NodeWithPrecedence>() : nullptr;
+        nb = oy ? oy->left_neighbor() : nullptr;
+        ox = nb ? nb->left_neighbor()->as_a<NodeWithPrecedence>() : nullptr;
+        na = ox ? ox->left_neighbor() : nullptr;
+
+        if (!na || !ox || !nb || !oy || !nc) break;
+
+        if (ox->precedence < oy->precedence) {
+          //printf("precedence UP\n");
+          auto node = new NodeExpressionBinary();
+          node->init(na->tok_a, nb->tok_b);
+        }
+        else {
+          break;
+        }
+      }
+
+      cursor = end;
+    }
+
+    while(1) {
+      ParseNode* nb = nullptr;
+      NodeWithPrecedence* oy = nullptr;
+      ParseNode* nc = nullptr;
+
+      nc = (cursor - 1)->node_l;
+      oy = nc ? nc->left_neighbor()->as_a<NodeWithPrecedence>() : nullptr;
+      nb = oy ? oy->left_neighbor() : nullptr;
+
+      if (nb && oy && nc) {
+        auto node = new NodeExpressionBinary();
+        node->init(nb->tok_a, nc->tok_b);
+      }
+      else {
+        break;
+      }
+    }
 
     using ternary_pattern = // Not covered by csmith
     Seq<
@@ -533,18 +602,13 @@ struct MatchExpression {
       Opt<comma_separated<MatchExpression>>
     >;
 
-    using binary_pattern = Seq<binary_op, MatchExpression>;
-
     if (auto end = ternary_pattern::match(ctx, cursor, b)) {
       auto node = new NodeExpressionTernary();
       node->init(a, end - 1);
       cursor = end;
+      return cursor;
     }
-    else if (auto end = binary_pattern::match(ctx, cursor, b)) {
-      auto node = new NodeExpressionBinary();
-      node->init(a, end - 1);
-      cursor = end;
-    }
+
 
     return cursor;
   }
@@ -1415,7 +1479,7 @@ struct NodeStatementTypedef : public NodeMaker<NodeStatementTypedef> {
     }
 
     for (auto child : decl) {
-      if (auto decl = child->as<NodeDeclarator>()) {
+      if (auto decl = child->as_a<NodeDeclarator>()) {
         extract_declarator(ctx, decl);
       }
     }
@@ -1424,7 +1488,7 @@ struct NodeStatementTypedef : public NodeMaker<NodeStatementTypedef> {
   static void extract_declarator_list(void* ctx, const NodeDeclaratorList* decls) {
     if (!decls) return;
     for (auto child : decls) {
-      if (auto decl = child->as<NodeDeclarator>()) {
+      if (auto decl = child->as_a<NodeDeclarator>()) {
         extract_declarator(ctx, decl);
       }
     }
