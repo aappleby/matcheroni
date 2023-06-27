@@ -37,14 +37,6 @@ bool should_skip(const std::string& path) {
     "pr65241.c",
     "pr34091.c",
 
-    // no code?
-    "stpcpy-chk-lib.c",
-    "mempcpy-chk-lib.c",
-    "strstr-lib.c",
-    "strcpy-lib.c",
-    "memchr-lib.c",
-    "snprintf-chk-lib.c",
-
     // __builtin_types_compatible_p (int[5], int[])
     "builtin-types-compatible-p.c",
 

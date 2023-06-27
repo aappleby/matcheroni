@@ -453,6 +453,30 @@ struct MatchExpression {
     MatchOpBinary<"+">
   >;
 
+  /*
+  // This mess only speeds up the CSmith test by 3%
+  static Token* match_binary_op(void* ctx, Token* a, Token* b) {
+    if (!a || a == b) return nullptr;
+    switch(a->lex->span_a[0]) {
+      case '!': return MatchOpBinary<"!=">::match(ctx, a, b);
+      case '%': return Oneof< MatchOpBinary<"%=">, MatchOpBinary<"%"> >::match(ctx, a, b);
+      case '&': return Oneof< MatchOpBinary<"&&">, MatchOpBinary<"&=">, MatchOpBinary<"&"> >::match(ctx, a, b);
+      case '*': return Oneof< MatchOpBinary<"*=">, MatchOpBinary<"*"> >::match(ctx, a, b);
+      case '+': return Oneof< MatchOpBinary<"+=">, MatchOpBinary<"+"> >::match(ctx, a, b);
+      case '-': return Oneof< MatchOpBinary<"->*">, MatchOpBinary<"->">, MatchOpBinary<"-=">, MatchOpBinary<"-"> >::match(ctx, a, b);
+      case '.': return Oneof< MatchOpBinary<".*">, MatchOpBinary<"."> >::match(ctx, a, b);
+      case '/': return Oneof< MatchOpBinary<"/=">, MatchOpBinary<"/"> >::match(ctx, a, b);
+      case ':': return Oneof< MatchOpBinary<"::"> >::match(ctx, a, b);
+      case '<': return Oneof< MatchOpBinary<"<<=">, MatchOpBinary<"<=>">, MatchOpBinary<"<=">, MatchOpBinary<"<<">, MatchOpBinary<"<"> >::match(ctx, a, b);
+      case '=': return Oneof< MatchOpBinary<"==">, MatchOpBinary<"="> >::match(ctx, a, b);
+      case '>': return Oneof< MatchOpBinary<">>=">, MatchOpBinary<">=">, MatchOpBinary<">>">, MatchOpBinary<">"> >::match(ctx, a, b);
+      case '^': return Oneof< MatchOpBinary<"^=">, MatchOpBinary<"^"> >::match(ctx, a, b);
+      case '|': return Oneof< MatchOpBinary<"||">, MatchOpBinary<"|=">, MatchOpBinary<"|"> >::match(ctx, a, b);
+      default:  return nullptr;
+    }
+  }
+  */
+
   //----------------------------------------
 
   static Token* match(void* ctx, Token* a, Token* b) {

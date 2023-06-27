@@ -205,7 +205,7 @@ Token* C99Parser::match_builtin_type_suffix(Token* a, Token* b) {
 void C99Parser::dump_stats() {
   double total_time = io_accum + lex_accum + parse_accum + cleanup_accum;
 
-  if (file_pass == 10000 && ParseNode::constructor_count != 618631836) {
+  if (file_pass == 10000 && ParseNode::constructor_count != 737926537) {
     set_color(0x008080FF);
     printf("############## NODE COUNT MISMATCH\n");
     set_color(0);
