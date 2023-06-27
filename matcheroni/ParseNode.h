@@ -10,6 +10,8 @@
 
 struct ParseNode;
 
+void dump_tree(const ParseNode* n, int max_depth, int indentation);
+
 //------------------------------------------------------------------------------
 // Tokens associate lexemes with parse nodes.
 // Tokens store bookkeeping data during parsing.
@@ -44,6 +46,7 @@ struct Token {
   const Lexeme* lex;
   ParseNode* node_r; // The parse node _starting_ at this token
   ParseNode* node_l; // The parse node _ending_ at this token
+  void* pad; // make size 32 for convenience
 };
 
 using token_matcher = matcher_function<Token>;
@@ -150,6 +153,33 @@ struct ParseNode {
 
   //----------------------------------------
 
+  void check_solid() const {
+    if (head && head->tok_a != tok_a) {
+      printf("head for %p not at tok_a\n", this);
+      dump_tree(this, 0, 0);
+      return;
+    }
+    if (tail && tail->tok_b != tok_b) {
+      printf("tail for %p not at tok_b\n", this);
+      dump_tree(this, 0, 0);
+      return;
+    }
+
+    for (auto child = head; child; child = child->next) {
+      child->check_solid();
+
+      if (child->next) {
+        if (child->tok_b + 1 != child->next->tok_a) {
+          printf("child at %p not tight against its sibling\n", child);
+          return;
+        }
+      }
+    }
+  }
+
+
+  //----------------------------------------
+
   int node_count() const {
     int accum = 1;
     for (auto c = head; c; c = c->next) {
@@ -222,7 +252,7 @@ struct ParseNode {
     return dynamic_cast<const P*>(this);
   };
 
-  void print_class_name() {
+  void print_class_name() const {
     const char* name = typeid(*this).name();
     int name_len = 0;
     if (sscanf(name, "%d", &name_len)) {
@@ -438,6 +468,40 @@ struct NodeDispenser {
 
   ParseNode** children;
   size_t child_count;
+};
+
+//------------------------------------------------------------------------------
+
+/*
+struct NodeKeyword : public ParseNode {
+  NodeKeyword(const char* keyword) : keyword(keyword) {}
+  const char* keyword;
+};
+
+template<StringParam lit>
+struct MatchKeyword {
+  static Token* match(void* ctx, Token* a, Token* b) {
+    if (!a || a == b) return nullptr;
+    if (atom_cmp(*a, lit) == 0) {
+      auto end = a + 1;
+      auto node = new NodeKeyword(lit.str_val);
+      node->init(a, end - 1);
+      return end;
+    } else {
+      return nullptr;
+    }
+  }
+};
+*/
+
+template<StringParam lit>
+struct NodeKeyword : public NodeMaker<NodeKeyword<lit>> {
+  using pattern = Keyword<lit>;
+};
+
+template <auto... rest>
+struct NodeAtom : public NodeMaker<NodeAtom<rest...>> {
+  using pattern = Atom<rest...>;
 };
 
 //------------------------------------------------------------------------------

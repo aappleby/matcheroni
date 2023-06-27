@@ -3,7 +3,7 @@
 #include "ParseNode.h"
 #include "c_constants.h"
 
-void dump_tree(ParseNode* n, int max_depth, int indentation);
+void dump_tree(const ParseNode* n, int max_depth, int indentation);
 
 struct NodeAbstractDeclarator;
 struct NodeAttribute;
@@ -127,30 +127,35 @@ struct NodeWithPrecedence : public ParseNode {
 
 //------------------------------------------------------------------------------
 
+inline Token* match_operator(void* ctx, Token* a, Token* b, const char* lit, int lit_len) {
+  if (!a || a == b) return nullptr;
+  if (a + lit_len > b) return nullptr;
+
+  for (auto i = 0; i < lit_len; i++) {
+    if (!a->lex[i].is_punct(lit[i])) return nullptr;
+  }
+
+  auto end = a + lit_len;
+  return end;
+}
+
+//------------------------------------------------------------------------------
+
 template<StringParam lit>
-struct MatchOpPrefix {
+struct NodeOpPrefix : public NodeWithPrecedence {
+  using NodeWithPrecedence::NodeWithPrecedence;
+
   static Token* match(void* ctx, Token* a, Token* b) {
-    if (!a || a == b) return nullptr;
-    if (a + lit.str_len > b) return nullptr;
-
-    /*
-    for (auto i = 0; i < lit.str_len; i++) {
-      if (!a[i].is_punct(lit.str_val[i])) return nullptr;
+    auto end = match_operator(ctx, a, b, lit.str_val, lit.str_len);
+    if (end) {
+      auto node = new NodeOpPrefix<lit>(prefix_precedence(lit.str_val));
+      node->init(a, end - 1);
     }
-    */
-    for (auto i = 0; i < lit.str_len; i++) {
-      if (!a->lex[i].is_punct(lit.str_val[i])) return nullptr;
-    }
-
-    auto end = a + lit.str_len;
-
-    constexpr int precedence = prefix_precedence(lit.str_val);
-    static_assert(precedence > 0);
-    auto node = new NodeWithPrecedence(precedence);
-    node->init(a, end - 1);
     return end;
   }
 };
+
+//------------------------------------------------------------------------------
 
 template<StringParam lit>
 struct MatchOpBinary {
@@ -171,6 +176,8 @@ struct MatchOpBinary {
   }
 };
 
+//------------------------------------------------------------------------------
+
 template<StringParam lit>
 struct MatchOpSuffix {
   static Token* match(void* ctx, Token* a, Token* b) {
@@ -187,28 +194,6 @@ struct MatchOpSuffix {
     auto node = new NodeWithPrecedence(precedence);
     node->init(a, end - 1);
     return end;
-  }
-};
-
-//------------------------------------------------------------------------------
-
-struct NodeKeyword : public ParseNode {
-  NodeKeyword(const char* keyword) : keyword(keyword) {}
-  const char* keyword;
-};
-
-template<StringParam lit>
-struct MatchKeyword {
-  static Token* match(void* ctx, Token* a, Token* b) {
-    if (!a || a == b) return nullptr;
-    if (atom_cmp(*a, lit) == 0) {
-      auto end = a + 1;
-      auto node = new NodeKeyword(lit.str_val);
-      node->init(a, end - 1);
-      return end;
-    } else {
-      return nullptr;
-    }
   }
 };
 
@@ -386,19 +371,19 @@ struct NodeExpressionOffsetof  : public NodeMaker<NodeExpressionOffsetof> {
 using prefix_op =
 Oneof<
   NodeExpressionCast,
-  MatchKeyword<"__extension__">,
-  MatchKeyword<"__real">,
-  MatchKeyword<"__real__">,
-  MatchKeyword<"__imag">,
-  MatchKeyword<"__imag__">,
-  MatchOpPrefix<"++">,
-  MatchOpPrefix<"--">,
-  MatchOpPrefix<"+">,
-  MatchOpPrefix<"-">,
-  MatchOpPrefix<"!">,
-  MatchOpPrefix<"~">,
-  MatchOpPrefix<"*">,
-  MatchOpPrefix<"&">
+  NodeKeyword<"__extension__">,
+  NodeKeyword<"__real">,
+  NodeKeyword<"__real__">,
+  NodeKeyword<"__imag">,
+  NodeKeyword<"__imag__">,
+  NodeOpPrefix<"++">,
+  NodeOpPrefix<"--">,
+  NodeOpPrefix<"+">,
+  NodeOpPrefix<"-">,
+  NodeOpPrefix<"!">,
+  NodeOpPrefix<"~">,
+  NodeOpPrefix<"*">,
+  NodeOpPrefix<"&">
 >;
 
 //----------------------------------------
@@ -506,31 +491,8 @@ struct MatchExpression {
 
   //----------------------------------------
 
-  static Token* match(void* ctx, Token* a, Token* b) {
+  static Token* match2(void* ctx, Token* a, Token* b) {
     Token* cursor = a;
-
-    /*
-    if (auto end = Some<prefix_op>::match(ctx, cursor, b)) {
-      auto node = new NodeExpressionPrefix();
-      node->init(cursor, end - 1);
-      cursor = end;
-    }
-
-    if (auto end = core::match(ctx, cursor, b)) {
-      auto node = new NodeExpressionCore();
-      node->init(cursor, end - 1);
-      cursor = end;
-    }
-    else {
-      return nullptr;
-    }
-
-    if (auto end = Some<suffix_op>::match(ctx, cursor, b)) {
-      auto node = new NodeExpressionSuffix();
-      node->init(cursor, end - 1);
-      cursor = end;
-    }
-    */
 
     using pattern = Seq<
       Any<prefix_op>,
@@ -612,6 +574,20 @@ struct MatchExpression {
 
     return cursor;
   }
+
+  static Token* match(void* ctx, Token* a, Token* b) {
+    auto result = match2(ctx, a, b);
+    /*
+    if (result) {
+      int node_count = 0;
+      for (auto c = a + 1; c < b; c++) {
+        if (c->node_r) dump_tree(c->node_r, 0, 0);
+      }
+    }
+    */
+    return result;
+  }
+
 };
 
 //------------------------------------------------------------------------------
@@ -662,9 +638,9 @@ struct NodeQualifiers : public NodeMaker<NodeQualifiers> {
 struct NodePointer : public NodeMaker<NodePointer> {
   using pattern =
   Seq<
-    MatchOpPrefix<"*">,
+    NodeOpPrefix<"*">,
     Any<
-      MatchOpPrefix<"*">,
+      NodeOpPrefix<"*">,
       NodeQualifier
     >
   >;
@@ -692,9 +668,9 @@ struct NodeParam : public NodeMaker<NodeParam> {
 
 struct NodeParamList : public NodeMaker<NodeParamList> {
   using pattern = Seq<
-    Atom<'('>,
+    NodeAtom<'('>,
     Opt<comma_separated<NodeParam>>,
-    Atom<')'>
+    NodeAtom<')'>
   >;
 };
 
@@ -1244,9 +1220,9 @@ struct NodeDeclaration : public NodeMaker<NodeDeclaration> {
 
 struct NodeStatementCompound : public NodeMaker<NodeStatementCompound> {
   using pattern = Seq<
-    Atom<'{'>,
+    NodeAtom<'{'>,
     Any<NodeStatement>,
-    Atom<'}'>
+    NodeAtom<'}'>
   >;
 };
 
@@ -1255,7 +1231,7 @@ struct NodeStatementCompound : public NodeMaker<NodeStatementCompound> {
 struct NodeStatementDeclaration : public NodeMaker<NodeStatementDeclaration> {
   using pattern = Seq<
     NodeDeclaration,
-    Atom<';'>
+    NodeAtom<';'>
   >;
 };
 

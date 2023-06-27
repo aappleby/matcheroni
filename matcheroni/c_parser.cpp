@@ -6,7 +6,7 @@
 #include <stdint.h>
 #include <cstring>
 
-void dump_tree(ParseNode* n, int max_depth = 0, int indentation = 0);
+void dump_tree(const ParseNode* n, int max_depth = 0, int indentation = 0);
 
 //------------------------------------------------------------------------------
 
@@ -306,7 +306,7 @@ void print_escaped(const char* s, int len, unsigned int color) {
   return;
 }
 
-std::string escape_span(ParseNode* n) {
+std::string escape_span(const ParseNode* n) {
   if (!n->tok_a || !n->tok_b) {
     return "<bad span>";
   }
@@ -340,8 +340,10 @@ std::string escape_span(ParseNode* n) {
 }
 
 
-void dump_tree(ParseNode* n, int max_depth, int indentation) {
+void dump_tree(const ParseNode* n, int max_depth, int indentation) {
   if (max_depth && indentation == max_depth) return;
+
+  printf("%p %p ", n->tok_a, n->tok_b);
 
   for (int i = 0; i < indentation; i++) printf(" | ");
 
@@ -395,7 +397,6 @@ void C99Parser::dump_tokens() {
     else {
       dump_lexeme(*t.lex);
     }
-    printf("\n");
 
     // Dump top node
     printf("  ");

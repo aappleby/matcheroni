@@ -2,7 +2,7 @@
 
 #include <filesystem>
 
-void dump_tree(ParseNode* n, int max_depth = 0, int indentation = 0);
+void dump_tree(const ParseNode* n, int max_depth = 0, int indentation = 0);
 
 //------------------------------------------------------------------------------
 // File filters
@@ -70,12 +70,12 @@ int test_parser(int argc, char** argv) {
 #if 0
 
   paths = {
-    "tests/scratch.c",
+    //"tests/scratch.c",
     //"tests/basic_inputs.h",
     //"mini_tests/csmith_1088.c",
     //"../gcc/gcc/tree-inline.h",
     //"../gcc/gcc/testsuite/gcc.c-torture/execute/20071029-1.c",
-    //"../gcc/gcc/testsuite/gcc.c-torture/compile/pr54559.c",
+    "../gcc/gcc/testsuite/gcc.c-torture/execute/pr64718.c",
   };
 
   verbose = true;
@@ -125,16 +125,28 @@ int test_parser(int argc, char** argv) {
       continue;
     }
 
+    //parser.dump_tokens();
+
     //parser.dump_lexemes();
 
     printf("%04d: Parsing %s\n", parser.file_pass, path.c_str());
     auto root = parser.parse();
+
     if (!root) {
       printf("Parsing failed: %s\n", path.c_str());
     }
     else {
       if (verbose) dump_tree(root);
     }
+
+
+    auto tok_a = parser.tokens.data();
+    auto tok_b = parser.tokens.data() + parser.tokens.size() - 1;
+
+    assert(root->tok_a == tok_a);
+    assert(root->tok_b == tok_b - 1);
+
+    //root->check_solid();
   }
 
 
