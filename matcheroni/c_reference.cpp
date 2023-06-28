@@ -19,34 +19,98 @@ struct RefBase {
 struct identifier;
 struct constant;
 struct string_literal;
+struct punctuator;
 struct expression;
+struct header_name;
+struct pp_number;
+struct character_constant;
 
-#if 0
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//------------------------------------------------------------------------------
+
 // A.1 Lexical grammar
 
-// A.1.1 Lexical elements
-/*6.4*/ using token =
-  keyword
-  identifier
-  constant
-  string_literal
+/*6.4.1*/
+using keyword =
+Oneof<
+  Keyword<"auto">,
+  Keyword<"break">,
+  Keyword<"case">,
+  Keyword<"char">,
+  Keyword<"const">,
+  Keyword<"continue">,
+  Keyword<"default">,
+  Keyword<"do">,
+  Keyword<"double">,
+  Keyword<"else">,
+  Keyword<"enum">,
+  Keyword<"extern">,
+  Keyword<"float">,
+  Keyword<"for">,
+  Keyword<"goto">,
+  Keyword<"if">,
+  Keyword<"inline">,
+  Keyword<"int">,
+  Keyword<"long">,
+  Keyword<"register">,
+  Keyword<"restrict">,
+  Keyword<"return">,
+  Keyword<"short">,
+  Keyword<"signed">,
+  Keyword<"sizeof">,
+  Keyword<"static">,
+  Keyword<"struct">,
+  Keyword<"switch">,
+  Keyword<"typedef">,
+  Keyword<"union">,
+  Keyword<"unsigned">,
+  Keyword<"void">,
+  Keyword<"volatile">,
+  Keyword<"while">,
+  Keyword<"_Bool">,
+  Keyword<"_Complex">,
+  Keyword<"_Imaginary">
+>;
+
+/*6.4*/
+using token =
+Oneof<
+  keyword,
+  identifier,
+  constant,
+  string_literal,
   punctuator
+>;
+
 /*6.4*/ using preprocessing_token =
-  header_name
-  identifier
-  pp_number
-  character_constant
-  string_literal
-  punctuator
-  each non_white_space character that cannot be one of the above
+Oneof<
+  header_name,
+  identifier,
+  pp_number,
+  character_constant,
+  string_literal,
+  punctuator,
+  //each non_white_space character that cannot be one of the above
+  Some<NotAtom<' ','\t','\r','\n'>>
+>;
 
-// A.1.2 Keywords
-
-/*6.4.1*/ using keyword = one of
-$1_$2to break case char const continue default do double else enum extern float
-  for goto if inline int long register restrict return short signed sizeof static
-  struct switch typedef union unsigned void volatile while _Bool _Complex
-  _Imaginary
+#if 0
 
 // A.1.3 Identifiers
 /*6.4.2.1*/ using identifier =
@@ -57,18 +121,18 @@ $1_$2to break case char const continue default do double else enum extern float
   nondigit
   universal_character_name
   other implementation_defined characters
-/*6.4.2.1*/ using nondigit = one of
-  _abcdefghijklm
-  nopqrstuvwxyz
-  ABCDEFGHIJKLM
-  NOPQRSTUVWXYZ
-/*6.4.2.1*/ using digit = one of
-  0123456789
+
+/*6.4.2.1*/
+using nondigit = Charset<"_abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ">;
+
+/*6.4.2.1*/
+using digit = Charset<"0123456789">;
 
 // A.1.4 Universal character names
 /*6.4.3*/ using universal_character_name =
   \u hex_quad
   \U hex_quad hex_quad
+
 /*6.4.3*/ using hex_quad =
   hexadecimal_digit hexadecimal_digit
   hexadecimal_digit hexadecimal_digit
@@ -79,10 +143,12 @@ $1_$2to break case char const continue default do double else enum extern float
   floating_constant
   enumeration_constant
   character_constant
+
 /*6.4.4.1*/ using integer_constant =
   decimal_constant Opt<integer_suffix>
   octal_constant Opt<integer_suffix>
   hexadecimal_constant Opt<integer_suffix>
+
 /*6.4.4.1*/ using decimal_constant =
   nonzero_digit
   decimal_constant digit
@@ -90,101 +156,134 @@ $1_$2to break case char const continue default do double else enum extern float
 /*6.4.4.1*/ using octal_constant =
   0
   octal_constant octal_digit
+
 /*6.4.4.1*/ using hexadecimal_constant =
   hexadecimal_prefix hexadecimal_digit
   hexadecimal_constant hexadecimal_digit
-/*6.4.4.1*/ using hexadecimal_prefix = one of
-  0x 0X
-/*6.4.4.1*/ using nonzero_digit = one of
-  123456789
-/*6.4.4.1*/ using octal_digit = one of
-  01234567
-/*6.4.4.1*/ using hexadecimal_digit = one of
-  0123456789
-  abcdef
-  ABCDEF
+
+/*6.4.4.1*/
+using hexadecimal_prefix =
+Oneof<
+  Lit<"0x">,
+  Lit<"0X">,
+>;
+
+/*6.4.4.1*/
+using nonzero_digit = Charset<"123456789">;
+
+/*6.4.4.1*/
+using octal_digit = Charset<"01234567">;
+
+/*6.4.4.1*/
+using hexadecimal_digit = Charset<"0123456789abcdefABCDEF">;
+
 /*6.4.4.1*/ using integer_suffix =
   unsigned_suffix Opt<long_suffix>
   unsigned_suffix long_long_suffix
   long_suffix Opt<unsigned_suffix>
   long_long_suffix Opt<unsigned_suffix>
+
 /*6.4.4.1*/ using unsigned_suffix = one of
   u U
+
 /*6.4.4.1*/ using long_suffix = one of
   l L
+
 /*6.4.4.1*/ using long_long_suffix = one of
   ll LL
+
 /*6.4.4.2*/ using floating_constant =
   decimal_floating_constant
   hexadecimal_floating_constant
+
 /*6.4.4.2*/ using decimal_floating_constant =
   fractional_constant Opt<exponent_part> Opt<floating_suffix>
   digit_sequence exponent_part Opt<floating_suffix>
-
 
 /*6.4.4.2*/ using hexadecimal_floating_constant =
   hexadecimal_prefix hexadecimal_fractional_constant
   binary_exponent_part Opt<floating_suffix>
   hexadecimal_prefix hexadecimal_digit_sequence
   binary_exponent_part Opt<floating_suffix>
+
 /*6.4.4.2*/ using fractional_constant =
   Opt<digit_sequence> . digit_sequence
   digit_sequence .
+
 /*6.4.4.2*/ using exponent_part =
   e Opt<sign> digit_sequence
   E Opt<sign> digit_sequence
+
 /*6.4.4.2*/ using sign = one of
   + -
+
 /*6.4.4.2*/ using digit_sequence =
   digit
   digit_sequence digit
+
 /*6.4.4.2*/ using hexadecimal_fractional_constant =
   Opt<hexadecimal_digit_sequence> .
   hexadecimal_digit_sequence
   hexadecimal_digit_sequence .
+
 /*6.4.4.2*/ using binary_exponent_part =
   p Opt<sign> digit_sequence
   P Opt<sign> digit_sequence
+
 /*6.4.4.2*/ using hexadecimal_digit_sequence =
   hexadecimal_digit
   hexadecimal_digit_sequence hexadecimal_digit
+
 /*6.4.4.2*/ using floating_suffix = one of
   flFL
+
 /*6.4.4.3*/ using enumeration_constant =
   identifier
+
 /*6.4.4.4*/ using character_constant =
   ' c_char_sequence '
   L' c_char_sequence '
+
 /*6.4.4.4*/ using c_char_sequence =
   c_char
   c_char_sequence c_char
+
 /*6.4.4.4*/ using c_char =
   any member of the source character set except
   the single_quote, backslash \, or new_line character
   escape_sequence
+
 /*6.4.4.4*/ using escape_sequence =
   simple_escape_sequence
   octal_escape_sequence
   hexadecimal_escape_sequence
   universal_character_name
+
 /*6.4.4.4*/ using simple_escape_sequence = one of
   \quote \dquote \? \\
   \a \b \f \n \r \t \v
+
 /*6.4.4.4*/ using octal_escape_sequence =
   \ octal_digit
   \ octal_digit octal_digit
   \ octal_digit octal_digit octal_digit
+
 /*6.4.4.4*/ using hexadecimal_escape_sequence =
   \x hexadecimal_digit
   hexadecimal_escape_sequence hexadecimal_digit
 
 // A.1.6 String literals
+
 /*6.4.5*/ using string_literal =
-  " Opt<s_char_sequence> "
-  L" Opt<s_char_sequence> "
+Oneof<
+  Seq<Atom<'"'>,  Opt<s_char_sequence>, Atom<'"'>>,
+  Seq<Lit<"L\"">, Opt<s_char_sequence>, Atom<'"'>>,
+>;
+
 /*6.4.5*/ using s_char_sequence =
   s_char
   s_char_sequence s_char
+
 /*6.4.5*/ using s_char =
   any member of the source character set except
   the double_quote dquote, backslash \, or new_line character
@@ -202,35 +301,44 @@ $1_$2to break case char const continue default do double else enum extern float
   <: :> <% %> %: %:%:
 
 // A.1.8 Header names
-/*6.4.7*/ using header_name =
-  < h_char_sequence >
-  " q_char_sequence "
-/*6.4.7*/ using h_char_sequence =
-  h_char
-  h_char_sequence h_char
-/*6.4.7*/ using h_char =
-  any member of the source character set except
-  the new_line character and >
-/*6.4.7*/ using q_char_sequence =
-  q_char
-  q_char_sequence q_char
-/*6.4.7*/ using q_char =
-  any member of the source character set except
-  the new_line character and dquote
+/*6.4.7*/
+using header_name = Oneof<
+  Seq<Atom<'<'>, h_char_sequence, Atom<'>'>>,
+  Seq<Atom<'"'>, q_char_sequence, Atom<'"'>>,
+>;
+
+/*6.4.7*/
+using h_char_sequence = Some<h_char>;
+
+/*6.4.7*/
+using h_char = NotAtom<'\n', '>'>;
+
+/*6.4.7*/
+using q_char_sequence = Some<q_char>;
+
+/*6.4.7*/
+using q_char = NotAtom<'\n', '"'>;
 
 // A.1.9 Preprocessing numbers
 /*6.4.8*/
-  using pp_number = Oneof<
-  digit
-  Seq<Atom<'.'>, digit>,
-  Seq<pp_number, digit>,
-  Seq<pp_number, identifier_nondigit>,
-  Seq<pp_number, Atom<'e'>, sign>,
-  Seq<pp_number, Atom<'E'>, sign>,
-  Seq<pp_number, Atom<'p'>, sign>,
-  Seq<pp_number, Atom<'P'>, sign>,
-  Seq<pp_number, Atom<'.'>>,
-  >;
+using pp_number_suffix = Oneof<
+  digit,
+  identifier_nondigit,
+  Seq<Atom<'e'>, sign>,
+  Seq<Atom<'E'>, sign>,
+  Seq<Atom<'p'>, sign>,
+  Seq<Atom<'P'>, sign>,
+  Seq<Atom<'.'>>,
+>;
+
+using pp_number =
+Seq<
+  Oneof<
+    digit,
+    Seq<Atom<'.'>, digit>,
+  >,
+  Any<pp_number_suffix>
+>;
 
 #endif
 
@@ -772,60 +880,114 @@ using translation_unit = Some<external_declaration>;
 //------------------------------------------------------------------------------
 // A.3 Preprocessing directives
 
+/*6.10*/
+using pp_tokens = Some<preprocessing_token>;
+
+/*6.10*/
+using replacement_list = Opt<pp_tokens>;
+
+/*6.10*/
+using new_line = Atom<'\n'>;
+
+/*6.10*/
+using text_line = Seq<Opt<pp_tokens>, new_line>;
+
+/*6.10*/
+using non_directive = Seq<pp_tokens, new_line>;
+
+/*6.10*/
+// a Atom<'('> character not immediately preceded by white_space
+
+// FIXME this might be wrong?
+template<auto C, auto... rest>
+struct NotAfterAtom {
+  template<typename atom>
+  static atom* match(void* ctx, atom* a, atom* b) {
+    if (!a || a == b) return nullptr;
+    if (atom_cmp(a[-1], C) == 0) {
+      return nullptr;
+    } else {
+      return NotAfterAtom<rest...>::match(ctx, a, b);
+    }
+  }
+};
+
+template<auto C>
+struct NotAfterAtom<C> {
+  template<typename atom>
+  static atom* match(void* ctx, atom* a, atom* b) {
+    if (!a || a == b) return nullptr;
+    if (atom_cmp(a[-1], C) == 0) {
+      return nullptr;
+    } else {
+      return a;
+    }
+  }
+};
+
+using lparen =
+Seq<
+  NotAfterAtom<' ', '\r', '\n', '\t'>,
+  Atom<'('>
+>;
+
+/*6.10*/
+using control_line =
+Oneof<
+  Seq<Atom<'#'>, Keyword<"include">, pp_tokens,      new_line>,
+  Seq<Atom<'#'>, Keyword<"undef">,   identifier,     new_line>,
+  Seq<Atom<'#'>, Keyword<"line">,    pp_tokens,      new_line>,
+  Seq<Atom<'#'>, Keyword<"error">,   Opt<pp_tokens>, new_line>,
+  Seq<Atom<'#'>, Keyword<"pragma">,  Opt<pp_tokens>, new_line>,
+  Seq<Atom<'#'>,                                     new_line>,
+  Seq<Atom<'#'>, Keyword<"define">,  identifier,     replacement_list, new_line>,
+  Seq<Atom<'#'>, Keyword<"define">,  identifier,     lparen, Opt<identifier_list>,                       Atom<')'>, replacement_list, new_line>,
+  Seq<Atom<'#'>, Keyword<"define">,  identifier,     lparen, Keyword<"...">,                             Atom<')'>, replacement_list, new_line>,
+  Seq<Atom<'#'>, Keyword<"define">,  identifier,     lparen, identifier_list, Atom<','>, Keyword<"...">, Atom<')'>, replacement_list, new_line>
+>;
+
 #if 0
 
+/*6.10*/
+using preprocessing_file = Opt<group>;
 
-/*6.10*/ using preprocessing_file =
-  Opt<group>
-/*6.10*/ using group =
-  group_part
-  group group_part
-/*6.10*/ using group_part =
-  if_section
-  control_line
-  text_line
-  -# non_directive
-/*6.10*/ using if_section =
-  if_group Opt<elif_groups> Opt<else_group> endif_line
-/*6.10*/ using if_group =
-  -# if constant_expression new_line Opt<group>
-  -# ifdef identifier new_line Opt<group>
-  -# ifndef identifier new_line Opt<group>
-/*6.10*/ using elif_groups =
-  elif_group
-  elif_groups elif_group
-/*6.10*/ using elif_group =
-  -# elif constant_expression new_line Opt<group>
-/*6.10*/ using else_group =
-  -# else new_line Opt<group>
-/*6.10*/ using endif_line =
-  -# endif new_line
-/*6.10*/ using control_line =
-  -# include pp_tokens new_line
-  -# define identifier replacement_list new_line
-  -# define identifier lparen Opt<identifier_list> Atom<')'>
-  replacement_list new_line
-  -# define identifier lparen ... Atom<')'> replacement_list new_line
-  -# define identifier lparen identifier_list Atom<','> ... Atom<')'>
-  replacement_list new_line
-  -# undef identifier new_line
-  -# line pp_tokens new_line
-  -# error Opt<pp_tokens> new_line
-  -# pragma Opt<pp_tokens> new_line
-  -# new_line
-/*6.10*/ using text_line =
-  Opt<pp_tokens> new_line
-/*6.10*/ using non_directive =
-  pp_tokens new_line
-/*6.10*/ using lparen =
-  a Atom<'('> character not immediately preceded by white_space
-/*6.10*/ using replacement_list =
-  Opt<pp_tokens>
-/*6.10*/ using pp_tokens =
-  preprocessing_token
-  pp_tokens preprocessing_token
-/*6.10*/ using new_line =
-  the new_line character
+/*6.10*/
+using group = Some<group_part>;
+
+/*6.10*/
+using group_part =
+Oneof<
+  if_section,
+  control_line,
+  text_line,
+  Seq<Atom<'#'>, non_directive>
+>;
+
+/*6.10*/
+using if_section = Seq<if_group, Opt<elif_groups>, Opt<else_group>, endif_line>;
+
+/*6.10*/
+using if_group =
+Oneof<
+  Seq<Atom<'#'>, Keyword<"if">,     constant_expression, new_line, Opt<group>>,
+  Seq<Atom<'#'>, Keyword<"ifdef">,  identifier,          new_line, Opt<group>>,
+  Seq<Atom<'#'>, Keyword<"ifndef">, identifier,          new_line, Opt<group>>
+>;
+
+/*6.10*/
+using elif_groups = Some<elif_group>;
+
+/*6.10*/
+using elif_group = Seq<Atom<'#'>, Keyword<"elif">, constant_expression, new_line, Opt<group>>;
+
+/*6.10*/
+using else_group = Seq<Atom<'#'>, Keyword<"else">, new_line, Opt<group>>;
+
+/*6.10*/
+using endif_line = Seq<Atom<'#'>, Keyword<"endif">, new_line>;
+
+
+
 
 
 
