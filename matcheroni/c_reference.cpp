@@ -34,6 +34,8 @@ struct escape_sequence;
 struct punctuator;
 struct constant_expression;
 struct assignment_expression;
+struct type_name;
+struct unary_expression;
 
 
 
@@ -469,7 +471,10 @@ struct pp_number : public RefBase<pp_number> {
 //------------------------------------------------------------------------------
 // A.2 Phrase structure grammar
 
-// A.2.1 Expressions
+struct argument_expression_list;
+struct initializer_list;
+struct cast_expression;
+struct expression;
 
 /*6.5.1*/ using primary_expression =
 Oneof<
@@ -479,17 +484,15 @@ Oneof<
   Seq<Atom<'('>, expression, Atom<')'>>
 >;
 
-#if 0
-
 /*6.5.2*/
 using postfix_expression_suffix =
 Oneof<
   Seq<Atom<'['>, expression, Atom<']'>>,
   Seq<Atom<'('>, Opt<argument_expression_list>, Atom<')'>>,
-  Seq<Atom<".">, identifier>,
-  Seq<Atom<"->">, identifier>,
-  Atom<"++">,
-  Atom<"--">
+  Seq<Operator<".">, identifier>,
+  Seq<Operator<"->">, identifier>,
+  Operator<"++">,
+  Operator<"--">
 >;
 
 using postfix_expression =
@@ -497,125 +500,135 @@ Seq<
   Oneof<
     primary_expression,
     Seq<Atom<'('>, type_name, Atom<')'>, Atom<'{'>, initializer_list, Atom<'}'>>,
-    Seq<Atom<'('>, type_name, Atom<')'>, Atom<'{'>, initializer_list, Atom<','>, Atom<'}'>>,
+    Seq<Atom<'('>, type_name, Atom<')'>, Atom<'{'>, initializer_list, Atom<','>, Atom<'}'>>
   >,
   Any<postfix_expression_suffix>
 >;
 
 /*6.5.2*/
-using argument_expression_list = comma_separated<assignment_expression>;
+struct argument_expression_list : public RefBase<argument_expression_list> {
+  using pattern = comma_separated<assignment_expression>;
+};
 
 /*6.5.3*/
 using unary_operator = Charset<"&*+-~!">;
 
 /*6.5.3*/
-using unary_expression = Oneof<
-  postfix_expression,
-  Seq<Operator<"++">, unary_expression>,
-  Seq<Operator<"--">, unary_expression>,
-  Seq<unary_operator, cast_expression>,
-  Seq<Keyword<"sizeof">, unary_expression>,
-  Seq<Keyword<"sizeof">, Atom<'('>, type_name, Atom<')'>>,
->;
+struct unary_expression : public RefBase<unary_expression> {
+  using pattern = Oneof<
+    postfix_expression,
+    Seq<Operator<"++">, unary_expression>,
+    Seq<Operator<"--">, unary_expression>,
+    Seq<unary_operator, cast_expression>,
+    Seq<Keyword<"sizeof">, unary_expression>,
+    Seq<Keyword<"sizeof">, Atom<'('>, type_name, Atom<')'>>
+  >;
+};
 
 
-/*6.5.4*/ using cast_expression =
-Oneof<
-  unary_expression,
-  Seq<Atom<'('>, type_name, Atom<')'>, cast_expression>
->;
+/*6.5.4*/
+struct cast_expression : public RefBase<cast_expression> {
+  using pattern = Oneof<
+    unary_expression,
+    Seq<Atom<'('>, type_name, Atom<')'>, cast_expression>
+  >;
+};
 
 /*6.5.5*/
-using multiplicative_expression =
-Oneof<
-  cast_expression,
-  Seq<multiplicative_expression, Atom<'*'>, cast_expression>,
-  Seq<multiplicative_expression, Atom<'/'>, cast_expression>,
-  Seq<multiplicative_expression, Atom<'%'>, cast_expression>
->;
+struct multiplicative_expression : public RefBase<multiplicative_expression> {
+  using pattern = Oneof<
+    cast_expression,
+    Seq<multiplicative_expression, Atom<'*'>, cast_expression>,
+    Seq<multiplicative_expression, Atom<'/'>, cast_expression>,
+    Seq<multiplicative_expression, Atom<'%'>, cast_expression>
+  >;
+};
 
 /*6.5.6*/
-using additive_expression =
-Oneof<
-  multiplicative_expression,
-  Seq<additive_expression, Atom<'+'>, multiplicative_expression>,
-  Seq<additive_expression, Atom<'-'>, multiplicative_expression>
->;
+struct additive_expression : public RefBase<additive_expression> {
+  using pattern = Oneof<
+    multiplicative_expression,
+    Seq<additive_expression, Atom<'+'>, multiplicative_expression>,
+    Seq<additive_expression, Atom<'-'>, multiplicative_expression>
+  >;
+};
 
 /*6.5.7*/
-using shift_expression =
-Oneof<
-  additive_expression,
-  Seq<shift_expression, Operator<"<<">, additive_expression>,
-  Seq<shift_expression, Operator<">>">, additive_expression>
->;
+struct shift_expression : public RefBase<shift_expression> {
+  using pattern = Oneof<
+    additive_expression,
+    Seq<shift_expression, Operator<"<<">, additive_expression>,
+    Seq<shift_expression, Operator<">>">, additive_expression>
+  >;
+};
 
 /*6.5.8*/
-using relational_expression =
-Oneof<
-  shift_expression,
-  Seq<relational_expression, Operator<"<">,  shift_expression>,
-  Seq<relational_expression, Operator<">">,  shift_expression>,
-  Seq<relational_expression, Operator<"<=">, shift_expression>,
-  Seq<relational_expression, Operator<">=">, shift_expression>
->;
+struct relational_expression : public RefBase<relational_expression> {
+  using pattern = Oneof<
+    shift_expression,
+    Seq<relational_expression, Operator<"<">,  shift_expression>,
+    Seq<relational_expression, Operator<">">,  shift_expression>,
+    Seq<relational_expression, Operator<"<=">, shift_expression>,
+    Seq<relational_expression, Operator<">=">, shift_expression>
+  >;
+};
 
 /*6.5.9*/
-using equality_expression =
-Oneof<
-  relational_expression,
-  Seq<equality_expression, Operator<"==">, relational_expression>,
-  Seq<equality_expression, Operator<"!=">, relational_expression>
->;
+struct equality_expression : public RefBase<equality_expression> {
+  using pattern = Oneof<
+    relational_expression,
+    Seq<equality_expression, Operator<"==">, relational_expression>,
+    Seq<equality_expression, Operator<"!=">, relational_expression>
+  >;
+};
 
 /*6.5.10*/
-using AND_expression =
-Oneof<
-  equality_expression,
-  Seq<AND_expression, Operator<'&'>, equality_expression>
->;
+struct AND_expression : public RefBase<AND_expression> {
+  using pattern = Oneof<
+    equality_expression,
+    Seq<AND_expression, Operator<"&">, equality_expression>
+  >;
+};
 
 /*6.5.11*/
-using exclusive_OR_expression =
-Oneof<
-  AND_expression,
-  Seq<exclusive_OR_expression, Operator<'^'>, AND_expression>
->;
+struct exclusive_OR_expression : public RefBase<exclusive_OR_expression> {
+  using pattern = Oneof<
+    AND_expression,
+    Seq<exclusive_OR_expression, Operator<"^">, AND_expression>
+  >;
+};
 
 /*6.5.12*/
-using inclusive_OR_expression =
-Oneof<
-  exclusive_OR_expression,
-  Seq<inclusive_OR_expression, Operator<'|'>, exclusive_OR_expression>
->;
+struct inclusive_OR_expression : public RefBase<inclusive_OR_expression> {
+  using pattern = Oneof<
+    exclusive_OR_expression,
+    Seq<inclusive_OR_expression, Operator<"|">, exclusive_OR_expression>
+  >;
+};
 
 /*6.5.13*/
-using logical_AND_expression =
-Oneof<
-  inclusive_OR_expression
-  Seq<logical_AND_expression, Operator<"&&">, inclusive_OR_expression>
->;
+struct logical_AND_expression : public RefBase<logical_AND_expression> {
+  using pattern = Oneof<
+    inclusive_OR_expression,
+    Seq<logical_AND_expression, Operator<"&&">, inclusive_OR_expression>
+  >;
+};
 
 /*6.5.14*/
-using logical_OR_expression =
-Oneof<
-  logical_AND_expression
-  Seq<logical_OR_expression, Operator<"||">, logical_AND_expression>
->;
+struct logical_OR_expression : public RefBase<logical_OR_expression> {
+  using pattern = Oneof<
+    logical_AND_expression,
+    Seq<logical_OR_expression, Operator<"||">, logical_AND_expression>
+  >;
+};
 
 /*6.5.15*/
-using conditional_expression =
-Oneof<
-  logical_OR_expression
-  Seq<logical_OR_expression, Atom<'?'>, expression, Atom<':'>, conditional_expression>
->;
-
-/*6.5.16*/
-using assignment_expression =
-Oneof<
-  conditional_expression,
-  Seq<unary_expression, assignment_operator, assignment_expression>,
->;
+struct conditional_expression : public RefBase<conditional_expression> {
+  using pattern = Oneof<
+    logical_OR_expression,
+    Seq<logical_OR_expression, Operator<"?">, expression, Operator<":">, conditional_expression>
+  >;
+};
 
 /*6.5.16*/
 using assignment_operator =
@@ -633,17 +646,26 @@ Oneof<
   Operator<"=">
 >;
 
+/*6.5.16*/
+struct assignment_expression : public RefBase<assignment_expression> {
+  using pattern = Oneof<
+    conditional_expression,
+    Seq<unary_expression, assignment_operator, assignment_expression>
+  >;
+};
+
 /*6.5.17*/
-using expression =
-Oneof<
-  assignment_expression
-  Seq<expression, Atom<','>, assignment_expression>
->;
+struct expression : public RefBase<expression> {
+  using pattern = Oneof<
+    assignment_expression,
+    Seq<expression, Atom<','>, assignment_expression>
+  >;
+};
 
 /*6.6*/
-using constant_expression = conditional_expression;
-
-#endif
+struct constant_expression : public RefBase<constant_expression> {
+  using pattern = conditional_expression;
+};
 
 
 
@@ -860,7 +882,9 @@ struct pointer : public RefBase<pointer> {
 };
 
 /*6.7.6*/
-using type_name = Seq<specifier_qualifier_list, Opt<abstract_declarator>>;
+struct type_name : public RefBase<type_name> {
+  using pattern = Seq<specifier_qualifier_list, Opt<abstract_declarator>>;
+};
 
 /*6.7.6*/
 using direct_abstract_declarator_suffix = Oneof<
