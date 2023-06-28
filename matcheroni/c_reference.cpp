@@ -675,50 +675,40 @@ struct initializer_list : public RefBase<initializer_list> {
 //------------------------------------------------------------------------------
 // A.2.3 Statements
 
-#if 0
+struct statement;
 
-/*6.8*/ using statement =
-Oneof<
-  labeled_statement,
-  compound_statement,
-  expression_statement,
-  selection_statement,
-  iteration_statement,
-  jump_statement
->;
+/*6.8.2*/
+using block_item = Oneof<declaration, statement>;
+
+/*6.8.2*/
+using block_item_list = Some<block_item>;
 
 /*6.8.1*/ using labeled_statement =
 Oneof<
-  Seq<identifier Atom<':'> statement>,
-  Seq<Keyword<"case">, constant_expression, Atom<':'> statement>,
+  Seq<identifier, Atom<':'>, statement>,
+  Seq<Keyword<"case">, constant_expression, Atom<':'>, statement>,
   Seq<Keyword<"default">, Atom<':'>, statement>
 >;
 
 /*6.8.2*/
 using compound_statement = Seq<Atom<'{'>, Opt<block_item_list>, Atom<'}'>>;
 
-/*6.8.2*/
-using block_item_list = Some<block_item>;
-
-/*6.8.2*/
-using block_item = Oneof<declaration, statement>;
-
 /*6.8.3*/
 using expression_statement = Seq<Opt<expression>, Atom<';'>>;
 
 /*6.8.4*/ using selection_statement =
 Oneof<
-  Keyword<'if'> Atom<'('> expression Atom<')'> statement
-  Keyword<'if'> Atom<'('> expression Atom<')'> statement Keyword<'else'> statement
-  Keyword<'switch'> Atom<'('> expression Atom<')'> statement
+  Seq<Keyword<"if">, Atom<'('>, expression, Atom<')'>, statement>,
+  Seq<Keyword<"if">, Atom<'('>, expression, Atom<')'>, statement, Keyword<"else">, statement>,
+  Seq<Keyword<"switch">, Atom<'('>, expression, Atom<')'>, statement>
 >;
 
 /*6.8.5*/
 using iteration_statement = Oneof<
-  Seq<Keyword<'while'>, Atom<'('>, expression, Atom<')'>, statement>,
-  Seq<Keyword<'do'>, statement, Keyword<'while'>, Atom<'('>, expression, Atom<')'>, Atom<';'>>,
-  Seq<Keyword<'for'>, Atom<'('>, Opt<expression>, Atom<';'>, Opt<expression>, Atom<';'>, Opt<expression>, Atom<')'>, statement>,
-  Seq<Keyword<'for'>, Atom<'('>, declaration, Opt<expression>, Atom<';'>, Opt<expression>, Atom<')'>, statement>
+  Seq<Keyword<"while">, Atom<'('>, expression, Atom<')'>, statement>,
+  Seq<Keyword<"do">, statement, Keyword<"while">, Atom<'('>, expression, Atom<')'>, Atom<';'>>,
+  Seq<Keyword<"for">, Atom<'('>, Opt<expression>, Atom<';'>, Opt<expression>, Atom<';'>, Opt<expression>, Atom<')'>, statement>,
+  Seq<Keyword<"for">, Atom<'('>, declaration, Opt<expression>, Atom<';'>, Opt<expression>, Atom<')'>, statement>
 >;
 
 /*6.8.6*/
@@ -729,12 +719,20 @@ using jump_statement = Oneof<
   Seq<Keyword<"return">, Opt<expression>, Atom<';'>>
 >;
 
-// A.2.4 External definitions
-/*6.9*/
-using translation_unit = Some<external_declaration>;
+/*6.8*/
+struct statement : public RefBase<statement> {
+  using pattern = Oneof<
+    labeled_statement,
+    compound_statement,
+    expression_statement,
+    selection_statement,
+    iteration_statement,
+    jump_statement
+  >;
+};
 
-/*6.9*/
-using external_declaration = Oneof<function_definition, declaration>;
+/*6.9.1*/
+using declaration_list = Some<declaration>;
 
 /*6.9.1*/
 using function_definition = Seq<
@@ -744,10 +742,14 @@ using function_definition = Seq<
   compound_statement
 >;
 
-/*6.9.1*/
-using declaration_list = Some<declaration>;
+/*6.9*/
+using external_declaration = Oneof<function_definition, declaration>;
 
-#endif
+// A.2.4 External definitions
+/*6.9*/
+using translation_unit = Some<external_declaration>;
+
+//------------------------------------------------------------------------------
 
 
 
