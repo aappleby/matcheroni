@@ -8,6 +8,14 @@
 template<typename P>
 using comma_separated = Seq<P, Any<Seq<Atom<','>, P>>, Opt<Atom<','>> >;
 
+template<StringParam q>
+struct Operator {
+  template<typename atom>
+  static atom* match(void* ctx, atom* a, atom* b) {
+    return Lit<q>::match(ctx, a, b);
+  }
+};
+
 template<typename T>
 struct RefBase {
   template<typename atom>
@@ -16,17 +24,16 @@ struct RefBase {
   }
 };
 
-struct identifier;
-struct constant;
 struct string_literal;
 struct punctuator;
 struct expression;
 struct header_name;
 struct pp_number;
-struct character_constant;
-
-
-
+struct constant;
+struct escape_sequence;
+struct punctuator;
+struct constant_expression;
+struct assignment_expression;
 
 
 
@@ -43,8 +50,28 @@ struct character_constant;
 
 
 //------------------------------------------------------------------------------
-
 // A.1 Lexical grammar
+
+/*6.4.2.1*/
+using nondigit = Charset<"_abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ">;
+
+/*6.4.2.1*/
+using digit = Charset<"0123456789">;
+
+/*6.4.2.1*/
+using identifier_nondigit =
+Oneof<
+  nondigit
+  //universal_character_name
+  //other implementation_defined characters
+>;
+
+/*6.4.2.1*/
+using identifier =
+Seq<
+  identifier_nondigit,
+  Any<identifier_nondigit, digit>
+>;
 
 /*6.4.1*/
 using keyword =
@@ -98,7 +125,25 @@ Oneof<
   punctuator
 >;
 
-/*6.4*/ using preprocessing_token =
+/*6.4.4.4*/
+using c_char =
+Oneof<
+  NotAtom<'\'', '\\', '\n'>,
+  escape_sequence
+>;
+
+/*6.4.4.4*/
+using c_char_sequence = Some<c_char>;
+
+/*6.4.4.4*/
+using character_constant =
+Oneof<
+  Seq<Atom<'\''>, c_char_sequence, Atom<'\''>>,
+  Seq<Lit<"L'">,  c_char_sequence, Atom<'\''>>
+>;
+
+/*6.4*/
+using preprocessing_token =
 Oneof<
   header_name,
   identifier,
@@ -110,64 +155,6 @@ Oneof<
   Some<NotAtom<' ','\t','\r','\n'>>
 >;
 
-#if 0
-
-// A.1.3 Identifiers
-/*6.4.2.1*/ using identifier =
-  identifier_nondigit
-  identifier identifier_nondigit
-  identifier digit
-/*6.4.2.1*/ using identifier_nondigit =
-  nondigit
-  universal_character_name
-  other implementation_defined characters
-
-/*6.4.2.1*/
-using nondigit = Charset<"_abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ">;
-
-/*6.4.2.1*/
-using digit = Charset<"0123456789">;
-
-// A.1.4 Universal character names
-/*6.4.3*/ using universal_character_name =
-  \u hex_quad
-  \U hex_quad hex_quad
-
-/*6.4.3*/ using hex_quad =
-  hexadecimal_digit hexadecimal_digit
-  hexadecimal_digit hexadecimal_digit
-
-// A.1.5 Constants
-/*6.4.4*/ using constant =
-  integer_constant
-  floating_constant
-  enumeration_constant
-  character_constant
-
-/*6.4.4.1*/ using integer_constant =
-  decimal_constant Opt<integer_suffix>
-  octal_constant Opt<integer_suffix>
-  hexadecimal_constant Opt<integer_suffix>
-
-/*6.4.4.1*/ using decimal_constant =
-  nonzero_digit
-  decimal_constant digit
-
-/*6.4.4.1*/ using octal_constant =
-  0
-  octal_constant octal_digit
-
-/*6.4.4.1*/ using hexadecimal_constant =
-  hexadecimal_prefix hexadecimal_digit
-  hexadecimal_constant hexadecimal_digit
-
-/*6.4.4.1*/
-using hexadecimal_prefix =
-Oneof<
-  Lit<"0x">,
-  Lit<"0X">,
->;
-
 /*6.4.4.1*/
 using nonzero_digit = Charset<"123456789">;
 
@@ -177,147 +164,270 @@ using octal_digit = Charset<"01234567">;
 /*6.4.4.1*/
 using hexadecimal_digit = Charset<"0123456789abcdefABCDEF">;
 
+/*6.4.4.1*/
+using decimal_constant = Seq<nonzero_digit, Any<digit>>;
+
+/*6.4.4.1*/
+using octal_constant = Seq<Lit<"0">, Any<octal_digit>>;
+
+/*6.4.4.1*/
+using hexadecimal_prefix = Oneof<Lit<"0x">, Lit<"0X">>;
+
+/*6.4.4.1*/
+using hexadecimal_constant = Seq<hexadecimal_prefix, Some<hexadecimal_digit>>;
+
+/*6.4.4.1*/
+using unsigned_suffix = Oneof<Atom<'u'>, Atom<'U'>>;
+
+/*6.4.4.1*/
+using long_suffix = Oneof<Atom<'l'>, Atom<'L'>>;
+
+/*6.4.4.1*/
+using long_long_suffix = Oneof<Lit<"ll">, Lit<"LL">>;
+
 /*6.4.4.1*/ using integer_suffix =
-  unsigned_suffix Opt<long_suffix>
-  unsigned_suffix long_long_suffix
-  long_suffix Opt<unsigned_suffix>
-  long_long_suffix Opt<unsigned_suffix>
-
-/*6.4.4.1*/ using unsigned_suffix = one of
-  u U
-
-/*6.4.4.1*/ using long_suffix = one of
-  l L
-
-/*6.4.4.1*/ using long_long_suffix = one of
-  ll LL
-
-/*6.4.4.2*/ using floating_constant =
-  decimal_floating_constant
-  hexadecimal_floating_constant
-
-/*6.4.4.2*/ using decimal_floating_constant =
-  fractional_constant Opt<exponent_part> Opt<floating_suffix>
-  digit_sequence exponent_part Opt<floating_suffix>
-
-/*6.4.4.2*/ using hexadecimal_floating_constant =
-  hexadecimal_prefix hexadecimal_fractional_constant
-  binary_exponent_part Opt<floating_suffix>
-  hexadecimal_prefix hexadecimal_digit_sequence
-  binary_exponent_part Opt<floating_suffix>
-
-/*6.4.4.2*/ using fractional_constant =
-  Opt<digit_sequence> . digit_sequence
-  digit_sequence .
-
-/*6.4.4.2*/ using exponent_part =
-  e Opt<sign> digit_sequence
-  E Opt<sign> digit_sequence
-
-/*6.4.4.2*/ using sign = one of
-  + -
-
-/*6.4.4.2*/ using digit_sequence =
-  digit
-  digit_sequence digit
-
-/*6.4.4.2*/ using hexadecimal_fractional_constant =
-  Opt<hexadecimal_digit_sequence> .
-  hexadecimal_digit_sequence
-  hexadecimal_digit_sequence .
-
-/*6.4.4.2*/ using binary_exponent_part =
-  p Opt<sign> digit_sequence
-  P Opt<sign> digit_sequence
-
-/*6.4.4.2*/ using hexadecimal_digit_sequence =
-  hexadecimal_digit
-  hexadecimal_digit_sequence hexadecimal_digit
-
-/*6.4.4.2*/ using floating_suffix = one of
-  flFL
-
-/*6.4.4.3*/ using enumeration_constant =
-  identifier
-
-/*6.4.4.4*/ using character_constant =
-  ' c_char_sequence '
-  L' c_char_sequence '
-
-/*6.4.4.4*/ using c_char_sequence =
-  c_char
-  c_char_sequence c_char
-
-/*6.4.4.4*/ using c_char =
-  any member of the source character set except
-  the single_quote, backslash \, or new_line character
-  escape_sequence
-
-/*6.4.4.4*/ using escape_sequence =
-  simple_escape_sequence
-  octal_escape_sequence
-  hexadecimal_escape_sequence
-  universal_character_name
-
-/*6.4.4.4*/ using simple_escape_sequence = one of
-  \quote \dquote \? \\
-  \a \b \f \n \r \t \v
-
-/*6.4.4.4*/ using octal_escape_sequence =
-  \ octal_digit
-  \ octal_digit octal_digit
-  \ octal_digit octal_digit octal_digit
-
-/*6.4.4.4*/ using hexadecimal_escape_sequence =
-  \x hexadecimal_digit
-  hexadecimal_escape_sequence hexadecimal_digit
-
-// A.1.6 String literals
-
-/*6.4.5*/ using string_literal =
 Oneof<
-  Seq<Atom<'"'>,  Opt<s_char_sequence>, Atom<'"'>>,
-  Seq<Lit<"L\"">, Opt<s_char_sequence>, Atom<'"'>>,
+  Seq<unsigned_suffix,  Opt<long_suffix>>,
+  Seq<unsigned_suffix,  long_long_suffix>,
+  Seq<long_suffix,      Opt<unsigned_suffix>>,
+  Seq<long_long_suffix, Opt<unsigned_suffix>>
 >;
 
-/*6.4.5*/ using s_char_sequence =
-  s_char
-  s_char_sequence s_char
+/*6.4.4.1*/
+using integer_constant =
+Oneof<
+  Seq<decimal_constant, Opt<integer_suffix>>,
+  Seq<octal_constant, Opt<integer_suffix>>,
+  Seq<hexadecimal_constant, Opt<integer_suffix>>
+>;
+
+/*6.4.3*/
+using hex_quad =
+Seq<
+  hexadecimal_digit,
+  hexadecimal_digit,
+  hexadecimal_digit,
+  hexadecimal_digit
+>;
+
+/*6.4.3*/
+using universal_character_name =
+Oneof<
+  Seq<Lit<"\\u">, hex_quad>,
+  Seq<Lit<"\\U">, hex_quad, hex_quad>
+>;
+
+/*6.4.4.2*/
+using digit_sequence = Some<digit>;
+
+/*6.4.4.2*/
+using fractional_constant =
+Seq<
+  Seq<Opt<digit_sequence>, Atom<'.'>, digit_sequence>,
+  Seq<digit_sequence, Atom<'.'>>
+>;
+
+/*6.4.4.2*/
+using sign = Atom<'+', '-'>;
+
+/*6.4.4.2*/
+using exponent_part =
+Oneof<
+  Seq<Atom<'e'>, Opt<sign>, digit_sequence>,
+  Seq<Atom<'E'>, Opt<sign>, digit_sequence>
+>;
+
+/*6.4.4.2*/
+using hexadecimal_digit_sequence = Some<hexadecimal_digit>;
+
+/*6.4.4.2*/
+using hexadecimal_fractional_constant =
+Oneof<
+  Seq<Opt<hexadecimal_digit_sequence>, Atom<'.'>>,
+  hexadecimal_digit_sequence,
+  Seq<hexadecimal_digit_sequence, Atom<'.'>>
+>;
+
+/*6.4.4.2*/
+using binary_exponent_part =
+Oneof<
+  Seq<Atom<'p'>, Opt<sign>, digit_sequence>,
+  Seq<Atom<'P'>, Opt<sign>, digit_sequence>
+>;
+
+/*6.4.4.2*/
+using floating_suffix = Charset<"flFL">;
+
+/*6.4.4.3*/
+using enumeration_constant = identifier;
+
+/*6.4.4.2*/
+using decimal_floating_constant =
+Oneof<
+  Seq<fractional_constant, Opt<exponent_part>, Opt<floating_suffix>>,
+  Seq<digit_sequence, exponent_part, Opt<floating_suffix>>
+>;
+
+/*6.4.4.2*/
+using hexadecimal_floating_constant =
+Seq<
+  Seq<hexadecimal_prefix,   hexadecimal_fractional_constant>,
+  Seq<binary_exponent_part, Opt<floating_suffix>>,
+  Seq<hexadecimal_prefix,   hexadecimal_digit_sequence>,
+  Seq<binary_exponent_part, Opt<floating_suffix>>
+>;
+
+/*6.4.4.2*/
+using floating_constant =
+Oneof<
+  decimal_floating_constant,
+  hexadecimal_floating_constant
+>;
+
+
+/*6.4.4*/
+struct constant : public RefBase<constant> {
+  using pattern = Oneof<
+    integer_constant,
+    floating_constant,
+    enumeration_constant,
+    character_constant
+  >;
+};
+
+/*6.4.4.4*/
+using simple_escape_sequence =
+Oneof<
+  Seq<Atom<'\\'>, Atom<'\''>>,
+  Seq<Atom<'\\'>, Atom<'\"'>>,
+  Seq<Atom<'\\'>, Atom<'?'>>,
+  Seq<Atom<'\\'>, Atom<'\\'>>,
+  Seq<Atom<'\\'>, Atom<'a'>>,
+  Seq<Atom<'\\'>, Atom<'b'>>,
+  Seq<Atom<'\\'>, Atom<'f'>>,
+  Seq<Atom<'\\'>, Atom<'n'>>,
+  Seq<Atom<'\\'>, Atom<'r'>>,
+  Seq<Atom<'\\'>, Atom<'t'>>,
+  Seq<Atom<'\\'>, Atom<'v'>>
+>;
+
+/*6.4.4.4*/
+using octal_escape_sequence =
+Oneof<
+  Seq<Atom<'\\'>, octal_digit>,
+  Seq<Atom<'\\'>, octal_digit, octal_digit>,
+  Seq<Atom<'\\'>, octal_digit, octal_digit, octal_digit>
+>;
+
+/*6.4.4.4*/
+using hexadecimal_escape_sequence = Seq<Lit<"\\x">, Some<hexadecimal_digit>>;
+
+/*6.4.4.4*/
+struct escape_sequence : public RefBase<escape_sequence> {
+  using pattern = Oneof<
+    simple_escape_sequence,
+    octal_escape_sequence,
+    hexadecimal_escape_sequence,
+    universal_character_name
+  >;
+};
 
 /*6.4.5*/ using s_char =
-  any member of the source character set except
-  the double_quote dquote, backslash \, or new_line character
+Oneof<
+  NotAtom<'"', '\\', '\n'>,
   escape_sequence
-
-
-// A.1.7 Punctuators
-/*6.4.6*/ using punctuator = one of
-  [](){}.->
-  ++ -- & * + - ~ !
-  /%<< >><><= >= == !=^|&& ||
-  ?:;...
-  = *= /= %= += -= <<= >>= &= ^= |=
-  ,###
-  <: :> <% %> %: %:%:
-
-// A.1.8 Header names
-/*6.4.7*/
-using header_name = Oneof<
-  Seq<Atom<'<'>, h_char_sequence, Atom<'>'>>,
-  Seq<Atom<'"'>, q_char_sequence, Atom<'"'>>,
 >;
 
-/*6.4.7*/
-using h_char_sequence = Some<h_char>;
+/*6.4.5*/
+using s_char_sequence = Some<s_char>;
+
+/*6.4.5*/
+struct string_literal : public RefBase<string_literal> {
+  using pattern = Oneof<
+    Seq<Atom<'"'>,  Opt<s_char_sequence>, Atom<'"'>>,
+    Seq<Lit<"L\"">, Opt<s_char_sequence>, Atom<'"'>>
+  >;
+};
+
+/*6.4.6*/
+struct punctuator : public RefBase<punctuator> {
+  using pattern = Oneof<
+    Operator<"[">,
+    Operator<"]">,
+    Operator<"(">,
+    Operator<")">,
+    Operator<"{">,
+    Operator<"}">,
+    Operator<".">,
+    Operator<"->">,
+    Operator<"++">,
+    Operator<"--">,
+    Operator<"&">,
+    Operator<"*">,
+    Operator<"+">,
+    Operator<"-">,
+    Operator<"~">,
+    Operator<"!">,
+    Operator<"/">,
+    Operator<"%">,
+    Operator<"<<">,
+    Operator<">>">,
+    Operator<"<">,
+    Operator<">">,
+    Operator<"<=">,
+    Operator<">=">,
+    Operator<"==">,
+    Operator<"!=">,
+    Operator<"^">,
+    Operator<"|">,
+    Operator<"&&">,
+    Operator<"||">,
+    Operator<"?">,
+    Operator<":">,
+    Operator<";">,
+    Operator<"...">,
+    Operator<"=">,
+    Operator<"*=">,
+    Operator<"/=">,
+    Operator<"%=">,
+    Operator<"+=">,
+    Operator<"-=">,
+    Operator<"<<=">,
+    Operator<">>=">,
+    Operator<"&=">,
+    Operator<"^=">,
+    Operator<"|=">,
+    Operator<",">,
+    Operator<"#">,
+    Operator<"##">,
+    Operator<"<:">,
+    Operator<":>">,
+    Operator<"<%">,
+    Operator<"%>">,
+    Operator<"%:">,
+    Operator<"%:%:">
+  >;
+};
 
 /*6.4.7*/
 using h_char = NotAtom<'\n', '>'>;
 
 /*6.4.7*/
-using q_char_sequence = Some<q_char>;
+using h_char_sequence = Some<h_char>;
 
 /*6.4.7*/
 using q_char = NotAtom<'\n', '"'>;
+
+/*6.4.7*/
+using q_char_sequence = Some<q_char>;
+
+/*6.4.7*/
+struct header_name : public RefBase<header_name> {
+  using pattern = Oneof<
+    Seq<Atom<'<'>, h_char_sequence, Atom<'>'>>,
+    Seq<Atom<'"'>, q_char_sequence, Atom<'"'>>
+  >;
+};
 
 // A.1.9 Preprocessing numbers
 /*6.4.8*/
@@ -328,19 +438,18 @@ using pp_number_suffix = Oneof<
   Seq<Atom<'E'>, sign>,
   Seq<Atom<'p'>, sign>,
   Seq<Atom<'P'>, sign>,
-  Seq<Atom<'.'>>,
+  Seq<Atom<'.'>>
 >;
 
-using pp_number =
-Seq<
-  Oneof<
-    digit,
-    Seq<Atom<'.'>, digit>,
-  >,
-  Any<pp_number_suffix>
->;
-
-#endif
+struct pp_number : public RefBase<pp_number> {
+  using pattern = Seq<
+    Oneof<
+      digit,
+      Seq<Atom<'.'>, digit>
+    >,
+    Any<pp_number_suffix>
+  >;
+};
 
 
 
@@ -372,102 +481,168 @@ Oneof<
 
 #if 0
 
-/*6.5.2*/ using postfix_expression =
+/*6.5.2*/
+using postfix_expression_suffix =
 Oneof<
-  primary_expression
-  Seq<postfix_expression [ expression ] >
-  Seq<postfix_expression Atom<'('> Opt<argument_expression_list> Atom<')'> >
-  Seq<postfix_expression Atom<"."> identifier>
-  Seq<postfix_expression Atom<"->"> identifier>
-  Seq<postfix_expression Atom<"++"> >
-  Seq<postfix_expression Atom<"--"> >
-  Seq<Atom<'('>, type_name, Atom<')'>, Atom<'{'>, initializer_list, Atom<'}'>>,
-  Seq<Atom<'('>, type_name, Atom<')'>, Atom<'{'>, initializer_list, Atom<'}'>>,
+  Seq<Atom<'['>, expression, Atom<']'>>,
+  Seq<Atom<'('>, Opt<argument_expression_list>, Atom<')'>>,
+  Seq<Atom<".">, identifier>,
+  Seq<Atom<"->">, identifier>,
+  Atom<"++">,
+  Atom<"--">
 >;
 
-/*6.5.2*/ using argument_expression_list =
-  assignment_expression
-  argument_expression_list Atom<','> assignment_expression
-/*6.5.3*/ using unary_expression =
-  postfix_expression
-  ++ unary_expression
-  -- unary_expression
-  unary_operator cast_expression
-  sizeof unary_expression
-  sizeof Atom<'('> type_name Atom<')'>
+using postfix_expression =
+Seq<
+  Oneof<
+    primary_expression,
+    Seq<Atom<'('>, type_name, Atom<')'>, Atom<'{'>, initializer_list, Atom<'}'>>,
+    Seq<Atom<'('>, type_name, Atom<')'>, Atom<'{'>, initializer_list, Atom<','>, Atom<'}'>>,
+  >,
+  Any<postfix_expression_suffix>
+>;
 
-/*6.5.3*/ using unary_operator = one of
-  &*+-~!
+/*6.5.2*/
+using argument_expression_list = comma_separated<assignment_expression>;
+
+/*6.5.3*/
+using unary_operator = Charset<"&*+-~!">;
+
+/*6.5.3*/
+using unary_expression = Oneof<
+  postfix_expression,
+  Seq<Operator<"++">, unary_expression>,
+  Seq<Operator<"--">, unary_expression>,
+  Seq<unary_operator, cast_expression>,
+  Seq<Keyword<"sizeof">, unary_expression>,
+  Seq<Keyword<"sizeof">, Atom<'('>, type_name, Atom<')'>>,
+>;
+
 
 /*6.5.4*/ using cast_expression =
-  unary_expression
-  Atom<'('> type_name Atom<')'> cast_expression
+Oneof<
+  unary_expression,
+  Seq<Atom<'('>, type_name, Atom<')'>, cast_expression>
+>;
 
-/*6.5.5*/ using multiplicative_expression =
-  cast_expression
-  multiplicative_expression * cast_expression
-  multiplicative_expression / cast_expression
-  multiplicative_expression % cast_expression
+/*6.5.5*/
+using multiplicative_expression =
+Oneof<
+  cast_expression,
+  Seq<multiplicative_expression, Atom<'*'>, cast_expression>,
+  Seq<multiplicative_expression, Atom<'/'>, cast_expression>,
+  Seq<multiplicative_expression, Atom<'%'>, cast_expression>
+>;
 
-/*6.5.6*/ using additive_expression =
-  multiplicative_expression
-  additive_expression + multiplicative_expression
-  additive_expression - multiplicative_expression
+/*6.5.6*/
+using additive_expression =
+Oneof<
+  multiplicative_expression,
+  Seq<additive_expression, Atom<'+'>, multiplicative_expression>,
+  Seq<additive_expression, Atom<'-'>, multiplicative_expression>
+>;
 
-/*6.5.7*/ using shift_expression =
-  additive_expression
-  shift_expression << additive_expression
-  shift_expression >> additive_expression
+/*6.5.7*/
+using shift_expression =
+Oneof<
+  additive_expression,
+  Seq<shift_expression, Operator<"<<">, additive_expression>,
+  Seq<shift_expression, Operator<">>">, additive_expression>
+>;
 
-/*6.5.8*/ using relational_expression =
-  shift_expression
-  relational_expression < shift_expression
-  relational_expression > shift_expression
-  relational_expression <= shift_expression
-  relational_expression >= shift_expression
+/*6.5.8*/
+using relational_expression =
+Oneof<
+  shift_expression,
+  Seq<relational_expression, Operator<"<">,  shift_expression>,
+  Seq<relational_expression, Operator<">">,  shift_expression>,
+  Seq<relational_expression, Operator<"<=">, shift_expression>,
+  Seq<relational_expression, Operator<">=">, shift_expression>
+>;
 
-/*6.5.9*/ using equality_expression =
-  relational_expression
-  equality_expression == relational_expression
-  equality_expression != relational_expression
+/*6.5.9*/
+using equality_expression =
+Oneof<
+  relational_expression,
+  Seq<equality_expression, Operator<"==">, relational_expression>,
+  Seq<equality_expression, Operator<"!=">, relational_expression>
+>;
 
-/*6.5.10*/ using AND_expression =
-  equality_expression
-  AND_expression & equality_expression
+/*6.5.10*/
+using AND_expression =
+Oneof<
+  equality_expression,
+  Seq<AND_expression, Operator<'&'>, equality_expression>
+>;
 
-/*6.5.11*/ using exclusive_OR_expression =
-  AND_expression
-  exclusive_OR_expression ^ AND_expression
+/*6.5.11*/
+using exclusive_OR_expression =
+Oneof<
+  AND_expression,
+  Seq<exclusive_OR_expression, Operator<'^'>, AND_expression>
+>;
 
-/*6.5.12*/ using inclusive_OR_expression =
-  exclusive_OR_expression
-  inclusive_OR_expression | exclusive_OR_expression
+/*6.5.12*/
+using inclusive_OR_expression =
+Oneof<
+  exclusive_OR_expression,
+  Seq<inclusive_OR_expression, Operator<'|'>, exclusive_OR_expression>
+>;
 
-/*6.5.13*/ using logical_AND_expression =
+/*6.5.13*/
+using logical_AND_expression =
+Oneof<
   inclusive_OR_expression
-  logical_AND_expression && inclusive_OR_expression
+  Seq<logical_AND_expression, Operator<"&&">, inclusive_OR_expression>
+>;
 
-/*6.5.14*/ using logical_OR_expression =
+/*6.5.14*/
+using logical_OR_expression =
+Oneof<
   logical_AND_expression
-  logical_OR_expression || logical_AND_expression
+  Seq<logical_OR_expression, Operator<"||">, logical_AND_expression>
+>;
 
-/*6.5.15*/ using conditional_expression =
+/*6.5.15*/
+using conditional_expression =
+Oneof<
   logical_OR_expression
-  logical_OR_expression ? expression Atom<':'> conditional_expression
+  Seq<logical_OR_expression, Atom<'?'>, expression, Atom<':'>, conditional_expression>
+>;
 
-/*6.5.16*/ using assignment_expression =
-  conditional_expression
-  unary_expression assignment_operator assignment_expression
+/*6.5.16*/
+using assignment_expression =
+Oneof<
+  conditional_expression,
+  Seq<unary_expression, assignment_operator, assignment_expression>,
+>;
 
-/*6.5.16*/ using assignment_operator = one of
-  = *= /= %= += -= <<= >>= &= ^= |=
+/*6.5.16*/
+using assignment_operator =
+Oneof<
+  Operator<"<<=">,
+  Operator<">>=">,
+  Operator<"*=">,
+  Operator<"/=">,
+  Operator<"%=">,
+  Operator<"+=">,
+  Operator<"-=">,
+  Operator<"&=">,
+  Operator<"^=">,
+  Operator<"|=">,
+  Operator<"=">
+>;
 
-/*6.5.17*/ using expression =
+/*6.5.17*/
+using expression =
+Oneof<
   assignment_expression
-  expression Atom<','> assignment_expression
+  Seq<expression, Atom<','>, assignment_expression>
+>;
 
-/*6.6*/ using constant_expression =
-  conditional_expression
+/*6.6*/
+using constant_expression = conditional_expression;
+
 #endif
 
 
@@ -493,10 +668,6 @@ Oneof<
 
 //------------------------------------------------------------------------------
 // A.2.2 Declarations
-
-struct constant_expression;
-struct enumeration_constant;
-struct assignment_expression;
 
 /*6.7.3*/ using type_qualifier =
 Oneof<
@@ -946,13 +1117,33 @@ Oneof<
   Seq<Atom<'#'>, Keyword<"define">,  identifier,     lparen, identifier_list, Atom<','>, Keyword<"...">, Atom<')'>, replacement_list, new_line>
 >;
 
-#if 0
+struct group;
+
+/*6.10*/
+using if_group =
+Oneof<
+  Seq<Atom<'#'>, Keyword<"if">,     constant_expression, new_line, Opt<group>>,
+  Seq<Atom<'#'>, Keyword<"ifdef">,  identifier,          new_line, Opt<group>>,
+  Seq<Atom<'#'>, Keyword<"ifndef">, identifier,          new_line, Opt<group>>
+>;
+
+/*6.10*/
+using elif_group = Seq<Atom<'#'>, Keyword<"elif">, constant_expression, new_line, Opt<group>>;
+
+/*6.10*/
+using elif_groups = Some<elif_group>;
+
+/*6.10*/
+using else_group = Seq<Atom<'#'>, Keyword<"else">, new_line, Opt<group>>;
+
+/*6.10*/
+using endif_line = Seq<Atom<'#'>, Keyword<"endif">, new_line>;
 
 /*6.10*/
 using preprocessing_file = Opt<group>;
 
 /*6.10*/
-using group = Some<group_part>;
+using if_section = Seq<if_group, Opt<elif_groups>, Opt<else_group>, endif_line>;
 
 /*6.10*/
 using group_part =
@@ -964,31 +1155,6 @@ Oneof<
 >;
 
 /*6.10*/
-using if_section = Seq<if_group, Opt<elif_groups>, Opt<else_group>, endif_line>;
-
-/*6.10*/
-using if_group =
-Oneof<
-  Seq<Atom<'#'>, Keyword<"if">,     constant_expression, new_line, Opt<group>>,
-  Seq<Atom<'#'>, Keyword<"ifdef">,  identifier,          new_line, Opt<group>>,
-  Seq<Atom<'#'>, Keyword<"ifndef">, identifier,          new_line, Opt<group>>
->;
-
-/*6.10*/
-using elif_groups = Some<elif_group>;
-
-/*6.10*/
-using elif_group = Seq<Atom<'#'>, Keyword<"elif">, constant_expression, new_line, Opt<group>>;
-
-/*6.10*/
-using else_group = Seq<Atom<'#'>, Keyword<"else">, new_line, Opt<group>>;
-
-/*6.10*/
-using endif_line = Seq<Atom<'#'>, Keyword<"endif">, new_line>;
-
-
-
-
-
-
-#endif
+struct group : public RefBase<group> {
+  using pattern = Some<group_part>;
+};
