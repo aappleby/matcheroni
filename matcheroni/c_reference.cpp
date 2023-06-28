@@ -235,6 +235,20 @@ $1_$2to break case char const continue default do double else enum extern float
 #endif
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 //------------------------------------------------------------------------------
 // A.2 Phrase structure grammar
 
@@ -331,7 +345,7 @@ Oneof<
 
 /*6.5.15*/ using conditional_expression =
   logical_OR_expression
-  logical_OR_expression ? expression : conditional_expression
+  logical_OR_expression ? expression Atom<':'> conditional_expression
 
 /*6.5.16*/ using assignment_expression =
   conditional_expression
@@ -348,19 +362,33 @@ Oneof<
   conditional_expression
 #endif
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 //------------------------------------------------------------------------------
 // A.2.2 Declarations
 
-struct declarator;
-struct initializer;
-struct type_specifier;
-struct struct_or_union_specifier;
 struct constant_expression;
 struct enumeration_constant;
 struct assignment_expression;
-struct abstract_declarator;
-struct pointer;
-struct initializer_list;
 
 /*6.7.3*/ using type_qualifier =
 Oneof<
@@ -402,6 +430,8 @@ Opt<
 
 /*6.7.7*/ using typedef_name = identifier;
 
+struct struct_or_union_specifier;
+
 /*6.7.2*/
 struct type_specifier {
   using pattern =
@@ -434,6 +464,9 @@ Some<
   function_specifier
 >;
 
+struct declarator;
+struct initializer;
+
 /*6.7*/ using init_declarator =
 Oneof<
   declarator,
@@ -443,11 +476,16 @@ Oneof<
 /*6.7*/ using init_declarator_list = // original was recursive
 comma_separated<init_declarator>;
 
-/*6.7*/ using declaration =
-  Seq< declaration_specifiers, Opt<init_declarator_list>, Atom<';'> >;
+/*6.7*/
+using declaration =
+Seq<
+  declaration_specifiers,
+  Opt<init_declarator_list>,
+  Atom<';'>
+>;
 
-/*6.7.2.1*/ using specifier_qualifier_list = // original was recursive
-Some<type_specifier, type_qualifier>;
+/*6.7.2.1*/
+using specifier_qualifier_list = Some<type_specifier, type_qualifier>;
 
 /*6.7.2.1*/ using struct_declarator =
 Oneof<
@@ -455,16 +493,18 @@ Oneof<
   Seq<Opt<declarator>, Atom<':'>, constant_expression>
 >;
 
-/*6.7.2.1*/ using struct_declarator_list = // original was recursive
-comma_separated<struct_declarator>;
+/*6.7.2.1*/
+using struct_declarator_list = comma_separated<struct_declarator>;
 
-/*6.7.2.1*/ using struct_declaration =
-Seq<specifier_qualifier_list, struct_declarator_list, Atom<';'>>;
-
-/*6.7.2.1*/ using struct_declaration_list = // original was recursive
-Some<
-  struct_declaration
+/*6.7.2.1*/
+using struct_declaration = Seq<
+  specifier_qualifier_list,
+  struct_declarator_list,
+  Atom<';'>
 >;
+
+/*6.7.2.1*/
+using struct_declaration_list = Some<struct_declaration>;
 
 /*6.7.2.1*/
 struct struct_or_union_specifier : public RefBase<struct_or_union_specifier> {
@@ -476,6 +516,8 @@ struct struct_or_union_specifier : public RefBase<struct_or_union_specifier> {
 
 /*6.7.5*/ using type_qualifier_list = // Original was recursive
 Some<type_qualifier>;
+
+struct abstract_declarator;
 
 /*6.7.5*/ using parameter_declaration =
 Oneof<
@@ -523,6 +565,8 @@ Seq<
   Any<direct_declarator_suffix>
 >;
 
+struct pointer;
+
 /*6.7.5*/
 struct declarator : public RefBase<declarator> {
   using pattern = Seq<Opt<pointer>, direct_declarator>;
@@ -563,6 +607,8 @@ struct abstract_declarator : public RefBase<abstract_declarator> {
     Seq<Opt<pointer>, direct_abstract_declarator>
   >;
 };
+
+struct initializer_list;
 
 /*6.7.8*/
 struct initializer : public RefBase<initializer> {
@@ -626,43 +672,39 @@ struct initializer_list : public RefBase<initializer_list> {
 
 
 
-#if 0
+//------------------------------------------------------------------------------
 // A.2.3 Statements
+
+#if 0
 
 /*6.8*/ using statement =
 Oneof<
-  labeled_statement
-  compound_statement
-  expression_statement
-  selection_statement
-  iteration_statement
+  labeled_statement,
+  compound_statement,
+  expression_statement,
+  selection_statement,
+  iteration_statement,
   jump_statement
 >;
 
 /*6.8.1*/ using labeled_statement =
 Oneof<
-  identifier : statement
-  case constant_expression : statement
-  default : statement
+  Seq<identifier Atom<':'> statement>,
+  Seq<Keyword<"case">, constant_expression, Atom<':'> statement>,
+  Seq<Keyword<"default">, Atom<':'>, statement>
 >;
 
-/*6.8.2*/ using compound_statement =
-  Atom<'{'>, Opt<block_item_list> Atom<'}'>;
+/*6.8.2*/
+using compound_statement = Seq<Atom<'{'>, Opt<block_item_list>, Atom<'}'>>;
 
-/*6.8.2*/ using block_item_list =
-Oneof<
-  block_item
-  block_item_list block_item
->;
+/*6.8.2*/
+using block_item_list = Some<block_item>;
 
-/*6.8.2*/ using block_item =
-Oneof<
-  declaration
-  statement
->;
+/*6.8.2*/
+using block_item = Oneof<declaration, statement>;
 
-/*6.8.3*/ using expression_statement =
-  Opt<expression> Atom<';'>
+/*6.8.3*/
+using expression_statement = Seq<Opt<expression>, Atom<';'>>;
 
 /*6.8.4*/ using selection_statement =
 Oneof<
@@ -671,37 +713,39 @@ Oneof<
   Keyword<'switch'> Atom<'('> expression Atom<')'> statement
 >;
 
-/*6.8.5*/ using iteration_statement =
-Oneof<
-  Keyword<'while'> Atom<'('> expression Atom<')'> statement
-  Keyword<'do'> statement Keyword<'while'> Atom<'('> expression Atom<')'> Atom<';'>
-  Keyword<'for'> Atom<'('> Opt<expression> Atom<';'> Opt<expression> Atom<';'> Opt<expression> Atom<')'> statement
-  Keyword<'for'> Atom<'('> declaration Opt<expression> Atom<';'> Opt<expression> Atom<')'> statement
+/*6.8.5*/
+using iteration_statement = Oneof<
+  Seq<Keyword<'while'>, Atom<'('>, expression, Atom<')'>, statement>,
+  Seq<Keyword<'do'>, statement, Keyword<'while'>, Atom<'('>, expression, Atom<')'>, Atom<';'>>,
+  Seq<Keyword<'for'>, Atom<'('>, Opt<expression>, Atom<';'>, Opt<expression>, Atom<';'>, Opt<expression>, Atom<')'>, statement>,
+  Seq<Keyword<'for'>, Atom<'('>, declaration, Opt<expression>, Atom<';'>, Opt<expression>, Atom<')'>, statement>
 >;
 
-/*6.8.6*/ using jump_statement =
-Oneof<
-  goto identifier Atom<';'>
-  continue Atom<';'>
-  break Atom<';'>
-  return Opt<expression> Atom<';'>
+/*6.8.6*/
+using jump_statement = Oneof<
+  Seq<Keyword<"goto">, identifier, Atom<';'>>,
+  Seq<Keyword<"continue">, Atom<';'>>,
+  Seq<Keyword<"break">, Atom<';'>>,
+  Seq<Keyword<"return">, Opt<expression>, Atom<';'>>
 >;
 
 // A.2.4 External definitions
-/*6.9*/ using translation_unit =
-  external_declaration
-  translation_unit external_declaration
+/*6.9*/
+using translation_unit = Some<external_declaration>;
 
-/*6.9*/ using external_declaration =
-  function_definition
-  declaration
+/*6.9*/
+using external_declaration = Oneof<function_definition, declaration>;
 
-/*6.9.1*/ using function_definition =
-  declaration_specifiers declarator Opt<declaration_list> compound_statement
+/*6.9.1*/
+using function_definition = Seq<
+  declaration_specifiers,
+  declarator,
+  Opt<declaration_list>,
+  compound_statement
+>;
 
-/*6.9.1*/ using declaration_list =
-  declaration
-  declaration_list declaration
+/*6.9.1*/
+using declaration_list = Some<declaration>;
 
 #endif
 
