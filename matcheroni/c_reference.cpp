@@ -361,7 +361,6 @@ struct assignment_expression;
 struct abstract_declarator;
 struct pointer;
 struct initializer_list;
-struct designation;
 
 /*6.7.3*/ using type_qualifier =
 Oneof<
@@ -575,6 +574,19 @@ struct initializer : public RefBase<initializer> {
 };
 
 /*6.7.8*/
+using designator =
+Oneof<
+  Seq<Atom<'['>, constant_expression, Atom<']'>>,
+  Seq<Atom<'.'>, identifier>
+>;
+
+/*6.7.8*/
+using designator_list = Some<designator>;
+
+/*6.7.8*/
+using designation = Seq<designator_list, Atom<'='>>;
+
+/*6.7.8*/
 struct initializer_list : public RefBase<initializer_list> {
   using pattern = Oneof<
     Seq<Opt<designation>, initializer>,
@@ -582,22 +594,37 @@ struct initializer_list : public RefBase<initializer_list> {
   >;
 };
 
-#if 0
 
 
 
 
 
 
-/*6.7.8*/ using designation =
-  designator_list =
-/*6.7.8*/ using designator_list =
-  designator
-  designator_list designator
-/*6.7.8*/ using designator =
-  [ constant_expression ]
-  . identifier
-#endif
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #if 0
 // A.2.3 Statements
