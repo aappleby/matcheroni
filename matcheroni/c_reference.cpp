@@ -8,6 +8,14 @@
 template<typename P>
 using comma_separated = Seq<P, Any<Seq<Atom<','>, P>>, Opt<Atom<','>> >;
 
+template<typename T>
+struct RefBase {
+  template<typename atom>
+  static atom* match(void* ctx, atom* a, atom* b) {
+    return T::pattern::match(ctx, a, b);
+  }
+};
+
 struct identifier;
 struct constant;
 struct string_literal;
@@ -347,10 +355,13 @@ struct typedef_name;
 struct declarator;
 struct initializer;
 struct type_specifier;
-struct function_specifier;
 struct struct_or_union_specifier;
 struct constant_expression;
 struct enumeration_constant;
+struct assignment_expression;
+struct abstract_declarator;
+struct identifier_list;
+struct pointer;
 
 /*6.7.3*/ using type_qualifier =
 Oneof<
@@ -411,6 +422,9 @@ struct type_specifier {
   >;
 };
 
+/*6.7.4*/ using function_specifier =
+Keyword<"inline">;
+
 /*6.7*/ using declaration_specifiers =
 Some<
   storage_class_specifier,
@@ -462,41 +476,71 @@ Some<
   }
 };
 
+/*6.7.5*/ using type_qualifier_list = // Original was recursive
+Some<type_qualifier>;
+
+/*6.7.5*/ using parameter_declaration =
+Oneof<
+  Seq<declaration_specifiers, declarator>,
+  Seq<declaration_specifiers, Opt<abstract_declarator>>
+>;
+
+/*6.7.5*/ using parameter_list = // original was recursive
+comma_separated<parameter_declaration>;
+
+/*6.7.5*/ using parameter_type_list =
+Oneof<
+  parameter_list,
+  Seq<parameter_list, Atom<','>, Keyword<"...">>
+>;
+
+/*6.7.5 - direct-declarator - Had to tear this one apart a bit. */
+
+using direct_declarator_suffix =
+Oneof<
+  Seq<Atom<'['>, Opt<type_qualifier_list>, Opt<assignment_expression>, Atom<']'>>,
+  Seq<Atom<'['>, Keyword<"static">, Opt<type_qualifier_list>, assignment_expression, Atom<']'>>,
+  Seq<Atom<'['>, type_qualifier_list, Keyword<"static">, assignment_expression, Atom<']'>>,
+  Seq<Atom<'['>, Opt<type_qualifier_list>, Atom<'*'>, Atom<']'>>,
+  Seq<Atom<'('>, parameter_type_list, Atom<')'>>,
+  Seq<Atom<'('>, Opt<identifier_list>, Atom<')'>>
+>;
+
+using direct_declarator =
+Seq<
+  Oneof<
+    identifier,
+    Seq<Atom<'('>, declarator, Atom<')'>>,
+    Seq<Atom<'['>, Opt<type_qualifier_list>, Opt<assignment_expression>, Atom<']'>>,
+    Seq<Atom<'['>, Keyword<"static">, Opt<type_qualifier_list>, assignment_expression, Atom<']'>>,
+    Seq<Atom<'['>, type_qualifier_list, Keyword<"static">, assignment_expression, Atom<']'>>,
+    Seq<Atom<'['>, Opt<type_qualifier_list>, Atom<'*'>, Atom<']'>>,
+    Seq<Atom<'('>, parameter_type_list, Atom<')'>>,
+    Seq<Atom<'('>, Opt<identifier_list>, Atom<')'>>
+  >,
+  Any<direct_declarator_suffix>
+>;
+
+/*6.7.5*/
+//using declarator = Seq<Opt<pointer>, direct_declarator>;
+
+struct declarator {
+  using pattern = Seq<Opt<pointer>, direct_declarator>;
 
 
+
+};
 
 
 #if 0
-/*6.7.4*/ using function_specifier =
-Keyword<"inline">;
 
-/*6.7.5*/ using declarator =
-  Opt<pointer> direct_declarator
 
-/*6.7.5*/ using direct_declarator =
-  identifier
-/* declarator */
-  direct_declarator [ Opt<type_qualifier_list> Opt<assignment_expression> ]
-  direct_declarator [ static Opt<type_qualifier_list> assignment_expression ]
-  direct_declarator [ type_qualifier_list static assignment_expression ]
-  direct_declarator [ Opt<type_qualifier_list> * ]
-  direct_declarator Atom<'('> parameter_type_list Atom<')'>
-  direct_declarator Atom<'('> Opt<identifier_list> Atom<')'>
+
 /*6.7.5*/ using pointer =
   * Opt<type_qualifier_list>
   * Opt<type_qualifier_list> pointer
-/*6.7.5*/ using type_qualifier_list =
-  type_qualifier
-  type_qualifier_list type_qualifier
-/*6.7.5*/ using parameter_type_list =
-  parameter_list
-  parameter_list Atom<','> ...
-/*6.7.5*/ using parameter_list =
-  parameter_declaration
-  parameter_list Atom<','> parameter_declaration
-/*6.7.5*/ using parameter_declaration =
-  declaration_specifiers declarator
-  declaration_specifiers Opt<abstract_declarator>
+
+
 /*6.7.5*/ using identifier_list =
   identifier
   identifier_list Atom<','> identifier
