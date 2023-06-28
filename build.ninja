@@ -17,6 +17,8 @@ build obj/c_parser_test.o  : compile_cpp matcheroni/c_parser_test.cpp
 build obj/c_reference.o    : compile_cpp matcheroni/c_reference.cpp
 build obj/ParseNode.o      : compile_cpp matcheroni/ParseNode.cpp
 
+build obj/c_reference_hax.o : compile_cpp matcheroni/c_reference_hax.cpp
+
 build bin/c_parser_test : link $
   obj/c_lexer.o $
   obj/c_parser.o $

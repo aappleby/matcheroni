@@ -304,6 +304,13 @@ struct Any {
   }
 };
 
+struct Nothing {
+  template<typename atom>
+  static atom* match(void* ctx, atom* a, atom* b) {
+    return a;
+  }
+};
+
 //------------------------------------------------------------------------------
 // One-or-more patterns, equivalent to M+ in regex.
 
@@ -344,7 +351,7 @@ struct SeqOpt<P> {
 //------------------------------------------------------------------------------
 
 template<typename P>
-struct NonEmpty {
+struct NotEmpty {
   template<typename atom>
   static atom* match(void* ctx, atom* a, atom* b) {
     auto c = P::match(ctx, a, b);
