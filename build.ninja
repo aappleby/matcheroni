@@ -14,12 +14,14 @@ rule link
 build obj/c_lexer.o        : compile_cpp matcheroni/c_lexer.cpp
 build obj/c_parser.o       : compile_cpp matcheroni/c_parser.cpp
 build obj/c_parser_test.o  : compile_cpp matcheroni/c_parser_test.cpp
+build obj/c_reference.o    : compile_cpp matcheroni/c_reference.cpp
 build obj/ParseNode.o      : compile_cpp matcheroni/ParseNode.cpp
 
 build bin/c_parser_test : link $
   obj/c_lexer.o $
   obj/c_parser.o $
   obj/c_parser_test.o $
+  obj/c_reference.o $
   obj/ParseNode.o
 
 

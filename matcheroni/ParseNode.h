@@ -190,17 +190,19 @@ struct ParseNode {
     return dynamic_cast<const P*>(this);
   };
 
-  void print_class_name() const {
+  void print_class_name(int max_len = 0) const {
     const char* name = typeid(*this).name();
     int name_len = 0;
     if (sscanf(name, "%d", &name_len)) {
       while((*name >= '0') && (*name <= '9')) name++;
-      for (int i = 0; i < name_len; i++) {
-        putc(name[i], stdout);
-      }
     }
-    else {
-      printf("%s", name);
+    if (name_len > max_len) name_len = max_len;
+
+    for (int i = 0; i < name_len; i++) {
+      putc(name[i], stdout);
+    }
+    for (int i = name_len; i < max_len; i++) {
+      putc(' ', stdout);
     }
   }
 
@@ -248,6 +250,16 @@ struct NodeBase : public ParseNode {
     constructor_count++;
     assert(tok_a <= tok_b);
 
+    printf("base ");
+    print_class_name(20);
+    printf("\n");
+
+    for (auto c = tok_a; c <= tok_b; c++) {
+      //printf("%p %p %p\n", c, c->base, c->span);
+      dump_token(*c);
+    }
+    printf("\n");
+
     for (auto c = tok_a; c <= tok_b; c++) {
       c->base = this;
       c->span = nullptr;
@@ -266,27 +278,43 @@ struct NodeSpan : public ParseNode {
     constructor_count++;
     assert(tok_a <= tok_b);
 
+    printf("span ");
+    print_class_name(20);
+    printf("\n");
+
+    for (auto c = tok_a; c <= tok_b; c++) {
+      //printf("%p %p %p\n", c, c->base, c->span);
+      dump_token(*c);
+    }
+    printf("\n");
+
+
     // Check that the token range is solidly filled with parse nodes
     for (auto c = tok_a; c <= tok_b; c++) {
       assert(c->base);
     }
 
+    /*
     {
-      auto c = tok_a;
+      auto c = tok_a->top()->tok_b;
       while(1) {
-        assert(c <= tok_b);
-
-        if (c->span) {
-          c = c->span->tok_b;
-        }
-        else if (c->base) {
-          c = c->base->tok_b;
-        }
-        else {
-          assert(false);
-        }
-
+        assert (c <= tok_b);
         if (c == tok_b) break;
+        c = (c + 1)->top()->tok_b;
+      }
+    }
+    */
+    {
+      auto n = tok_a->top();
+      while(1) {
+        if (n->prev != nullptr) {
+          dump_tree(n, 0, 0);
+        }
+        assert(n->prev == nullptr);
+        assert(n->next == nullptr);
+        assert(n->tok_b <= tok_b);
+        if (n->tok_b == tok_b) break;
+        n = (n->tok_b + 1)->top();
       }
     }
 
@@ -296,9 +324,8 @@ struct NodeSpan : public ParseNode {
     // Attach all the tops under this node to it.
     auto cursor = tok_a;
     while (cursor <= tok_b) {
-      ParseNode* child = cursor->top();
-      attach_child(child);
-      cursor = child->tok_b + 1;
+      attach_child(cursor->top());
+      cursor = cursor->top()->tok_b + 1;
     }
 
     tok_a->span = this;
@@ -426,7 +453,18 @@ struct NodeSpanMaker : public NodeSpan {
 //------------------------------------------------------------------------------
 
 inline void dump_lexeme(const Lexeme& l) {
+  if (l.is_eof()) {
+    printf("{<eof>     }");
+    return;
+  }
+  if (l.is_bof()) {
+    printf("{<bof>     }");
+    return;
+  }
+
   int len = l.span_b - l.span_a;
+  if (len > 10) len = 10;
+  printf("{");
   for (int i = 0; i < len; i++) {
     auto c = l.span_a[i];
     if (c == '\n' || c == '\t' || c == '\r') {
@@ -436,29 +474,56 @@ inline void dump_lexeme(const Lexeme& l) {
       putc(l.span_a[i], stdout);
     }
   }
+  for (int i = len; i < 10; i++) {
+    printf(" ");
+  }
+  printf("}");
 }
+
+//------------------------------------------------------------------------------
 
 inline void dump_token(const Token& t) {
   // Dump token
-  printf("tok %p - ", &t);
-  if (t.lex->is_eof()) {
-    printf("<eof>");
+  printf("tok @ %p ", &t);
+
+  printf("    lex ");
+  dump_lexeme(*t.lex);
+
+
+  printf("    base %14p ", t.base);
+  if (t.base) {
+    printf("{");
+    t.base->print_class_name(20);
+    printf("}");
   }
   else {
-    dump_lexeme(*t.lex);
+    printf("{                    }");
   }
 
+  printf("    span %14p ", t.span);
+  if (t.span) {
+    printf("{");
+    t.span->print_class_name(20);
+    printf("}");
+  }
+  else {
+    printf("{                    }");
+  }
+  printf("\n");
+
+  /*
   // Dump top node
   printf("  ");
   if (t.span) {
     printf("top %p -> ", t.span);
-    t.span->print_class_name();
+    t.span->print_class_name(20);
     printf(" -> %p ", t.span->tok_b);
   }
   else {
     printf("top %p", t.span);
   }
   printf("\n");
+  */
 }
 
 //------------------------------------------------------------------------------

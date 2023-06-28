@@ -70,12 +70,12 @@ int test_parser(int argc, char** argv) {
 #if 1
 
   paths = {
-    //"tests/scratch.c",
+    "tests/scratch.c",
     //"tests/basic_inputs.h",
     //"mini_tests/csmith_1088.c",
     //"../gcc/gcc/tree-inline.h",
     //"../gcc/gcc/testsuite/gcc.c-torture/execute/20071029-1.c",
-    "../gcc/gcc/testsuite/gcc.c-torture/execute/20011113-1.c",
+    //"../gcc/gcc/testsuite/gcc.c-torture/execute/20011113-1.c",
   };
 
   verbose = true;
@@ -126,6 +126,7 @@ int test_parser(int argc, char** argv) {
     }
 
     //parser.dump_tokens();
+    //printf("\n");
 
     //parser.dump_lexemes();
 
@@ -140,6 +141,11 @@ int test_parser(int argc, char** argv) {
         printf("\n");
         printf("Dumping tree:\n");
         dump_tree(root);
+        printf("\n");
+
+        printf("Dumping tokens:\n");
+        parser.dump_tokens();
+        printf("\n");
       }
     }
 
@@ -147,7 +153,7 @@ int test_parser(int argc, char** argv) {
     auto tok_a = parser.tokens.data();
     auto tok_b = parser.tokens.data() + parser.tokens.size() - 1;
 
-    assert(root->tok_a == tok_a);
+    assert(root->tok_a == tok_a + 1);
     assert(root->tok_b == tok_b - 1);
 
     //root->check_solid();

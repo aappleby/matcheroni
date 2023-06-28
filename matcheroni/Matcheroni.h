@@ -43,7 +43,20 @@ inline static int indent_depth = 0;
 
 #ifdef MATCHERONI_ENABLE_TRACE
 
-template<StringParam doco, typename NT>
+template<typename NT>
+inline void print_class_name() {
+  const char* name = typeid(NT).name();
+  int name_len = 0;
+  if (sscanf(name, "%d", &name_len)) {
+    while((*name >= '0') && (*name <= '9')) name++;
+  }
+
+  for (int i = 0; i < name_len; i++) {
+    putc(name[i], stdout);
+  }
+}
+
+template<typename NT>
 struct Trace {
   template<typename atom>
   static atom* match(void* ctx, atom* a, atom* b) {
@@ -53,7 +66,7 @@ struct Trace {
       print_escaped(a->lex->span_a, context_len, 0x404040);
       printf("] ");
       for (int i = 0; i < indent_depth; i++) printf("|   ");
-      printf("%s", doco.str_val);
+      print_class_name<NT>();
       printf("?\n");
     }
 
@@ -75,7 +88,7 @@ struct Trace {
       }
       printf("] ");
       for (int i = 0; i < indent_depth; i++) printf("|   ");
-      printf("%s", doco.str_val);
+      print_class_name<NT>();
       printf(end ? " OK\n" : " XXX\n");
     }
 

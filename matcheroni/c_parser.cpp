@@ -157,14 +157,15 @@ ParseNode* C99Parser::parse() {
     >
   >;
 
-  auto cursor = tok_a;
+  // Skip over BOF
+  auto cursor = tok_a + 1;
   parse_accum -= timestamp_ms();
   cursor = pattern::match(this, cursor, tok_b);
   parse_accum += timestamp_ms();
 
   if (cursor) {
     root = new NodeTranslationUnit();
-    root->init_span(tok_a, tok_b - 1);
+    root->init_span(tok_a + 1, tok_b - 1);
 
     if (cursor != tok_b) {
       file_fail++;
@@ -352,11 +353,10 @@ void dump_tree(const ParseNode* n, int max_depth, int indentation) {
   if (n->tok_a) set_color(lex_to_color(*(n->tok_a->lex)));
   //if (!field.empty()) printf("%-10.10s : ", field.c_str());
 
-  n->print_class_name();
+  n->print_class_name(20);
+  set_color(0);
 
   printf(" '%s'\n", escape_span(n).c_str());
-
-  if (n->tok_a) set_color(0);
 
   for (auto c = n->head; c; c = c->next) {
     dump_tree(c, max_depth, indentation + 1);

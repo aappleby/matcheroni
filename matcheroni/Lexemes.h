@@ -50,6 +50,10 @@ struct Lexeme {
 
   //----------------------------------------
 
+  bool is_bof() const {
+    return type == LEX_BOF;
+  }
+
   bool is_eof() const {
     return type == LEX_EOF;
   }

@@ -528,8 +528,8 @@ struct NodeQualifier : public PatternWrapper<NodeQualifier> {
 
     if (result) {
       // FIXME
-      auto node = new NodeSpan();
-      node->init_span(a, a);
+      auto node = new NodeBase();
+      node->init_base(a, a);
     }
 
     return result ? a + 1 : nullptr;
@@ -715,7 +715,7 @@ struct NodeAsmSuffix : public NodeSpanMaker<NodeAsmSuffix> {
 struct NodeAbstractDeclarator : public NodeSpanMaker<NodeAbstractDeclarator> {
   using pattern =
   Seq<
-    Trace<"ptr", Opt<NodePointer>>,
+    Trace<Opt<NodePointer>>,
     Opt<Seq<NodePunc<"(">, NodeAbstractDeclarator, NodePunc<")">>>,
     Any<
       NodeAttribute,
@@ -734,7 +734,7 @@ struct NodeDeclarator : public NodeSpanMaker<NodeDeclarator> {
     Opt<NodeAttribute>,
     Opt<NodeQualifiers>,
     Oneof<
-      NodeIdentifier,
+      Trace<NodeIdentifier>,
       Seq<NodePunc<"(">, NodeDeclarator, NodePunc<")">>
     >,
     Opt<NodeAsmSuffix>,
@@ -805,14 +805,14 @@ struct NodeDeclaratorList : public NodeSpanMaker<NodeDeclaratorList> {
     Seq<
       Oneof<
         Seq<
-          NodeDeclarator,
+          Trace<NodeDeclarator>,
           Opt<NodeBitSuffix>
         >,
         NodeBitSuffix
       >,
       Opt<Seq<
-        NodePunc<"=">,
-        NodeInitializer
+        Trace<NodePunc<"=">>,
+        Trace<NodeInitializer>
       >>
     >
   >;
@@ -1008,8 +1008,8 @@ struct NodeTypeDecl : public NodeSpanMaker<NodeTypeDecl> {
 //------------------------------------------------------------------------------
 
 struct NodeDesignation : public NodeSpanMaker<NodeDesignation> {
-  using pattern = Trace<"desig",
-  Some<
+  using pattern =
+  Trace<Some<
     Seq<NodePunc<"[">, NodeConstant,   NodePunc<"]">>,
     Seq<NodePunc<"[">, NodeIdentifier, NodePunc<"]">>,
     Seq<NodePunc<".">, NodeIdentifier>
@@ -1098,25 +1098,25 @@ struct NodeConstructor : public NodeSpanMaker<NodeConstructor> {
 struct NodeDeclaration : public NodeSpanMaker<NodeDeclaration> {
   using pattern = Seq<
     // FIXME this is messy
-    Opt<NodeAttribute>,
-    Opt<NodeQualifiers>,
-    Opt<NodeAttribute>,
+    Opt<Trace<NodeAttribute>>,
+    Opt<Trace<NodeQualifiers>>,
+    Opt<Trace<NodeAttribute>>,
 
     // this is getting ridiculous
     Oneof<
       Seq<
-        NodeSpecifier,
-        Opt<NodeAttribute>,
-        Opt<NodeQualifiers>,
-        Opt<NodeAttribute>,
-        Opt<NodeDeclaratorList>
+        Trace<NodeSpecifier>,
+        Opt<Trace<NodeAttribute>>,
+        Opt<Trace<NodeQualifiers>>,
+        Opt<Trace<NodeAttribute>>,
+        Opt<Trace<NodeDeclaratorList>>
       >,
       Seq<
-        Opt<NodeSpecifier>,
-        Opt<NodeAttribute>,
-        Opt<NodeQualifiers>,
-        Opt<NodeAttribute>,
-        NodeDeclaratorList
+        Opt<Trace<NodeSpecifier>>,
+        Opt<Trace<NodeAttribute>>,
+        Opt<Trace<NodeQualifiers>>,
+        Opt<Trace<NodeAttribute>>,
+        Trace<NodeDeclaratorList>
       >
     >
   >;
@@ -1136,7 +1136,7 @@ struct NodeStatementCompound : public NodeSpanMaker<NodeStatementCompound> {
 
 struct NodeStatementDeclaration : public NodeSpanMaker<NodeStatementDeclaration> {
   using pattern = Seq<
-    NodeDeclaration,
+    Trace<NodeDeclaration>,
     NodePunc<";">
   >;
 };
@@ -1437,22 +1437,22 @@ struct NodeStatement : public PatternWrapper<NodeStatement> {
     Seq<NodeUnion,  NodePunc<";">>,
     Seq<NodeEnum,   NodePunc<";">>,
 
-    NodeStatementTypedef,
-    NodeStatementFor,
-    NodeStatementIf,
-    NodeStatementReturn,
-    NodeStatementSwitch,
-    NodeStatementDoWhile,
-    NodeStatementWhile,
-    NodeStatementGoto,
-    NodeStatementAsm,
-    NodeStatementCompound,
+    Trace<NodeStatementTypedef>,
+    Trace<NodeStatementFor>,
+    Trace<NodeStatementIf>,
+    Trace<NodeStatementReturn>,
+    Trace<NodeStatementSwitch>,
+    Trace<NodeStatementDoWhile>,
+    Trace<NodeStatementWhile>,
+    Trace<NodeStatementGoto>,
+    Trace<NodeStatementAsm>,
+    Trace<NodeStatementCompound>,
 
     // These don't - but they might confuse a keyword with an identifier...
-    NodeStatementLabel,
-    NodeFunction,
-    NodeStatementDeclaration,
-    Seq<NodeStatementExpression,  NodePunc<";">>,
+    Trace<NodeStatementLabel>,
+    Trace<NodeFunction>,
+    Trace<NodeStatementDeclaration>,
+    Trace<Seq<NodeStatementExpression,  NodePunc<";">>>,
 
     // Extra semicolons
     NodePunc<";">
