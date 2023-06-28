@@ -351,7 +351,6 @@ Oneof<
 //------------------------------------------------------------------------------
 // A.2.2 Declarations
 
-struct typedef_name;
 struct declarator;
 struct initializer;
 struct type_specifier;
@@ -360,8 +359,9 @@ struct constant_expression;
 struct enumeration_constant;
 struct assignment_expression;
 struct abstract_declarator;
-struct identifier_list;
 struct pointer;
+struct initializer_list;
+struct designation;
 
 /*6.7.3*/ using type_qualifier =
 Oneof<
@@ -400,6 +400,8 @@ Opt<
   Seq<Keyword<"enum">, Opt<identifier>, Atom<'{'>, enumerator_list, Atom<','>, Atom<'}'>>,
   Seq<Keyword<"enum">, identifier>
 >;
+
+/*6.7.7*/ using typedef_name = identifier;
 
 /*6.7.2*/
 struct type_specifier {
@@ -465,15 +467,12 @@ Some<
   struct_declaration
 >;
 
-/*6.7.2.1*/ struct struct_or_union_specifier {
-  template<typename atom>
-  static atom* match(void* ctx, atom* a, atom* b) {
-    using pattern = Oneof<
-      Seq<struct_or_union, Opt<identifier>, Atom<'{'>, struct_declaration_list, Atom<'}'>>,
-      Seq<struct_or_union, identifier>
-    >;
-    return pattern::match(ctx, a, b);
-  }
+/*6.7.2.1*/
+struct struct_or_union_specifier : public RefBase<struct_or_union_specifier> {
+  using pattern = Oneof<
+    Seq<struct_or_union, Opt<identifier>, Atom<'{'>, struct_declaration_list, Atom<'}'>>,
+    Seq<struct_or_union, identifier>
+  >;
 };
 
 /*6.7.5*/ using type_qualifier_list = // Original was recursive
@@ -488,11 +487,15 @@ Oneof<
 /*6.7.5*/ using parameter_list = // original was recursive
 comma_separated<parameter_declaration>;
 
-/*6.7.5*/ using parameter_type_list =
+/*6.7.5*/
+using parameter_type_list =
 Oneof<
   parameter_list,
   Seq<parameter_list, Atom<','>, Keyword<"...">>
 >;
+
+/*6.7.5*/
+using identifier_list = comma_separated<identifier>;
 
 /*6.7.5 - direct-declarator - Had to tear this one apart a bit. */
 
@@ -522,52 +525,70 @@ Seq<
 >;
 
 /*6.7.5*/
-//using declarator = Seq<Opt<pointer>, direct_declarator>;
-
-struct declarator {
+struct declarator : public RefBase<declarator> {
   using pattern = Seq<Opt<pointer>, direct_declarator>;
-
-
-
 };
 
+/*6.7.5*/
+struct pointer : public RefBase<pointer> {
+  using pattern = Oneof<
+    Seq<Atom<'*'>, Opt<type_qualifier_list>>,
+    Seq<Atom<'*'>, Opt<type_qualifier_list>, pointer>
+  >;
+};
+
+/*6.7.6*/
+using type_name = Seq<specifier_qualifier_list, Opt<abstract_declarator>>;
+
+/*6.7.6*/
+using direct_abstract_declarator_suffix = Oneof<
+  Seq<Atom<'['>, Opt<type_qualifier_list>, Opt<assignment_expression>, Atom<']'>>,
+  Seq<Atom<'['>, Keyword<"static">, Opt<type_qualifier_list>, assignment_expression, Atom<']'>>,
+  Seq<Atom<'['>, type_qualifier_list, Keyword<"static">, assignment_expression, Atom<']'>>,
+  Seq<Atom<'['>, Atom<'*'>, Atom<']'>>,
+  Seq<Atom<'('>, Opt<parameter_type_list>, Atom<')'>>
+>;
+
+using direct_abstract_declarator =
+Seq<
+  Oneof<
+    Seq<Atom<'('>, abstract_declarator, Atom<')'>>
+  >,
+  Any<direct_abstract_declarator_suffix>
+>;
+
+/*6.7.6*/
+struct abstract_declarator : public RefBase<abstract_declarator> {
+  using pattern = Oneof<
+    pointer,
+    Seq<Opt<pointer>, direct_abstract_declarator>
+  >;
+};
+
+/*6.7.8*/
+struct initializer : public RefBase<initializer> {
+  using pattern = Oneof<
+    assignment_expression,
+    Seq<Atom<'{'>, initializer_list, Atom<'}'>>,
+    Seq<Atom<'{'>, initializer_list, Atom<','>, Atom<'}'>>
+  >;
+};
+
+/*6.7.8*/
+struct initializer_list : public RefBase<initializer_list> {
+  using pattern = Oneof<
+    Seq<Opt<designation>, initializer>,
+    Seq<initializer_list, Atom<','>, Opt<designation>, initializer>
+  >;
+};
 
 #if 0
 
 
 
-/*6.7.5*/ using pointer =
-  * Opt<type_qualifier_list>
-  * Opt<type_qualifier_list> pointer
 
 
-/*6.7.5*/ using identifier_list =
-  identifier
-  identifier_list Atom<','> identifier
-/*6.7.6*/ using type_name =
-  specifier_qualifier_list Opt<abstract_declarator>
-/*6.7.6*/ using abstract_declarator =
-  pointer
-  Opt<pointer> direct_abstract_declarator
-/*6.7.6*/ using direct_abstract_declarator =
-/* abstract_declarator */
-  Opt<direct_abstract_declarator> [ Opt<type_qualifier_list>
-  Opt<assignment_expression> ]
-  Opt<direct_abstract_declarator> [ static Opt<type_qualifier_list>
-  assignment_expression ]
-  Opt<direct_abstract_declarator> [ type_qualifier_list static
-  assignment_expression ]
-  Opt<direct_abstract_declarator> [*]
-  Opt<direct_abstract_declarator> Atom<'('> Opt<parameter_type_list> Atom<')'>
-/*6.7.7*/ using typedef_name =
-  identifier
-/*6.7.8*/ using initializer =
-  assignment_expression
-  Atom<'{'>initializer_list Atom<'}'>
-  Atom<'{'>initializer_list Atom<','> Atom<'}'>
-/*6.7.8*/ using initializer_list =
-  Opt<designation> initializer
-  initializer_list Atom<','> Opt<designation> initializer
+
 /*6.7.8*/ using designation =
   designator_list =
 /*6.7.8*/ using designator_list =
