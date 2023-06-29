@@ -243,9 +243,11 @@ struct NodeExpressionSubscript : public NodeSpanMaker<NodeExpressionSubscript> {
 struct NodeExpressionGccCompound : public NodeSpanMaker<NodeExpressionGccCompound> {
   using pattern = Seq<
     Opt<NodeKeyword<"__extension__">>,
-    NodePunc<"({">,
+    NodePunc<"(">, // Apparently there can be whitespace between these?
+    NodePunc<"{">,
     Any<NodeStatement>,
-    NodePunc<"})">
+    NodePunc<"}">,
+    NodePunc<")">
   >;
 };
 
@@ -626,7 +628,7 @@ struct NodeParam : public NodeSpanMaker<NodeParam> {
     NodePunc<"...">,
     Seq<
       Any<NodeQualifier>,
-      Trace<NodeSpecifier>,
+      NodeSpecifier,
       Any<NodeQualifier>,
       Opt<
         NodeDeclarator,
@@ -642,7 +644,7 @@ struct NodeParam : public NodeSpanMaker<NodeParam> {
 struct NodeParamList : public NodeSpanMaker<NodeParamList> {
   using pattern = Seq<
     NodePunc<"(">,
-    Opt<comma_separated<Trace<NodeParam>>>,
+    Opt<comma_separated<NodeParam>>,
     NodePunc<")">
   >;
 };
@@ -688,7 +690,7 @@ struct NodeSpecifier : public NodeSpanMaker<NodeSpecifier> {
       Seq<NodeKeyword<"struct">, NodeIdentifier>,
       Seq<NodeKeyword<"enum">,   NodeIdentifier>,
       NodeBuiltinType,
-      Trace<NodeTypedefType>,
+      NodeTypedefType,
       /*
       // If this was C++, we would need to match these directly
       NodeClassType,
@@ -758,7 +760,7 @@ struct NodeAsmSuffix : public NodeSpanMaker<NodeAsmSuffix> {
 struct NodeAbstractDeclarator : public NodeSpanMaker<NodeAbstractDeclarator> {
   using pattern =
   Seq<
-    Trace<Opt<NodePointer>>,
+    Opt<NodePointer>,
     Opt<Seq<NodePunc<"(">, NodeAbstractDeclarator, NodePunc<")">>>,
     Any<
       NodeAttribute,
@@ -777,7 +779,7 @@ struct NodeDeclarator : public NodeSpanMaker<NodeDeclarator> {
     Any<NodeAttribute>,
     Any<NodeQualifier>,
     Oneof<
-      Trace<NodeIdentifier>,
+      NodeIdentifier,
       Seq<NodePunc<"(">, NodeDeclarator, NodePunc<")">>
     >,
     Opt<NodeAsmSuffix>,
@@ -799,14 +801,14 @@ struct NodeDeclaratorList : public NodeSpanMaker<NodeDeclaratorList> {
     Seq<
       Oneof<
         Seq<
-          Trace<NodeDeclarator>,
+          NodeDeclarator,
           Opt<NodeBitSuffix>
         >,
         NodeBitSuffix
       >,
       Opt<Seq<
-        Trace<NodePunc<"=">>,
-        Trace<NodeInitializer>
+        NodePunc<"=">,
+        NodeInitializer
       >>
     >
   >;
@@ -828,15 +830,15 @@ struct NodeAccessSpecifier : public NodeSpanMaker<NodeAccessSpecifier> {
 
 struct NodeField : public PatternWrapper<NodeField> {
   using pattern = Oneof<
-    Trace<NodeAccessSpecifier>,
-    Trace<NodeConstructor>,
-    Trace<NodeFunction>,
-    Trace<NodeStruct>,
-    Trace<NodeUnion>,
-    Trace<NodeTemplate>,
-    Trace<NodeClass>,
-    Trace<NodeEnum>,
-    Trace<NodeDeclaration>
+    NodeAccessSpecifier,
+    NodeConstructor,
+    NodeFunction,
+    NodeStruct,
+    NodeUnion,
+    NodeTemplate,
+    NodeClass,
+    NodeEnum,
+    NodeDeclaration
   >;
 };
 
@@ -909,7 +911,7 @@ struct NodeStructDecl : public NodeSpanMaker<NodeStructDecl> {
 struct NodeStruct : public NodeSpanMaker<NodeStruct> {
   using pattern = Seq<
     NodeStructDecl,
-    Opt<Trace<NodeFieldList>>,
+    Opt<NodeFieldList>,
     Any<NodeAttribute>,
     Opt<NodeDeclaratorList>
   >;
@@ -1062,11 +1064,11 @@ struct NodeTypeDecl : public NodeSpanMaker<NodeTypeDecl> {
 
 struct NodeDesignation : public NodeSpanMaker<NodeDesignation> {
   using pattern =
-  Trace<Some<
+  Some<
     Seq<NodePunc<"[">, NodeConstant,   NodePunc<"]">>,
     Seq<NodePunc<"[">, NodeIdentifier, NodePunc<"]">>,
     Seq<NodePunc<".">, NodeIdentifier>
-  >>;
+  >;
 };
 
 struct NodeInitializerList : public NodeSpanMaker<NodeInitializerList> {
@@ -1089,7 +1091,7 @@ struct NodeInitializerList : public NodeSpanMaker<NodeInitializerList> {
 struct NodeInitializer : public NodeSpanMaker<NodeInitializer> {
   using pattern = Oneof<
     NodeInitializerList,
-    Trace<NodeExpression>
+    NodeExpression
   >;
 };
 
@@ -1114,8 +1116,8 @@ struct NodeFunction : public NodeSpanMaker<NodeFunction> {
       NodeAttribute,
       NodeSpecifier
     >,
-    Trace<NodeFunctionIdentifier>,
-    Trace<NodeParamList>,
+    NodeFunctionIdentifier,
+    NodeParamList,
     Opt<NodeAsmSuffix>,
     Opt<NodeKeyword<"const">>,
     Opt<Some<
@@ -1123,7 +1125,7 @@ struct NodeFunction : public NodeSpanMaker<NodeFunction> {
     >>,
     Oneof<
       NodePunc<";">,
-      Trace<NodeStatementCompound>
+      NodeStatementCompound
     >
   >;
 };
@@ -1141,7 +1143,7 @@ struct NodeConstructor : public NodeSpanMaker<NodeConstructor> {
     NodeParamList,
     Oneof<
       NodePunc<";">,
-      Trace<NodeStatementCompound>
+      NodeStatementCompound
     >
   >;
 };
@@ -1175,14 +1177,14 @@ struct NodeDeclaration : public NodeSpanMaker<NodeDeclaration> {
 
     Oneof<
       Seq<
-        Trace<NodeSpecifier>,
+        NodeSpecifier,
         Any<NodeAttribute, NodeQualifier>,
         Opt<NodeDeclaratorList>
       >,
       Seq<
         Opt<NodeSpecifier>,
         Any<NodeAttribute, NodeQualifier>,
-        Trace<NodeDeclaratorList>
+        NodeDeclaratorList
       >
     >
   >;
@@ -1203,7 +1205,7 @@ struct NodeStatementCompound : public NodeSpanMaker<NodeStatementCompound> {
 
 struct NodeStatementDeclaration : public NodeSpanMaker<NodeStatementDeclaration> {
   using pattern = Seq<
-    Trace<NodeDeclaration>,
+    NodeDeclaration,
     NodePunc<";">
   >;
 };
@@ -1503,25 +1505,25 @@ struct NodeStatement : public PatternWrapper<NodeStatement> {
     Seq<NodeUnion,  NodePunc<";">>,
     Seq<NodeEnum,   NodePunc<";">>,
 
-    Trace<NodeStatementTypedef>,
-    Trace<NodeStatementFor>,
-    Trace<NodeStatementIf>,
-    Trace<NodeStatementReturn>,
-    Trace<NodeStatementSwitch>,
-    Trace<NodeStatementDoWhile>,
-    Trace<NodeStatementWhile>,
-    Trace<NodeStatementGoto>,
-    Trace<NodeStatementAsm>,
-    Trace<NodeStatementCompound>,
+    NodeStatementTypedef,
+    NodeStatementFor,
+    NodeStatementIf,
+    NodeStatementReturn,
+    NodeStatementSwitch,
+    NodeStatementDoWhile,
+    NodeStatementWhile,
+    NodeStatementGoto,
+    NodeStatementAsm,
+    NodeStatementCompound,
 
     // These don't - but they might confuse a keyword with an identifier...
-    Trace<NodeStatementLabel>,
-    Trace<NodeFunction>,
+    NodeStatementLabel,
+    NodeFunction,
 
     // If declaration is before expression, we parse "x = 1;" as a declaration
     // because it matches a declarator (bare identifier) + initializer list :/
-    Trace<Seq<NodeStatementExpression,  NodePunc<";">>>,
-    Trace<NodeStatementDeclaration>,
+    Seq<NodeStatementExpression,  NodePunc<";">>,
+    NodeStatementDeclaration,
 
     // Extra semicolons
     NodePunc<";">
@@ -1548,12 +1550,12 @@ struct NodeToplevelDeclaration {
     Seq<NodeTemplate, NodePunc<";">>,
     Seq<NodeClass,    NodePunc<";">>,
     Seq<NodeEnum,     NodePunc<";">>,
-    Trace<NodeFunction>,
-    Trace<Seq<NodeDeclaration, NodePunc<";">>>
+    NodeFunction,
+    Seq<NodeDeclaration, NodePunc<";">>
   >;
 };
 
-struct NodeTranslationUnit : public NodeSpan {
+struct NodeTranslationUnit : public NodeSpanMaker<NodeTranslationUnit> {
   using pattern = Any<
     Oneof<
       NodePreproc,

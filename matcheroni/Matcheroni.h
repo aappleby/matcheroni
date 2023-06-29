@@ -5,6 +5,8 @@
 #include <string.h>
 #include <stdio.h>
 
+//#define MATCHERONI_ENABLE_TRACE
+
 void print_escaped(const char* s, int len, unsigned int color);
 
 //------------------------------------------------------------------------------
@@ -36,14 +38,11 @@ inline void print_typeid_name(const char* name) {
   }
 }
 
-inline static int trace_enabled = 1;
 inline static int indent_depth = 0;
 
-#ifdef MATCHERONI_ENABLE_TRACE
-
-template<typename NT>
+template<typename NodeType>
 inline void print_class_name() {
-  const char* name = typeid(NT).name();
+  const char* name = typeid(NodeType).name();
   int name_len = 0;
   if (sscanf(name, "%d", &name_len)) {
     while((*name >= '0') && (*name <= '9')) name++;
@@ -54,68 +53,71 @@ inline void print_class_name() {
   }
 }
 
-template<typename NT>
+template<typename NodeType, typename atom>
+void print_trace_start(atom* a) {
+#ifdef MATCHERONI_ENABLE_TRACE
+  static constexpr int context_len = 40;
+  printf("[");
+  print_escaped(a->lex->span_a, context_len, 0x404040);
+  printf("] ");
+  for (int i = 0; i < indent_depth; i++) printf("|   ");
+  print_class_name<NodeType>();
+  printf("?\n");
+  indent_depth += 1;
+#endif
+}
+
+template<typename NodeType, typename atom>
+void print_trace_end(atom* a, atom* end) {
+#ifdef MATCHERONI_ENABLE_TRACE
+  static constexpr int context_len = 40;
+  indent_depth -= 1;
+  printf("[");
+  if (end) {
+    int match_len = end->lex->span_a - a->lex->span_a;
+    if (match_len > context_len) match_len = context_len;
+    int left_len = context_len - match_len;
+    print_escaped(a->lex->span_a, match_len,  0x60C000);
+    print_escaped(end->lex->span_a, left_len, 0x404040);
+  }
+  else {
+    print_escaped(a->lex->span_a, context_len, 0x2020A0);
+  }
+  printf("] ");
+  for (int i = 0; i < indent_depth; i++) printf("|   ");
+  print_class_name<NodeType>();
+  printf(end ? " OK\n" : " XXX\n");
+
+#ifdef EXTRA_DEBUG
+  if (end) {
+    printf("\n");
+    print_class_name<NodeType>();
+    printf("\n");
+
+    for (auto c = a; c < end; c++) {
+      dump_token(*c);
+    }
+    printf("\n");
+  }
+#endif
+
+#endif
+}
+
+template<typename NodeType>
 struct Trace {
   template<typename atom>
   static atom* match(void* ctx, atom* a, atom* b) {
     static constexpr int context_len = 40;
-    if (trace_enabled) {
-      printf("[");
-      print_escaped(a->lex->span_a, context_len, 0x404040);
-      printf("] ");
-      for (int i = 0; i < indent_depth; i++) printf("|   ");
-      print_class_name<NT>();
-      printf("?\n");
-    }
 
-    indent_depth += 1;
-    auto end = NT::match(ctx, a, b);
-    indent_depth -= 1;
-
-    if (trace_enabled) {
-      printf("[");
-      if (end) {
-        int match_len = end->lex->span_a - a->lex->span_a;
-        if (match_len > context_len) match_len = context_len;
-        int left_len = context_len - match_len;
-        print_escaped(a->lex->span_a, match_len,  0x60C000);
-        print_escaped(end->lex->span_a, left_len, 0x404040);
-      }
-      else {
-        print_escaped(a->lex->span_a, context_len, 0x2020A0);
-      }
-      printf("] ");
-      for (int i = 0; i < indent_depth; i++) printf("|   ");
-      print_class_name<NT>();
-      printf(end ? " OK\n" : " XXX\n");
-    }
+    print_trace_start<NodeType, atom>(a);
+    auto end = NodeType::match(ctx, a, b);
+    print_trace_end<NodeType, atom>(a, end);
 
     return end;
   }
 };
 
-#else
-
-template<typename NT>
-struct Trace {
-  template<typename atom>
-  static atom* match(void* ctx, atom* a, atom* b) {
-    return NT::match(ctx, a, b);
-  }
-};
-
-#endif
-
-template<typename NT>
-struct TraceEnable {
-  template<typename atom>
-  static atom* match(void* ctx, atom* a, atom* b) {
-    trace_enabled++;
-    auto end = NT::match(ctx, a, b);
-    trace_enabled--;
-    return end;
-  }
-};
 
 
 
@@ -225,6 +227,15 @@ struct AnyAtom {
 // Examples:
 // Seq<Atom<'a'>, Atom<'b'>::match("abcd") == "cd"
 
+// FIXME Is there any way we can implement this to work correctly with Seq?
+// Template specialization?
+template<typename P>
+struct EarlyOut {
+  template<typename atom>
+  static atom* match(void* ctx, atom* a, atom* b) {
+  }
+};
+
 template<typename P, typename... rest>
 struct Seq {
   template<typename atom>
@@ -295,6 +306,7 @@ template <typename... rest>
 struct Any {
   template<typename atom>
   static atom* match(void* ctx, atom* a, atom* b) {
+    if (a == b) return a;
     while(auto c = Oneof<rest...>::match(ctx, a, b)) {
       a = c;
     }
@@ -718,11 +730,11 @@ struct KeyVal {
 
 //------------------------------------------------------------------------------
 
-template<typename NT>
+template<typename NodeType>
 struct PatternWrapper {
   template<typename atom>
   static atom* match(void* ctx, atom* a, atom* b) {
-    return NT::pattern::match(ctx, a, b);
+    return NodeType::pattern::match(ctx, a, b);
   }
 };
 

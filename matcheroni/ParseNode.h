@@ -252,17 +252,6 @@ struct NodeBase : public ParseNode {
     constructor_count++;
     assert(tok_a <= tok_b);
 
-#ifdef EXTRA_DEBUG
-    printf("base ");
-    print_class_name(20);
-    printf("\n");
-
-    for (auto c = tok_a; c <= tok_b; c++) {
-      dump_token(*c);
-    }
-    printf("\n");
-#endif
-
     for (auto c = tok_a; c <= tok_b; c++) {
       c->base = this;
       c->span = nullptr;
@@ -280,19 +269,6 @@ struct NodeSpan : public ParseNode {
   void init_span(Token* tok_a, Token* tok_b) {
     constructor_count++;
     assert(tok_a <= tok_b);
-
-#ifdef EXTRA_DEBUG
-    printf("span ");
-    print_class_name(20);
-    printf("\n");
-
-    for (auto c = tok_a; c <= tok_b; c++) {
-      //printf("%p %p %p\n", c, c->base, c->span);
-      dump_token(*c);
-    }
-    printf("\n");
-#endif
-
 
     // Check that the token range is solidly filled with parse nodes
     for (auto c = tok_a; c <= tok_b; c++) {
@@ -337,24 +313,32 @@ struct NodeSpan : public ParseNode {
 
 //------------------------------------------------------------------------------
 
-template<typename NT>
+template<typename NodeType>
 struct NodeBaseMaker : public NodeBase {
   static Token* match(void* ctx, Token* a, Token* b) {
-    auto end = NT::pattern::match(ctx, a, b);
+
+    print_trace_start<NodeType, Token>(a);
+    auto end = NodeType::pattern::match(ctx, a, b);
+    print_trace_end<NodeType, Token>(a, end);
+
     if (end && end != a) {
-      auto node = new NT();
+      auto node = new NodeType();
       node->init_base(a, end-1);
     }
     return end;
   }
 };
 
-template<typename NT>
+template<typename NodeType>
 struct NodeSpanMaker : public NodeSpan {
   static Token* match(void* ctx, Token* a, Token* b) {
-    auto end = NT::pattern::match(ctx, a, b);
+
+    print_trace_start<NodeType, Token>(a);
+    auto end = NodeType::pattern::match(ctx, a, b);
+    print_trace_end<NodeType, Token>(a, end);
+
     if (end && end != a) {
-      auto node = new NT();
+      auto node = new NodeType();
       node->init_span(a, end-1);
     }
     return end;
@@ -577,7 +561,7 @@ inline Token* match_punct(void* ctx, Token* a, Token* b, const char* lit, int li
 // See if there's a node on the token that we can reuse
 /*
 if (a->top) {
-  if (typeid(*(a->top)) == typeid(NT)) {
+  if (typeid(*(a->top)) == typeid(NodeType)) {
     return a->top->tok_b;
   }
 }

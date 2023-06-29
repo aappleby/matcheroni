@@ -120,18 +120,32 @@ ParseNode* C99Parser::parse() {
 
   NodeTranslationUnit* root = nullptr;
 
-  auto tok_a = tokens.data();
+  assert(tokens.front().lex->type == LEX_BOF);
+  assert(tokens.back().lex->type == LEX_EOF);
+
+  auto tok_a = tokens.data() + 1;
   auto tok_b = tokens.data() + tokens.size() - 1;
 
+  assert(tok_a->lex->type != LEX_BOF);
+  assert(tok_b->lex->type == LEX_EOF);
+
   // Skip over BOF
-  auto cursor = tok_a + 1;
+  auto cursor = tok_a;
+
+  /*
+  if (cursor == tok_b) {
+    file_pass++;
+    return nullptr;
+  }
+  */
+
   parse_accum -= timestamp_ms();
-  cursor = NodeTranslationUnit::pattern::match(this, cursor, tok_b);
+  cursor = NodeTranslationUnit::match(this, cursor, tok_b);
   parse_accum += timestamp_ms();
 
   if (cursor) {
-    root = new NodeTranslationUnit();
-    root->init_span(tok_a + 1, tok_b - 1);
+    assert(tok_a->top()->is_a<NodeTranslationUnit>());
+    root = tok_a->top()->as_a<NodeTranslationUnit>();
 
     if (cursor != tok_b) {
       file_fail++;

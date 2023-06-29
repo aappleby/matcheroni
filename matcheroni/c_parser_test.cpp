@@ -75,7 +75,7 @@ int test_parser(int argc, char** argv) {
     //"mini_tests/csmith_1088.c",
     //"../gcc/gcc/tree-inline.h",
     //"../gcc/gcc/testsuite/gcc.c-torture/execute/20071029-1.c",
-    "../gcc/gcc/testsuite/gcc.c-torture/compile/20090917-1.c",
+    "../gcc/gcc/testsuite/gcc.c-torture/execute/20001203-2.c",
   };
 
   verbose = true;
@@ -120,7 +120,7 @@ int test_parser(int argc, char** argv) {
 
     //printf("Lexing %s\n", path.c_str());
     parser.lex();
-    if (parser.tokens.empty() || parser.tokens[0].lex->is_eof()) {
+    if (parser.tokens.empty() || parser.tokens.size() == 2) {
       parser.file_skip++;
       continue;
     }
