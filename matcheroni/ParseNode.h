@@ -252,7 +252,7 @@ struct NodeBase : public ParseNode {
     constructor_count++;
     assert(tok_a <= tok_b);
 
-    /*
+#ifdef EXTRA_DEBUG
     printf("base ");
     print_class_name(20);
     printf("\n");
@@ -261,7 +261,7 @@ struct NodeBase : public ParseNode {
       dump_token(*c);
     }
     printf("\n");
-    */
+#endif
 
     for (auto c = tok_a; c <= tok_b; c++) {
       c->base = this;
@@ -281,7 +281,7 @@ struct NodeSpan : public ParseNode {
     constructor_count++;
     assert(tok_a <= tok_b);
 
-    /*
+#ifdef EXTRA_DEBUG
     printf("span ");
     print_class_name(20);
     printf("\n");
@@ -291,24 +291,18 @@ struct NodeSpan : public ParseNode {
       dump_token(*c);
     }
     printf("\n");
-    */
+#endif
 
 
     // Check that the token range is solidly filled with parse nodes
     for (auto c = tok_a; c <= tok_b; c++) {
-      assert(c->base);
-    }
-
-    /*
-    {
-      auto c = tok_a->top()->tok_b;
-      while(1) {
-        assert (c <= tok_b);
-        if (c == tok_b) break;
-        c = (c + 1)->top()->tok_b;
+      //assert(c->base);
+      if (!c->base) {
+        for (int i = 0; i < 10; i++) printf("FAILLLL\n");
+        exit(1);
       }
     }
-    */
+
     {
       auto n = tok_a->top();
       while(1) {

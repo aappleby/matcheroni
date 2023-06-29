@@ -5,8 +5,6 @@
 #include <string.h>
 #include <stdio.h>
 
-//#define MATCHERONI_ENABLE_TRACE
-
 void print_escaped(const char* s, int len, unsigned int color);
 
 //------------------------------------------------------------------------------

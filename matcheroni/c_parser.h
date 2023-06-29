@@ -32,7 +32,6 @@ struct NodeUnion;
 struct NodeClassType   : public NodeSpan {};
 struct NodeUnionType   : public NodeSpan {};
 struct NodeEnumType    : public NodeSpan {};
-struct NodeTypedefType : public NodeSpan {};
 
 //------------------------------------------------------------------------------
 
@@ -122,6 +121,12 @@ struct NodeBuiltinType : public NodeBaseMaker<NodeBuiltinType> {
     match_base,
     Opt<match_suffix>
   >;
+};
+
+//------------------------------------------------------------------------------
+
+struct NodeTypedefType : public NodeBaseMaker<NodeTypedefType> {
+  using pattern = Ref<&C99Parser::match_typedef_type>;
 };
 
 //------------------------------------------------------------------------------
@@ -621,7 +626,7 @@ struct NodeParam : public NodeSpanMaker<NodeParam> {
     NodePunc<"...">,
     Seq<
       Any<NodeQualifier>,
-      NodeSpecifier,
+      Trace<NodeSpecifier>,
       Any<NodeQualifier>,
       Opt<
         NodeDeclarator,
@@ -637,7 +642,7 @@ struct NodeParam : public NodeSpanMaker<NodeParam> {
 struct NodeParamList : public NodeSpanMaker<NodeParamList> {
   using pattern = Seq<
     NodePunc<"(">,
-    Opt<comma_separated<NodeParam>>,
+    Opt<comma_separated<Trace<NodeParam>>>,
     NodePunc<")">
   >;
 };
@@ -683,7 +688,7 @@ struct NodeSpecifier : public NodeSpanMaker<NodeSpecifier> {
       Seq<NodeKeyword<"struct">, NodeIdentifier>,
       Seq<NodeKeyword<"enum">,   NodeIdentifier>,
       NodeBuiltinType,
-      Ref<&C99Parser::match_typedef_type>,
+      Trace<NodeTypedefType>,
       /*
       // If this was C++, we would need to match these directly
       NodeClassType,
@@ -823,22 +828,32 @@ struct NodeAccessSpecifier : public NodeSpanMaker<NodeAccessSpecifier> {
 
 struct NodeField : public PatternWrapper<NodeField> {
   using pattern = Oneof<
-    NodeAccessSpecifier,
-    NodeConstructor,
-    NodeFunction,
-    NodeStruct,
-    NodeUnion,
-    NodeTemplate,
-    NodeClass,
-    NodeEnum,
-    NodeDeclaration
+    Trace<NodeAccessSpecifier>,
+    Trace<NodeConstructor>,
+    Trace<NodeFunction>,
+    Trace<NodeStruct>,
+    Trace<NodeUnion>,
+    Trace<NodeTemplate>,
+    Trace<NodeClass>,
+    Trace<NodeEnum>,
+    Trace<NodeDeclaration>
   >;
 };
 
 struct NodeFieldList : public NodeSpanMaker<NodeFieldList> {
+  /*
   using pattern = Seq<
     NodePunc<"{">,
     Any<
+      NodePunc<";">,
+      NodeField
+    >,
+    NodePunc<"}">
+  >;
+  */
+  using pattern = DelimitedBlock<
+    NodePunc<"{">,
+    Oneof<
       NodePunc<";">,
       NodeField
     >,
@@ -858,13 +873,13 @@ struct NodeNamespace : public NodeSpanMaker<NodeNamespace> {
 
 //------------------------------------------------------------------------------
 
-struct NodeStructType  : public NodeSpanMaker<NodeStructType> {
+struct NodeStructType : public NodeBaseMaker<NodeStructType> {
   static Token* match(void* ctx, Token* a, Token* b) {
     auto p = ((C99Parser*)ctx);
     auto end = p->match_struct_type(a, b);
     if (end) {
       auto node = new NodeStructType();
-      node->init_span(a, end - 1);
+      node->init_base(a, end - 1);
     }
     return end;
   }
@@ -894,7 +909,7 @@ struct NodeStructDecl : public NodeSpanMaker<NodeStructDecl> {
 struct NodeStruct : public NodeSpanMaker<NodeStruct> {
   using pattern = Seq<
     NodeStructDecl,
-    Opt<NodeFieldList>,
+    Opt<Trace<NodeFieldList>>,
     Any<NodeAttribute>,
     Opt<NodeDeclaratorList>
   >;
@@ -1099,8 +1114,8 @@ struct NodeFunction : public NodeSpanMaker<NodeFunction> {
       NodeAttribute,
       NodeSpecifier
     >,
-    NodeFunctionIdentifier,
-    NodeParamList,
+    Trace<NodeFunctionIdentifier>,
+    Trace<NodeParamList>,
     Opt<NodeAsmSuffix>,
     Opt<NodeKeyword<"const">>,
     Opt<Some<
@@ -1533,8 +1548,8 @@ struct NodeToplevelDeclaration {
     Seq<NodeTemplate, NodePunc<";">>,
     Seq<NodeClass,    NodePunc<";">>,
     Seq<NodeEnum,     NodePunc<";">>,
-    NodeFunction,
-    Seq<NodeDeclaration, NodePunc<";">>
+    Trace<NodeFunction>,
+    Trace<Seq<NodeDeclaration, NodePunc<";">>>
   >;
 };
 

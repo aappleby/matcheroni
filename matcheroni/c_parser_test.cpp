@@ -67,15 +67,15 @@ int test_parser(int argc, char** argv) {
 
   bool verbose = false;
 
-#if 1
+#if 0
 
   paths = {
-    "tests/scratch.c",
+    //"tests/scratch.c",
     //"tests/basic_inputs.h",
     //"mini_tests/csmith_1088.c",
     //"../gcc/gcc/tree-inline.h",
     //"../gcc/gcc/testsuite/gcc.c-torture/execute/20071029-1.c",
-    //"../gcc/gcc/testsuite/gcc.c-torture/execute/20011113-1.c",
+    "../gcc/gcc/testsuite/gcc.c-torture/compile/20090917-1.c",
   };
 
   verbose = true;
