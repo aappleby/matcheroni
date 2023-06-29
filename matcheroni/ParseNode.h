@@ -321,10 +321,22 @@ struct NodeBaseMaker : public NodeBase {
     auto end = NodeType::pattern::match(ctx, a, b);
     print_trace_end<NodeType, Token>(a, end);
 
+    /*
+    if ((end - a) > 1) {
+      auto len = end->lex->span_a - a->lex->span_a;
+      //printf("%.40s\n", a->lex->span_a);
+      for(auto i = 0; i < len; i++) putc(a->lex->span_a[i], stdout);
+      putc('\n', stdout);
+      //printf("%ld\n", end - a);
+      //exit(1);
+    }
+    */
+
     if (end && end != a) {
       auto node = new NodeType();
       node->init_base(a, end-1);
     }
+
     return end;
   }
 };
