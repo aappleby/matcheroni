@@ -143,9 +143,9 @@ int test_parser(int argc, char** argv) {
         dump_tree(root);
         printf("\n");
 
-        printf("Dumping tokens:\n");
-        parser.dump_tokens();
-        printf("\n");
+        //printf("Dumping tokens:\n");
+        //parser.dump_tokens();
+        //printf("\n");
       }
     }
 

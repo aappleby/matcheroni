@@ -252,15 +252,16 @@ struct NodeBase : public ParseNode {
     constructor_count++;
     assert(tok_a <= tok_b);
 
+    /*
     printf("base ");
     print_class_name(20);
     printf("\n");
 
     for (auto c = tok_a; c <= tok_b; c++) {
-      //printf("%p %p %p\n", c, c->base, c->span);
       dump_token(*c);
     }
     printf("\n");
+    */
 
     for (auto c = tok_a; c <= tok_b; c++) {
       c->base = this;
@@ -280,6 +281,7 @@ struct NodeSpan : public ParseNode {
     constructor_count++;
     assert(tok_a <= tok_b);
 
+    /*
     printf("span ");
     print_class_name(20);
     printf("\n");
@@ -289,6 +291,7 @@ struct NodeSpan : public ParseNode {
       dump_token(*c);
     }
     printf("\n");
+    */
 
 
     // Check that the token range is solidly filled with parse nodes

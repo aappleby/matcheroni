@@ -5,7 +5,7 @@
 #include <string.h>
 #include <stdio.h>
 
-#define MATCHERONI_ENABLE_TRACE
+//#define MATCHERONI_ENABLE_TRACE
 
 void print_escaped(const char* s, int len, unsigned int color);
 
@@ -98,7 +98,7 @@ struct Trace {
 
 #else
 
-template<StringParam doco, typename NT>
+template<typename NT>
 struct Trace {
   template<typename atom>
   static atom* match(void* ctx, atom* a, atom* b) {

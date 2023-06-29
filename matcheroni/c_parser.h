@@ -773,7 +773,6 @@ struct NodeDeclarator : public NodeSpanMaker<NodeDeclarator> {
     Any<NodeQualifier>,
     Oneof<
       Trace<NodeIdentifier>,
-      //Trace<NodeSpecifier>,
       Seq<NodePunc<"(">, NodeDeclarator, NodePunc<")">>
     >,
     Opt<NodeAsmSuffix>,
@@ -1503,8 +1502,11 @@ struct NodeStatement : public PatternWrapper<NodeStatement> {
     // These don't - but they might confuse a keyword with an identifier...
     Trace<NodeStatementLabel>,
     Trace<NodeFunction>,
-    Trace<NodeStatementDeclaration>,
+
+    // If declaration is before expression, we parse "x = 1;" as a declaration
+    // because it matches a declarator (bare identifier) + initializer list :/
     Trace<Seq<NodeStatementExpression,  NodePunc<";">>>,
+    Trace<NodeStatementDeclaration>,
 
     // Extra semicolons
     NodePunc<";">
