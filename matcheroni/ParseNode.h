@@ -234,7 +234,9 @@ struct ParseNode {
 
   Token* tok_a = nullptr; // First token, inclusivve
   Token* tok_b = nullptr; // Last token, inclusive
+
   int precedence = 0;
+  int assoc = 0;
 
   ParseNode* prev   = nullptr;
   ParseNode* next   = nullptr;

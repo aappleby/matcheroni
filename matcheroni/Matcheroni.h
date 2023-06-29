@@ -529,6 +529,69 @@ struct MatchBackref {
 };
 
 //------------------------------------------------------------------------------
+// Equivalent to Seq<ldelim, Any<body>, rdelim>, but tries to match rdelim
+// before body which can save a lot of useless matching time.
+
+template<typename ldelim, typename body, typename rdelim>
+struct DelimitedBlock {
+  template<typename atom>
+  static atom* match(void* ctx, atom* a, atom* b) {
+    a = ldelim::match(ctx, a, b);
+    if (a == nullptr) return nullptr;
+
+    while(1) {
+      if (auto end = rdelim::match(ctx, a, b)) {
+        return end;
+      }
+      else if (auto end = body::match(ctx, a, b)) {
+        a = end;
+      }
+      else {
+        return nullptr;
+      }
+    }
+  }
+};
+
+//------------------------------------------------------------------------------
+// Equivalent to
+// Seq<
+//   ldelim,
+//   Opt<comma_separated<body>>,
+//   rdelim
+// >;
+
+/* NodePunc<"(">, comma_separated<NodeExpression>, NodePunc<")"> */
+
+template<typename ldelim, typename body, typename rdelim>
+struct DelimitedList {
+
+  template<typename atom>
+  static atom* match(void* ctx, atom* a, atom* b) {
+    a = ldelim::match(ctx, a, b);
+    if (a == nullptr) return nullptr;
+
+    while(1) {
+      if (auto end = body::match(ctx, a, b)) {
+        a = end;
+      }
+
+      if (auto end = Atom<','>::match(ctx, a, b)) {
+        a = end;
+        continue;
+      }
+      else if (auto end = rdelim::match(ctx, a, b)) {
+        return end;
+      }
+      else {
+        return nullptr;
+      }
+    }
+  }
+
+};
+
+//------------------------------------------------------------------------------
 // Matches newline and EOF, but does not advance past it.
 
 struct EOL {

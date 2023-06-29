@@ -37,33 +37,6 @@ void set_color(uint32_t c) {
 
 //------------------------------------------------------------------------------
 
-template<typename P>
-struct ProgressBar {
-  static Token* match(void* ctx, Token* a, Token* b) {
-    printf("%.40s\n", a->lex->span_a);
-    return P::match(ctx, a, b);
-  }
-};
-
-struct NodeToplevelDeclaration {
-  using pattern =
-  Oneof<
-    NodePunc<";">,
-    NodeStatementTypedef,
-    Seq<NodeStruct,   NodePunc<";">>,
-    Seq<NodeUnion,    NodePunc<";">>,
-    Seq<NodeTemplate, NodePunc<";">>,
-    Seq<NodeClass,    NodePunc<";">>,
-    Seq<NodeEnum,     NodePunc<";">>,
-    NodeFunction,
-    Seq<NodeDeclaration, NodePunc<";">>
-  >;
-};
-
-struct NodeTranslationUnit : public NodeSpan {};
-
-//------------------------------------------------------------------------------
-
 C99Parser::C99Parser() {
   text.reserve(65536);
   lexemes.reserve(65536);
@@ -150,17 +123,10 @@ ParseNode* C99Parser::parse() {
   auto tok_a = tokens.data();
   auto tok_b = tokens.data() + tokens.size() - 1;
 
-  using pattern = Any<
-    Oneof<
-      NodePreproc,
-      NodeToplevelDeclaration::pattern
-    >
-  >;
-
   // Skip over BOF
   auto cursor = tok_a + 1;
   parse_accum -= timestamp_ms();
-  cursor = pattern::match(this, cursor, tok_b);
+  cursor = NodeTranslationUnit::pattern::match(this, cursor, tok_b);
   parse_accum += timestamp_ms();
 
   if (cursor) {

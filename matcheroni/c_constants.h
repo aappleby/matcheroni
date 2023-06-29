@@ -233,6 +233,23 @@ constexpr int prefix_precedence(const char* op) {
   return 0;
 }
 
+constexpr int prefix_assoc(const char* op) {
+  if (strcmp(op, "++")  == 0) return -1;
+  if (strcmp(op, "--")  == 0) return -1;
+  if (strcmp(op, "+")   == 0) return -1;
+  if (strcmp(op, "-")   == 0) return -1;
+  if (strcmp(op, "!")   == 0) return -1;
+  if (strcmp(op, "~")   == 0) return -1;
+  if (strcmp(op, "*")   == 0) return -1;
+  if (strcmp(op, "&")   == 0) return -1;
+
+  // 2 type(a) type{a}
+  // 3 (type)a sizeof a sizeof(a) co_await a
+  // 3 new a new a[] delete a delete a[]
+  // 16 throw a co_yield a
+  return 0;
+}
+
 constexpr int binary_precedence(const char* op) {
   if (strcmp(op, "::")  == 0) return 1;
   if (strcmp(op, ".")   == 0) return 2;
@@ -275,12 +292,64 @@ constexpr int binary_precedence(const char* op) {
   return 0;
 }
 
+constexpr int binary_assoc(const char* op) {
+  if (strcmp(op, "::")  == 0) return 1;
+  if (strcmp(op, ".")   == 0) return 1;
+  if (strcmp(op, "->")  == 0) return 1;
+  if (strcmp(op, ".*")  == 0) return 1;
+  if (strcmp(op, "->*") == 0) return 1;
+  if (strcmp(op, "*")   == 0) return 1;
+  if (strcmp(op, "/")   == 0) return 1;
+  if (strcmp(op, "%")   == 0) return 1;
+  if (strcmp(op, "+")   == 0) return 1;
+  if (strcmp(op, "-")   == 0) return 1;
+  if (strcmp(op, "<<")  == 0) return 1;
+  if (strcmp(op, ">>")  == 0) return 1;
+  if (strcmp(op, "<=>") == 0) return 1;
+  if (strcmp(op, "<")   == 0) return 1;
+  if (strcmp(op, "<=")  == 0) return 1;
+  if (strcmp(op, ">")   == 0) return 1;
+  if (strcmp(op, ">=")  == 0) return 1;
+  if (strcmp(op, "==")  == 0) return 1;
+  if (strcmp(op, "!=")  == 0) return 1;
+  if (strcmp(op, "&")   == 0) return 1;
+  if (strcmp(op, "^")   == 0) return 1;
+  if (strcmp(op, "|")   == 0) return 1;
+  if (strcmp(op, "&&")  == 0) return 1;
+  if (strcmp(op, "||")  == 0) return 1;
+  if (strcmp(op, "?")   == 0) return -1;
+  if (strcmp(op, ":")   == 0) return -1;
+  if (strcmp(op, "=")   == 0) return -1;
+  if (strcmp(op, "+=")  == 0) return -1;
+  if (strcmp(op, "-=")  == 0) return -1;
+  if (strcmp(op, "*=")  == 0) return -1;
+  if (strcmp(op, "/=")  == 0) return -1;
+  if (strcmp(op, "%=")  == 0) return -1;
+  if (strcmp(op, "<<=") == 0) return -1;
+  if (strcmp(op, ">>=") == 0) return -1;
+  if (strcmp(op, "&=")  == 0) return -1;
+  if (strcmp(op, "^=")  == 0) return -1;
+  if (strcmp(op, "|=")  == 0) return -1;
+  if (strcmp(op, ",")   == 0) return 1;
+  return 0;
+}
+
 constexpr int suffix_precedence(const char* op) {
   if (strcmp(op, "++")  == 0) return 2;
   if (strcmp(op, "--")  == 0) return 2;
-  if (strcmp(op, "(")   == 0) return 2;
-  if (strcmp(op, ")")   == 0) return 2;
-  if (strcmp(op, "[")   == 0) return 2;
-  if (strcmp(op, "]")   == 0) return 2;
+  //if (strcmp(op, "(")   == 0) return 2;
+  //if (strcmp(op, ")")   == 0) return 2;
+  //if (strcmp(op, "[")   == 0) return 2;
+  //if (strcmp(op, "]")   == 0) return 2;
+  return 0;
+}
+
+constexpr int suffix_assoc(const char* op) {
+  if (strcmp(op, "++")  == 0) return 1;
+  if (strcmp(op, "--")  == 0) return 1;
+  //if (strcmp(op, "(")   == 0) return 1;
+  //if (strcmp(op, ")")   == 0) return 1;
+  //if (strcmp(op, "[")   == 0) return 1;
+  //if (strcmp(op, "]")   == 0) return 1;
   return 0;
 }
