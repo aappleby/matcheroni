@@ -52,6 +52,49 @@ struct SST<table> {
 //------------------------------------------------------------------------------
 // MUST BE SORTED CASE-SENSITIVE
 
+constexpr std::array c99_keywords = {
+  "_Bool",
+  "_Complex",
+  "_Imaginary",
+  "auto",
+  "break",
+  "case",
+  "char",
+  "const",
+  "continue",
+  "default",
+  "do",
+  "double",
+  "else",
+  "enum",
+  "extern",
+  "float",
+  "for",
+  "goto",
+  "if",
+  "inline",
+  "int",
+  "long",
+  "register",
+  "restrict",
+  "return",
+  "short",
+  "signed",
+  "sizeof",
+  "static",
+  "struct",
+  "switch",
+  "typedef",
+  "union",
+  "unsigned",
+  "void",
+  "volatile",
+  "while",
+};
+
+//------------------------------------------------------------------------------
+// MUST BE SORTED CASE-SENSITIVE
+
 constexpr std::array builtin_type_base = {
   "FILE", // used in fprintf.c torture test
   "_Bool",

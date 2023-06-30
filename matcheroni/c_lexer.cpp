@@ -2,6 +2,7 @@
 
 #include "Lexemes.h"
 #include "Matcheroni.h"
+#include "c_constants.h"
 
 #include <stdint.h>
 #include <stdio.h>
@@ -20,13 +21,14 @@ const char* match_never      (void* ctx, const char* a, const char* b);
 const char* match_space      (void* ctx, const char* a, const char* b);
 const char* match_newline    (void* ctx, const char* a, const char* b);
 const char* match_string     (void* ctx, const char* a, const char* b);
+const char* match_char       (void* ctx, const char* a, const char* b);
+const char* match_keyword    (void* ctx, const char* a, const char* b);
 const char* match_identifier (void* ctx, const char* a, const char* b);
 const char* match_comment    (void* ctx, const char* a, const char* b);
 const char* match_preproc    (void* ctx, const char* a, const char* b);
 const char* match_float      (void* ctx, const char* a, const char* b);
 const char* match_int        (void* ctx, const char* a, const char* b);
 const char* match_punct      (void* ctx, const char* a, const char* b);
-const char* match_char       (void* ctx, const char* a, const char* b);
 const char* match_splice     (void* ctx, const char* a, const char* b);
 const char* match_formfeed   (void* ctx, const char* a, const char* b);
 const char* match_eof        (void* ctx, const char* a, const char* b);
@@ -40,7 +42,21 @@ Lexeme next_lexeme(void* ctx, const char* cursor, const char* text_end) {
   if (auto end = match_newline    (ctx, cursor, text_end)) return Lexeme(LEX_NEWLINE   , cursor, end);
   if (auto end = match_string     (ctx, cursor, text_end)) return Lexeme(LEX_STRING    , cursor, end);
   if (auto end = match_char       (ctx, cursor, text_end)) return Lexeme(LEX_CHAR      , cursor, end);
-  if (auto end = match_identifier (ctx, cursor, text_end)) return Lexeme(LEX_IDENTIFIER, cursor, end);
+
+  //if (auto end = match_keyword    (ctx, cursor, text_end)) return Lexeme(LEX_KEYWORD   , cursor, end);
+  //if (auto end = match_identifier (ctx, cursor, text_end)) return Lexeme(LEX_IDENTIFIER, cursor, end);
+  {
+    auto end = match_identifier(ctx, cursor, text_end);
+    if (end) {
+      if (SST<c99_keywords>::match(cursor, end)) {
+        return Lexeme(LEX_KEYWORD   , cursor, end);
+      }
+      else {
+        return Lexeme(LEX_IDENTIFIER, cursor, end);
+      }
+    }
+  }
+
   if (auto end = match_comment    (ctx, cursor, text_end)) return Lexeme(LEX_COMMENT   , cursor, end);
   if (auto end = match_preproc    (ctx, cursor, text_end)) return Lexeme(LEX_PREPROC   , cursor, end);
   if (auto end = match_float      (ctx, cursor, text_end)) return Lexeme(LEX_FLOAT     , cursor, end);
@@ -182,6 +198,20 @@ const char* match_utf8(void* ctx, const char* a, const char* b) {
 const char* match_utf8_bom(void* ctx, const char* a, const char* b) {
   using utf8_bom = Seq<Atom<char(0xEF)>, Atom<char(0xBB)>, Atom<char(0xBF)>>;
   return utf8_bom::match(ctx, a, b);
+}
+
+//------------------------------------------------------------------------------
+// Keywords
+
+const char* match_keyword(void* ctx, const char* a, const char* b) {
+  auto end = match_identifier(ctx, a, b);
+  auto keyword_found = SST<c99_keywords>::match(a, end);
+  if (keyword_found) {
+    return end;
+  }
+  else {
+    return nullptr;
+  }
 }
 
 //------------------------------------------------------------------------------

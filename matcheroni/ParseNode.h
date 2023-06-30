@@ -311,6 +311,7 @@ struct NodeSpan : public ParseNode {
 template<typename NodeType>
 struct FlatMaker {
   static Token* match(void* ctx, Token* a, Token* b) {
+    if (!a || a == b) return nullptr;
 
     print_trace_start<NodeType, Token>(a);
     auto end = NodeType::pattern::match(ctx, a, b);
@@ -328,6 +329,7 @@ struct FlatMaker {
 template<typename NodeType>
 struct BaseMaker : public NodeBase {
   static Token* match(void* ctx, Token* a, Token* b) {
+    if (!a || a == b) return nullptr;
 
     print_trace_start<NodeType, Token>(a);
     auto end = NodeType::pattern::match(ctx, a, b);
@@ -483,10 +485,12 @@ inline void dump_lexeme(const Lexeme& l) {
 
 inline void dump_token(const Token& t) {
   // Dump token
-  printf("tok @ %p ", &t);
+  printf("tok @ %p :", &t);
 
-  printf("    lex ");
+  printf(" %14.14s ", lex_to_str(*t.lex));
+  set_color(lex_to_color(*t.lex));
   dump_lexeme(*t.lex);
+  set_color(0);
 
   printf("    span %14p ", t.span);
   if (t.span) {
@@ -501,7 +505,6 @@ inline void dump_token(const Token& t) {
 }
 
 //------------------------------------------------------------------------------
-// FIXME we could maybe change this back to "a.node_r = nullptr"
 
 inline int atom_cmp(Token& a, const LexemeType& b) {
   return int(a.lex->type) - int(b);
@@ -514,7 +517,8 @@ inline int atom_cmp(Token& a, const char& b) {
 }
 
 template<int N>
-inline bool atom_cmp(Token& a, const StringParam<N>& b) {
+inline int atom_cmp(Token& a, const StringParam<N>& b) {
+  // FIXME do we really need this comparison?
   int len_cmp = int(a.lex->len()) - int(b.str_len);
   if (len_cmp != 0) return len_cmp;
 
@@ -525,6 +529,8 @@ inline bool atom_cmp(Token& a, const StringParam<N>& b) {
 
   return 0;
 }
+
+//------------------------------------------------------------------------------
 
 inline Token* match_punct(void* ctx, Token* a, Token* b, const char* lit, int lit_len) {
   if (!a || a == b) return nullptr;
@@ -607,8 +613,6 @@ inline Token* find_matching_delim(void* ctx, char ldelim, char rdelim, Token* a,
 // For example, Delimited<'(', ')', NodeConstant> will match "(1)" but not
 // "(1 + 2)".
 
-/*
-FIXME how does this work with flat/base/span?
 template<char ldelim, char rdelim, typename P>
 struct Delimited {
   static Token* match(void* ctx, Token* a, Token* b) {
@@ -626,7 +630,6 @@ struct Delimited {
     }
   }
 };
-*/
 
 //------------------------------------------------------------------------------
 /*
@@ -665,8 +668,21 @@ struct FlatAtom : public FlatMaker<FlatAtom<P>> {
 };
 
 template<StringParam lit>
-struct FlatKeyword : public FlatMaker<FlatKeyword<lit>> {
-  using pattern = Keyword<lit>;
+struct FlatKeyword {
+  //using pattern = Keyword<lit>;
+  static Token* match(void* ctx, Token* a, Token* b) {
+    if (!a || a == b) return nullptr;
+    if (!a->lex->type == LEX_KEYWORD) return nullptr;
+
+    Token* end = nullptr;
+    print_trace_start<FlatKeyword<lit>, Token>(a);
+    if (atom_cmp(*a, lit) == 0) {
+      a->span = nullptr;
+      end = a + 1;
+    }
+    print_trace_end<FlatKeyword<lit>, Token>(a, end);
+    return end;
+  }
 };
 
 struct FlatConstant : public FlatMaker<FlatConstant> {
@@ -687,7 +703,21 @@ struct BaseAtom : public BaseMaker<BaseAtom<P>> {
 
 template<StringParam lit>
 struct BaseKeyword : public BaseMaker<BaseKeyword<lit>> {
-  using pattern = Keyword<lit>;
+  //using pattern = Keyword<lit>;
+  static Token* match(void* ctx, Token* a, Token* b) {
+    if (!a || a == b) return nullptr;
+    if (!a->lex->type == LEX_KEYWORD) return nullptr;
+
+    Token* end = nullptr;
+    print_trace_start<BaseKeyword<lit>, Token>(a);
+    if (atom_cmp(*a, lit) == 0) {
+      auto node = new BaseKeyword<lit>();
+      node->init_base(a, a);
+      end = a + 1;
+    }
+    print_trace_end<BaseKeyword<lit>, Token>(a, end);
+    return end;
+  }
 };
 
 struct BaseIdentifier : public BaseMaker<BaseIdentifier> {

@@ -70,12 +70,12 @@ int test_parser(int argc, char** argv) {
 #if 0
 
   paths = {
-    "tests/scratch.c",
+    //"tests/scratch.c",
     //"tests/basic_inputs.h",
     //"mini_tests/csmith_1088.c",
     //"../gcc/gcc/tree-inline.h",
     //"../gcc/gcc/testsuite/gcc.c-torture/execute/20071029-1.c",
-    //"../gcc/gcc/testsuite/gcc.c-torture/compile/20050105-1.c",
+    "../gcc/gcc/testsuite/gcc.c-torture/execute/980505-1.c",
   };
 
   verbose = true;
@@ -125,10 +125,10 @@ int test_parser(int argc, char** argv) {
       continue;
     }
 
-    //parser.dump_tokens();
-    //printf("\n");
-
-    //parser.dump_lexemes();
+    if (verbose) {
+      parser.dump_tokens();
+      printf("\n");
+    }
 
     printf("%04d: Parsing %s\n", parser.file_pass, path.c_str());
     auto root = parser.parse();

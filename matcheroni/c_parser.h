@@ -25,7 +25,7 @@ struct SpanInitializerList;
 struct SpanSpecifier;
 struct SpanStatement;
 struct SpanStatementCompound;
-struct SpanStatementTypedef;
+struct SpanTypedef;
 struct SpanStruct;
 struct SpanTemplate;
 struct SpanTypeDecl;
@@ -163,11 +163,12 @@ public:
 // Our builtin types are any sequence of prefixes followed by a builtin type
 
 struct BaseBuiltinType : public BaseMaker<BaseBuiltinType> {
-  using match_base   = Ref<&C99Parser::match_builtin_type_base>;
   using match_prefix = Ref<&C99Parser::match_builtin_type_prefix>;
+  using match_base   = Ref<&C99Parser::match_builtin_type_base>;
   using match_suffix = Ref<&C99Parser::match_builtin_type_suffix>;
 
   using pattern = Seq<
+    //And<Oneof<Atom<LEX_KEYWORD>, Atom<LEX_IDENTIFIER>>>,
     Any<Seq<match_prefix, And<match_base>>>,
     match_base,
     Opt<match_suffix>
@@ -355,9 +356,11 @@ struct SpanExpressionCast : public SpanMaker<SpanExpressionCast> {
 //------------------------------------------------------------------------------
 
 struct SpanExpressionParen : public SpanMaker<SpanExpressionParen> {
-  using pattern = Seq<
+  using pattern =
+  DelimitedList<
     FlatAtom<'('>,
-    Opt<comma_separated<SpanExpression>>,
+    SpanExpression,
+    FlatAtom<','>,
     FlatAtom<')'>
   >;
 };
@@ -365,9 +368,11 @@ struct SpanExpressionParen : public SpanMaker<SpanExpressionParen> {
 //------------------------------------------------------------------------------
 
 struct SpanExpressionBraces : public SpanMaker<SpanExpressionBraces> {
-  using pattern = Seq<
+  using pattern =
+  DelimitedList<
     FlatAtom<'{'>,
-    Opt<comma_separated<SpanExpression>>,
+    SpanExpression,
+    FlatAtom<','>,
     FlatAtom<'}'>
   >;
 };
@@ -375,9 +380,11 @@ struct SpanExpressionBraces : public SpanMaker<SpanExpressionBraces> {
 //------------------------------------------------------------------------------
 
 struct SpanExpressionSubscript : public SpanMaker<SpanExpressionSubscript> {
-  using pattern = Seq<
+  using pattern =
+  DelimitedList<
     FlatAtom<'['>,
-    comma_separated<SpanExpression>,
+    SpanExpression,
+    FlatAtom<','>,
     FlatAtom<']'>
   >;
 };
@@ -388,10 +395,8 @@ struct SpanExpressionSubscript : public SpanMaker<SpanExpressionSubscript> {
 struct SpanExpressionGccCompound : public SpanMaker<SpanExpressionGccCompound> {
   using pattern = Seq<
     Opt<FlatKeyword<"__extension__">>,
-    FlatAtom<'('>, // Apparently there can be whitespace between these?
-    FlatAtom<'{'>,
-    Any<SpanStatement>,
-    FlatAtom<'}'>,
+    FlatAtom<'('>,
+    SpanStatementCompound,
     FlatAtom<')'>
   >;
 };
@@ -484,48 +489,6 @@ Oneof<
 
 //----------------------------------------
 
-/*
-// This is slow
-using BaseBinaryOp =
-Oneof<
-  MatchOpBinary<"<<=">,
-  MatchOpBinary<">>=">,
-  MatchOpBinary<"->*">,
-  MatchOpBinary<"<=>">,
-  MatchOpBinary<".*">,
-  MatchOpBinary<"::">,
-  MatchOpBinary<"-=">,
-  MatchOpBinary<"->">,
-  MatchOpBinary<"!=">,
-  MatchOpBinary<"*=">,
-  MatchOpBinary<"/=">,
-  MatchOpBinary<"&=">,
-  MatchOpBinary<"%=">,
-  MatchOpBinary<"^=">,
-  MatchOpBinary<"+=">,
-  MatchOpBinary<"<<">,
-  MatchOpBinary<"<=">,
-  MatchOpBinary<"==">,
-  MatchOpBinary<">=">,
-  MatchOpBinary<">>">,
-  MatchOpBinary<"|=">,
-  MatchOpBinary<"||">,
-  MatchOpBinary<"&&">,
-  MatchOpBinary<".">,
-  MatchOpBinary<"/">,
-  MatchOpBinary<"&">,
-  MatchOpBinary<"%">,
-  MatchOpBinary<"^">,
-  MatchOpBinary<"<">,
-  MatchOpBinary<"=">,
-  MatchOpBinary<">">,
-  MatchOpBinary<"|">,
-  MatchOpBinary<"-">,
-  MatchOpBinary<"*">,
-  MatchOpBinary<"+">
->;
-*/
-
 struct SpanExpressionUnit : public SpanMaker<SpanExpressionUnit> {
   using pattern = Seq<
     Any<SpanPrefixOp>,
@@ -536,94 +499,6 @@ struct SpanExpressionUnit : public SpanMaker<SpanExpressionUnit> {
 
 
 struct SpanExpression : public NodeSpan {
-
-  /*
-  // This is not any faster...
-  static Token* match_binary_op2(void* ctx, Token* a, Token* b) {
-    if (!a || a == b) return nullptr;
-
-    if (a->lex->type != LEX_PUNCT) return nullptr;
-
-    const char* c = a->lex->span_a;
-
-    Token* end = nullptr;
-    int prec = 0;
-    int assoc = 0;
-
-    if        (c[0] == '!') {
-      if      (c[1] == '=') { end = a + 2; prec  = 10; assoc =  1; }
-    }
-    else if   (c[0] == ':') {
-      if      (c[1] == ':') { end = a + 2; prec  =  1; assoc =  1; }
-    }
-    else if   (c[0] == '%') {
-      if      (c[1] == '=') { end = a + 2; prec  = 16; assoc = -1; }
-      else                  { end = a + 1; prec  =  5; assoc =  1; }
-    }
-    else if   (c[0] == '&') {
-      if      (c[1] == '=') { end = a + 2; prec  = 16; assoc = -1; }
-      else if (c[1] == '&') { end = a + 2; prec  = 14; assoc =  1; }
-      else                  { end = a + 1; prec  = 11; assoc =  1; }
-    }
-    else if   (c[0] == '*') {
-      if      (c[1] == '=') { end = a + 2; prec  = 16; assoc = -1; }
-      else                  { end = a + 1; prec  =  5; assoc =  1; }
-    }
-    else if   (c[0] == '+') {
-      if      (c[1] == '=') { end = a + 2; prec  = 16; assoc = -1; }
-      else                  { end = a + 1; prec  =  6; assoc =  1; }
-    }
-    else if   (c[0] == '-') {
-      if      (c[1] == '=') { end = a + 2; prec  = 16; assoc = -1; }
-      else                  { end = a + 1; prec  =  6; assoc =  1; }
-    }
-    else if   (c[0] == '.') {
-      if      (c[1] == '*') { end = a + 2; prec  =  4; assoc =  1; }
-      else                  { end = a + 1; prec  =  5; assoc =  1; }
-    }
-    else if   (c[0] == '/') {
-      if      (c[1] == '=') { end = a + 2; prec  = 16; assoc = -1; }
-      else                  { end = a + 1; prec  =  5; assoc =  1; }
-    }
-    // "<<=" "<=>" "<=" "<<" "<"
-    else if   (c[0] == '<') {
-      if      (c[1] == '<' && c[2] == '=') { end = a + 3; prec  = 16; assoc = -1; }
-      else if (c[1] == '=' && c[2] == '>') { end = a + 3; prec  =  8; assoc =  1; }
-      else if (c[1] == '<')                { end = a + 2; prec  =  7; assoc =  1; }
-      else if (c[1] == '=')                { end = a + 2; prec  =  9; assoc =  1; }
-      else                                 { end = a + 1; prec  =  9; assoc =  1; }
-    }
-    else if   (c[0] == '=') {
-      if      (c[1] == '=') { end = a + 2; prec  = 10; assoc =  1; }
-      else                  { end = a + 1; prec  = 16; assoc =  1; }
-    }
-    else if   (c[0] == '>') {
-      if      (c[1] == '>' && c[2] == '=') { end = a + 3; prec  = 16; assoc = -1; }
-      if      (c[1] == '>')                { end = a + 2; prec  =  7; assoc =  1; }
-      if      (c[1] == '=')                { end = a + 2; prec  =  9; assoc =  1; }
-      else                                 { end = a + 1; prec  =  9; assoc =  1; }
-    }
-    else if   (c[0] == '^') {
-      if      (c[1] == '=') { end = a + 2; prec  = 16; assoc = -1; }
-      else                  { end = a + 1; prec  = 12; assoc =  1; }
-    }
-    else if   (c[0] == '|') {
-      if      (c[1] == '|') { end = a + 2; prec  = 15; assoc =  1; }
-      else if (c[1] == '=') { end = a + 2; prec  = 16; assoc = -1; }
-      else                  { end = a + 1; prec  = 13; assoc =  1; }
-    }
-
-    if (end) {
-      auto node = new BaseOpBinary();
-      node->precedence = prec;
-      node->assoc      = assoc;
-      node->init_base(a, end - 1);
-    }
-    return end;
-  }
-  */
-
-
 
   static Token* match_binary_op(void* ctx, Token* a, Token* b) {
     if (!a || a == b) return nullptr;
@@ -678,6 +553,7 @@ struct SpanExpression : public NodeSpan {
 
     while (auto end = binary_pattern::match(ctx, cursor, b)) {
 
+      // Fold up as many nodes based on precedence as we can
       while(1) {
         ParseNode*    na = nullptr;
         BaseOpBinary* ox = nullptr;
@@ -697,7 +573,7 @@ struct SpanExpression : public NodeSpan {
 
         if (ox->precedence < oy->precedence) {
           // Left-associate because right operator is "lower" precedence.
-          // (a * b) + c
+          // "a * b + c" -> "(a * b) + c"
           auto node = new SpanExpressionBinary();
           node->init_span(na->tok_a, nb->tok_b);
         }
@@ -706,13 +582,13 @@ struct SpanExpression : public NodeSpan {
 
           if (ox->assoc == 1) {
             // Left to right
-            // (a + b) - c
+            // "a + b - c" -> "(a + b) - c"
             auto node = new SpanExpressionBinary();
             node->init_span(na->tok_a, nb->tok_b);
           }
           else if (ox->assoc == -1) {
             // Right to left
-            // a = (b = c)
+            // "a = b = c" -> "a = (b = c)"
             auto node = new SpanExpressionBinary();
             node->init_span(nb->tok_a, nc->tok_b);
           }
@@ -728,6 +604,9 @@ struct SpanExpression : public NodeSpan {
       cursor = end;
     }
 
+    // Any binary operators left on the tokens are in increasing-precedence
+    // order, but since there are no more operators we can just fold them up
+    // right-to-left
     while(1) {
       ParseNode*    nb = nullptr;
       BaseOpBinary* oy = nullptr;
@@ -782,11 +661,15 @@ struct SpanAttribute : public SpanMaker<SpanAttribute> {
       FlatKeyword<"__attribute__">,
       FlatKeyword<"__attribute">
     >,
-    FlatAtom<'('>,
-    FlatAtom<'('>,
-    Opt<comma_separated<SpanExpression>>,
-    FlatAtom<')'>,
-    FlatAtom<')'>
+    DelimitedList<
+      Seq<FlatAtom<'('>, FlatAtom<'('>>,
+      Oneof<
+        SpanExpression,
+        Keyword<"const"> // __attribute__((const))
+      >,
+      FlatAtom<','>,
+      Seq<FlatAtom<')'>, FlatAtom<')'>>
+    >
   >;
 };
 
@@ -871,9 +754,11 @@ struct SpanParam : public SpanMaker<SpanParam> {
 //------------------------------------------------------------------------------
 
 struct SpanParamList : public SpanMaker<SpanParamList> {
-  using pattern = Seq<
+  using pattern =
+  DelimitedList<
     FlatAtom<'('>,
-    Opt<comma_separated<SpanParam>>,
+    SpanParam,
+    FlatAtom<','>,
     FlatAtom<')'>
   >;
 };
@@ -891,14 +776,15 @@ struct SpanArraySuffix : public SpanMaker<SpanArraySuffix> {
 
 //------------------------------------------------------------------------------
 
-/*
-// FIXME should use delimited list?
-struct SpanTemplateArgs : public NodeSpanMaker<SpanTemplateArgs> {
-  using pattern = Delimited<'<', '>',
-    Opt<comma_separated<SpanExpression>>
+struct SpanTemplateArgs : public SpanMaker<SpanTemplateArgs> {
+  using pattern =
+  DelimitedList<
+    FlatAtom<'<'>,
+    SpanExpression,
+    FlatAtom<','>,
+    FlatAtom<'>'>
   >;
 };
-*/
 
 //------------------------------------------------------------------------------
 
@@ -916,10 +802,6 @@ struct SpanAtomicType : public SpanMaker<SpanAtomicType> {
 struct SpanSpecifier : public SpanMaker<SpanSpecifier> {
   using pattern = Seq<
     Oneof<
-      //Seq<FlatKeyword<"class">,  BaseClassType>,
-      //Seq<FlatKeyword<"union">,  BaseUnionType>,
-      //Seq<FlatKeyword<"struct">, BaseStructType>,
-      //Seq<FlatKeyword<"enum">,   BaseEnumType>,
       // These have to be BaseIdentifier because "void foo(struct S);" is valid
       // even without the definition of S.
       Seq<FlatKeyword<"class">,  BaseIdentifier>,
@@ -948,13 +830,8 @@ struct SpanSpecifier : public SpanMaker<SpanSpecifier> {
         SpanExpression,
         FlatAtom<')'>
       >
-    >
-
-    /*
-    // FIXME templates
-    ,
+    >,
     Opt<SpanTemplateArgs>
-    */
   >;
 };
 
@@ -1003,18 +880,18 @@ struct SpanAbstractDeclarator : public SpanMaker<SpanAbstractDeclarator> {
 
 struct SpanDeclarator : public SpanMaker<SpanDeclarator> {
   using pattern = Seq<
-    Any<SpanAttribute>,
-    Opt<SpanPointer>,
-    Any<SpanAttribute>,
-    Any<SpanModifier>,
+    Any<
+      SpanAttribute,
+      SpanModifier,
+      SpanPointer
+    >,
     Oneof<
       BaseIdentifier,
       Seq<FlatAtom<'('>, SpanDeclarator, FlatAtom<')'>>
     >,
     Opt<BaseAsmSuffix>,
-    Any<SpanAttribute>,
-    Opt<SpanBitSuffix>,
     Any<
+      SpanBitSuffix,
       SpanAttribute,
       SpanArraySuffix,
       SpanParamList
@@ -1029,16 +906,10 @@ struct SpanDeclaratorList : public SpanMaker<SpanDeclaratorList> {
   comma_separated<
     Seq<
       Oneof<
-        Seq<
-          SpanDeclarator,
-          Opt<SpanBitSuffix>
-        >,
+        Seq<SpanDeclarator, Opt<SpanBitSuffix> >,
         SpanBitSuffix
       >,
-      Opt<Seq<
-        FlatAtom<'='>,
-        SpanInitializer
-      >>
+      Opt<Seq<FlatAtom<'='>, SpanInitializer>>
     >
   >;
 };
@@ -1047,12 +918,13 @@ struct SpanDeclaratorList : public SpanMaker<SpanDeclaratorList> {
 
 struct SpanField : public PatternWrapper<SpanField> {
   using pattern = Oneof<
+    FlatAtom<';'>,
     BaseAccessSpecifier,
     SpanConstructor,
     SpanFunction,
     SpanStruct,
     SpanUnion,
-    //SpanTemplate,
+    SpanTemplate,
     SpanClass,
     SpanEnum,
     SpanDeclaration
@@ -1060,12 +932,10 @@ struct SpanField : public PatternWrapper<SpanField> {
 };
 
 struct SpanFieldList : public SpanMaker<SpanFieldList> {
-  using pattern = DelimitedBlock<
+  using pattern =
+  DelimitedBlock<
     FlatAtom<'{'>,
-    Oneof<
-      FlatAtom<';'>,
-      SpanField
-    >,
+    SpanField,
     FlatAtom<'}'>
   >;
 };
@@ -1174,10 +1044,13 @@ struct SpanClass : public SpanMaker<SpanClass> {
 
 //------------------------------------------------------------------------------
 
-/*
 struct SpanTemplateParams : public SpanMaker<SpanTemplateParams> {
-  using pattern = Delimited<'<', '>',
-    comma_separated<SpanDeclaration>
+  using pattern =
+  DelimitedList<
+    FlatAtom<'<'>,
+    SpanDeclaration,
+    FlatAtom<','>,
+    FlatAtom<'>'>
   >;
 };
 
@@ -1188,7 +1061,6 @@ struct SpanTemplate : public SpanMaker<SpanTemplate> {
     SpanClass
   >;
 };
-*/
 
 //------------------------------------------------------------------------------
 // FIXME should probably have a few diffeerent versions instead of all the opts
@@ -1215,10 +1087,11 @@ struct SpanEnumerator : public SpanMaker<SpanEnumerator> {
 };
 
 struct SpanEnumerators : public SpanMaker<SpanEnumerators> {
-  using pattern = Seq<
+  using pattern =
+  DelimitedList<
     FlatAtom<'{'>,
-    comma_separated<SpanEnumerator>,
-    Opt<FlatAtom<','>>,
+    SpanEnumerator,
+    FlatAtom<','>,
     FlatAtom<'}'>
   >;
 };
@@ -1247,17 +1120,17 @@ struct SpanDesignation : public SpanMaker<SpanDesignation> {
 };
 
 struct SpanInitializerList : public SpanMaker<SpanInitializerList> {
-  using pattern = Seq<
+  using pattern =
+  DelimitedList<
     FlatAtom<'{'>,
-    opt_comma_separated<
-      Seq<
-        Opt<
-          Seq<SpanDesignation, FlatAtom<'='>>,
-          Seq<BaseIdentifier,  FlatAtom<':'>> // This isn't in the C grammar but compndlit-1.c uses it?
-        >,
-        SpanInitializer
-      >
+    Seq<
+      Opt<
+        Seq<SpanDesignation, FlatAtom<'='>>,
+        Seq<BaseIdentifier,  FlatAtom<':'>> // This isn't in the C grammar but compndlit-1.c uses it?
+      >,
+      SpanInitializer
     >,
+    FlatAtom<','>,
     FlatAtom<'}'>
   >;
 };
@@ -1273,15 +1146,13 @@ struct SpanInitializer : public SpanMaker<SpanInitializer> {
 
 struct SpanFunctionIdentifier : public SpanMaker<SpanFunctionIdentifier> {
   using pattern = Seq<
-    Opt<SpanPointer>,
-    Any<SpanAttribute>,
+    Any<SpanAttribute, SpanPointer>,
     Oneof<
       BaseIdentifier,
       Seq<FlatAtom<'('>, SpanFunctionIdentifier, FlatAtom<')'>>
     >
   >;
 };
-
 
 struct SpanFunction : public SpanMaker<SpanFunction> {
   using pattern = Seq<
@@ -1294,6 +1165,7 @@ struct SpanFunction : public SpanMaker<SpanFunction> {
     SpanParamList,
     Opt<BaseAsmSuffix>,
     Opt<BaseKeyword<"const">>,
+    // This is old-style declarations after param list
     Opt<Some<
       Seq<SpanDeclaration, FlatAtom<';'>>
     >>,
@@ -1307,10 +1179,8 @@ struct SpanFunction : public SpanMaker<SpanFunction> {
 //------------------------------------------------------------------------------
 
 struct SpanConstructor : public SpanMaker<SpanConstructor> {
-  using match_class_type  = Ref<&C99Parser::match_class_type>;
-
   using pattern = Seq<
-    BaseStructType,
+    BaseClassType,
     SpanParamList,
     Oneof<
       FlatAtom<';'>,
@@ -1354,27 +1224,14 @@ struct SpanStatementCompound : public SpanMaker<SpanStatementCompound> {
 
 //------------------------------------------------------------------------------
 
-struct SpanStatementDeclaration : public SpanMaker<SpanStatementDeclaration> {
-  using pattern = Seq<
-    SpanDeclaration,
-    FlatAtom<';'>
-  >;
-};
-
-//------------------------------------------------------------------------------
-
-struct SpanStatementExpression : public SpanMaker<SpanStatementExpression> {
-  using pattern = comma_separated<SpanExpression>;
-};
-
-//------------------------------------------------------------------------------
-
 struct SpanStatementFor : public SpanMaker<SpanStatementFor> {
   using pattern = Seq<
     FlatKeyword<"for">,
     FlatAtom<'('>,
+    // This is _not_ the same as
+    // Opt<Oneof<e, x>>, FlatAtom<';'>
     Oneof<
-      Seq<comma_separated<SpanExpression>,  FlatAtom<';'>>,
+      Seq<comma_separated<SpanExpression>, FlatAtom<';'>>,
       Seq<comma_separated<SpanDeclaration>, FlatAtom<';'>>,
       FlatAtom<';'>
     >,
@@ -1382,7 +1239,10 @@ struct SpanStatementFor : public SpanMaker<SpanStatementFor> {
     FlatAtom<';'>,
     Opt<comma_separated<SpanExpression>>,
     FlatAtom<')'>,
-    SpanStatement
+    Oneof<
+      SpanStatementCompound,
+      SpanStatement
+    >
   >;
 };
 
@@ -1399,11 +1259,14 @@ struct SpanStatementElse : public SpanMaker<SpanStatementElse> {
 struct SpanStatementIf : public SpanMaker<SpanStatementIf> {
   using pattern = Seq<
     FlatKeyword<"if">,
-    Seq<
+
+    DelimitedList<
       FlatAtom<'('>,
-      comma_separated<SpanExpression>,
+      SpanExpression,
+      FlatAtom<','>,
       FlatAtom<')'>
     >,
+
     SpanStatement,
     Opt<SpanStatementElse>
   >;
@@ -1414,7 +1277,7 @@ struct SpanStatementIf : public SpanMaker<SpanStatementIf> {
 struct SpanStatementReturn : public SpanMaker<SpanStatementReturn> {
   using pattern = Seq<
     FlatKeyword<"return">,
-    SpanExpression,
+    Opt<SpanExpression>,
     FlatAtom<';'>
   >;
 };
@@ -1470,9 +1333,12 @@ struct SpanStatementSwitch : public SpanMaker<SpanStatementSwitch> {
 struct SpanStatementWhile : public SpanMaker<SpanStatementWhile> {
   using pattern = Seq<
     FlatKeyword<"while">,
-    FlatAtom<'('>,
-    comma_separated<SpanExpression>,
-    FlatAtom<')'>,
+    DelimitedList<
+      FlatAtom<'('>,
+      SpanExpression,
+      FlatAtom<','>,
+      FlatAtom<')'>
+    >,
     SpanStatement
   >;
 };
@@ -1484,9 +1350,12 @@ struct SpanStatementDoWhile : public SpanMaker<SpanStatementDoWhile> {
     FlatKeyword<"do">,
     SpanStatement,
     FlatKeyword<"while">,
-    FlatAtom<'('>,
-    SpanExpression,
-    FlatAtom<')'>,
+    DelimitedList<
+      FlatAtom<'('>,
+      SpanExpression,
+      FlatAtom<','>,
+      FlatAtom<')'>
+    >,
     FlatAtom<';'>
   >;
 };
@@ -1498,6 +1367,22 @@ struct BaseStatementLabel : public BaseMaker<BaseStatementLabel> {
     BaseIdentifier,
     FlatAtom<':'>,
     Opt<FlatAtom<';'>>
+  >;
+};
+
+//------------------------------------------------------------------------------
+
+struct BaseStatementBreak : public BaseMaker<BaseStatementBreak> {
+  using pattern = Seq<
+    Keyword<"break">,
+    FlatAtom<';'>
+  >;
+};
+
+struct BaseStatementContinue : public BaseMaker<BaseStatementContinue> {
+  using pattern = Seq<
+    Keyword<"continue">,
+    FlatAtom<';'>
   >;
 };
 
@@ -1560,7 +1445,7 @@ struct SpanStatementAsm : public SpanMaker<SpanStatementAsm> {
 
 //------------------------------------------------------------------------------
 
-struct SpanStatementTypedef : public SpanMaker<SpanStatementTypedef> {
+struct SpanTypedef : public SpanMaker<SpanTypedef> {
   using pattern = Seq<
     Opt<FlatKeyword<"__extension__">>,
     FlatKeyword<"typedef">,
@@ -1570,8 +1455,7 @@ struct SpanStatementTypedef : public SpanMaker<SpanStatementTypedef> {
       SpanClass,
       SpanEnum,
       SpanDeclaration
-    >,
-    FlatAtom<';'>
+    >
   >;
 
   static void extract_declarator(void* ctx, const SpanDeclarator* decl) {
@@ -1651,12 +1535,12 @@ struct SpanStatementGoto : public SpanMaker<SpanStatementGoto> {
 struct SpanStatement : public PatternWrapper<SpanStatement> {
   using pattern = Oneof<
     // All of these have keywords or something first
-    Seq<SpanClass,  FlatAtom<';'>>,
-    Seq<SpanStruct, FlatAtom<';'>>,
-    Seq<SpanUnion,  FlatAtom<';'>>,
-    Seq<SpanEnum,   FlatAtom<';'>>,
+    Seq<SpanClass,   FlatAtom<';'>>,
+    Seq<SpanStruct,  FlatAtom<';'>>,
+    Seq<SpanUnion,   FlatAtom<';'>>,
+    Seq<SpanEnum,    FlatAtom<';'>>,
+    Seq<SpanTypedef, FlatAtom<';'>>,
 
-    SpanStatementTypedef,
     SpanStatementFor,
     SpanStatementIf,
     SpanStatementReturn,
@@ -1666,6 +1550,8 @@ struct SpanStatement : public PatternWrapper<SpanStatement> {
     SpanStatementGoto,
     SpanStatementAsm,
     SpanStatementCompound,
+    BaseStatementBreak,
+    BaseStatementContinue,
 
     // These don't - but they might confuse a keyword with an identifier...
     BaseStatementLabel,
@@ -1673,8 +1559,8 @@ struct SpanStatement : public PatternWrapper<SpanStatement> {
 
     // If declaration is before expression, we parse "x = 1;" as a declaration
     // because it matches a declarator (bare identifier) + initializer list :/
-    Seq<SpanStatementExpression,  FlatAtom<';'>>,
-    SpanStatementDeclaration,
+    Seq<comma_separated<SpanExpression>,  FlatAtom<';'>>,
+    Seq<SpanDeclaration,                  FlatAtom<';'>>,
 
     // Extra semicolons
     FlatAtom<';'>
@@ -1686,16 +1572,17 @@ struct SpanStatement : public PatternWrapper<SpanStatement> {
 struct SpanTranslationUnit : public SpanMaker<SpanTranslationUnit> {
   using pattern = Any<
     Oneof<
-      BasePreproc,
-      SpanStatementTypedef,
+      Seq<SpanClass,    FlatAtom<';'>>,
       Seq<SpanStruct,   FlatAtom<';'>>,
       Seq<SpanUnion,    FlatAtom<';'>>,
-      Seq<SpanClass,    FlatAtom<';'>>,
       Seq<SpanEnum,     FlatAtom<';'>>,
+      SpanTypedef,
+
+      BasePreproc,
+      Seq<SpanTemplate, FlatAtom<';'>>,
       SpanFunction,
       Seq<SpanDeclaration, FlatAtom<';'>>,
       FlatAtom<';'>
-      //Seq<SpanTemplate, FlatAtom<';'>>,
     >
   >;
 };

@@ -1,7 +1,2 @@
-typedef struct _Token {} Token;
-
-int x, y, z = 8;
-
-static Token* match(void* callback, Token* a, Token* b) {
-  return 1 * 2 + 3 * ++nullptr[q]++;
-}
+int x = 1;
+int32_t y = 0;

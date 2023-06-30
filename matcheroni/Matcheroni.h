@@ -160,6 +160,7 @@ inline int cmp_span_lit(const char* aa, const char* ab, const char* b) {
   }
 }
 
+// This is a _prefix_ matcher, do not use if you want strcmp
 inline const char* match_text(const char* text, const char* a, const char* b) {
   auto c = a;
   for (;c < b && (*c == *text) && *text; c++, text++);
@@ -167,6 +168,7 @@ inline const char* match_text(const char* text, const char* a, const char* b) {
   return c;
 }
 
+// This is a _prefix_ matcher, do not use if you want strcmp
 inline const char* match_text(const char** texts, int text_count, const char* a, const char* b) {
   for (auto i = 0; i < text_count; i++) {
     if (auto t = match_text(texts[i], a, b)) {
@@ -571,32 +573,23 @@ struct DelimitedBlock {
 //   rdelim
 // >;
 
-/* NodePunc<"(">, comma_separated<NodeExpression>, NodePunc<")"> */
-
-template<typename ldelim, typename body, typename rdelim>
+template<typename ldelim, typename item, typename separator, typename rdelim>
 struct DelimitedList {
+
+  // Might be faster to do this in terms of comma_separated, etc?
 
   template<typename atom>
   static atom* match(void* ctx, atom* a, atom* b) {
     a = ldelim::match(ctx, a, b);
     if (a == nullptr) return nullptr;
 
-    while(1) {
-      if (auto end = body::match(ctx, a, b)) {
-        a = end;
-      }
-
-      if (auto end = Atom<','>::match(ctx, a, b)) {
-        a = end;
-        continue;
-      }
-      else if (auto end = rdelim::match(ctx, a, b)) {
-        return end;
-      }
-      else {
-        return nullptr;
-      }
+    while(a) {
+      if (auto end = rdelim::match(ctx, a, b)) return end;
+      a = item::match(ctx, a, b);
+      if (auto end = rdelim::match(ctx, a, b)) return end;
+      a = separator::match(ctx, a, b);
     }
+    return a;
   }
 
 };
