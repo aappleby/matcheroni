@@ -11,13 +11,6 @@ bool should_skip(const std::string& path) {
   if (!path.ends_with(".c")) return true;
 
   std::vector<std::string> bad_files = {
-    // requires jmp_buf
-    "pr56982.c",
-    "20210505-1.c",
-
-    // requires #include "chk.h"
-    "sprintf-chk.c",
-
     // Struct/union declarations in weird places
     "20020210-1.c",
     "920928-4.c",
@@ -46,9 +39,6 @@ bool should_skip(const std::string& path) {
 
     // Weird type stuff idunno i'm tired
     "pr43635.c",
-
-    // Requires preproc
-    "structs.c",
   };
 
   for (auto b : bad_files) if (path.ends_with(b)) return true;
@@ -67,15 +57,10 @@ int test_parser(int argc, char** argv) {
 
   bool verbose = false;
 
-#if 0
-
+#if 1
   paths = {
     //"tests/scratch.c",
-    //"tests/basic_inputs.h",
-    //"mini_tests/csmith_1088.c",
-    //"../gcc/gcc/tree-inline.h",
-    //"../gcc/gcc/testsuite/gcc.c-torture/execute/20071029-1.c",
-    "../gcc/gcc/testsuite/gcc.c-torture/execute/980505-1.c",
+    "../gcc/gcc/testsuite/gcc.c-torture/execute/20040423-1.c",
   };
 
   verbose = true;
@@ -96,19 +81,14 @@ int test_parser(int argc, char** argv) {
   }
 #endif
 
+  // Load all the files, filtering out files that use the preprocessor or that
+  // use builtin macros like va_arg.
 
   for (const auto& path : paths) {
     parser.reset();
 
     //printf("Loading %s\n", path.c_str());
     parser.load(path);
-
-    // can't handle defines yet
-    if (parser.text.find("#define") != std::string::npos) {
-      //printf("Skipping %s\n", path.c_str());
-      parser.file_skip++;
-      continue;
-    }
 
     // va_arg is a macro
     if (parser.text.find("va_arg") != std::string::npos) {
@@ -117,7 +97,6 @@ int test_parser(int argc, char** argv) {
       continue;
     }
 
-
     //printf("Lexing %s\n", path.c_str());
     parser.lex();
     if (parser.tokens.empty() || parser.tokens.size() == 2) {
@@ -125,10 +104,27 @@ int test_parser(int argc, char** argv) {
       continue;
     }
 
+    // Filter all files containing preproc, but not if they're a csmith file
+    if (path.find("csmith") == std::string::npos) {
+      bool has_preproc = false;
+      for (auto t : parser.tokens) {
+        if (t.lex->type == LEX_PREPROC) {
+          has_preproc = true;
+          break;
+        }
+      }
+      if (has_preproc) {
+        parser.file_skip++;
+        continue;
+      }
+    }
+
+    /*
     if (verbose) {
       parser.dump_tokens();
       printf("\n");
     }
+    */
 
     printf("%04d: Parsing %s\n", parser.file_pass, path.c_str());
     auto root = parser.parse();

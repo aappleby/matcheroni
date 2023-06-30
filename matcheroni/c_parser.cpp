@@ -104,7 +104,8 @@ void C99Parser::lex() {
 
   for (auto i = 0; i < lexemes.size(); i++) {
     auto l = &lexemes[i];
-    if (!l->is_gap() && !l->is_preproc()) {
+    //if (!l->is_gap() && !l->is_preproc()) {
+    if (!l->is_gap()) {
       tokens.push_back(Token(l));
     }
   }
@@ -149,7 +150,11 @@ ParseNode* C99Parser::parse() {
 
     if (cursor != tok_b) {
       file_fail++;
+      printf("\n");
+      dump_tokens();
+      printf("\n");
       dump_tree(root);
+      printf("\n");
       printf("fail!\n");
       exit(1);
     }
@@ -189,7 +194,7 @@ void C99Parser::dump_stats() {
 
   // 681730869 - 571465032 = Benchmark creates 110M expression wrapper
 
-  if (file_pass == 10000 && ParseNode::constructor_count != 667747331) {
+  if (file_pass == 10000 && ParseNode::constructor_count != 667723766) {
     set_color(0x008080FF);
     printf("############## NODE COUNT MISMATCH\n");
     set_color(0);
@@ -231,6 +236,9 @@ void C99Parser::dump_stats() {
 //------------------------------------------------------------------------------
 
 void print_escaped(const char* s, int len, unsigned int color) {
+  if (len < 0) {
+    exit(1);
+  }
   set_color(color);
   while(len) {
     auto c = *s++;

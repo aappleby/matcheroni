@@ -613,6 +613,7 @@ inline Token* find_matching_delim(void* ctx, char ldelim, char rdelim, Token* a,
 // For example, Delimited<'(', ')', NodeConstant> will match "(1)" but not
 // "(1 + 2)".
 
+/*
 template<char ldelim, char rdelim, typename P>
 struct Delimited {
   static Token* match(void* ctx, Token* a, Token* b) {
@@ -630,6 +631,7 @@ struct Delimited {
     }
   }
 };
+*/
 
 //------------------------------------------------------------------------------
 /*
@@ -659,117 +661,3 @@ struct NodeDispenser {
   size_t child_count;
 };
 */
-
-//------------------------------------------------------------------------------
-
-template<auto P>
-struct FlatAtom : public FlatMaker<FlatAtom<P>> {
-  using pattern = Atom<P>;
-};
-
-template<StringParam lit>
-struct FlatKeyword {
-  //using pattern = Keyword<lit>;
-  static Token* match(void* ctx, Token* a, Token* b) {
-    if (!a || a == b) return nullptr;
-    if (!a->lex->type == LEX_KEYWORD) return nullptr;
-
-    Token* end = nullptr;
-    print_trace_start<FlatKeyword<lit>, Token>(a);
-    if (atom_cmp(*a, lit) == 0) {
-      a->span = nullptr;
-      end = a + 1;
-    }
-    print_trace_end<FlatKeyword<lit>, Token>(a, end);
-    return end;
-  }
-};
-
-struct FlatConstant : public FlatMaker<FlatConstant> {
-  using pattern = Oneof<
-    Atom<LEX_FLOAT>,
-    Atom<LEX_INT>,
-    Atom<LEX_CHAR>,
-    Some<Atom<LEX_STRING>>
-  >;
-};
-
-//------------------------------------------------------------------------------
-
-template<auto P>
-struct BaseAtom : public BaseMaker<BaseAtom<P>> {
-  using pattern = Atom<P>;
-};
-
-template<StringParam lit>
-struct BaseKeyword : public BaseMaker<BaseKeyword<lit>> {
-  //using pattern = Keyword<lit>;
-  static Token* match(void* ctx, Token* a, Token* b) {
-    if (!a || a == b) return nullptr;
-    if (!a->lex->type == LEX_KEYWORD) return nullptr;
-
-    Token* end = nullptr;
-    print_trace_start<BaseKeyword<lit>, Token>(a);
-    if (atom_cmp(*a, lit) == 0) {
-      auto node = new BaseKeyword<lit>();
-      node->init_base(a, a);
-      end = a + 1;
-    }
-    print_trace_end<BaseKeyword<lit>, Token>(a, end);
-    return end;
-  }
-};
-
-struct BaseIdentifier : public BaseMaker<BaseIdentifier> {
-  using pattern = Atom<LEX_IDENTIFIER>;
-};
-
-struct BasePreproc : public BaseMaker<BasePreproc> {
-  using pattern = Atom<LEX_PREPROC>;
-};
-
-struct BaseConstant : public BaseMaker<BaseConstant> {
-  using pattern = Oneof<
-    Atom<LEX_FLOAT>,
-    Atom<LEX_INT>,
-    Atom<LEX_CHAR>,
-    Some<Atom<LEX_STRING>>
-  >;
-};
-
-template<StringParam lit>
-struct BaseOperator : public NodeBase {
-  static Token* match(void* ctx, Token* a, Token* b) {
-    auto end = match_punct(ctx, a, b, lit.str_val, lit.str_len);
-    if (end && end != a) {
-      auto node = new BaseOperator<lit>();
-      node->init_base(a, end - 1);
-    }
-    return end;
-  }
-};
-
-//------------------------------------------------------------------------------
-
-/*
-template<typename NodeType, typename pattern>
-struct Capture {
-  static Token* match(void* ctx, Token* a, Token* b) {
-    if (!a || a == b) return nullptr;
-    auto end = pattern::match(ctx, a, b);
-    if (end && end != a) {
-      auto node = new NodeType();
-      node->init_span(a, end - 1);
-    }
-    return end;
-  }
-};
-*/
-
-template<typename P>
-using comma_separated = Seq<P, Any<Seq<Atom<','>, P>>, Opt<Atom<','>> >;
-
-template<typename P>
-using opt_comma_separated = Opt<comma_separated<P>>;
-
-//------------------------------------------------------------------------------

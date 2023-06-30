@@ -127,37 +127,65 @@ public:
   std::vector<std::string> typedef_types;
 };
 
+//------------------------------------------------------------------------------
 
+template<auto P>
+struct FlatAtom : public FlatMaker<FlatAtom<P>> {
+  using pattern = Atom<P>;
+};
 
+template<StringParam lit>
+struct FlatKeyword {
+  //using pattern = Keyword<lit>;
+  static Token* match(void* ctx, Token* a, Token* b) {
+    if (!a || a == b) return nullptr;
+    if (!a->lex->type == LEX_KEYWORD) return nullptr;
 
+    Token* end = nullptr;
+    print_trace_start<FlatKeyword<lit>, Token>(a);
+    if (atom_cmp(*a, lit) == 0) {
+      a->span = nullptr;
+      end = a + 1;
+    }
+    print_trace_end<FlatKeyword<lit>, Token>(a, end);
+    return end;
+  }
+};
 
+struct FlatConstant : public FlatMaker<FlatConstant> {
+  using pattern = Oneof<
+    Atom<LEX_FLOAT>,
+    Atom<LEX_INT>,
+    Atom<LEX_CHAR>,
+    Some<Atom<LEX_STRING>>
+  >;
+};
 
+//------------------------------------------------------------------------------
 
+template<auto P>
+struct BaseAtom : public BaseMaker<BaseAtom<P>> {
+  using pattern = Atom<P>;
+};
 
+template<StringParam lit>
+struct BaseKeyword : public BaseMaker<BaseKeyword<lit>> {
+  //using pattern = Keyword<lit>;
+  static Token* match(void* ctx, Token* a, Token* b) {
+    if (!a || a == b) return nullptr;
+    if (!a->lex->type == LEX_KEYWORD) return nullptr;
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    Token* end = nullptr;
+    print_trace_start<BaseKeyword<lit>, Token>(a);
+    if (atom_cmp(*a, lit) == 0) {
+      auto node = new BaseKeyword<lit>();
+      node->init_base(a, a);
+      end = a + 1;
+    }
+    print_trace_end<BaseKeyword<lit>, Token>(a, end);
+    return end;
+  }
+};
 
 //------------------------------------------------------------------------------
 // Our builtin types are any sequence of prefixes followed by a builtin type
@@ -175,11 +203,91 @@ struct BaseBuiltinType : public BaseMaker<BaseBuiltinType> {
   >;
 };
 
-//------------------------------------------------------------------------------
-
 struct BaseTypedefType : public BaseMaker<BaseTypedefType> {
   using pattern = Ref<&C99Parser::match_typedef_type>;
 };
+
+
+//------------------------------------------------------------------------------
+// Excluding builtins and typedefs from being identifiers changes the total
+// number of parse nodes, but why?
+
+// - Because "uint8_t *x = 5" gets misparsed as an expression if uint8_t matches
+// as an identifier
+
+struct BaseIdentifier : public BaseMaker<BaseIdentifier> {
+  using pattern =
+  Seq<
+    Not<BaseBuiltinType>,
+    Not<BaseTypedefType>,
+    Atom<LEX_IDENTIFIER>
+  >;
+};
+
+//------------------------------------------------------------------------------
+
+struct BasePreproc : public BaseMaker<BasePreproc> {
+  using pattern = Atom<LEX_PREPROC>;
+};
+
+//------------------------------------------------------------------------------
+
+struct BaseConstant : public BaseMaker<BaseConstant> {
+  using pattern = Oneof<
+    Atom<LEX_FLOAT>,
+    Atom<LEX_INT>,
+    Atom<LEX_CHAR>,
+    Some<Atom<LEX_STRING>>
+  >;
+};
+
+template<StringParam lit>
+struct BaseOperator : public NodeBase {
+  static Token* match(void* ctx, Token* a, Token* b) {
+    auto end = match_punct(ctx, a, b, lit.str_val, lit.str_len);
+    if (end && end != a) {
+      auto node = new BaseOperator<lit>();
+      node->init_base(a, end - 1);
+    }
+    return end;
+  }
+};
+
+//------------------------------------------------------------------------------
+
+/*
+template<typename NodeType, typename pattern>
+struct Capture {
+  static Token* match(void* ctx, Token* a, Token* b) {
+    if (!a || a == b) return nullptr;
+    auto end = pattern::match(ctx, a, b);
+    if (end && end != a) {
+      auto node = new NodeType();
+      node->init_span(a, end - 1);
+    }
+    return end;
+  }
+};
+*/
+
+template<typename P>
+using comma_separated = Seq<P, Any<Seq<Atom<','>, P>>, Opt<Atom<','>> >;
+
+template<typename P>
+using opt_comma_separated = Opt<comma_separated<P>>;
+
+//------------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
 
 //------------------------------------------------------------------------------
 
@@ -804,10 +912,10 @@ struct SpanSpecifier : public SpanMaker<SpanSpecifier> {
     Oneof<
       // These have to be BaseIdentifier because "void foo(struct S);" is valid
       // even without the definition of S.
-      Seq<FlatKeyword<"class">,  BaseIdentifier>,
-      Seq<FlatKeyword<"union">,  BaseIdentifier>,
-      Seq<FlatKeyword<"struct">, BaseIdentifier>,
-      Seq<FlatKeyword<"enum">,   BaseIdentifier>,
+      Seq<FlatKeyword<"class">,  Oneof<BaseIdentifier, BaseTypedefType>>,
+      Seq<FlatKeyword<"union">,  Oneof<BaseIdentifier, BaseTypedefType>>,
+      Seq<FlatKeyword<"struct">, Oneof<BaseIdentifier, BaseTypedefType>>,
+      Seq<FlatKeyword<"enum">,   Oneof<BaseIdentifier, BaseTypedefType>>,
 
       /*
       // If this was C++, we would also need to match these directly
@@ -958,11 +1066,17 @@ struct BaseStructType : public BaseMaker<BaseStructType> {
 
 struct BaseStructTypeAdder : public BaseIdentifier {
   static Token* match(void* ctx, Token* a, Token* b) {
-    auto end = BaseIdentifier::match(ctx, a, b);
-    if (end) {
+    if (auto end = BaseIdentifier::match(ctx, a, b)) {
       ((C99Parser*)ctx)->add_struct_type(a->lex->text());
+      return end;
     }
-    return end;
+    else if (auto end = BaseTypedefType::match(ctx, a, b)) {
+      // Already typedef'd
+      return end;
+    }
+    else {
+      return nullptr;
+    }
   }
 };
 
@@ -994,11 +1108,17 @@ struct BaseUnionType : public NodeSpan {
 
 struct BaseUnionTypeAdder : public BaseIdentifier {
   static Token* match(void* ctx, Token* a, Token* b) {
-    auto end = BaseIdentifier::match(ctx, a, b);
-    if (end) {
+    if (auto end = BaseIdentifier::match(ctx, a, b)) {
       ((C99Parser*)ctx)->add_union_type(a->lex->text());
+      return end;
     }
-    return end;
+    else if (auto end = BaseTypedefType::match(ctx, a, b)) {
+      // Already typedef'd
+      return end;
+    }
+    else {
+      return nullptr;
+    }
   }
 };
 
@@ -1022,11 +1142,17 @@ struct BaseClassType : public BaseMaker<BaseClassType> {
 
 struct BaseClassTypeAdder : public BaseIdentifier {
   static Token* match(void* ctx, Token* a, Token* b) {
-    auto end = BaseIdentifier::match(ctx, a, b);
-    if (end) {
+    if (auto end = BaseIdentifier::match(ctx, a, b)) {
       ((C99Parser*)ctx)->add_class_type(a->lex->text());
+      return end;
     }
-    return end;
+    else if (auto end = BaseTypedefType::match(ctx, a, b)) {
+      // Already typedef'd
+      return end;
+    }
+    else {
+      return nullptr;
+    }
   }
 };
 
@@ -1071,11 +1197,17 @@ struct BaseEnumType : public BaseMaker<BaseEnumType> {
 
 struct BaseEnumTypeAdder : public BaseIdentifier {
   static Token* match(void* ctx, Token* a, Token* b) {
-    auto end = BaseIdentifier::match(ctx, a, b);
-    if (end) {
+    if (auto end = BaseIdentifier::match(ctx, a, b)) {
       ((C99Parser*)ctx)->add_enum_type(a->lex->text());
+      return end;
     }
-    return end;
+    else if (auto end = BaseTypedefType::match(ctx, a, b)) {
+      // Already typedef'd
+      return end;
+    }
+    else {
+      return nullptr;
+    }
   }
 };
 

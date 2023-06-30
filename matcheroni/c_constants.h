@@ -96,7 +96,7 @@ constexpr std::array c99_keywords = {
 // MUST BE SORTED CASE-SENSITIVE
 
 constexpr std::array builtin_type_base = {
-  "FILE", // used in fprintf.c torture test
+  //"FILE", // used in fprintf.c torture test
   "_Bool",
   "_Complex", // yes this is both a prefix and a type :P
   "_Decimal128",
@@ -159,7 +159,7 @@ constexpr std::array builtin_type_base = {
   "uint64_t",
   "uint8_t",
   "unsigned",
-  "va_list", // technically part of the c library, but it shows up in stdarg test files
+  //"va_list", // technically part of the c library, but it shows up in stdarg test files
   "void",
   "wchar_t",
 };
