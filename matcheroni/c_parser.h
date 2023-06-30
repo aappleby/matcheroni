@@ -535,29 +535,27 @@ struct SpanExpressionUnit : public SpanMaker<SpanExpressionUnit> {
 struct SpanExpression : public NodeSpan {
 
 
-  /*
   // This mess only speeds up the CSmith test by 3%
   static Token* match_binary_op(void* ctx, Token* a, Token* b) {
     if (!a || a == b) return nullptr;
     switch(a->lex->span_a[0]) {
-      case '!': return BaseOpBinary<"!=">::match(ctx, a, b);
-      case '%': return Oneof< BaseOpBinary<"%=">, BaseOpBinary<"%"> >::match(ctx, a, b);
-      case '&': return Oneof< BaseOpBinary<"&&">, BaseOpBinary<"&=">, BaseOpBinary<"&"> >::match(ctx, a, b);
-      case '*': return Oneof< BaseOpBinary<"*=">, BaseOpBinary<"*"> >::match(ctx, a, b);
-      case '+': return Oneof< BaseOpBinary<"+=">, BaseOpBinary<"+"> >::match(ctx, a, b);
-      case '-': return Oneof< BaseOpBinary<"->*">, BaseOpBinary<"->">, BaseOpBinary<"-=">, BaseOpBinary<"-"> >::match(ctx, a, b);
-      case '.': return Oneof< BaseOpBinary<".*">, BaseOpBinary<"."> >::match(ctx, a, b);
-      case '/': return Oneof< BaseOpBinary<"/=">, BaseOpBinary<"/"> >::match(ctx, a, b);
-      case ':': return Oneof< BaseOpBinary<"::"> >::match(ctx, a, b);
-      case '<': return Oneof< BaseOpBinary<"<<=">, BaseOpBinary<"<=>">, BaseOpBinary<"<=">, BaseOpBinary<"<<">, BaseOpBinary<"<"> >::match(ctx, a, b);
-      case '=': return Oneof< BaseOpBinary<"==">, BaseOpBinary<"="> >::match(ctx, a, b);
-      case '>': return Oneof< BaseOpBinary<">>=">, BaseOpBinary<">=">, BaseOpBinary<">>">, BaseOpBinary<">"> >::match(ctx, a, b);
-      case '^': return Oneof< BaseOpBinary<"^=">, BaseOpBinary<"^"> >::match(ctx, a, b);
-      case '|': return Oneof< BaseOpBinary<"||">, BaseOpBinary<"|=">, BaseOpBinary<"|"> >::match(ctx, a, b);
+      case '!': return MatchOpBinary<"!=">::match(ctx, a, b);
+      case '%': return Oneof< MatchOpBinary<"%=">, MatchOpBinary<"%"> >::match(ctx, a, b);
+      case '&': return Oneof< MatchOpBinary<"&&">, MatchOpBinary<"&=">, MatchOpBinary<"&"> >::match(ctx, a, b);
+      case '*': return Oneof< MatchOpBinary<"*=">, MatchOpBinary<"*"> >::match(ctx, a, b);
+      case '+': return Oneof< MatchOpBinary<"+=">, MatchOpBinary<"+"> >::match(ctx, a, b);
+      case '-': return Oneof< MatchOpBinary<"->*">, MatchOpBinary<"->">, MatchOpBinary<"-=">, MatchOpBinary<"-"> >::match(ctx, a, b);
+      case '.': return Oneof< MatchOpBinary<".*">, MatchOpBinary<"."> >::match(ctx, a, b);
+      case '/': return Oneof< MatchOpBinary<"/=">, MatchOpBinary<"/"> >::match(ctx, a, b);
+      case ':': return MatchOpBinary<"::">::match(ctx, a, b);
+      case '<': return Oneof< MatchOpBinary<"<<=">, MatchOpBinary<"<=>">, MatchOpBinary<"<=">, MatchOpBinary<"<<">, MatchOpBinary<"<"> >::match(ctx, a, b);
+      case '=': return Oneof< MatchOpBinary<"==">, MatchOpBinary<"="> >::match(ctx, a, b);
+      case '>': return Oneof< MatchOpBinary<">>=">, MatchOpBinary<">=">, MatchOpBinary<">>">, MatchOpBinary<">"> >::match(ctx, a, b);
+      case '^': return Oneof< MatchOpBinary<"^=">, MatchOpBinary<"^"> >::match(ctx, a, b);
+      case '|': return Oneof< MatchOpBinary<"||">, MatchOpBinary<"|=">, MatchOpBinary<"|"> >::match(ctx, a, b);
       default:  return nullptr;
     }
   }
-  */
 
   //----------------------------------------
 
@@ -583,7 +581,8 @@ struct SpanExpression : public NodeSpan {
 
     // And see if we can chain it to a ternary or binary op.
 
-    using binary_pattern = Seq<BaseBinaryOp, SpanExpressionUnit>;
+    //using binary_pattern = Seq<BaseBinaryOp, SpanExpressionUnit>;
+    using binary_pattern = Seq<Ref<match_binary_op>, SpanExpressionUnit>;
 
     while (auto end = binary_pattern::match(ctx, cursor, b)) {
 
@@ -605,7 +604,8 @@ struct SpanExpression : public NodeSpan {
         if (na->tok_b < a) break;
 
         if (ox->precedence < oy->precedence) {
-          //printf("precedence UP\n");
+          // Left-associate because right operator is "lower" precedence.
+          // (a * b) + c
           auto node = new SpanExpressionBinary();
           node->init_span(na->tok_a, nb->tok_b);
         }
