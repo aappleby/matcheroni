@@ -6,32 +6,31 @@
 
 void dump_tree(const ParseNode* n, int max_depth, int indentation);
 
-struct NodeAbstractDeclarator;
-struct NodeClass;
-struct NodeClassDecl;
-struct NodeConstructor;
-struct NodeDeclaration;
-struct NodeDeclarator;
-struct NodeEnum;
-struct NodeExpression;
-struct NodeFunction;
-struct NodeIdentifier;
-struct NodeInitializer;
-struct NodeInitializerList;
-struct NodeSpecifier;
-struct NodeStatement;
-struct NodeStatementCompound;
-struct NodeStatementTypedef;
-struct NodeStruct;
-struct NodeStructType;
-struct NodeTemplate;
-struct NodeTypeDecl;
-struct NodeTypeName;
-struct NodeUnion;
+struct BaseClassType;
+struct BaseEnumType;
+struct BaseStructType;
+struct BaseTypedefType;
+struct BaseUnionType;
 
-struct NodeClassType   : public NodeSpan {};
-struct NodeUnionType   : public NodeSpan {};
-struct NodeEnumType    : public NodeSpan {};
+struct SpanAbstractDeclarator;
+struct SpanClass;
+struct SpanConstructor;
+struct SpanDeclaration;
+struct SpanDeclarator;
+struct SpanEnum;
+struct SpanExpression;
+struct SpanFunction;
+struct SpanInitializer;
+struct SpanInitializerList;
+struct SpanSpecifier;
+struct SpanStatement;
+struct SpanStatementCompound;
+struct SpanStatementTypedef;
+struct SpanStruct;
+struct SpanTemplate;
+struct SpanTypeDecl;
+struct SpanTypeName;
+struct SpanUnion;
 
 //------------------------------------------------------------------------------
 
@@ -66,6 +65,20 @@ public:
     return nullptr;
   }
 
+  Token* put_type(std::vector<std::string>& types, Token* a, Token* b) {
+    if (!a || a == b) return nullptr;
+    if (a->lex->type == LEX_IDENTIFIER) {
+      auto t = a->lex->text();
+      if (std::find(types.begin(), types.end(), t) == types.end()) {
+        types.push_back(t);
+      }
+      return a + 1;
+    }
+    else {
+      return nullptr;
+    }
+  }
+
   //----------------------------------------------------------------------------
 
   void add_class_type  (const std::string& t) { add_type(t, class_types); }
@@ -79,6 +92,12 @@ public:
   Token* match_union_type  (Token* a, Token* b) { return match_type(union_types,   a, b); }
   Token* match_enum_type   (Token* a, Token* b) { return match_type(enum_types,    a, b); }
   Token* match_typedef_type(Token* a, Token* b) { return match_type(typedef_types, a, b); }
+
+  Token* put_class_type    (Token* a, Token* b) { return put_type(class_types,   a, b); }
+  Token* put_struct_type   (Token* a, Token* b) { return put_type(struct_types,  a, b); }
+  Token* put_union_type    (Token* a, Token* b) { return put_type(union_types,   a, b); }
+  Token* put_enum_type     (Token* a, Token* b) { return put_type(enum_types,    a, b); }
+  Token* put_typedef_type  (Token* a, Token* b) { return put_type(typedef_types, a, b); }
 
   void dump_stats();
   void dump_lexemes();
@@ -108,10 +127,42 @@ public:
   std::vector<std::string> typedef_types;
 };
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 //------------------------------------------------------------------------------
 // Our builtin types are any sequence of prefixes followed by a builtin type
 
-struct NodeBuiltinType : public NodeBaseMaker<NodeBuiltinType> {
+struct BaseBuiltinType : public BaseMaker<BaseBuiltinType> {
   using match_base   = Ref<&C99Parser::match_builtin_type_base>;
   using match_prefix = Ref<&C99Parser::match_builtin_type_prefix>;
   using match_suffix = Ref<&C99Parser::match_builtin_type_suffix>;
@@ -125,20 +176,20 @@ struct NodeBuiltinType : public NodeBaseMaker<NodeBuiltinType> {
 
 //------------------------------------------------------------------------------
 
-struct NodeTypedefType : public NodeBaseMaker<NodeTypedefType> {
+struct BaseTypedefType : public BaseMaker<BaseTypedefType> {
   using pattern = Ref<&C99Parser::match_typedef_type>;
 };
 
 //------------------------------------------------------------------------------
 
-struct NodeOpPrefix : public NodeBase {};
+struct BaseOpPrefix : public NodeBase {};
 
 template<StringParam lit>
-struct MatchOpPrefix : public NodeBase {
+struct MatchOpPrefix {
   static Token* match(void* ctx, Token* a, Token* b) {
     auto end = match_punct(ctx, a, b, lit.str_val, lit.str_len);
     if (end) {
-      auto node = new NodeOpPrefix();
+      auto node = new BaseOpPrefix();
       node->precedence = prefix_precedence(lit.str_val);
       node->assoc      = prefix_assoc(lit.str_val);
       node->init_base(a, end - 1);
@@ -149,14 +200,14 @@ struct MatchOpPrefix : public NodeBase {
 
 //------------------------------------------------------------------------------
 
-struct NodeOpBinary : public NodeBase {};
+struct BaseOpBinary : public NodeBase {};
 
 template<StringParam lit>
-struct MatchOpBinary : public NodeBase {
+struct MatchOpBinary {
   static Token* match(void* ctx, Token* a, Token* b) {
     auto end = match_punct(ctx, a, b, lit.str_val, lit.str_len);
     if (end) {
-      auto node = new NodeOpBinary();
+      auto node = new BaseOpBinary();
       node->precedence = binary_precedence(lit.str_val);
       node->assoc      = binary_assoc(lit.str_val);
       node->init_base(a, end - 1);
@@ -167,14 +218,14 @@ struct MatchOpBinary : public NodeBase {
 
 //------------------------------------------------------------------------------
 
-struct NodeOpSuffix : public NodeBase {};
+struct BaseOpSuffix : public NodeBase {};
 
 template<StringParam lit>
-struct MatchOpSuffix : public NodeBase {
+struct MatchOpSuffix {
   static Token* match(void* ctx, Token* a, Token* b) {
     auto end = match_punct(ctx, a, b, lit.str_val, lit.str_len);
     if (end) {
-      auto node = new NodeOpSuffix();
+      auto node = new BaseOpSuffix();
       node->precedence = suffix_precedence(lit.str_val);
       node->assoc      = suffix_assoc(lit.str_val);
       node->init_base(a, end - 1);
@@ -184,70 +235,164 @@ struct MatchOpSuffix : public NodeBase {
 };
 
 //------------------------------------------------------------------------------
+
+struct BaseQualifier : public BaseMaker<BaseQualifier> {
+  static Token* match(void* ctx, Token* a, Token* b) {
+    if (!a || a == b) return nullptr;
+    auto result = SST<qualifiers>::match(a->lex->span_a, a->lex->span_b);
+    if (result) {
+      auto node = new BaseQualifier();
+      node->init_base(a, a);
+      return a + 1;
+    }
+    else {
+      return nullptr;
+    }
+  }
+};
+
+//------------------------------------------------------------------------------
+
+struct BaseAsmSuffix : public BaseMaker<BaseAsmSuffix> {
+  using pattern = Seq<
+    Oneof<
+      FlatKeyword<"asm">,
+      FlatKeyword<"__asm">,
+      FlatKeyword<"__asm__">
+    >,
+    FlatAtom<'('>,
+    Some<BaseAtom<LEX_STRING>>,
+    FlatAtom<')'>
+  >;
+};
+
+//------------------------------------------------------------------------------
+
+struct BaseAccessSpecifier : public BaseMaker<BaseAccessSpecifier> {
+  using pattern = Seq<
+    Oneof<
+      BaseKeyword<"public">,
+      BaseKeyword<"private">
+    >,
+    FlatAtom<':'>
+  >;
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//------------------------------------------------------------------------------
 // (6.5.4) cast-expression:
 //   unary-expression
 //   ( type-name ) cast-expression
 
-struct NodeExpressionCast : public NodeSpanMaker<NodeExpressionCast> {
+struct SpanExpressionCast : public SpanMaker<SpanExpressionCast> {
   using pattern = Seq<
-    NodePunc<"(">,
-    NodeTypeName,
-    NodePunc<")">
+    FlatAtom<'('>,
+    SpanTypeName,
+    FlatAtom<')'>
   >;
 };
 
 //------------------------------------------------------------------------------
 
-struct NodeExpressionParen : public NodeSpanMaker<NodeExpressionParen> {
+struct SpanExpressionParen : public SpanMaker<SpanExpressionParen> {
   using pattern = Seq<
-    NodePunc<"(">,
-    Opt<comma_separated<NodeExpression>>,
-    NodePunc<")">
+    FlatAtom<'('>,
+    Opt<comma_separated<SpanExpression>>,
+    FlatAtom<')'>
   >;
 };
 
 //------------------------------------------------------------------------------
 
-struct NodeExpressionBraces : public NodeSpanMaker<NodeExpressionBraces> {
+struct SpanExpressionBraces : public SpanMaker<SpanExpressionBraces> {
   using pattern = Seq<
-    NodePunc<"{">,
-    Opt<comma_separated<NodeExpression>>,
-    NodePunc<"}">
+    FlatAtom<'{'>,
+    Opt<comma_separated<SpanExpression>>,
+    FlatAtom<'}'>
   >;
 };
 
 //------------------------------------------------------------------------------
 
-/*
-struct NodeExpressionCall : public NodeMaker<NodeExpressionCall> {
+struct SpanExpressionSubscript : public SpanMaker<SpanExpressionSubscript> {
   using pattern = Seq<
-    NodeIdentifier,
-    NodeExpressionParen
-  >;
-};
-*/
-
-//------------------------------------------------------------------------------
-
-struct NodeExpressionSubscript : public NodeSpanMaker<NodeExpressionSubscript> {
-  using pattern = Seq<
-    NodePunc<"[">,
-    comma_separated<NodeExpression>,
-    NodePunc<"]">
+    FlatAtom<'['>,
+    comma_separated<SpanExpression>,
+    FlatAtom<']'>
   >;
 };
 
 //------------------------------------------------------------------------------
 // This is a weird ({...}) thing that GCC supports
 
-struct NodeExpressionGccCompound : public NodeSpanMaker<NodeExpressionGccCompound> {
+struct SpanExpressionGccCompound : public SpanMaker<SpanExpressionGccCompound> {
   using pattern = Seq<
-    Opt<NodeKeyword<"__extension__">>,
-    NodePunc<"(">, // Apparently there can be whitespace between these?
-    NodePunc<"{">,
-    Any<NodeStatement>,
-    NodePunc<"}">,
-    NodePunc<")">
+    Opt<FlatKeyword<"__extension__">>,
+    FlatAtom<'('>, // Apparently there can be whitespace between these?
+    FlatAtom<'{'>,
+    Any<SpanStatement>,
+    FlatAtom<'}'>,
+    FlatAtom<')'>
   >;
 };
 
@@ -257,57 +402,54 @@ struct NodeExpressionGccCompound : public NodeSpanMaker<NodeExpressionGccCompoun
 
 // FIXME - replace with some other parser
 
-struct NodeExpressionTernary : public NodeSpan {};
-struct NodeExpressionBinary  : public NodeSpan {};
-struct NodeExpressionPrefix  : public NodeSpan {};
-struct NodeExpressionCore    : public NodeSpan {};
-struct NodeExpressionSuffix  : public NodeSpan {};
+struct SpanExpressionTernary : public NodeSpan {};
+struct SpanExpressionBinary  : public NodeSpan {};
 
-struct NodeExpressionSizeof  : public NodeSpanMaker<NodeExpressionSizeof> {
+struct SpanExpressionSizeof  : public SpanMaker<SpanExpressionSizeof> {
   using pattern = Seq<
-    NodeKeyword<"sizeof">,
+    FlatKeyword<"sizeof">,
     Oneof<
-      NodeExpressionCast,
-      NodeExpressionParen,
-      NodeExpression
+      SpanExpressionCast,
+      SpanExpressionParen,
+      SpanExpression
     >
   >;
 };
 
-struct NodeExpressionAlignof  : public NodeSpanMaker<NodeExpressionAlignof> {
+struct SpanExpressionAlignof  : public SpanMaker<SpanExpressionAlignof> {
   using pattern = Seq<
-    NodeKeyword<"__alignof__">,
+    FlatKeyword<"__alignof__">,
     Oneof<
-      NodeExpressionCast,
-      NodeExpressionParen
+      SpanExpressionCast,
+      SpanExpressionParen
     >
   >;
 };
 
-struct NodeExpressionOffsetof  : public NodeSpanMaker<NodeExpressionOffsetof> {
+struct SpanExpressionOffsetof  : public SpanMaker<SpanExpressionOffsetof> {
   using pattern = Seq<
     Oneof<
-      NodeKeyword<"offsetof">,
-      NodeKeyword<"__builtin_offsetof">
+      FlatKeyword<"offsetof">,
+      FlatKeyword<"__builtin_offsetof">
     >,
-    NodePunc<"(">,
-    NodeTypeName,
-    NodePunc<",">,
-    NodeExpression,
-    NodePunc<")">
+    FlatAtom<'('>,
+    SpanTypeName,
+    FlatAtom<','>,
+    SpanExpression,
+    FlatAtom<')'>
   >;
 };
 
 //----------------------------------------
 
-using prefix_op =
+using SpanPrefixOp =
 Oneof<
-  NodeExpressionCast,
-  NodeKeyword<"__extension__">,
-  NodeKeyword<"__real">,
-  NodeKeyword<"__real__">,
-  NodeKeyword<"__imag">,
-  NodeKeyword<"__imag__">,
+  SpanExpressionCast,
+  BaseKeyword<"__extension__">,
+  BaseKeyword<"__real">,
+  BaseKeyword<"__real__">,
+  BaseKeyword<"__imag">,
+  BaseKeyword<"__imag__">,
   MatchOpPrefix<"++">,
   MatchOpPrefix<"--">,
   MatchOpPrefix<"+">,
@@ -320,33 +462,33 @@ Oneof<
 
 //----------------------------------------
 
-using core = Oneof<
-  NodeExpressionSizeof,
-  NodeExpressionAlignof,
-  NodeExpressionOffsetof,
-  NodeExpressionGccCompound,
-  NodeExpressionParen,
-  NodeInitializerList,
-  NodeExpressionBraces,
-  NodeIdentifier,
-  NodeConstant
+using SpanCore = Oneof<
+  SpanExpressionSizeof,
+  SpanExpressionAlignof,
+  SpanExpressionOffsetof,
+  SpanExpressionGccCompound,
+  SpanExpressionParen,
+  SpanInitializerList,
+  SpanExpressionBraces,
+  BaseIdentifier,
+  BaseConstant
 >;
 
 //----------------------------------------
 
-using suffix_op =
+using SpanSuffixOp =
 Oneof<
-  NodeInitializerList,   // must be before NodeExpressionBraces
-  NodeExpressionBraces,
-  NodeExpressionParen,
-  NodeExpressionSubscript,
+  SpanInitializerList,   // must be before SpanExpressionBraces
+  SpanExpressionBraces,
+  SpanExpressionParen,
+  SpanExpressionSubscript,
   MatchOpSuffix<"++">,
   MatchOpSuffix<"--">
 >;
 
 //----------------------------------------
 
-using binary_op =
+using BaseBinaryOp =
 Oneof<
   MatchOpBinary<"<<=">,
   MatchOpBinary<">>=">,
@@ -385,16 +527,16 @@ Oneof<
   MatchOpBinary<"+">
 >;
 
-struct NodeExpressionUnit : public NodeSpanMaker<NodeExpressionUnit> {
+struct SpanExpressionUnit : public SpanMaker<SpanExpressionUnit> {
   using pattern = Seq<
-    Any<prefix_op>,
-    core,
-    Any<suffix_op>
+    Any<SpanPrefixOp>,
+    SpanCore,
+    Any<SpanSuffixOp>
   >;
 };
 
 
-struct NodeExpression : public NodeSpan {
+struct SpanExpression : public NodeSpan {
 
 
   /*
@@ -402,20 +544,20 @@ struct NodeExpression : public NodeSpan {
   static Token* match_binary_op(void* ctx, Token* a, Token* b) {
     if (!a || a == b) return nullptr;
     switch(a->lex->span_a[0]) {
-      case '!': return NodeOpBinary<"!=">::match(ctx, a, b);
-      case '%': return Oneof< NodeOpBinary<"%=">, NodeOpBinary<"%"> >::match(ctx, a, b);
-      case '&': return Oneof< NodeOpBinary<"&&">, NodeOpBinary<"&=">, NodeOpBinary<"&"> >::match(ctx, a, b);
-      case '*': return Oneof< NodeOpBinary<"*=">, NodeOpBinary<"*"> >::match(ctx, a, b);
-      case '+': return Oneof< NodeOpBinary<"+=">, NodeOpBinary<"+"> >::match(ctx, a, b);
-      case '-': return Oneof< NodeOpBinary<"->*">, NodeOpBinary<"->">, NodeOpBinary<"-=">, NodeOpBinary<"-"> >::match(ctx, a, b);
-      case '.': return Oneof< NodeOpBinary<".*">, NodeOpBinary<"."> >::match(ctx, a, b);
-      case '/': return Oneof< NodeOpBinary<"/=">, NodeOpBinary<"/"> >::match(ctx, a, b);
-      case ':': return Oneof< NodeOpBinary<"::"> >::match(ctx, a, b);
-      case '<': return Oneof< NodeOpBinary<"<<=">, NodeOpBinary<"<=>">, NodeOpBinary<"<=">, NodeOpBinary<"<<">, NodeOpBinary<"<"> >::match(ctx, a, b);
-      case '=': return Oneof< NodeOpBinary<"==">, NodeOpBinary<"="> >::match(ctx, a, b);
-      case '>': return Oneof< NodeOpBinary<">>=">, NodeOpBinary<">=">, NodeOpBinary<">>">, NodeOpBinary<">"> >::match(ctx, a, b);
-      case '^': return Oneof< NodeOpBinary<"^=">, NodeOpBinary<"^"> >::match(ctx, a, b);
-      case '|': return Oneof< NodeOpBinary<"||">, NodeOpBinary<"|=">, NodeOpBinary<"|"> >::match(ctx, a, b);
+      case '!': return BaseOpBinary<"!=">::match(ctx, a, b);
+      case '%': return Oneof< BaseOpBinary<"%=">, BaseOpBinary<"%"> >::match(ctx, a, b);
+      case '&': return Oneof< BaseOpBinary<"&&">, BaseOpBinary<"&=">, BaseOpBinary<"&"> >::match(ctx, a, b);
+      case '*': return Oneof< BaseOpBinary<"*=">, BaseOpBinary<"*"> >::match(ctx, a, b);
+      case '+': return Oneof< BaseOpBinary<"+=">, BaseOpBinary<"+"> >::match(ctx, a, b);
+      case '-': return Oneof< BaseOpBinary<"->*">, BaseOpBinary<"->">, BaseOpBinary<"-=">, BaseOpBinary<"-"> >::match(ctx, a, b);
+      case '.': return Oneof< BaseOpBinary<".*">, BaseOpBinary<"."> >::match(ctx, a, b);
+      case '/': return Oneof< BaseOpBinary<"/=">, BaseOpBinary<"/"> >::match(ctx, a, b);
+      case ':': return Oneof< BaseOpBinary<"::"> >::match(ctx, a, b);
+      case '<': return Oneof< BaseOpBinary<"<<=">, BaseOpBinary<"<=>">, BaseOpBinary<"<=">, BaseOpBinary<"<<">, BaseOpBinary<"<"> >::match(ctx, a, b);
+      case '=': return Oneof< BaseOpBinary<"==">, BaseOpBinary<"="> >::match(ctx, a, b);
+      case '>': return Oneof< BaseOpBinary<">>=">, BaseOpBinary<">=">, BaseOpBinary<">>">, BaseOpBinary<">"> >::match(ctx, a, b);
+      case '^': return Oneof< BaseOpBinary<"^=">, BaseOpBinary<"^"> >::match(ctx, a, b);
+      case '|': return Oneof< BaseOpBinary<"||">, BaseOpBinary<"|=">, BaseOpBinary<"|"> >::match(ctx, a, b);
       default:  return nullptr;
     }
   }
@@ -436,30 +578,30 @@ struct NodeExpression : public NodeSpan {
     Token* cursor = a;
 
     using pattern = Seq<
-      Any<prefix_op>,
-      core,
-      Any<suffix_op>
+      Any<SpanPrefixOp>,
+      SpanCore,
+      Any<SpanSuffixOp>
     >;
-    cursor = NodeExpressionUnit::match(ctx, a, b);
+    cursor = SpanExpressionUnit::match(ctx, a, b);
     if (!cursor) return nullptr;
 
     // And see if we can chain it to a ternary or binary op.
 
-    using binary_pattern = Seq<binary_op, NodeExpressionUnit>;
+    using binary_pattern = Seq<BaseBinaryOp, SpanExpressionUnit>;
 
     while (auto end = binary_pattern::match(ctx, cursor, b)) {
 
       while(1) {
         ParseNode*    na = nullptr;
-        NodeOpBinary* ox = nullptr;
+        BaseOpBinary* ox = nullptr;
         ParseNode*    nb = nullptr;
-        NodeOpBinary* oy = nullptr;
+        BaseOpBinary* oy = nullptr;
         ParseNode*    nc = nullptr;
 
-        nc =         (end - 1)->top()->as_a<ParseNode>();
-        oy = nc ? nc->left_neighbor()->as_a<NodeOpBinary>()   : nullptr;
+        nc =          (end - 1)->span->as_a<ParseNode>();
+        oy = nc ? nc->left_neighbor()->as_a<BaseOpBinary>()   : nullptr;
         nb = oy ? oy->left_neighbor()->as_a<ParseNode>() : nullptr;
-        ox = nb ? nb->left_neighbor()->as_a<NodeOpBinary>()   : nullptr;
+        ox = nb ? nb->left_neighbor()->as_a<BaseOpBinary>()   : nullptr;
         na = ox ? ox->left_neighbor()->as_a<ParseNode>() : nullptr;
 
         if (!na || !ox || !nb || !oy || !nc) break;
@@ -468,7 +610,7 @@ struct NodeExpression : public NodeSpan {
 
         if (ox->precedence < oy->precedence) {
           //printf("precedence UP\n");
-          auto node = new NodeExpressionBinary();
+          auto node = new SpanExpressionBinary();
           node->init_span(na->tok_a, nb->tok_b);
         }
         else if (ox->precedence == oy->precedence) {
@@ -477,13 +619,13 @@ struct NodeExpression : public NodeSpan {
           if (ox->assoc == 1) {
             // Left to right
             // (a + b) - c
-            auto node = new NodeExpressionBinary();
+            auto node = new SpanExpressionBinary();
             node->init_span(na->tok_a, nb->tok_b);
           }
           else if (ox->assoc == -1) {
             // Right to left
             // a = (b = c)
-            auto node = new NodeExpressionBinary();
+            auto node = new SpanExpressionBinary();
             node->init_span(nb->tok_a, nc->tok_b);
           }
           else {
@@ -500,37 +642,37 @@ struct NodeExpression : public NodeSpan {
 
     while(1) {
       ParseNode*    nb = nullptr;
-      NodeOpBinary* oy = nullptr;
+      BaseOpBinary* oy = nullptr;
       ParseNode*    nc = nullptr;
 
-      nc =      (cursor - 1)->top()->as_a<ParseNode>();
-      oy = nc ? nc->left_neighbor()->as_a<NodeOpBinary>()   : nullptr;
+      nc =      (cursor - 1)->span->as_a<ParseNode>();
+      oy = nc ? nc->left_neighbor()->as_a<BaseOpBinary>()   : nullptr;
       nb = oy ? oy->left_neighbor()->as_a<ParseNode>() : nullptr;
 
       if (!nb || !oy || !nc) break;
       if (nb->tok_b < a) break;
 
-      auto node = new NodeExpressionBinary();
+      auto node = new SpanExpressionBinary();
       node->init_span(nb->tok_a, nc->tok_b);
     }
 
-    using ternary_pattern = // Not covered by csmith
+    using SpanTernaryOp = // Not covered by csmith
     Seq<
       // pr68249.c - ternary option can be empty
       // pr49474.c - ternary branches can be comma-lists
       MatchOpBinary<"?">,
-      Opt<comma_separated<NodeExpression>>,
+      Opt<comma_separated<SpanExpression>>,
       MatchOpBinary<":">,
-      Opt<comma_separated<NodeExpression>>
+      Opt<comma_separated<SpanExpression>>
     >;
 
-    if (auto end = ternary_pattern::match(ctx, cursor, b)) {
-      auto node = new NodeExpressionTernary();
+    if (auto end = SpanTernaryOp::match(ctx, cursor, b)) {
+      auto node = new SpanExpressionTernary();
       node->init_span(a, end - 1);
       cursor = end;
     }
 
-    auto node = new NodeExpression();
+    auto node = new SpanExpression();
     node->init_span(a, cursor - 1);
 
     return cursor;
@@ -554,163 +696,185 @@ struct NodeExpression : public NodeSpan {
 //------------------------------------------------------------------------------
 // 20010911-1.c - Attribute can be empty
 
-struct NodeAttribute : public NodeSpanMaker<NodeAttribute> {
+struct SpanAttribute : public SpanMaker<SpanAttribute> {
   using pattern = Seq<
     Oneof<
-      NodeKeyword<"__attribute__">,
-      NodeKeyword<"__attribute">
+      FlatKeyword<"__attribute__">,
+      FlatKeyword<"__attribute">
     >,
-    NodePunc<"((">,
-    Opt<comma_separated<NodeExpression>>,
-    NodePunc<"))">
+    FlatAtom<'('>,
+    FlatAtom<'('>,
+    Opt<comma_separated<SpanExpression>>,
+    FlatAtom<')'>,
+    FlatAtom<')'>
   >;
-};
-
-struct NodeAttributes : public NodeSpanMaker<NodeAttributes> {
-  using pattern = Some<NodeAttribute>;
 };
 
 //------------------------------------------------------------------------------
 
-struct NodeQualifier : public PatternWrapper<NodeQualifier> {
-  static Token* match_qualifier(void* ctx, Token* a, Token* b) {
-    if (!a || a == b) return nullptr;
-    auto result = SST<qualifiers>::match(a->lex->span_a, a->lex->span_b);
+struct SpanAlignas : public SpanMaker<SpanAlignas> {
+  using pattern = Seq<
+    FlatKeyword<"_Alignas">,
+    FlatAtom<'('>,
+    Oneof<
+      SpanTypeDecl,
+      BaseConstant
+    >,
+    FlatAtom<')'>
+  >;
+};
 
-    if (result) {
-      // FIXME
-      auto node = new NodeBase();
-      node->init_base(a, a);
-    }
+//------------------------------------------------------------------------------
 
-    return result ? a + 1 : nullptr;
-  }
+struct SpanDeclspec : public SpanMaker<SpanDeclspec> {
+  using pattern = Seq<
+    FlatKeyword<"__declspec">,
+    FlatAtom<'('>,
+    BaseIdentifier,
+    FlatAtom<')'>
+  >;
+};
 
+//------------------------------------------------------------------------------
+
+struct SpanModifier : public PatternWrapper<SpanModifier> {
   // This is the slowest matcher in the app, why?
   using pattern = Oneof<
-    Seq<
-      NodeKeyword<"_Alignas">,
-      NodePunc<"(">,
-      Oneof<
-        NodeTypeDecl,
-        NodeConstant
-      >,
-      NodePunc<")">
-    >,
-    Seq<
-      NodeKeyword<"__declspec">,
-      NodePunc<"(">,
-      NodeIdentifier,
-      NodePunc<")">
-    >,
-    NodeAttribute,
-    Ref<match_qualifier>
+    SpanAlignas,
+    SpanDeclspec,
+    SpanAttribute,
+    BaseQualifier
   >;
 };
 
 //------------------------------------------------------------------------------
 
-struct NodePointer : public NodeSpanMaker<NodePointer> {
+struct SpanTypeDecl : public SpanMaker<SpanTypeDecl> {
+  using pattern = Seq<
+    Any<SpanModifier>,
+    SpanSpecifier,
+    Opt<SpanAbstractDeclarator>
+  >;
+};
+
+//------------------------------------------------------------------------------
+
+struct SpanPointer : public SpanMaker<SpanPointer> {
   using pattern =
   Seq<
     MatchOpPrefix<"*">,
     Any<
       MatchOpPrefix<"*">,
-      NodeQualifier
+      SpanModifier
     >
   >;
 };
 
 //------------------------------------------------------------------------------
 
-struct NodeParam : public NodeSpanMaker<NodeParam> {
+struct SpanParam : public SpanMaker<SpanParam> {
   using pattern = Oneof<
-    NodePunc<"...">,
+    BaseOperator<"...">,
     Seq<
-      Any<NodeQualifier>,
-      NodeSpecifier,
-      Any<NodeQualifier>,
+      Any<SpanModifier>,
+      SpanSpecifier,
+      Any<SpanModifier>,
       Opt<
-        NodeDeclarator,
-        NodeAbstractDeclarator
+        SpanDeclarator,
+        SpanAbstractDeclarator
       >
     >,
-    NodeIdentifier
+    BaseIdentifier
   >;
 };
 
 //------------------------------------------------------------------------------
 
-struct NodeParamList : public NodeSpanMaker<NodeParamList> {
+struct SpanParamList : public SpanMaker<SpanParamList> {
   using pattern = Seq<
-    NodePunc<"(">,
-    Opt<comma_separated<NodeParam>>,
-    NodePunc<")">
+    FlatAtom<'('>,
+    Opt<comma_separated<SpanParam>>,
+    FlatAtom<')'>
   >;
 };
 
 //------------------------------------------------------------------------------
 
-struct NodeArraySuffix : public NodeSpanMaker<NodeArraySuffix> {
+struct SpanArraySuffix : public SpanMaker<SpanArraySuffix> {
   using pattern = Oneof<
-    Seq<NodePunc<"[">, Any<NodeQualifier>,                          Opt<NodeExpression>, NodePunc<"]">>,
-    Seq<NodePunc<"[">, NodeKeyword<"static">, Any<NodeQualifier>,       NodeExpression,  NodePunc<"]">>,
-    Seq<NodePunc<"[">, Any<NodeQualifier>,   NodeKeyword<"static">,     NodeExpression,  NodePunc<"]">>,
-    Seq<NodePunc<"[">, Any<NodeQualifier>,   NodePunc<"*">,                              NodePunc<"]">>
+    Seq<FlatAtom<'['>,                         Any<SpanModifier>,                           Opt<SpanExpression>, FlatAtom<']'>>,
+    Seq<FlatAtom<'['>, BaseKeyword<"static">,  Any<SpanModifier>,                               SpanExpression,  FlatAtom<']'>>,
+    Seq<FlatAtom<'['>,                         Any<SpanModifier>,   BaseKeyword<"static">,      SpanExpression,  FlatAtom<']'>>,
+    Seq<FlatAtom<'['>,                         Any<SpanModifier>,   BaseOperator<"*">,                           FlatAtom<']'>>
   >;
 };
 
 //------------------------------------------------------------------------------
 
-struct NodeTemplateArgs : public NodeSpanMaker<NodeTemplateArgs> {
+/*
+// FIXME should use delimited list?
+struct SpanTemplateArgs : public NodeSpanMaker<SpanTemplateArgs> {
   using pattern = Delimited<'<', '>',
-    Opt<comma_separated<NodeExpression>>
+    Opt<comma_separated<SpanExpression>>
   >;
 };
+*/
 
 //------------------------------------------------------------------------------
 
-struct NodeAtomicType : public NodeSpanMaker<NodeAtomicType> {
+struct SpanAtomicType : public SpanMaker<SpanAtomicType> {
   using pattern = Seq<
-    NodeKeyword<"_Atomic">,
-    NodePunc<"(">,
-    NodeTypeDecl,
-    NodePunc<")">
+    FlatKeyword<"_Atomic">,
+    FlatAtom<'('>,
+    SpanTypeDecl,
+    FlatAtom<')'>
   >;
 };
 
 //------------------------------------------------------------------------------
 
-struct NodeSpecifier : public NodeSpanMaker<NodeSpecifier> {
+struct SpanSpecifier : public SpanMaker<SpanSpecifier> {
   using pattern = Seq<
     Oneof<
-      // FIXME shouldn't these be match_class_name or whatev?
-      Seq<NodeKeyword<"class">,  NodeIdentifier>,
-      Seq<NodeKeyword<"union">,  NodeIdentifier>,
-      Seq<NodeKeyword<"struct">, NodeIdentifier>,
-      Seq<NodeKeyword<"enum">,   NodeIdentifier>,
-      NodeBuiltinType,
-      NodeTypedefType,
+      //Seq<FlatKeyword<"class">,  BaseClassType>,
+      //Seq<FlatKeyword<"union">,  BaseUnionType>,
+      //Seq<FlatKeyword<"struct">, BaseStructType>,
+      //Seq<FlatKeyword<"enum">,   BaseEnumType>,
+      // These have to be BaseIdentifier because "void foo(struct S);" is valid
+      // even without the definition of S.
+      Seq<FlatKeyword<"class">,  BaseIdentifier>,
+      Seq<FlatKeyword<"union">,  BaseIdentifier>,
+      Seq<FlatKeyword<"struct">, BaseIdentifier>,
+      Seq<FlatKeyword<"enum">,   BaseIdentifier>,
+
       /*
-      // If this was C++, we would need to match these directly
-      NodeClassType,
-      NodeStructType,
+      // If this was C++, we would also need to match these directly
+      BaseClassType,
+      BaseStructType,
       NodeUnionType,
       NodeEnumType,
       */
-      NodeAtomicType,
+
+      BaseBuiltinType,
+      BaseTypedefType,
+      SpanAtomicType,
       Seq<
         Oneof<
-          NodeKeyword<"__typeof__">,
-          NodeKeyword<"__typeof">,
-          NodeKeyword<"typeof">
+          FlatKeyword<"__typeof__">,
+          FlatKeyword<"__typeof">,
+          FlatKeyword<"typeof">
         >,
-        NodePunc<"(">,
-        NodeExpression,
-        NodePunc<")">
+        FlatAtom<'('>,
+        SpanExpression,
+        FlatAtom<')'>
       >
-    >,
-    Opt<NodeTemplateArgs>
+    >
+
+    /*
+    // FIXME templates
+    ,
+    Opt<SpanTemplateArgs>
+    */
   >;
 };
 
@@ -718,13 +882,13 @@ struct NodeSpecifier : public NodeSpanMaker<NodeSpecifier> {
 // (6.7.6) type-name:
 //   specifier-qualifier-list abstract-declaratoropt
 
-struct NodeTypeName : public NodeSpanMaker<NodeTypeName> {
+struct SpanTypeName : public SpanMaker<SpanTypeName> {
   using pattern = Seq<
     Some<
-      NodeSpecifier,
-      NodeQualifier
+      SpanSpecifier,
+      SpanModifier
     >,
-    Opt<NodeAbstractDeclarator>
+    Opt<SpanAbstractDeclarator>
   >;
 };
 
@@ -736,79 +900,64 @@ struct NodeTypeName : public NodeSpanMaker<NodeTypeName> {
 //   declarator
 //   declaratoropt : constant-expression
 
-struct NodeBitSuffix : public NodeSpanMaker<NodeBitSuffix> {
-  using pattern = Seq< NodePunc<":">, NodeExpression >;
+struct SpanBitSuffix : public SpanMaker<SpanBitSuffix> {
+  using pattern = Seq< FlatAtom<':'>, SpanExpression >;
 };
 
 //------------------------------------------------------------------------------
 
-struct NodeAsmSuffix : public NodeSpanMaker<NodeAsmSuffix> {
-  using pattern = Seq<
-    Oneof<
-      NodeKeyword<"asm">,
-      NodeKeyword<"__asm">,
-      NodeKeyword<"__asm__">
-    >,
-    NodePunc<"(">,
-    Some<NodeString>,
-    NodePunc<")">
-  >;
-};
-
-//------------------------------------------------------------------------------
-
-struct NodeAbstractDeclarator : public NodeSpanMaker<NodeAbstractDeclarator> {
+struct SpanAbstractDeclarator : public SpanMaker<SpanAbstractDeclarator> {
   using pattern =
   Seq<
-    Opt<NodePointer>,
-    Opt<Seq<NodePunc<"(">, NodeAbstractDeclarator, NodePunc<")">>>,
+    Opt<SpanPointer>,
+    Opt<Seq<FlatAtom<'('>, SpanAbstractDeclarator, FlatAtom<')'>>>,
     Any<
-      NodeAttribute,
-      NodeArraySuffix,
-      NodeParamList
+      SpanAttribute,
+      SpanArraySuffix,
+      SpanParamList
     >
   >;
 };
 
 //------------------------------------------------------------------------------
 
-struct NodeDeclarator : public NodeSpanMaker<NodeDeclarator> {
+struct SpanDeclarator : public SpanMaker<SpanDeclarator> {
   using pattern = Seq<
-    Any<NodeAttribute>,
-    Opt<NodePointer>,
-    Any<NodeAttribute>,
-    Any<NodeQualifier>,
+    Any<SpanAttribute>,
+    Opt<SpanPointer>,
+    Any<SpanAttribute>,
+    Any<SpanModifier>,
     Oneof<
-      NodeIdentifier,
-      Seq<NodePunc<"(">, NodeDeclarator, NodePunc<")">>
+      BaseIdentifier,
+      Seq<FlatAtom<'('>, SpanDeclarator, FlatAtom<')'>>
     >,
-    Opt<NodeAsmSuffix>,
-    Any<NodeAttribute>,
-    Opt<NodeBitSuffix>,
+    Opt<BaseAsmSuffix>,
+    Any<SpanAttribute>,
+    Opt<SpanBitSuffix>,
     Any<
-      NodeAttribute,
-      NodeArraySuffix,
-      NodeParamList
+      SpanAttribute,
+      SpanArraySuffix,
+      SpanParamList
     >
   >;
 };
 
 //------------------------------------------------------------------------------
 
-struct NodeDeclaratorList : public NodeSpanMaker<NodeDeclaratorList> {
+struct SpanDeclaratorList : public SpanMaker<SpanDeclaratorList> {
   using pattern =
   comma_separated<
     Seq<
       Oneof<
         Seq<
-          NodeDeclarator,
-          Opt<NodeBitSuffix>
+          SpanDeclarator,
+          Opt<SpanBitSuffix>
         >,
-        NodeBitSuffix
+        SpanBitSuffix
       >,
       Opt<Seq<
-        NodePunc<"=">,
-        NodeInitializer
+        FlatAtom<'='>,
+        SpanInitializer
       >>
     >
   >;
@@ -816,375 +965,297 @@ struct NodeDeclaratorList : public NodeSpanMaker<NodeDeclaratorList> {
 
 //------------------------------------------------------------------------------
 
-struct NodeAccessSpecifier : public NodeSpanMaker<NodeAccessSpecifier> {
-  using pattern = Seq<
-    Oneof<
-      NodeKeyword<"public">,
-      NodeKeyword<"private">
-    >,
-    NodePunc<":">
-  >;
-};
-
-//------------------------------------------------------------------------------
-
-struct NodeField : public PatternWrapper<NodeField> {
+struct SpanField : public PatternWrapper<SpanField> {
   using pattern = Oneof<
-    NodeAccessSpecifier,
-    NodeConstructor,
-    NodeFunction,
-    NodeStruct,
-    NodeUnion,
-    NodeTemplate,
-    NodeClass,
-    NodeEnum,
-    NodeDeclaration
+    BaseAccessSpecifier,
+    SpanConstructor,
+    SpanFunction,
+    SpanStruct,
+    SpanUnion,
+    //SpanTemplate,
+    SpanClass,
+    SpanEnum,
+    SpanDeclaration
   >;
 };
 
-struct NodeFieldList : public NodeSpanMaker<NodeFieldList> {
-  /*
-  using pattern = Seq<
-    NodePunc<"{">,
-    Any<
-      NodePunc<";">,
-      NodeField
-    >,
-    NodePunc<"}">
-  >;
-  */
+struct SpanFieldList : public SpanMaker<SpanFieldList> {
   using pattern = DelimitedBlock<
-    NodePunc<"{">,
+    FlatAtom<'{'>,
     Oneof<
-      NodePunc<";">,
-      NodeField
+      FlatAtom<';'>,
+      SpanField
     >,
-    NodePunc<"}">
+    FlatAtom<'}'>
   >;
 };
 
 //------------------------------------------------------------------------------
 
-struct NodeNamespace : public NodeSpanMaker<NodeNamespace> {
+struct SpanNamespace : public SpanMaker<SpanNamespace> {
   using pattern = Seq<
-    NodeKeyword<"namespace">,
-    Opt<NodeIdentifier>,
-    Opt<NodeFieldList>
+    FlatKeyword<"namespace">,
+    Opt<BaseIdentifier>,
+    Opt<SpanFieldList>
   >;
 };
 
 //------------------------------------------------------------------------------
 
-struct NodeStructType : public NodeBaseMaker<NodeStructType> {
+struct BaseStructType : public BaseMaker<BaseStructType> {
+  using pattern = Ref<&C99Parser::match_struct_type>;
+};
+
+struct BaseStructTypeAdder : public BaseIdentifier {
+  static Token* match(void* ctx, Token* a, Token* b) {
+    auto end = BaseIdentifier::match(ctx, a, b);
+    if (end) {
+      ((C99Parser*)ctx)->add_struct_type(a->lex->text());
+    }
+    return end;
+  }
+};
+
+struct SpanStruct : public SpanMaker<SpanStruct> {
+  using pattern = Seq<
+    Any<SpanModifier>,
+    FlatKeyword<"struct">,
+    Any<SpanAttribute>,    // This has to be here, there are a lot of struct __attrib__() foo {};
+    Opt<BaseStructTypeAdder>,
+    Opt<SpanFieldList>,
+    Any<SpanAttribute>,
+    Opt<SpanDeclaratorList>
+  >;
+};
+
+//------------------------------------------------------------------------------
+
+struct BaseUnionType : public NodeSpan {
   static Token* match(void* ctx, Token* a, Token* b) {
     auto p = ((C99Parser*)ctx);
-    auto end = p->match_struct_type(a, b);
+    auto end = p->match_union_type(a, b);
     if (end) {
-      auto node = new NodeStructType();
-      node->init_base(a, end - 1);
+      auto node = new BaseUnionType();
+      node->init_span(a, end - 1);
     }
     return end;
   }
 };
 
-struct NodeStructDecl : public NodeSpanMaker<NodeStructDecl> {
-  using pattern = Seq<
-    Any<NodeQualifier>,
-    NodeKeyword<"struct">,
-    Any<NodeAttribute>,    // This has to be here, there are a lot of struct __attrib__() foo {};
-    Opt<NodeIdentifier>
-  >;
-
+struct BaseUnionTypeAdder : public BaseIdentifier {
   static Token* match(void* ctx, Token* a, Token* b) {
-    auto end = NodeSpanMaker::match(ctx, a, b);
+    auto end = BaseIdentifier::match(ctx, a, b);
     if (end) {
-      auto node = a->span;
-      if (auto id = node->child<NodeIdentifier>()) {
-        //printf("Adding struct type %s\n", id->text().c_str());
-        ((C99Parser*)ctx)->add_struct_type(id->text());
-      }
+      ((C99Parser*)ctx)->add_union_type(a->lex->text());
     }
     return end;
   }
 };
 
-struct NodeStruct : public NodeSpanMaker<NodeStruct> {
+struct SpanUnion : public SpanMaker<SpanUnion> {
   using pattern = Seq<
-    NodeStructDecl,
-    Opt<NodeFieldList>,
-    Any<NodeAttribute>,
-    Opt<NodeDeclaratorList>
+    Any<SpanModifier>,
+    FlatKeyword<"union">,
+    Any<SpanAttribute>,
+    Opt<BaseUnionTypeAdder>,
+    Opt<SpanFieldList>,
+    Any<SpanAttribute>,
+    Opt<SpanDeclaratorList>
   >;
 };
 
 //------------------------------------------------------------------------------
 
-struct NodeUnionDecl : public NodeSpanMaker<NodeUnionDecl> {
-  using pattern = Seq<
-    Any<NodeQualifier>,
-    NodeKeyword<"union">,
-    Any<NodeAttribute>,
-    Opt<NodeIdentifier>
-  >;
+struct BaseClassType : public BaseMaker<BaseClassType> {
+  using pattern = Ref<&C99Parser::match_class_type>;
+};
 
-  // We specialize match() to dig out typedef'd identifiers
+struct BaseClassTypeAdder : public BaseIdentifier {
   static Token* match(void* ctx, Token* a, Token* b) {
-    auto end = NodeSpanMaker::match(ctx, a, b);
+    auto end = BaseIdentifier::match(ctx, a, b);
     if (end) {
-      auto node = a->span;
-      if (auto id = node->child<NodeIdentifier>()) {
-        //printf("Adding union type %s\n", id->text().c_str());
-        ((C99Parser*)ctx)->add_union_type(id->text());
-      }
+      ((C99Parser*)ctx)->add_class_type(a->lex->text());
     }
     return end;
   }
 };
 
-
-struct NodeUnion : public NodeSpanMaker<NodeUnion> {
+struct SpanClass : public SpanMaker<SpanClass> {
   using pattern = Seq<
-    NodeUnionDecl,
-    Opt<NodeFieldList>,
-    Any<NodeAttribute>,
-    Opt<NodeDeclaratorList>
-  >;
-};
-
-//------------------------------------------------------------------------------
-
-struct NodeClassDecl : public NodeSpanMaker<NodeClassDecl> {
-  using pattern = Seq<
-    Any<NodeQualifier>,
-    NodeKeyword<"class">,
-    Any<NodeAttribute>,
-    Opt<NodeIdentifier>
-  >;
-
-  // We specialize match() to dig out typedef'd identifiers
-  static Token* match(void* ctx, Token* a, Token* b) {
-    auto end = NodeSpanMaker::match(ctx, a, b);
-    if (end) {
-      auto node = a->span;
-      if (auto id = node->child<NodeIdentifier>()) {
-        //printf("Adding class type %s\n", id->text().c_str());
-        ((C99Parser*)ctx)->add_class_type(id->text());
-      }
-    }
-    return end;
-  }
-};
-
-struct NodeClass : public NodeSpanMaker<NodeClass> {
-  using pattern = Seq<
-    NodeClassDecl,
-    Opt<NodeFieldList>,
-    Any<NodeAttribute>,
-    Opt<NodeDeclaratorList>
-  >;
-};
-
-//------------------------------------------------------------------------------
-
-struct NodeTemplateParams : public NodeSpanMaker<NodeTemplateParams> {
-  using pattern = Delimited<'<', '>',
-    comma_separated<NodeDeclaration>
-  >;
-};
-
-struct NodeTemplate : public NodeSpanMaker<NodeTemplate> {
-  using pattern = Seq<
-    NodeKeyword<"template">,
-    NodeTemplateParams,
-    NodeClass
-  >;
-};
-
-//------------------------------------------------------------------------------
-// FIXME should probably have a few diffeerent versions instead of all the opts
-
-struct NodeEnumName : public NodeSpanMaker<NodeEnumName> {
-  using pattern = Seq<
-    Any<NodeQualifier>,
-    NodeKeyword<"enum">,
-    Opt<Keyword<"class">>,
-    Opt<NodeIdentifier>,
-    Opt<Seq<NodePunc<":">, NodeTypeDecl>>
-  >;
-
-  // We specialize match() to dig out typedef'd identifiers
-  static Token* match(void* ctx, Token* a, Token* b) {
-    auto end = NodeSpanMaker::match(ctx, a, b);
-    if (end) {
-      auto node = a->span;
-      if (auto id = node->child<NodeIdentifier>()) {
-        //printf("Adding enum type %s\n", id->text().c_str());
-        ((C99Parser*)ctx)->add_enum_type(id->text());
-      }
-    }
-    return end;
-  }
-};
-
-struct NodeEnumerator : public NodeSpanMaker<NodeEnumerator> {
-  using pattern = Seq<
-    NodeIdentifier,
-    Opt<Seq<NodePunc<"=">, NodeExpression>>
-  >;
-};
-
-struct NodeEnumerators : public NodeSpanMaker<NodeEnumerators> {
-  using pattern = Seq<
-    NodePunc<"{">,
-    comma_separated<NodeEnumerator>,
-    Opt<NodePunc<",">>,
-    NodePunc<"}">
-  >;
-};
-
-struct NodeEnum : public NodeSpanMaker<NodeEnum> {
-  using pattern = Seq<
-    NodeEnumName,
-    Opt<NodeEnumerators>,
-    Opt<NodeDeclaratorList>
-  >;
-};
-
-//------------------------------------------------------------------------------
-
-struct NodeTypeDecl : public NodeSpanMaker<NodeTypeDecl> {
-  using pattern = Seq<
-    Any<NodeQualifier>,
-    NodeSpecifier,
-    Opt<NodeAbstractDeclarator>
-  >;
-};
-
-//------------------------------------------------------------------------------
-
-struct NodeDesignation : public NodeSpanMaker<NodeDesignation> {
-  using pattern =
-  Some<
-    Seq<NodePunc<"[">, NodeConstant,   NodePunc<"]">>,
-    Seq<NodePunc<"[">, NodeIdentifier, NodePunc<"]">>,
-    Seq<NodePunc<".">, NodeIdentifier>
-  >;
-};
-
-struct NodeInitializerList : public NodeSpanMaker<NodeInitializerList> {
-  using pattern = Seq<
-    NodePunc<"{">,
-    opt_comma_separated<
-      Seq<
-        Opt<
-          Seq<NodeDesignation, NodePunc<"=">>,
-          Seq<NodeIdentifier,  NodePunc<":">> // This isn't in the C grammar but compndlit-1.c uses it?
-        >,
-        NodeInitializer
-      >
-    >,
-    //Opt<Atom<','>>,
-    NodePunc<"}">
-  >;
-};
-
-struct NodeInitializer : public NodeSpanMaker<NodeInitializer> {
-  using pattern = Oneof<
-    NodeInitializerList,
-    NodeExpression
-  >;
-};
-
-//------------------------------------------------------------------------------
-
-struct NodeFunctionIdentifier : public NodeSpanMaker<NodeFunctionIdentifier> {
-  using pattern = Seq<
-    Opt<NodePointer>,
-    Any<NodeAttribute>,
-    Oneof<
-      NodeIdentifier,
-      Seq<NodePunc<"(">, NodeFunctionIdentifier, NodePunc<")">>
-    >
-  >;
-};
-
-
-struct NodeFunction : public NodeSpanMaker<NodeFunction> {
-  using pattern = Seq<
-    Any<
-      NodeQualifier,
-      NodeAttribute,
-      NodeSpecifier
-    >,
-    NodeFunctionIdentifier,
-    NodeParamList,
-    Opt<NodeAsmSuffix>,
-    Opt<NodeKeyword<"const">>,
-    Opt<Some<
-      Seq<NodeDeclaration, NodePunc<";">>
-    >>,
-    Oneof<
-      NodePunc<";">,
-      NodeStatementCompound
-    >
-  >;
-};
-
-//------------------------------------------------------------------------------
-
-struct NodeConstructor : public NodeSpanMaker<NodeConstructor> {
-  using match_class_type  = Ref<&C99Parser::match_class_type>;
-
-  using pattern = Seq<
-    Oneof<
-      //match_class_type,
-      NodeStructType
-    >,
-    NodeParamList,
-    Oneof<
-      NodePunc<";">,
-      NodeStatementCompound
-    >
+    Any<SpanModifier>,
+    FlatKeyword<"class">,
+    Any<SpanAttribute>,
+    Opt<BaseClassTypeAdder>,
+    Opt<SpanFieldList>,
+    Any<SpanAttribute>,
+    Opt<SpanDeclaratorList>
   >;
 };
 
 //------------------------------------------------------------------------------
 
 /*
-using declaration =
-Seq<
-  Some<declaration_specifier>,
-  Opt<comma_separated<
-    Seq<
-      declarator,
-      Opt<
-        Atom<'='>,
-        Oneof<
-          assignment_expression,
-          initializer_list
-        >
-      >
-    >
-  >>,
-  Atom<';'>
->;
+struct SpanTemplateParams : public SpanMaker<SpanTemplateParams> {
+  using pattern = Delimited<'<', '>',
+    comma_separated<SpanDeclaration>
+  >;
+};
+
+struct SpanTemplate : public SpanMaker<SpanTemplate> {
+  using pattern = Seq<
+    FlatKeyword<"template">,
+    SpanTemplateParams,
+    SpanClass
+  >;
+};
 */
 
-// FIXME this is messy
-struct NodeDeclaration : public NodeSpanMaker<NodeDeclaration> {
+//------------------------------------------------------------------------------
+// FIXME should probably have a few diffeerent versions instead of all the opts
+
+struct BaseEnumType : public BaseMaker<BaseEnumType> {
+  using pattern = Ref<&C99Parser::match_enum_type>;
+};
+
+struct BaseEnumTypeAdder : public BaseIdentifier {
+  static Token* match(void* ctx, Token* a, Token* b) {
+    auto end = BaseIdentifier::match(ctx, a, b);
+    if (end) {
+      ((C99Parser*)ctx)->add_enum_type(a->lex->text());
+    }
+    return end;
+  }
+};
+
+struct SpanEnumerator : public SpanMaker<SpanEnumerator> {
   using pattern = Seq<
-    Any<NodeAttribute, NodeQualifier>,
+    BaseIdentifier,
+    Opt<Seq<FlatAtom<'='>, SpanExpression>>
+  >;
+};
+
+struct SpanEnumerators : public SpanMaker<SpanEnumerators> {
+  using pattern = Seq<
+    FlatAtom<'{'>,
+    comma_separated<SpanEnumerator>,
+    Opt<FlatAtom<','>>,
+    FlatAtom<'}'>
+  >;
+};
+
+struct SpanEnum : public SpanMaker<SpanEnum> {
+  using pattern = Seq<
+    Any<SpanModifier>,
+    FlatKeyword<"enum">,
+    Opt<FlatKeyword<"class">>,
+    Opt<BaseEnumTypeAdder>,
+    Opt<Seq<FlatAtom<':'>, SpanTypeDecl>>,
+    Opt<SpanEnumerators>,
+    Opt<SpanDeclaratorList>
+  >;
+};
+
+//------------------------------------------------------------------------------
+
+struct SpanDesignation : public SpanMaker<SpanDesignation> {
+  using pattern =
+  Some<
+    Seq<FlatAtom<'['>, BaseConstant,   FlatAtom<']'>>,
+    Seq<FlatAtom<'['>, BaseIdentifier, FlatAtom<']'>>,
+    Seq<FlatAtom<'.'>, BaseIdentifier>
+  >;
+};
+
+struct SpanInitializerList : public SpanMaker<SpanInitializerList> {
+  using pattern = Seq<
+    FlatAtom<'{'>,
+    opt_comma_separated<
+      Seq<
+        Opt<
+          Seq<SpanDesignation, FlatAtom<'='>>,
+          Seq<BaseIdentifier,  FlatAtom<':'>> // This isn't in the C grammar but compndlit-1.c uses it?
+        >,
+        SpanInitializer
+      >
+    >,
+    FlatAtom<'}'>
+  >;
+};
+
+struct SpanInitializer : public SpanMaker<SpanInitializer> {
+  using pattern = Oneof<
+    SpanInitializerList,
+    SpanExpression
+  >;
+};
+
+//------------------------------------------------------------------------------
+
+struct SpanFunctionIdentifier : public SpanMaker<SpanFunctionIdentifier> {
+  using pattern = Seq<
+    Opt<SpanPointer>,
+    Any<SpanAttribute>,
+    Oneof<
+      BaseIdentifier,
+      Seq<FlatAtom<'('>, SpanFunctionIdentifier, FlatAtom<')'>>
+    >
+  >;
+};
+
+
+struct SpanFunction : public SpanMaker<SpanFunction> {
+  using pattern = Seq<
+    Any<
+      SpanModifier,
+      SpanAttribute,
+      SpanSpecifier
+    >,
+    SpanFunctionIdentifier,
+    SpanParamList,
+    Opt<BaseAsmSuffix>,
+    Opt<BaseKeyword<"const">>,
+    Opt<Some<
+      Seq<SpanDeclaration, FlatAtom<';'>>
+    >>,
+    Oneof<
+      FlatAtom<';'>,
+      SpanStatementCompound
+    >
+  >;
+};
+
+//------------------------------------------------------------------------------
+
+struct SpanConstructor : public SpanMaker<SpanConstructor> {
+  using match_class_type  = Ref<&C99Parser::match_class_type>;
+
+  using pattern = Seq<
+    BaseStructType,
+    SpanParamList,
+    Oneof<
+      FlatAtom<';'>,
+      SpanStatementCompound
+    >
+  >;
+};
+
+//------------------------------------------------------------------------------
+// FIXME this is messy
+
+struct SpanDeclaration : public SpanMaker<SpanDeclaration> {
+  using pattern = Seq<
+    Any<SpanAttribute, SpanModifier>,
 
     Oneof<
       Seq<
-        NodeSpecifier,
-        Any<NodeAttribute, NodeQualifier>,
-        Opt<NodeDeclaratorList>
+        SpanSpecifier,
+        Any<SpanAttribute, SpanModifier>,
+        Opt<SpanDeclaratorList>
       >,
       Seq<
-        Opt<NodeSpecifier>,
-        Any<NodeAttribute, NodeQualifier>,
-        NodeDeclaratorList
+        Opt<SpanSpecifier>,
+        Any<SpanAttribute, SpanModifier>,
+        SpanDeclaratorList
       >
     >
   >;
@@ -1192,285 +1263,285 @@ struct NodeDeclaration : public NodeSpanMaker<NodeDeclaration> {
 
 //------------------------------------------------------------------------------
 
-struct NodeStatementCompound : public NodeSpanMaker<NodeStatementCompound> {
+struct SpanStatementCompound : public SpanMaker<SpanStatementCompound> {
   using pattern =
   DelimitedBlock<
-    NodePunc<"{">,
-    NodeStatement,
-    NodePunc<"}">
+    FlatAtom<'{'>,
+    SpanStatement,
+    FlatAtom<'}'>
   >;
 };
 
 //------------------------------------------------------------------------------
 
-struct NodeStatementDeclaration : public NodeSpanMaker<NodeStatementDeclaration> {
+struct SpanStatementDeclaration : public SpanMaker<SpanStatementDeclaration> {
   using pattern = Seq<
-    NodeDeclaration,
-    NodePunc<";">
+    SpanDeclaration,
+    FlatAtom<';'>
   >;
 };
 
 //------------------------------------------------------------------------------
 
-struct NodeStatementExpression : public NodeSpanMaker<NodeStatementExpression> {
-  using pattern = comma_separated<NodeExpression>;
+struct SpanStatementExpression : public SpanMaker<SpanStatementExpression> {
+  using pattern = comma_separated<SpanExpression>;
 };
 
 //------------------------------------------------------------------------------
 
-struct NodeStatementFor : public NodeSpanMaker<NodeStatementFor> {
+struct SpanStatementFor : public SpanMaker<SpanStatementFor> {
   using pattern = Seq<
-    NodeKeyword<"for">,
-    NodePunc<"(">,
+    FlatKeyword<"for">,
+    FlatAtom<'('>,
     Oneof<
-      Seq<comma_separated<NodeExpression>, NodePunc<";">>,
-      Seq<comma_separated<NodeDeclaration>, NodePunc<";">>,
-      NodePunc<";">
+      Seq<comma_separated<SpanExpression>,  FlatAtom<';'>>,
+      Seq<comma_separated<SpanDeclaration>, FlatAtom<';'>>,
+      FlatAtom<';'>
     >,
-    Opt<comma_separated<NodeExpression>>,
-    NodePunc<";">,
-    Opt<comma_separated<NodeExpression>>,
-    NodePunc<")">,
-    NodeStatement
+    Opt<comma_separated<SpanExpression>>,
+    FlatAtom<';'>,
+    Opt<comma_separated<SpanExpression>>,
+    FlatAtom<')'>,
+    SpanStatement
   >;
 };
 
 //------------------------------------------------------------------------------
 
-struct NodeStatementElse : public NodeSpanMaker<NodeStatementElse> {
+struct SpanStatementElse : public SpanMaker<SpanStatementElse> {
   using pattern =
   Seq<
-    NodeKeyword<"else">,
-    NodeStatement
+    FlatKeyword<"else">,
+    SpanStatement
   >;
 };
 
-struct NodeStatementIf : public NodeSpanMaker<NodeStatementIf> {
+struct SpanStatementIf : public SpanMaker<SpanStatementIf> {
   using pattern = Seq<
-    NodeKeyword<"if">,
+    FlatKeyword<"if">,
     Seq<
-      NodePunc<"(">,
-      comma_separated<NodeExpression>,
-      NodePunc<")">
+      FlatAtom<'('>,
+      comma_separated<SpanExpression>,
+      FlatAtom<')'>
     >,
-    NodeStatement,
-    Opt<NodeStatementElse>
+    SpanStatement,
+    Opt<SpanStatementElse>
   >;
 };
 
 //------------------------------------------------------------------------------
 
-struct NodeStatementReturn : public NodeSpanMaker<NodeStatementReturn> {
+struct SpanStatementReturn : public SpanMaker<SpanStatementReturn> {
   using pattern = Seq<
-    NodeKeyword<"return">,
-    NodeExpression,
-    NodePunc<";">
+    FlatKeyword<"return">,
+    SpanExpression,
+    FlatAtom<';'>
   >;
 };
 
 
 //------------------------------------------------------------------------------
 
-struct NodeStatementCase : public NodeSpanMaker<NodeStatementCase> {
+struct SpanStatementCase : public SpanMaker<SpanStatementCase> {
   using pattern = Seq<
-    NodeKeyword<"case">,
-    NodeExpression,
+    FlatKeyword<"case">,
+    SpanExpression,
     Opt<Seq<
       // case 1...2: - this is supported by GCC?
-      NodePunc<"...">,
-      NodeExpression
+      BaseOperator<"...">,
+      SpanExpression
     >>,
-    NodePunc<":">,
+    FlatAtom<':'>,
     Any<Seq<
-      Not<Keyword<"case">>,
-      Not<Keyword<"default">>,
-      NodeStatement
+      Not<FlatKeyword<"case">>,
+      Not<FlatKeyword<"default">>,
+      SpanStatement
     >>
   >;
 };
 
-struct NodeStatementDefault : public NodeSpanMaker<NodeStatementDefault> {
+struct SpanStatementDefault : public SpanMaker<SpanStatementDefault> {
   using pattern = Seq<
-    NodeKeyword<"default">,
-    NodePunc<":">,
+    FlatKeyword<"default">,
+    FlatAtom<':'>,
     Any<Seq<
-      Not<Keyword<"case">>,
-      Not<Keyword<"default">>,
-      NodeStatement
+      Not<FlatKeyword<"case">>,
+      Not<FlatKeyword<"default">>,
+      SpanStatement
     >>
   >;
 };
 
-struct NodeStatementSwitch : public NodeSpanMaker<NodeStatementSwitch> {
+struct SpanStatementSwitch : public SpanMaker<SpanStatementSwitch> {
   using pattern = Seq<
-    NodeKeyword<"switch">,
-    NodeExpression,
-    NodePunc<"{">,
+    FlatKeyword<"switch">,
+    SpanExpression,
+    FlatAtom<'{'>,
     Any<
-      NodeStatementCase,
-      NodeStatementDefault
+      SpanStatementCase,
+      SpanStatementDefault
     >,
-    NodePunc<"}">
+    FlatAtom<'}'>
   >;
 };
 
 //------------------------------------------------------------------------------
 
-struct NodeStatementWhile : public NodeSpanMaker<NodeStatementWhile> {
+struct SpanStatementWhile : public SpanMaker<SpanStatementWhile> {
   using pattern = Seq<
-    NodeKeyword<"while">,
-    NodePunc<"(">,
-    comma_separated<NodeExpression>,
-    NodePunc<")">,
-    NodeStatement
+    FlatKeyword<"while">,
+    FlatAtom<'('>,
+    comma_separated<SpanExpression>,
+    FlatAtom<')'>,
+    SpanStatement
   >;
 };
 
 //------------------------------------------------------------------------------
 
-struct NodeStatementDoWhile : public NodeSpanMaker<NodeStatementDoWhile> {
+struct SpanStatementDoWhile : public SpanMaker<SpanStatementDoWhile> {
   using pattern = Seq<
-    NodeKeyword<"do">,
-    NodeStatement,
-    NodeKeyword<"while">,
-    NodePunc<"(">,
-    NodeExpression,
-    NodePunc<")">,
-    NodePunc<";">
+    FlatKeyword<"do">,
+    SpanStatement,
+    FlatKeyword<"while">,
+    FlatAtom<'('>,
+    SpanExpression,
+    FlatAtom<')'>,
+    FlatAtom<';'>
   >;
 };
 
 //------------------------------------------------------------------------------
 
-struct NodeStatementLabel: public NodeSpanMaker<NodeStatementLabel> {
+struct BaseStatementLabel : public BaseMaker<BaseStatementLabel> {
   using pattern = Seq<
-    NodeIdentifier,
-    NodePunc<":">,
-    Opt<NodePunc<";">>
+    BaseIdentifier,
+    FlatAtom<':'>,
+    Opt<FlatAtom<';'>>
   >;
 };
 
 //------------------------------------------------------------------------------
 
-struct NodeAsmRef : public NodeSpanMaker<NodeAsmRef> {
+struct SpanAsmRef : public SpanMaker<SpanAsmRef> {
   using pattern = Seq<
-    NodeString,
+    BaseAtom<LEX_STRING>,
     Opt<Seq<
-      NodePunc<"(">,
-      NodeExpression,
-      NodePunc<")">
+      FlatAtom<'('>,
+      SpanExpression,
+      FlatAtom<')'>
     >>
   >;
 };
 
-struct NodeAsmRefs : public NodeSpanMaker<NodeAsmRefs> {
-  using pattern = comma_separated<NodeAsmRef>;
+struct SpanAsmRefs : public SpanMaker<SpanAsmRefs> {
+  using pattern = comma_separated<SpanAsmRef>;
 };
 
 //------------------------------------------------------------------------------
 
-struct NodeAsmQualifiers : public NodeSpanMaker<NodeAsmQualifiers> {
+struct BaseAsmQualifiers : public BaseMaker<BaseAsmQualifiers> {
   using pattern =
   Some<
-    NodeKeyword<"volatile">,
-    NodeKeyword<"__volatile">,
-    NodeKeyword<"__volatile__">,
-    NodeKeyword<"inline">,
-    NodeKeyword<"goto">
+    BaseKeyword<"volatile">,
+    BaseKeyword<"__volatile">,
+    BaseKeyword<"__volatile__">,
+    BaseKeyword<"inline">,
+    BaseKeyword<"goto">
   >;
 };
 
 //------------------------------------------------------------------------------
 
-struct NodeStatementAsm : public NodeSpanMaker<NodeStatementAsm> {
+struct SpanStatementAsm : public SpanMaker<SpanStatementAsm> {
   using pattern = Seq<
     Oneof<
-      NodeKeyword<"asm">,
-      NodeKeyword<"__asm">,
-      NodeKeyword<"__asm__">
+      FlatKeyword<"asm">,
+      FlatKeyword<"__asm">,
+      FlatKeyword<"__asm__">
     >,
-    Opt<NodeAsmQualifiers>,
-    NodePunc<"(">,
-    NodeString, // assembly code
+    Opt<BaseAsmQualifiers>,
+    FlatAtom<'('>,
+    BaseAtom<LEX_STRING>, // assembly code
     SeqOpt<
       // output operands
-      Seq<NodePunc<":">, Opt<NodeAsmRefs>>,
+      Seq<FlatAtom<':'>, Opt<SpanAsmRefs>>,
       // input operands
-      Seq<NodePunc<":">, Opt<NodeAsmRefs>>,
+      Seq<FlatAtom<':'>, Opt<SpanAsmRefs>>,
       // clobbers
-      Seq<NodePunc<":">, Opt<NodeAsmRefs>>,
+      Seq<FlatAtom<':'>, Opt<SpanAsmRefs>>,
       // GotoLabels
-      Seq<NodePunc<":">, Opt<comma_separated<NodeIdentifier>>>
+      Seq<FlatAtom<':'>, Opt<comma_separated<BaseIdentifier>>>
     >,
-    NodePunc<")">,
-    NodePunc<";">
+    FlatAtom<')'>,
+    FlatAtom<';'>
   >;
 };
 
 //------------------------------------------------------------------------------
 
-struct NodeStatementTypedef : public NodeSpanMaker<NodeStatementTypedef> {
+struct SpanStatementTypedef : public SpanMaker<SpanStatementTypedef> {
   using pattern = Seq<
-    Opt<NodeKeyword<"__extension__">>,
-    NodeKeyword<"typedef">,
+    Opt<FlatKeyword<"__extension__">>,
+    FlatKeyword<"typedef">,
     Oneof<
-      NodeStruct,
-      NodeUnion,
-      NodeClass,
-      NodeEnum,
-      NodeDeclaration
+      SpanStruct,
+      SpanUnion,
+      SpanClass,
+      SpanEnum,
+      SpanDeclaration
     >,
-    NodePunc<";">
+    FlatAtom<';'>
   >;
 
-  static void extract_declarator(void* ctx, const NodeDeclarator* decl) {
-    if (auto id = decl->child<NodeIdentifier>()) {
-      ((C99Parser*)ctx)->add_typedef_type(id->text());
+  static void extract_declarator(void* ctx, const SpanDeclarator* decl) {
+    if (auto id = decl->child<BaseIdentifier>()) {
+      ((C99Parser*)ctx)->add_typedef_type(id->tok_a->lex->text());
     }
 
     for (auto child : decl) {
-      if (auto decl = child->as_a<NodeDeclarator>()) {
+      if (auto decl = child->as_a<SpanDeclarator>()) {
         extract_declarator(ctx, decl);
       }
     }
   }
 
-  static void extract_declarator_list(void* ctx, const NodeDeclaratorList* decls) {
+  static void extract_declarator_list(void* ctx, const SpanDeclaratorList* decls) {
     if (!decls) return;
     for (auto child : decls) {
-      if (auto decl = child->as_a<NodeDeclarator>()) {
+      if (auto decl = child->as_a<SpanDeclarator>()) {
         extract_declarator(ctx, decl);
       }
     }
   }
 
   static void extract_type(void* ctx, Token* a, Token* b) {
-    auto node = a->top();
+    auto node = a->span;
 
     //node->dump_tree();
 
-    if (auto type = node->child<NodeStruct>()) {
-      extract_declarator_list(ctx, type->child<NodeDeclaratorList>());
+    if (auto type = node->child<SpanStruct>()) {
+      extract_declarator_list(ctx, type->child<SpanDeclaratorList>());
       return;
     }
 
-    if (auto type = node->child<NodeUnion>()) {
-      extract_declarator_list(ctx, type->child<NodeDeclaratorList>());
+    if (auto type = node->child<SpanUnion>()) {
+      extract_declarator_list(ctx, type->child<SpanDeclaratorList>());
       return;
     }
 
-    if (auto type = node->child<NodeClass>()) {
-      extract_declarator_list(ctx, type->child<NodeDeclaratorList>());
+    if (auto type = node->child<SpanClass>()) {
+      extract_declarator_list(ctx, type->child<SpanDeclaratorList>());
       return;
     }
 
-    if (auto type = node->child<NodeEnum>()) {
-      extract_declarator_list(ctx, type->child<NodeDeclaratorList>());
+    if (auto type = node->child<SpanEnum>()) {
+      extract_declarator_list(ctx, type->child<SpanDeclaratorList>());
       return;
     }
 
-    if (auto type = node->child<NodeDeclaration>()) {
-      extract_declarator_list(ctx, type->child<NodeDeclaratorList>());
+    if (auto type = node->child<SpanDeclaration>()) {
+      extract_declarator_list(ctx, type->child<SpanDeclaratorList>());
       return;
     }
 
@@ -1478,7 +1549,7 @@ struct NodeStatementTypedef : public NodeSpanMaker<NodeStatementTypedef> {
   }
 
   static Token* match(void* ctx, Token* a, Token* b) {
-    auto end = NodeSpanMaker::match(ctx, a, b);
+    auto end = SpanMaker::match(ctx, a, b);
     if (end) extract_type(ctx, a, b);
     return end;
   }
@@ -1486,80 +1557,65 @@ struct NodeStatementTypedef : public NodeSpanMaker<NodeStatementTypedef> {
 
 //------------------------------------------------------------------------------
 
-struct NodeStatementGoto : public NodeSpanMaker<NodeStatementGoto> {
+struct SpanStatementGoto : public SpanMaker<SpanStatementGoto> {
   // pr21356.c - Spec says goto should be an identifier, GCC allows expressions
   using pattern = Seq<
-    NodeKeyword<"goto">,
-    NodeExpression,
-    NodePunc<";">
+    FlatKeyword<"goto">,
+    SpanExpression,
+    FlatAtom<';'>
   >;
 };
 
 //------------------------------------------------------------------------------
 
-struct NodeStatement : public PatternWrapper<NodeStatement> {
+struct SpanStatement : public PatternWrapper<SpanStatement> {
   using pattern = Oneof<
     // All of these have keywords or something first
-    Seq<NodeClass,  NodePunc<";">>,
-    Seq<NodeStruct, NodePunc<";">>,
-    Seq<NodeUnion,  NodePunc<";">>,
-    Seq<NodeEnum,   NodePunc<";">>,
+    Seq<SpanClass,  FlatAtom<';'>>,
+    Seq<SpanStruct, FlatAtom<';'>>,
+    Seq<SpanUnion,  FlatAtom<';'>>,
+    Seq<SpanEnum,   FlatAtom<';'>>,
 
-    NodeStatementTypedef,
-    NodeStatementFor,
-    NodeStatementIf,
-    NodeStatementReturn,
-    NodeStatementSwitch,
-    NodeStatementDoWhile,
-    NodeStatementWhile,
-    NodeStatementGoto,
-    NodeStatementAsm,
-    NodeStatementCompound,
+    SpanStatementTypedef,
+    SpanStatementFor,
+    SpanStatementIf,
+    SpanStatementReturn,
+    SpanStatementSwitch,
+    SpanStatementDoWhile,
+    SpanStatementWhile,
+    SpanStatementGoto,
+    SpanStatementAsm,
+    SpanStatementCompound,
 
     // These don't - but they might confuse a keyword with an identifier...
-    NodeStatementLabel,
-    NodeFunction,
+    BaseStatementLabel,
+    SpanFunction,
 
     // If declaration is before expression, we parse "x = 1;" as a declaration
     // because it matches a declarator (bare identifier) + initializer list :/
-    Seq<NodeStatementExpression,  NodePunc<";">>,
-    NodeStatementDeclaration,
+    Seq<SpanStatementExpression,  FlatAtom<';'>>,
+    SpanStatementDeclaration,
 
     // Extra semicolons
-    NodePunc<";">
+    FlatAtom<';'>
   >;
 };
 
 //------------------------------------------------------------------------------
 
-template<typename P>
-struct ProgressBar {
-  static Token* match(void* ctx, Token* a, Token* b) {
-    printf("%.40s\n", a->lex->span_a);
-    return P::match(ctx, a, b);
-  }
-};
-
-struct NodeToplevelDeclaration {
-  using pattern =
-  Oneof<
-    NodePunc<";">,
-    NodeStatementTypedef,
-    Seq<NodeStruct,   NodePunc<";">>,
-    Seq<NodeUnion,    NodePunc<";">>,
-    Seq<NodeTemplate, NodePunc<";">>,
-    Seq<NodeClass,    NodePunc<";">>,
-    Seq<NodeEnum,     NodePunc<";">>,
-    NodeFunction,
-    Seq<NodeDeclaration, NodePunc<";">>
-  >;
-};
-
-struct NodeTranslationUnit : public NodeSpanMaker<NodeTranslationUnit> {
+struct SpanTranslationUnit : public SpanMaker<SpanTranslationUnit> {
   using pattern = Any<
     Oneof<
-      NodePreproc,
-      NodeToplevelDeclaration::pattern
+      BasePreproc,
+      SpanStatementTypedef,
+      Seq<SpanStruct,   FlatAtom<';'>>,
+      Seq<SpanUnion,    FlatAtom<';'>>,
+      Seq<SpanClass,    FlatAtom<';'>>,
+      Seq<SpanEnum,     FlatAtom<';'>>,
+      SpanFunction,
+      Seq<SpanDeclaration, FlatAtom<';'>>,
+      FlatAtom<';'>
+      //Seq<SpanTemplate, FlatAtom<';'>>,
     >
   >;
 };

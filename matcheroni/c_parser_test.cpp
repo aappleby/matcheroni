@@ -75,7 +75,7 @@ int test_parser(int argc, char** argv) {
     //"mini_tests/csmith_1088.c",
     //"../gcc/gcc/tree-inline.h",
     //"../gcc/gcc/testsuite/gcc.c-torture/execute/20071029-1.c",
-    "../gcc/gcc/testsuite/gcc.c-torture/execute/20001203-2.c",
+    "../gcc/gcc/testsuite/gcc.c-torture/compile/20050105-1.c",
   };
 
   verbose = true;

@@ -118,7 +118,7 @@ void C99Parser::lex() {
 
 ParseNode* C99Parser::parse() {
 
-  NodeTranslationUnit* root = nullptr;
+  SpanTranslationUnit* root = nullptr;
 
   assert(tokens.front().lex->type == LEX_BOF);
   assert(tokens.back().lex->type == LEX_EOF);
@@ -140,12 +140,12 @@ ParseNode* C99Parser::parse() {
   */
 
   parse_accum -= timestamp_ms();
-  cursor = NodeTranslationUnit::match(this, cursor, tok_b);
+  cursor = SpanTranslationUnit::match(this, cursor, tok_b);
   parse_accum += timestamp_ms();
 
   if (cursor) {
-    assert(tok_a->top()->is_a<NodeTranslationUnit>());
-    root = tok_a->top()->as_a<NodeTranslationUnit>();
+    assert(tok_a->span->is_a<SpanTranslationUnit>());
+    root = tok_a->span->as_a<SpanTranslationUnit>();
 
     if (cursor != tok_b) {
       file_fail++;
