@@ -397,10 +397,6 @@ struct SpanExpressionGccCompound : public SpanMaker<SpanExpressionGccCompound> {
 };
 
 //------------------------------------------------------------------------------
-// This captures all expresion forms, but does _not_ bother to put them into a
-// tree or do operator precedence or anything.
-
-// FIXME - replace with some other parser
 
 struct SpanExpressionTernary : public NodeSpan {};
 struct SpanExpressionBinary  : public NodeSpan {};
@@ -614,7 +610,7 @@ struct SpanExpression : public NodeSpan {
           node->init_span(na->tok_a, nb->tok_b);
         }
         else if (ox->precedence == oy->precedence) {
-          assert(ox->assoc == oy->assoc);
+          DCHECK(ox->assoc == oy->assoc);
 
           if (ox->assoc == 1) {
             // Left to right
@@ -629,7 +625,7 @@ struct SpanExpression : public NodeSpan {
             node->init_span(nb->tok_a, nc->tok_b);
           }
           else {
-            assert(false);
+            CHECK(false);
           }
         }
         else {
@@ -1545,7 +1541,7 @@ struct SpanStatementTypedef : public SpanMaker<SpanStatementTypedef> {
       return;
     }
 
-    assert(false);
+    CHECK(false);
   }
 
   static Token* match(void* ctx, Token* a, Token* b) {

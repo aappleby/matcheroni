@@ -153,8 +153,8 @@ int test_parser(int argc, char** argv) {
     auto tok_a = parser.tokens.data();
     auto tok_b = parser.tokens.data() + parser.tokens.size() - 1;
 
-    assert(root->tok_a == tok_a + 1);
-    assert(root->tok_b == tok_b - 1);
+    DCHECK(root->tok_a == tok_a + 1);
+    DCHECK(root->tok_b == tok_b - 1);
 
     //root->check_solid();
   }

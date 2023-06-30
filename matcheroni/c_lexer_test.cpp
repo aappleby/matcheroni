@@ -21,16 +21,16 @@ using namespace matcheroni;
 /*
 void test_match_string() {
   const char* text1 = "asdfasdf \"Hello World\" 123456789";
-  assert("\"Hello World\"" == get_first_match(text1, match_string));
+  DCHECK("\"Hello World\"" == get_first_match(text1, match_string));
 
   const char* text2 = "asdfasdf \"Hello\nWorld\" 123456789";
-  assert("\"Hello\nWorld\"" == get_first_match(text2, match_string));
+  DCHECK("\"Hello\nWorld\"" == get_first_match(text2, match_string));
 
   const char* text3 = "asdfasdf \"Hello\\\"World\" 123456789";
-  assert("\"Hello\\\"World\"" == get_first_match(text3, match_string));
+  DCHECK("\"Hello\\\"World\"" == get_first_match(text3, match_string));
 
   const char* text4 = "asdfasdf \"Hello\\\\World\" 123456789";
-  assert("\"Hello\\\\World\"" == get_first_match(text4, match_string));
+  DCHECK("\"Hello\\\\World\"" == get_first_match(text4, match_string));
 
   printf("test_match_string() pass\n");
 }
@@ -176,7 +176,7 @@ bool test_lex(const std::string& path, const std::string& text, bool echo) {
       }
 
       if (echo) {
-        set_color(lexeme.color());
+        //set_color(lexeme.color());
         if (lexeme.type == LEX_NEWLINE) {
           printf("\\n");
           fwrite(cursor, 1, lexeme.span_b - cursor, stdout);

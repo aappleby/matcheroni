@@ -1,20 +1,25 @@
 
 #pragma once
-#include <typeinfo>
-
 #include "Lexemes.h"
 #include "SlabAlloc.h"
+#include <typeinfo>
+#include <assert.h>
 
-struct Lexeme;
 struct Token;
 struct ParseNode;
-struct NodeBase;
-struct NodeSpan;
 
 void dump_lexeme(const Lexeme& l);
 void dump_token(const Token& t);
 void dump_tree(const ParseNode* n, int max_depth, int indentation);
 void set_color(uint32_t c);
+
+#ifdef DEBUG
+#define DCHECK(A) assert(A)
+#else
+#define DCHECK(A)
+#endif
+
+#define CHECK(A) assert(A)
 
 //------------------------------------------------------------------------------
 // Tokens associate lexemes with parse nodes.
@@ -68,9 +73,9 @@ struct ParseNode {
   //----------------------------------------
 
   void attach_child(ParseNode* child) {
-    assert(child);
-    assert(child->prev == nullptr);
-    assert(child->next == nullptr);
+    DCHECK(child);
+    DCHECK(child->prev == nullptr);
+    DCHECK(child->next == nullptr);
 
     if (tail) {
       tail->next = child;
@@ -210,17 +215,17 @@ struct ParseNode {
     }
 
     // Our prev/next pointers should be hooked up correctly
-    assert(!next || next->prev == this);
-    assert(!prev || prev->next == this);
+    DCHECK(!next || next->prev == this);
+    DCHECK(!prev || prev->next == this);
 
     ParseNode* cursor = nullptr;
 
     // Check node chain
     for (cursor = head; cursor && cursor->next; cursor = cursor->next);
-    assert(cursor == tail);
+    DCHECK(cursor == tail);
 
     for (cursor = tail; cursor && cursor->prev; cursor = cursor->prev);
-    assert(cursor == head);
+    DCHECK(cursor == head);
   }
 
   //----------------------------------------
@@ -247,13 +252,15 @@ struct NodeBase : public ParseNode {
 
   void init_base(Token* tok_a, Token* tok_b) {
     constructor_count++;
-    assert(tok_a <= tok_b);
+    DCHECK(tok_a <= tok_b);
 
     this->tok_a = tok_a;
     this->tok_b = tok_b;
 
     // Wipe spans out from under this node
-    for (auto c = tok_a; c <= tok_b; c++) c->span = nullptr;
+    for (auto c = tok_a + 1; c < tok_b; c++) {
+      c->span = nullptr;
+    }
 
     tok_a->span = this;
     tok_b->span = this;
@@ -267,7 +274,7 @@ struct NodeSpan : public ParseNode {
 
   void init_span(Token* tok_a, Token* tok_b) {
     constructor_count++;
-    assert(tok_a <= tok_b);
+    DCHECK(tok_a <= tok_b);
 
     this->tok_a = tok_a;
     this->tok_b = tok_b;
@@ -279,15 +286,19 @@ struct NodeSpan : public ParseNode {
         auto child = cursor->span;
         attach_child(child);
         cursor = child->tok_b + 1;
+        child->tok_a->span = nullptr;
+        child->tok_b->span = nullptr;
       }
       else {
         cursor++;
       }
     }
 
-    // FIXME this is wasteful
-    // Wipe spans out from under this node
-    for (auto c = tok_a; c <= tok_b; c++) c->span = nullptr;
+#ifdef DEBUG
+    for (auto c = tok_a + 1; c < tok_b; c++) {
+      DCHECK(c->span == nullptr);
+    }
+#endif
 
     tok_a->span = this;
     tok_b->span = this;

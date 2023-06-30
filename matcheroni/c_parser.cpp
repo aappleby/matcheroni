@@ -109,7 +109,7 @@ void C99Parser::lex() {
     }
   }
 
-  assert(tokens.back().lex->is_eof());
+  DCHECK(tokens.back().lex->is_eof());
 
   lex_accum += timestamp_ms();
 }
@@ -120,14 +120,14 @@ ParseNode* C99Parser::parse() {
 
   SpanTranslationUnit* root = nullptr;
 
-  assert(tokens.front().lex->type == LEX_BOF);
-  assert(tokens.back().lex->type == LEX_EOF);
+  DCHECK(tokens.front().lex->type == LEX_BOF);
+  DCHECK(tokens.back().lex->type == LEX_EOF);
 
   auto tok_a = tokens.data() + 1;
   auto tok_b = tokens.data() + tokens.size() - 1;
 
-  assert(tok_a->lex->type != LEX_BOF);
-  assert(tok_b->lex->type == LEX_EOF);
+  DCHECK(tok_a->lex->type != LEX_BOF);
+  DCHECK(tok_b->lex->type == LEX_EOF);
 
   // Skip over BOF
   auto cursor = tok_a;
@@ -144,14 +144,13 @@ ParseNode* C99Parser::parse() {
   parse_accum += timestamp_ms();
 
   if (cursor) {
-    assert(tok_a->span->is_a<SpanTranslationUnit>());
+    DCHECK(tok_a->span->is_a<SpanTranslationUnit>());
     root = tok_a->span->as_a<SpanTranslationUnit>();
 
     if (cursor != tok_b) {
       file_fail++;
       dump_tree(root);
       printf("fail!\n");
-      //assert(cursor == tok_b);
       exit(1);
     }
     else {
@@ -188,7 +187,7 @@ Token* C99Parser::match_builtin_type_suffix(Token* a, Token* b) {
 void C99Parser::dump_stats() {
   double total_time = io_accum + lex_accum + parse_accum + cleanup_accum;
 
-  if (file_pass == 10000 && ParseNode::constructor_count != 913341240) {
+  if (file_pass == 10000 && ParseNode::constructor_count != 681730869) {
     set_color(0x008080FF);
     printf("############## NODE COUNT MISMATCH\n");
     set_color(0);
