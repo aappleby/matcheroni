@@ -678,17 +678,6 @@ struct FlatConstant : public FlatMaker<FlatConstant> {
   >;
 };
 
-template<StringParam lit>
-struct FlatOperator {
-  static Token* match(void* ctx, Token* a, Token* b) {
-    auto end = match_punct(ctx, a, b, lit.str_val, lit.str_len);
-    if (end) {
-      for (auto c = a; c < end; c++) c->span = nullptr;
-    }
-    return end;
-  }
-};
-
 //------------------------------------------------------------------------------
 
 template<auto P>

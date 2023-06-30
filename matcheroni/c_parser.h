@@ -676,14 +676,6 @@ struct SpanExpression : public NodeSpan {
 
   static Token* match(void* ctx, Token* a, Token* b) {
     auto result = match2(ctx, a, b);
-    /*
-    if (result) {
-      int node_count = 0;
-      for (auto c = a + 1; c < b; c++) {
-        if (c->node_r) dump_tree(c->node_r, 0, 0);
-      }
-    }
-    */
     return result;
   }
 
