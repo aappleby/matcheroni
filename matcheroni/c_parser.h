@@ -484,6 +484,8 @@ Oneof<
 
 //----------------------------------------
 
+/*
+// This is slow
 using BaseBinaryOp =
 Oneof<
   MatchOpBinary<"<<=">,
@@ -522,6 +524,7 @@ Oneof<
   MatchOpBinary<"*">,
   MatchOpBinary<"+">
 >;
+*/
 
 struct SpanExpressionUnit : public SpanMaker<SpanExpressionUnit> {
   using pattern = Seq<
@@ -534,25 +537,114 @@ struct SpanExpressionUnit : public SpanMaker<SpanExpressionUnit> {
 
 struct SpanExpression : public NodeSpan {
 
+  /*
+  // This is not any faster...
+  static Token* match_binary_op2(void* ctx, Token* a, Token* b) {
+    if (!a || a == b) return nullptr;
 
-  // This mess only speeds up the CSmith test by 3%
+    if (a->lex->type != LEX_PUNCT) return nullptr;
+
+    const char* c = a->lex->span_a;
+
+    Token* end = nullptr;
+    int prec = 0;
+    int assoc = 0;
+
+    if        (c[0] == '!') {
+      if      (c[1] == '=') { end = a + 2; prec  = 10; assoc =  1; }
+    }
+    else if   (c[0] == ':') {
+      if      (c[1] == ':') { end = a + 2; prec  =  1; assoc =  1; }
+    }
+    else if   (c[0] == '%') {
+      if      (c[1] == '=') { end = a + 2; prec  = 16; assoc = -1; }
+      else                  { end = a + 1; prec  =  5; assoc =  1; }
+    }
+    else if   (c[0] == '&') {
+      if      (c[1] == '=') { end = a + 2; prec  = 16; assoc = -1; }
+      else if (c[1] == '&') { end = a + 2; prec  = 14; assoc =  1; }
+      else                  { end = a + 1; prec  = 11; assoc =  1; }
+    }
+    else if   (c[0] == '*') {
+      if      (c[1] == '=') { end = a + 2; prec  = 16; assoc = -1; }
+      else                  { end = a + 1; prec  =  5; assoc =  1; }
+    }
+    else if   (c[0] == '+') {
+      if      (c[1] == '=') { end = a + 2; prec  = 16; assoc = -1; }
+      else                  { end = a + 1; prec  =  6; assoc =  1; }
+    }
+    else if   (c[0] == '-') {
+      if      (c[1] == '=') { end = a + 2; prec  = 16; assoc = -1; }
+      else                  { end = a + 1; prec  =  6; assoc =  1; }
+    }
+    else if   (c[0] == '.') {
+      if      (c[1] == '*') { end = a + 2; prec  =  4; assoc =  1; }
+      else                  { end = a + 1; prec  =  5; assoc =  1; }
+    }
+    else if   (c[0] == '/') {
+      if      (c[1] == '=') { end = a + 2; prec  = 16; assoc = -1; }
+      else                  { end = a + 1; prec  =  5; assoc =  1; }
+    }
+    // "<<=" "<=>" "<=" "<<" "<"
+    else if   (c[0] == '<') {
+      if      (c[1] == '<' && c[2] == '=') { end = a + 3; prec  = 16; assoc = -1; }
+      else if (c[1] == '=' && c[2] == '>') { end = a + 3; prec  =  8; assoc =  1; }
+      else if (c[1] == '<')                { end = a + 2; prec  =  7; assoc =  1; }
+      else if (c[1] == '=')                { end = a + 2; prec  =  9; assoc =  1; }
+      else                                 { end = a + 1; prec  =  9; assoc =  1; }
+    }
+    else if   (c[0] == '=') {
+      if      (c[1] == '=') { end = a + 2; prec  = 10; assoc =  1; }
+      else                  { end = a + 1; prec  = 16; assoc =  1; }
+    }
+    else if   (c[0] == '>') {
+      if      (c[1] == '>' && c[2] == '=') { end = a + 3; prec  = 16; assoc = -1; }
+      if      (c[1] == '>')                { end = a + 2; prec  =  7; assoc =  1; }
+      if      (c[1] == '=')                { end = a + 2; prec  =  9; assoc =  1; }
+      else                                 { end = a + 1; prec  =  9; assoc =  1; }
+    }
+    else if   (c[0] == '^') {
+      if      (c[1] == '=') { end = a + 2; prec  = 16; assoc = -1; }
+      else                  { end = a + 1; prec  = 12; assoc =  1; }
+    }
+    else if   (c[0] == '|') {
+      if      (c[1] == '|') { end = a + 2; prec  = 15; assoc =  1; }
+      else if (c[1] == '=') { end = a + 2; prec  = 16; assoc = -1; }
+      else                  { end = a + 1; prec  = 13; assoc =  1; }
+    }
+
+    if (end) {
+      auto node = new BaseOpBinary();
+      node->precedence = prec;
+      node->assoc      = assoc;
+      node->init_base(a, end - 1);
+    }
+    return end;
+  }
+  */
+
+
+
   static Token* match_binary_op(void* ctx, Token* a, Token* b) {
     if (!a || a == b) return nullptr;
+
+    if (a->lex->type != LEX_PUNCT) return nullptr;
+
     switch(a->lex->span_a[0]) {
-      case '!': return MatchOpBinary<"!=">::match(ctx, a, b);
-      case '%': return Oneof< MatchOpBinary<"%=">, MatchOpBinary<"%"> >::match(ctx, a, b);
-      case '&': return Oneof< MatchOpBinary<"&&">, MatchOpBinary<"&=">, MatchOpBinary<"&"> >::match(ctx, a, b);
-      case '*': return Oneof< MatchOpBinary<"*=">, MatchOpBinary<"*"> >::match(ctx, a, b);
       case '+': return Oneof< MatchOpBinary<"+=">, MatchOpBinary<"+"> >::match(ctx, a, b);
       case '-': return Oneof< MatchOpBinary<"->*">, MatchOpBinary<"->">, MatchOpBinary<"-=">, MatchOpBinary<"-"> >::match(ctx, a, b);
-      case '.': return Oneof< MatchOpBinary<".*">, MatchOpBinary<"."> >::match(ctx, a, b);
+      case '*': return Oneof< MatchOpBinary<"*=">, MatchOpBinary<"*"> >::match(ctx, a, b);
       case '/': return Oneof< MatchOpBinary<"/=">, MatchOpBinary<"/"> >::match(ctx, a, b);
-      case ':': return MatchOpBinary<"::">::match(ctx, a, b);
-      case '<': return Oneof< MatchOpBinary<"<<=">, MatchOpBinary<"<=>">, MatchOpBinary<"<=">, MatchOpBinary<"<<">, MatchOpBinary<"<"> >::match(ctx, a, b);
       case '=': return Oneof< MatchOpBinary<"==">, MatchOpBinary<"="> >::match(ctx, a, b);
+      case '<': return Oneof< MatchOpBinary<"<<=">, MatchOpBinary<"<=>">, MatchOpBinary<"<=">, MatchOpBinary<"<<">, MatchOpBinary<"<"> >::match(ctx, a, b);
       case '>': return Oneof< MatchOpBinary<">>=">, MatchOpBinary<">=">, MatchOpBinary<">>">, MatchOpBinary<">"> >::match(ctx, a, b);
-      case '^': return Oneof< MatchOpBinary<"^=">, MatchOpBinary<"^"> >::match(ctx, a, b);
+      case '!': return MatchOpBinary<"!=">::match(ctx, a, b);
+      case '&': return Oneof< MatchOpBinary<"&&">, MatchOpBinary<"&=">, MatchOpBinary<"&"> >::match(ctx, a, b);
       case '|': return Oneof< MatchOpBinary<"||">, MatchOpBinary<"|=">, MatchOpBinary<"|"> >::match(ctx, a, b);
+      case '^': return Oneof< MatchOpBinary<"^=">, MatchOpBinary<"^"> >::match(ctx, a, b);
+      case '%': return Oneof< MatchOpBinary<"%=">, MatchOpBinary<"%"> >::match(ctx, a, b);
+      case '.': return Oneof< MatchOpBinary<".*">, MatchOpBinary<"."> >::match(ctx, a, b);
+      case ':': return MatchOpBinary<"::">::match(ctx, a, b);
       default:  return nullptr;
     }
   }
