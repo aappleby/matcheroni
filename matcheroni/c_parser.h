@@ -34,6 +34,62 @@ struct SpanUnion;
 
 //------------------------------------------------------------------------------
 
+struct TypeScope {
+
+  void clear() {
+    class_types.clear();
+    struct_types.clear();
+    union_types.clear();
+    enum_types.clear();
+    typedef_types.clear();
+  }
+
+  bool has_type(const std::vector<std::string>& types, Token* a) {
+    if(a->lex->type != LEX_IDENTIFIER) return false;
+
+    for (const auto& c : types) {
+      auto r = cmp_span_lit(a->lex->span_a, a->lex->span_b, c.c_str());
+      if (r == 0) return true;
+    }
+
+    return false;
+  }
+
+  void add_type(std::vector<std::string>& types, Token* a) {
+    assert(a->lex->type == LEX_IDENTIFIER);
+
+    for (const auto& c : types) {
+      auto r = cmp_span_lit(a->lex->span_a, a->lex->span_b, c.c_str());
+      if (r == 0) return;
+    }
+
+    types.push_back(std::string(a->lex->span_a, a->lex->span_b));
+  }
+
+  //----------------------------------------
+
+  bool has_class_type  (Token* a) { if (has_type(class_types,   a)) return true; if (parent) return parent->has_class_type  (a); else return false; }
+  bool has_struct_type (Token* a) { if (has_type(struct_types,  a)) return true; if (parent) return parent->has_struct_type (a); else return false; }
+  bool has_union_type  (Token* a) { if (has_type(union_types,   a)) return true; if (parent) return parent->has_union_type  (a); else return false; }
+  bool has_enum_type   (Token* a) { if (has_type(enum_types,    a)) return true; if (parent) return parent->has_enum_type   (a); else return false; }
+  bool has_typedef_type(Token* a) { if (has_type(typedef_types, a)) return true; if (parent) return parent->has_typedef_type(a); else return false; }
+
+  void add_class_type  (Token* a) { return add_type(class_types,   a); }
+  void add_struct_type (Token* a) { return add_type(struct_types,  a); }
+  void add_union_type  (Token* a) { return add_type(union_types,   a); }
+  void add_enum_type   (Token* a) { return add_type(enum_types,    a); }
+  void add_typedef_type(Token* a) { return add_type(typedef_types, a); }
+
+  TypeScope* parent;
+  std::vector<std::string> class_types;
+  std::vector<std::string> struct_types;
+  std::vector<std::string> union_types;
+  std::vector<std::string> enum_types;
+  std::vector<std::string> typedef_types;
+};
+
+//------------------------------------------------------------------------------
+
 class C99Parser {
 public:
   C99Parser();
@@ -47,57 +103,35 @@ public:
   Token* match_builtin_type_prefix(Token* a, Token* b);
   Token* match_builtin_type_suffix(Token* a, Token* b);
 
+  Token* match_class_type  (Token* a, Token* b) { return type_scope->has_class_type  (a) ? a + 1 : nullptr; }
+  Token* match_struct_type (Token* a, Token* b) { return type_scope->has_struct_type (a) ? a + 1 : nullptr; }
+  Token* match_union_type  (Token* a, Token* b) { return type_scope->has_union_type  (a) ? a + 1 : nullptr; }
+  Token* match_enum_type   (Token* a, Token* b) { return type_scope->has_enum_type   (a) ? a + 1 : nullptr; }
+  Token* match_typedef_type(Token* a, Token* b) { return type_scope->has_typedef_type(a) ? a + 1 : nullptr; }
+
+  void add_class_type  (Token* a) { type_scope->add_class_type  (a); }
+  void add_struct_type (Token* a) { type_scope->add_struct_type (a); }
+  void add_union_type  (Token* a) { type_scope->add_union_type  (a); }
+  void add_enum_type   (Token* a) { type_scope->add_enum_type   (a); }
+  void add_typedef_type(Token* a) { type_scope->add_typedef_type(a); }
+
   //----------------------------------------------------------------------------
 
-  void add_type(const std::string& t, std::vector<std::string>& types) {
-    if (std::find(types.begin(), types.end(), t) == types.end()) {
-      types.push_back(t);
-    }
+  void push_scope() {
+    TypeScope* new_scope = new TypeScope();
+    new_scope->parent = type_scope;
+    type_scope = new_scope;
   }
 
-  Token* match_type(const std::vector<std::string>& types, Token* a, Token* b) {
-    if (!a || a == b) return nullptr;
-    if (types.empty()) return nullptr;
-    for (const auto& c : types) {
-      auto r = cmp_span_lit(a->lex->span_a, a->lex->span_b, c.c_str());
-      if (r == 0) return a + 1;
-    }
-    return nullptr;
-  }
-
-  Token* put_type(std::vector<std::string>& types, Token* a, Token* b) {
-    if (!a || a == b) return nullptr;
-    if (a->lex->type == LEX_IDENTIFIER) {
-      auto t = a->lex->text();
-      if (std::find(types.begin(), types.end(), t) == types.end()) {
-        types.push_back(t);
-      }
-      return a + 1;
-    }
-    else {
-      return nullptr;
+  void pop_scope() {
+    TypeScope* old_scope = type_scope->parent;
+    if (old_scope) {
+      delete type_scope;
+      type_scope = old_scope;
     }
   }
 
   //----------------------------------------------------------------------------
-
-  void add_class_type  (const std::string& t) { add_type(t, class_types); }
-  void add_struct_type (const std::string& t) { add_type(t, struct_types); }
-  void add_union_type  (const std::string& t) { add_type(t, union_types); }
-  void add_enum_type   (const std::string& t) { add_type(t, enum_types); }
-  void add_typedef_type(const std::string& t) { add_type(t, typedef_types); }
-
-  Token* match_class_type  (Token* a, Token* b) { return match_type(class_types,   a, b); }
-  Token* match_struct_type (Token* a, Token* b) { return match_type(struct_types,  a, b); }
-  Token* match_union_type  (Token* a, Token* b) { return match_type(union_types,   a, b); }
-  Token* match_enum_type   (Token* a, Token* b) { return match_type(enum_types,    a, b); }
-  Token* match_typedef_type(Token* a, Token* b) { return match_type(typedef_types, a, b); }
-
-  Token* put_class_type    (Token* a, Token* b) { return put_type(class_types,   a, b); }
-  Token* put_struct_type   (Token* a, Token* b) { return put_type(struct_types,  a, b); }
-  Token* put_union_type    (Token* a, Token* b) { return put_type(union_types,   a, b); }
-  Token* put_enum_type     (Token* a, Token* b) { return put_type(enum_types,    a, b); }
-  Token* put_typedef_type  (Token* a, Token* b) { return put_type(typedef_types, a, b); }
 
   void dump_stats();
   void dump_lexemes();
@@ -120,11 +154,7 @@ public:
   double parse_accum = 0;
   double cleanup_accum = 0;
 
-  std::vector<std::string> class_types;
-  std::vector<std::string> struct_types;
-  std::vector<std::string> union_types;
-  std::vector<std::string> enum_types;
-  std::vector<std::string> typedef_types;
+  TypeScope* type_scope;
 };
 
 //------------------------------------------------------------------------------
@@ -1067,7 +1097,7 @@ struct BaseStructType : public BaseMaker<BaseStructType> {
 struct BaseStructTypeAdder : public BaseIdentifier {
   static Token* match(void* ctx, Token* a, Token* b) {
     if (auto end = BaseIdentifier::match(ctx, a, b)) {
-      ((C99Parser*)ctx)->add_struct_type(a->lex->text());
+      ((C99Parser*)ctx)->add_struct_type(a);
       return end;
     }
     else if (auto end = BaseTypedefType::match(ctx, a, b)) {
@@ -1109,7 +1139,7 @@ struct BaseUnionType : public NodeSpan {
 struct BaseUnionTypeAdder : public BaseIdentifier {
   static Token* match(void* ctx, Token* a, Token* b) {
     if (auto end = BaseIdentifier::match(ctx, a, b)) {
-      ((C99Parser*)ctx)->add_union_type(a->lex->text());
+      ((C99Parser*)ctx)->add_union_type(a);
       return end;
     }
     else if (auto end = BaseTypedefType::match(ctx, a, b)) {
@@ -1143,7 +1173,7 @@ struct BaseClassType : public BaseMaker<BaseClassType> {
 struct BaseClassTypeAdder : public BaseIdentifier {
   static Token* match(void* ctx, Token* a, Token* b) {
     if (auto end = BaseIdentifier::match(ctx, a, b)) {
-      ((C99Parser*)ctx)->add_class_type(a->lex->text());
+      ((C99Parser*)ctx)->add_class_type(a);
       return end;
     }
     else if (auto end = BaseTypedefType::match(ctx, a, b)) {
@@ -1198,7 +1228,7 @@ struct BaseEnumType : public BaseMaker<BaseEnumType> {
 struct BaseEnumTypeAdder : public BaseIdentifier {
   static Token* match(void* ctx, Token* a, Token* b) {
     if (auto end = BaseIdentifier::match(ctx, a, b)) {
-      ((C99Parser*)ctx)->add_enum_type(a->lex->text());
+      ((C99Parser*)ctx)->add_enum_type(a);
       return end;
     }
     else if (auto end = BaseTypedefType::match(ctx, a, b)) {
@@ -1345,12 +1375,27 @@ struct SpanDeclaration : public SpanMaker<SpanDeclaration> {
 
 //------------------------------------------------------------------------------
 
+template<typename P>
+struct PushPopScope {
+  static Token* match(void* ctx, Token* a, Token* b) {
+    ((C99Parser*)ctx)->push_scope();
+
+    auto end = P::match(ctx, a, b);
+
+    ((C99Parser*)ctx)->pop_scope();
+
+    return end;
+  }
+};
+
 struct SpanStatementCompound : public SpanMaker<SpanStatementCompound> {
   using pattern =
-  DelimitedBlock<
-    FlatAtom<'{'>,
-    SpanStatement,
-    FlatAtom<'}'>
+  PushPopScope<
+    DelimitedBlock<
+      FlatAtom<'{'>,
+      SpanStatement,
+      FlatAtom<'}'>
+    >
   >;
 };
 
@@ -1592,7 +1637,7 @@ struct SpanTypedef : public SpanMaker<SpanTypedef> {
 
   static void extract_declarator(void* ctx, const SpanDeclarator* decl) {
     if (auto id = decl->child<BaseIdentifier>()) {
-      ((C99Parser*)ctx)->add_typedef_type(id->tok_a->lex->text());
+      ((C99Parser*)ctx)->add_typedef_type(id->tok_a);
     }
 
     for (auto child : decl) {

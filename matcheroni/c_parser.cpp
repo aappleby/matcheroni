@@ -38,6 +38,7 @@ void set_color(uint32_t c) {
 //------------------------------------------------------------------------------
 
 C99Parser::C99Parser() {
+  type_scope = new TypeScope();
   text.reserve(65536);
   lexemes.reserve(65536);
   tokens.reserve(65536);
@@ -53,11 +54,8 @@ void C99Parser::reset() {
   tokens.clear();
   ParseNode::slabs.reset();
 
-  class_types.clear();
-  struct_types.clear();
-  union_types.clear();
-  enum_types.clear();
-  typedef_types.clear();
+  while(type_scope->parent) pop_scope();
+  type_scope->clear();
 
   cleanup_accum += timestamp_ms();
 }

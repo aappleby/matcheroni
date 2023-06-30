@@ -60,7 +60,7 @@ int test_parser(int argc, char** argv) {
 #if 1
   paths = {
     //"tests/scratch.c",
-    "../gcc/gcc/testsuite/gcc.c-torture/execute/20040423-1.c",
+    "../gcc/gcc/testsuite/gcc.c-torture/compile/20010114-1.c",
   };
 
   verbose = true;
