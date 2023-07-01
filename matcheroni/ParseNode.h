@@ -8,8 +8,6 @@
 struct Token;
 struct ParseNode;
 
-void dump_lexeme(const Lexeme& l);
-void dump_token(const Token& t);
 void dump_tree(const ParseNode* n, int max_depth, int indentation);
 void set_color(uint32_t c);
 
@@ -31,6 +29,24 @@ struct Token {
     this->span = nullptr;
   }
 
+  LexemeType get_type() {
+    return lex->type;
+  }
+
+  int get_len() const {
+    return lex->len();
+  }
+
+  const char* as_str() const {
+    return lex->span_a;
+  }
+
+  /*
+  const Lexeme* lex() const {
+    return _lex;
+  }
+  */
+
   bool is_valid() const {
     return lex->type != LEX_INVALID;
   }
@@ -51,8 +67,64 @@ struct Token {
     return lex->is_identifier(lit);
   }
 
-  const Lexeme* lex;
+  void dump_token();
+
+  //----------------------------------------------------------------------------
+
+  const char* type_to_str() {
+    switch(lex->type) {
+      case LEX_INVALID    : return "LEX_INVALID";
+      case LEX_SPACE      : return "LEX_SPACE";
+      case LEX_NEWLINE    : return "LEX_NEWLINE";
+      case LEX_STRING     : return "LEX_STRING";
+      case LEX_KEYWORD    : return "LEX_KEYWORD";
+      case LEX_IDENTIFIER : return "LEX_IDENTIFIER";
+      case LEX_COMMENT    : return "LEX_COMMENT";
+      case LEX_PREPROC    : return "LEX_PREPROC";
+      case LEX_FLOAT      : return "LEX_FLOAT";
+      case LEX_INT        : return "LEX_INT";
+      case LEX_PUNCT      : return "LEX_PUNCT";
+      case LEX_CHAR       : return "LEX_CHAR";
+      case LEX_SPLICE     : return "LEX_SPLICE";
+      case LEX_FORMFEED   : return "LEX_FORMFEED";
+      case LEX_BOF        : return "LEX_BOF";
+      case LEX_EOF        : return "LEX_EOF";
+      case LEX_LAST       : return "<lex last>";
+    }
+    return "<invalid>";
+  }
+
+  //----------------------------------------------------------------------------
+
+  uint32_t type_to_color() {
+    switch(lex->type) {
+      case LEX_INVALID    : return 0x0000FF;
+      case LEX_SPACE      : return 0x804040;
+      case LEX_NEWLINE    : return 0x404080;
+      case LEX_STRING     : return 0x4488AA;
+      case LEX_KEYWORD    : return 0x0088FF;
+      case LEX_IDENTIFIER : return 0xCCCC40;
+      case LEX_COMMENT    : return 0x66AA66;
+      case LEX_PREPROC    : return 0xCC88CC;
+      case LEX_FLOAT      : return 0xFF88AA;
+      case LEX_INT        : return 0xFF8888;
+      case LEX_PUNCT      : return 0x808080;
+      case LEX_CHAR       : return 0x44DDDD;
+      case LEX_SPLICE     : return 0x00CCFF;
+      case LEX_FORMFEED   : return 0xFF00FF;
+      case LEX_BOF        : return 0x00FF00;
+      case LEX_EOF        : return 0x0000FF;
+      case LEX_LAST       : return 0xFF00FF;
+    }
+    return 0x0000FF;
+  }
+
+  //----------------------------------------------------------------------------
+
   ParseNode* span;
+  const Lexeme* lex;
+
+private:
 };
 
 //------------------------------------------------------------------------------
@@ -93,13 +165,13 @@ struct ParseNode {
   void check_solid() const {
     if (head && head->tok_a != tok_a) {
       printf("head for %p not at tok_a\n", this);
-      for (auto t = tok_a; t <= tok_b; t++) dump_token(*t);
+      for (auto t = tok_a; t <= tok_b; t++) t->dump_token();
       dump_tree(this, 0, 0);
       return;
     }
     if (tail && tail->tok_b != tok_b) {
       printf("tail for %p not at tok_b\n", this);
-      for (auto t = tok_a; t <= tok_b; t++) dump_token(*t);
+      for (auto t = tok_a; t <= tok_b; t++) t->dump_token();
       dump_tree(this, 0, 0);
       return;
     }
@@ -373,129 +445,21 @@ struct SpanMaker : public NodeSpan {
 
 
 
+//----------------------------------------------------------------------------
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-//------------------------------------------------------------------------------
-
-inline void dump_lexeme(const Lexeme& l) {
-  if (l.is_eof()) {
-    printf("{<eof>     }");
-    return;
-  }
-  if (l.is_bof()) {
-    printf("{<bof>     }");
-    return;
-  }
-
-  int len = l.span_b - l.span_a;
-  if (len > 10) len = 10;
-  printf("{");
-  for (int i = 0; i < len; i++) {
-    auto c = l.span_a[i];
-    if (c == '\n' || c == '\t' || c == '\r') {
-      putc('@', stdout);
-    }
-    else {
-      putc(l.span_a[i], stdout);
-    }
-  }
-  for (int i = len; i < 10; i++) {
-    printf(" ");
-  }
-  printf("}");
-}
-
-//------------------------------------------------------------------------------
-
-inline void dump_token(const Token& t) {
+inline void Token::dump_token() {
   // Dump token
-  printf("tok @ %p :", &t);
+  printf("tok @ %p :", this);
 
-  printf(" %14.14s ", lex_to_str(*t.lex));
-  set_color(lex_to_color(*t.lex));
-  dump_lexeme(*t.lex);
+  printf(" %14.14s ", type_to_str());
+  set_color(type_to_color());
+  lex->dump_lexeme();
   set_color(0);
 
-  printf("    span %14p ", t.span);
-  if (t.span) {
+  printf("    span %14p ", span);
+  if (span) {
     printf("{");
-    t.span->print_class_name(20);
+    span->print_class_name(20);
     printf("}");
   }
   else {
@@ -504,26 +468,104 @@ inline void dump_token(const Token& t) {
   printf("\n");
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 //------------------------------------------------------------------------------
 
 inline int atom_cmp(Token& a, const LexemeType& b) {
-  return int(a.lex->type) - int(b);
+  return int(a.get_type()) - int(b);
 }
 
 inline int atom_cmp(Token& a, const char& b) {
-  int len_cmp = a.lex->len() - 1;
+  int len_cmp = a.get_len() - 1;
   if (len_cmp != 0) return len_cmp;
-  return int(a.lex->span_a[0]) - int(b);
+  return int(a.as_str()[0]) - int(b);
 }
 
 template<int N>
 inline int atom_cmp(Token& a, const StringParam<N>& b) {
   // FIXME do we really need this comparison?
-  int len_cmp = int(a.lex->len()) - int(b.str_len);
+  int len_cmp = int(a.get_len()) - int(b.str_len);
   if (len_cmp != 0) return len_cmp;
 
   for (auto i = 0; i < b.str_len; i++) {
-    int cmp = int(a.lex->span_a[i]) - int(b.str_val[i]);
+    int cmp = int(a.as_str()[i]) - int(b.str_val[i]);
     if (cmp) return cmp;
   }
 
@@ -536,7 +578,7 @@ inline Token* match_punct(void* ctx, Token* a, Token* b, const char* lit, int li
   if (!a || a == b) return nullptr;
   if (a + lit_len > b) return nullptr;
   for (auto i = 0; i < lit_len; i++) {
-    if (!a->lex[i].is_punct(lit[i])) return nullptr;
+    if (a->as_str()[i] != lit[i]) return nullptr;
   }
   auto end = a + lit_len;
   return end;

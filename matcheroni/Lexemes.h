@@ -47,6 +47,37 @@ struct Lexeme {
     return std::string(span_a, span_b);
   }
 
+  //----------------------------------------------------------------------------
+
+  void dump_lexeme() const {
+    if (is_eof()) {
+      printf("{<eof>     }");
+      return;
+    }
+    if (is_bof()) {
+      printf("{<bof>     }");
+      return;
+    }
+
+    int len = span_b - span_a;
+    if (len > 10) len = 10;
+    printf("{");
+    for (int i = 0; i < len; i++) {
+      auto c = span_a[i];
+      if (c == '\n' || c == '\t' || c == '\r') {
+        putc('@', stdout);
+      }
+      else {
+        putc(span_a[i], stdout);
+      }
+    }
+    for (int i = len; i < 10; i++) {
+      printf(" ");
+    }
+    printf("}");
+  }
+
+
   //----------------------------------------
 
   bool is_bof() const {
@@ -101,54 +132,6 @@ struct Lexeme {
   const char* span_a;
   const char* span_b;
 };
-
-//------------------------------------------------------------------------------
-
-inline const char* lex_to_str(const Lexeme& lex) {
-  switch(lex.type) {
-    case LEX_INVALID    : return "LEX_INVALID";
-    case LEX_SPACE      : return "LEX_SPACE";
-    case LEX_NEWLINE    : return "LEX_NEWLINE";
-    case LEX_STRING     : return "LEX_STRING";
-    case LEX_KEYWORD    : return "LEX_KEYWORD";
-    case LEX_IDENTIFIER : return "LEX_IDENTIFIER";
-    case LEX_COMMENT    : return "LEX_COMMENT";
-    case LEX_PREPROC    : return "LEX_PREPROC";
-    case LEX_FLOAT      : return "LEX_FLOAT";
-    case LEX_INT        : return "LEX_INT";
-    case LEX_PUNCT      : return "LEX_PUNCT";
-    case LEX_CHAR       : return "LEX_CHAR";
-    case LEX_SPLICE     : return "LEX_SPLICE";
-    case LEX_FORMFEED   : return "LEX_FORMFEED";
-    case LEX_BOF        : return "LEX_BOF";
-    case LEX_EOF        : return "LEX_EOF";
-    case LEX_LAST       : return "<lex last>";
-  }
-  return "<invalid>";
-}
-
-inline uint32_t lex_to_color(const Lexeme& lex) {
-  switch(lex.type) {
-    case LEX_INVALID    : return 0x0000FF;
-    case LEX_SPACE      : return 0x804040;
-    case LEX_NEWLINE    : return 0x404080;
-    case LEX_STRING     : return 0x4488AA;
-    case LEX_KEYWORD    : return 0x0088FF;
-    case LEX_IDENTIFIER : return 0xCCCC40;
-    case LEX_COMMENT    : return 0x66AA66;
-    case LEX_PREPROC    : return 0xCC88CC;
-    case LEX_FLOAT      : return 0xFF88AA;
-    case LEX_INT        : return 0xFF8888;
-    case LEX_PUNCT      : return 0x808080;
-    case LEX_CHAR       : return 0x44DDDD;
-    case LEX_SPLICE     : return 0x00CCFF;
-    case LEX_FORMFEED   : return 0xFF00FF;
-    case LEX_BOF        : return 0x00FF00;
-    case LEX_EOF        : return 0x0000FF;
-    case LEX_LAST       : return 0xFF00FF;
-  }
-  return 0x0000FF;
-}
 
 //------------------------------------------------------------------------------
 // Does this actually work?

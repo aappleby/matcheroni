@@ -297,7 +297,7 @@ void dump_tree(const ParseNode* n, int max_depth, int indentation) {
 
   for (int i = 0; i < indentation; i++) printf(" | ");
 
-  if (n->tok_a) set_color(lex_to_color(*(n->tok_a->lex)));
+  if (n->tok_a) set_color(n->tok_a->type_to_color());
   //if (!field.empty()) printf("%-10.10s : ", field.c_str());
 
   n->print_class_name(20);
@@ -315,7 +315,7 @@ void dump_tree(const ParseNode* n, int max_depth, int indentation) {
 void C99Parser::dump_lexemes() {
   for(auto& l : lexemes) {
     printf("{");
-    dump_lexeme(l);
+    l.dump_lexeme();
     printf("}");
     printf("\n");
   }
@@ -325,7 +325,7 @@ void C99Parser::dump_lexemes() {
 
 void C99Parser::dump_tokens() {
   for (auto& t : tokens) {
-    dump_token(t);
+    t.dump_token();
   }
 }
 
