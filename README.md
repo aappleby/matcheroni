@@ -5,7 +5,7 @@ Matcheroni is a generalization of [Parsing Expression Grammars](https://en.wikip
 
 Matcheroni generates tiny code - 100s of bytes for moderately-sized patterns versus 100k+ if you have to include the std::regex library.
 
-Matcheroni generates fast code - 10x or more versus std::regex.
+Matcheroni generates fast code - often 10x faster than std::regex.
 
 Matcheroni matchers are more readable and more modular than regexes - you can build [large matchers](matcheroni/c_lexer.cpp#L180) out of small simple matchers without affecting performance.
 
