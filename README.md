@@ -56,6 +56,9 @@ const char* matcheroni_match_parens(const char* a, const char* b) {
 ```
 Note that you can't nest "pattern" inside itself directly, as "using pattern" doesn't count as a declaration. Wrapping it in a function or class works though.
 
+# It's all a bunch of templates? Really?
+If you're familiar with C++ templates, you are probably concerned that this library will cause your compiler to grind to a halt. I can assure you that that's not the case - compile times for even pretty large matchers are fine, though the resulting debug symbols are so enormous as to be useless.
+
 # Fundamentals
 
 Matcheroni is based on two fundamental primitives -
@@ -158,9 +161,6 @@ Without std::regex, -Os
 -rwxr-xr-x 1 aappleby aappleby  17496 Jun 20 14:18 benchmark
 ```
 So std::regex adds about 130k-150k of code for this example.
-
-# Templates? Really?
-If you're familiar with C++ templates, you are probably concerned that this library will cause your compiler to grind to a halt. I can assure you that that's not the case - compile times for even pretty large matchers are fine, though the resulting debug symbols are so enormous as to be useless.
 
 # Demo - Lexing and Parsing C
 This repo contains an example C lexer and parser built using Matcheroni. The lexer should be conformant to the C99 spec, the parser is less conformant but is still able to parse nearly everything in GCC's torture-test suite. The output of the parser is a simple tree of parse nodes with all parent/child/sibling links as pointers.
