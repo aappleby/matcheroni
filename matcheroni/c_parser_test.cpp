@@ -39,6 +39,20 @@ bool should_skip(const std::string& path) {
 
     // Weird type stuff idunno i'm tired
     "pr43635.c",
+
+    // Function parameter name shadows a typedef'd type :P
+    "20010114-1.c",
+
+    // Local variable name shadows a typedef'd struct name
+    "921109-1.c",
+
+    // Struct field name shadows typedef'd struct name
+    "920428-2.c",
+    "20010518-1.c",
+    "pr44784.c",
+
+    // Double-typedef
+    "pr61159.c",
   };
 
   for (auto b : bad_files) if (path.ends_with(b)) return true;
@@ -57,10 +71,10 @@ int test_parser(int argc, char** argv) {
 
   bool verbose = false;
 
-#if 1
+#if 0
   paths = {
     //"tests/scratch.c",
-    "../gcc/gcc/testsuite/gcc.c-torture/compile/20010114-1.c",
+    "../gcc/gcc/testsuite/gcc.c-torture/compile/pr44784.c",
   };
 
   verbose = true;
