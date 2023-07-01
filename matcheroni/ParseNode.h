@@ -25,36 +25,42 @@ void set_color(uint32_t c);
 
 struct Token {
   Token(const Lexeme* lex) {
-    this->lex  = lex;
+    this->lex2  = lex;
     this->span = nullptr;
   }
 
   LexemeType get_type() {
-    return lex->type;
+    const_cast<Token*>(this)->span = nullptr;
+    return lex2->type;
+  }
+
+  const char* as_str() const {
+    const_cast<Token*>(this)->span = nullptr;
+    return lex2->span_a;
+  }
+
+  const char* span_a() const {
+    const_cast<Token*>(this)->span = nullptr;
+    return lex2->span_a;
+  }
+
+  const char* span_b() const {
+    const_cast<Token*>(this)->span = nullptr;
+    return lex2->span_b;
+  }
+
+  bool is_punct() const {
+    const_cast<Token*>(this)->span = nullptr;
+    return lex2->is_punct();
+  }
+
+  bool is_punct(char p) const {
+    const_cast<Token*>(this)->span = nullptr;
+    return lex2->is_punct(p);
   }
 
   int get_len() const {
     return int(span_b() - span_a());
-  }
-
-  const char* as_str() const {
-    return lex->span_a;
-  }
-
-  const char* span_a() const {
-    return lex->span_a;
-  }
-
-  const char* span_b() const {
-    return lex->span_b;
-  }
-
-  bool is_punct() const {
-    return lex->is_punct();
-  }
-
-  bool is_punct(char p) const {
-    return lex->is_punct(p);
   }
 
   ParseNode* get_span() {
@@ -72,7 +78,7 @@ struct Token {
   //----------------------------------------------------------------------------
 
   const char* type_to_str() {
-    switch(lex->type) {
+    switch(lex2->type) {
       case LEX_INVALID    : return "LEX_INVALID";
       case LEX_SPACE      : return "LEX_SPACE";
       case LEX_NEWLINE    : return "LEX_NEWLINE";
@@ -97,7 +103,7 @@ struct Token {
   //----------------------------------------------------------------------------
 
   uint32_t type_to_color() {
-    switch(lex->type) {
+    switch(lex2->type) {
       case LEX_INVALID    : return 0x0000FF;
       case LEX_SPACE      : return 0x804040;
       case LEX_NEWLINE    : return 0x404080;
@@ -123,7 +129,7 @@ struct Token {
 
 private:
   ParseNode* span;
-  const Lexeme* lex;
+  const Lexeme* lex2;
 };
 
 //------------------------------------------------------------------------------
@@ -313,37 +319,8 @@ struct ParseNode {
   ParseNode* next   = nullptr;
   ParseNode* head   = nullptr;
   ParseNode* tail   = nullptr;
-};
 
-//------------------------------------------------------------------------------
-// A parse node that sits directly on the tokens with no other nodes underneath
-// it.
-
-struct NodeBase : public ParseNode {
-
-  void init_base(Token* tok_a, Token* tok_b) {
-    constructor_count++;
-    DCHECK(tok_a <= tok_b);
-
-    this->tok_a = tok_a;
-    this->tok_b = tok_b;
-
-    // Wipe spans out from under this node
-    for (auto c = tok_a + 1; c < tok_b; c++) {
-      c->set_span(nullptr);
-    }
-
-    tok_a->set_span(this);
-    tok_b->set_span(this);
-  }
-};
-
-//------------------------------------------------------------------------------
-// A parse node that can have other parse nodes under it.
-
-struct NodeSpan : public ParseNode {
-
-  void init_span(Token* tok_a, Token* tok_b) {
+  void init(Token* tok_a, Token* tok_b) {
     constructor_count++;
     DCHECK(tok_a <= tok_b);
 
@@ -353,23 +330,15 @@ struct NodeSpan : public ParseNode {
     // Attach all the tops under this node to it.
     auto cursor = tok_a;
     while (cursor <= tok_b) {
-      if (cursor->get_span()) {
-        auto child = cursor->get_span();
+      auto child = cursor->get_span();
+      if (child) {
         attach_child(child);
         cursor = child->tok_b + 1;
-        child->tok_a->set_span(nullptr);
-        child->tok_b->set_span(nullptr);
       }
       else {
         cursor++;
       }
     }
-
-#ifdef DEBUG
-    for (auto c = tok_a + 1; c < tok_b; c++) {
-      DCHECK(c->get_span() == nullptr);
-    }
-#endif
 
     tok_a->set_span(this);
     tok_b->set_span(this);
@@ -377,49 +346,10 @@ struct NodeSpan : public ParseNode {
 };
 
 //------------------------------------------------------------------------------
-// Flattens all tokens it matches with. Does not create a new node.
-
-template<typename NodeType>
-struct FlatMaker {
-  static Token* match(void* ctx, Token* a, Token* b) {
-    if (!a || a == b) return nullptr;
-
-    print_trace_start<NodeType, Token>(a);
-    auto end = NodeType::pattern::match(ctx, a, b);
-    print_trace_end<NodeType, Token>(a, end);
-
-    for (auto c = a; c < end; c++) c->set_span(nullptr);
-
-    return end;
-  }
-};
-
-//------------------------------------------------------------------------------
-// Flattens all tokens it matches with and creates a new node on top of them.
-
-template<typename NodeType>
-struct BaseMaker : public NodeBase {
-  static Token* match(void* ctx, Token* a, Token* b) {
-    if (!a || a == b) return nullptr;
-
-    print_trace_start<NodeType, Token>(a);
-    auto end = NodeType::pattern::match(ctx, a, b);
-    print_trace_end<NodeType, Token>(a, end);
-
-    if (end && end != a) {
-      auto node = new NodeType();
-      node->init_base(a, end-1);
-    }
-
-    return end;
-  }
-};
-
-//------------------------------------------------------------------------------
 // Consumes spans from all tokens it matches with and creates a new node on top of them.
 
 template<typename NodeType>
-struct SpanMaker : public NodeSpan {
+struct NodeMaker : public ParseNode {
   static Token* match(void* ctx, Token* a, Token* b) {
 
     print_trace_start<NodeType, Token>(a);
@@ -428,7 +358,7 @@ struct SpanMaker : public NodeSpan {
 
     if (end && end != a) {
       auto node = new NodeType();
-      node->init_span(a, end-1);
+      node->init(a, end-1);
     }
     return end;
   }
@@ -452,7 +382,7 @@ inline void Token::dump_token() {
 
   printf(" %14.14s ", type_to_str());
   set_color(type_to_color());
-  lex->dump_lexeme();
+  lex2->dump_lexeme();
   set_color(0);
 
   printf("    span %14p ", span);
