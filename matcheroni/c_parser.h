@@ -45,10 +45,10 @@ struct TypeScope {
   }
 
   bool has_type(const std::vector<std::string>& types, Token* a) {
-    if(a->lex->type != LEX_IDENTIFIER) return false;
+    if(a->get_type() != LEX_IDENTIFIER) return false;
 
     for (const auto& c : types) {
-      auto r = cmp_span_lit(a->lex->span_a, a->lex->span_b, c.c_str());
+      auto r = cmp_span_lit(a->span_a(), a->span_b(), c.c_str());
       if (r == 0) return true;
     }
 
@@ -56,14 +56,14 @@ struct TypeScope {
   }
 
   void add_type(std::vector<std::string>& types, Token* a) {
-    assert(a->lex->type == LEX_IDENTIFIER);
+    assert(a->get_type() == LEX_IDENTIFIER);
 
     for (const auto& c : types) {
-      auto r = cmp_span_lit(a->lex->span_a, a->lex->span_b, c.c_str());
+      auto r = cmp_span_lit(a->span_a(), a->span_b(), c.c_str());
       if (r == 0) return;
     }
 
-    types.push_back(std::string(a->lex->span_a, a->lex->span_b));
+    types.push_back(std::string(a->span_a(), a->span_b()));
   }
 
   //----------------------------------------
@@ -169,12 +169,12 @@ struct FlatKeyword {
   //using pattern = Keyword<lit>;
   static Token* match(void* ctx, Token* a, Token* b) {
     if (!a || a == b) return nullptr;
-    if (!a->lex->type == LEX_KEYWORD) return nullptr;
+    if (!a->get_type() == LEX_KEYWORD) return nullptr;
 
     Token* end = nullptr;
     print_trace_start<FlatKeyword<lit>, Token>(a);
     if (atom_cmp(*a, lit) == 0) {
-      a->span = nullptr;
+      a->set_span(nullptr);
       end = a + 1;
     }
     print_trace_end<FlatKeyword<lit>, Token>(a, end);
@@ -203,7 +203,7 @@ struct BaseKeyword : public BaseMaker<BaseKeyword<lit>> {
   //using pattern = Keyword<lit>;
   static Token* match(void* ctx, Token* a, Token* b) {
     if (!a || a == b) return nullptr;
-    if (!a->lex->type == LEX_KEYWORD) return nullptr;
+    if (!a->get_type() == LEX_KEYWORD) return nullptr;
 
     Token* end = nullptr;
     print_trace_start<BaseKeyword<lit>, Token>(a);
@@ -378,7 +378,7 @@ struct MatchOpSuffix {
 struct BaseQualifier : public BaseMaker<BaseQualifier> {
   static Token* match(void* ctx, Token* a, Token* b) {
     if (!a || a == b) return nullptr;
-    auto result = SST<qualifiers>::match(a->lex->span_a, a->lex->span_b);
+    auto result = SST<qualifiers>::match(a->span_a(), a->span_b());
     if (result) {
       auto node = new BaseQualifier();
       node->init_base(a, a);
@@ -641,9 +641,9 @@ struct SpanExpression : public NodeSpan {
   static Token* match_binary_op(void* ctx, Token* a, Token* b) {
     if (!a || a == b) return nullptr;
 
-    if (a->lex->type != LEX_PUNCT) return nullptr;
+    if (a->get_type() != LEX_PUNCT) return nullptr;
 
-    switch(a->lex->span_a[0]) {
+    switch(a->span_a()[0]) {
       case '+': return Oneof< MatchOpBinary<"+=">, MatchOpBinary<"+"> >::match(ctx, a, b);
       case '-': return Oneof< MatchOpBinary<"->*">, MatchOpBinary<"->">, MatchOpBinary<"-=">, MatchOpBinary<"-"> >::match(ctx, a, b);
       case '*': return Oneof< MatchOpBinary<"*=">, MatchOpBinary<"*"> >::match(ctx, a, b);
@@ -699,7 +699,7 @@ struct SpanExpression : public NodeSpan {
         BaseOpBinary* oy = nullptr;
         ParseNode*    nc = nullptr;
 
-        nc =          (end - 1)->span->as_a<ParseNode>();
+        nc =    (end - 1)->get_span()->as_a<ParseNode>();
         oy = nc ? nc->left_neighbor()->as_a<BaseOpBinary>()   : nullptr;
         nb = oy ? oy->left_neighbor()->as_a<ParseNode>() : nullptr;
         ox = nb ? nb->left_neighbor()->as_a<BaseOpBinary>()   : nullptr;
@@ -750,7 +750,7 @@ struct SpanExpression : public NodeSpan {
       BaseOpBinary* oy = nullptr;
       ParseNode*    nc = nullptr;
 
-      nc =      (cursor - 1)->span->as_a<ParseNode>();
+      nc = (cursor - 1)->get_span()->as_a<ParseNode>();
       oy = nc ? nc->left_neighbor()->as_a<BaseOpBinary>()   : nullptr;
       nb = oy ? oy->left_neighbor()->as_a<ParseNode>() : nullptr;
 
@@ -1657,7 +1657,7 @@ struct SpanTypedef : public SpanMaker<SpanTypedef> {
   }
 
   static void extract_type(void* ctx, Token* a, Token* b) {
-    auto node = a->span;
+    auto node = a->get_span();
 
     //node->dump_tree();
 

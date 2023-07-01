@@ -122,7 +122,7 @@ int test_parser(int argc, char** argv) {
     if (path.find("csmith") == std::string::npos) {
       bool has_preproc = false;
       for (auto t : parser.tokens) {
-        if (t.lex->type == LEX_PREPROC) {
+        if (t.get_type() == LEX_PREPROC) {
           has_preproc = true;
           break;
         }

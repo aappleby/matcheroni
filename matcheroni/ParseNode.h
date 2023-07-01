@@ -34,21 +34,19 @@ struct Token {
   }
 
   int get_len() const {
-    return lex->len();
+    return int(span_b() - span_a());
   }
 
   const char* as_str() const {
     return lex->span_a;
   }
 
-  /*
-  const Lexeme* lex() const {
-    return _lex;
+  const char* span_a() const {
+    return lex->span_a;
   }
-  */
 
-  bool is_valid() const {
-    return lex->type != LEX_INVALID;
+  const char* span_b() const {
+    return lex->span_b;
   }
 
   bool is_punct() const {
@@ -59,13 +57,15 @@ struct Token {
     return lex->is_punct(p);
   }
 
-  bool is_lit(const char* lit) const {
-    return lex->is_lit(lit);
+  ParseNode* get_span() {
+    return span;
   }
 
-  bool is_identifier(const char* lit = nullptr) const {
-    return lex->is_identifier(lit);
+  void set_span(ParseNode* n) {
+    span = n;
   }
+
+
 
   void dump_token();
 
@@ -121,10 +121,9 @@ struct Token {
 
   //----------------------------------------------------------------------------
 
+private:
   ParseNode* span;
   const Lexeme* lex;
-
-private:
 };
 
 //------------------------------------------------------------------------------
@@ -202,12 +201,12 @@ struct ParseNode {
 
   ParseNode* left_neighbor() {
     if (this == nullptr) return nullptr;
-    return (tok_a - 1)->span;
+    return (tok_a - 1)->get_span();
   }
 
   ParseNode* right_neighbor() {
     if (this == nullptr) return nullptr;
-    return (tok_b + 1)->span;
+    return (tok_b + 1)->get_span();
   }
 
   //----------------------------------------
@@ -331,11 +330,11 @@ struct NodeBase : public ParseNode {
 
     // Wipe spans out from under this node
     for (auto c = tok_a + 1; c < tok_b; c++) {
-      c->span = nullptr;
+      c->set_span(nullptr);
     }
 
-    tok_a->span = this;
-    tok_b->span = this;
+    tok_a->set_span(this);
+    tok_b->set_span(this);
   }
 };
 
@@ -354,12 +353,12 @@ struct NodeSpan : public ParseNode {
     // Attach all the tops under this node to it.
     auto cursor = tok_a;
     while (cursor <= tok_b) {
-      if (cursor->span) {
-        auto child = cursor->span;
+      if (cursor->get_span()) {
+        auto child = cursor->get_span();
         attach_child(child);
         cursor = child->tok_b + 1;
-        child->tok_a->span = nullptr;
-        child->tok_b->span = nullptr;
+        child->tok_a->set_span(nullptr);
+        child->tok_b->set_span(nullptr);
       }
       else {
         cursor++;
@@ -368,12 +367,12 @@ struct NodeSpan : public ParseNode {
 
 #ifdef DEBUG
     for (auto c = tok_a + 1; c < tok_b; c++) {
-      DCHECK(c->span == nullptr);
+      DCHECK(c->get_span() == nullptr);
     }
 #endif
 
-    tok_a->span = this;
-    tok_b->span = this;
+    tok_a->set_span(this);
+    tok_b->set_span(this);
   }
 };
 
@@ -389,7 +388,7 @@ struct FlatMaker {
     auto end = NodeType::pattern::match(ctx, a, b);
     print_trace_end<NodeType, Token>(a, end);
 
-    for (auto c = a; c < end; c++) c->span = nullptr;
+    for (auto c = a; c < end; c++) c->set_span(nullptr);
 
     return end;
   }
@@ -629,7 +628,7 @@ inline ParseNodeIterator end(const ParseNode* parent) {
 //------------------------------------------------------------------------------
 
 inline Token* find_matching_delim(void* ctx, char ldelim, char rdelim, Token* a, Token* b) {
-  if (*a->lex->span_a != ldelim) return nullptr;
+  if (a->as_str()[0] != ldelim) return nullptr;
   a++;
 
   while(a && a < b) {

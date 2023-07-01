@@ -143,8 +143,8 @@ ParseNode* C99Parser::parse() {
   parse_accum += timestamp_ms();
 
   if (cursor) {
-    DCHECK(tok_a->span->is_a<SpanTranslationUnit>());
-    root = tok_a->span->as_a<SpanTranslationUnit>();
+    DCHECK(tok_a->get_span()->is_a<SpanTranslationUnit>());
+    root = tok_a->get_span()->as_a<SpanTranslationUnit>();
 
     if (cursor != tok_b) {
       file_fail++;
@@ -169,19 +169,19 @@ ParseNode* C99Parser::parse() {
 
 Token* C99Parser::match_builtin_type_base(Token* a, Token* b) {
   if (!a || a == b) return nullptr;
-  auto result = SST<builtin_type_base>::match(a->lex->span_a, a->lex->span_b);
+  auto result = SST<builtin_type_base>::match(a->span_a(), a->span_b());
   return result ? a + 1 : nullptr;
 }
 
 Token* C99Parser::match_builtin_type_prefix(Token* a, Token* b) {
   if (!a || a == b) return nullptr;
-  auto result = SST<builtin_type_prefix>::match(a->lex->span_a, a->lex->span_b);
+  auto result = SST<builtin_type_prefix>::match(a->span_a(), a->span_b());
   return result ? a + 1 : nullptr;
 }
 
 Token* C99Parser::match_builtin_type_suffix(Token* a, Token* b) {
   if (!a || a == b) return nullptr;
-  auto result = SST<builtin_type_suffix>::match(a->lex->span_a, a->lex->span_b);
+  auto result = SST<builtin_type_suffix>::match(a->span_a(), a->span_b());
   return result ? a + 1 : nullptr;
 }
 
@@ -261,13 +261,11 @@ std::string escape_span(const ParseNode* n) {
     return "<bad span>";
   }
 
-  auto lex_a = n->tok_a->lex;
-  auto lex_b = n->tok_b->lex;
-  auto len = lex_b->span_b - lex_a->span_a;
+  auto len = n->tok_b->span_b() - n->tok_a->span_a();
 
   std::string result;
   for (auto i = 0; i < len; i++) {
-    auto c = lex_a->span_a[i];
+    auto c = n->tok_a->span_a()[i];
     if (c == '\n') {
       result.push_back('\\');
       result.push_back('n');
