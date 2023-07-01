@@ -557,6 +557,7 @@ inline ParseNodeIterator end(const ParseNode* parent) {
 
 //------------------------------------------------------------------------------
 
+/*
 inline Token* find_matching_delim(void* ctx, char ldelim, char rdelim, Token* a, Token* b) {
   if (a->as_str()[0] != ldelim) return nullptr;
   a++;
@@ -577,6 +578,7 @@ inline Token* find_matching_delim(void* ctx, char ldelim, char rdelim, Token* a,
 
   return nullptr;
 }
+*/
 
 //------------------------------------------------------------------------------
 // The Delimited<> modifier constrains a matcher to fit exactly between a pair

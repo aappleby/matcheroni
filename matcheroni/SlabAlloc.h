@@ -14,7 +14,7 @@ struct SlabAlloc {
   }
 
   void reset() {
-    for (auto s : old_slabs) delete [] s;
+    for (auto s : old_slabs) new_slabs.push_back(s);
     old_slabs.clear();
     slab_cursor = 0;
     current_size = 0;
@@ -23,7 +23,13 @@ struct SlabAlloc {
   void* bump(size_t size) {
     if (slab_cursor + size > slab_size) {
       old_slabs.push_back(top_slab);
-      top_slab = new uint8_t[slab_size];
+      if (new_slabs.empty()) {
+        top_slab = new uint8_t[slab_size];
+      }
+      else {
+        top_slab = new_slabs.back();
+        new_slabs.pop_back();
+      }
       slab_cursor = 0;
     }
 
@@ -36,8 +42,10 @@ struct SlabAlloc {
     return result;
   }
 
-  static constexpr size_t slab_size = 16*1024*1024;
+  // slab size is 1 hugepage. seems to work ok.
+  static constexpr size_t slab_size = 2*1024*1024;
   std::vector<uint8_t*> old_slabs;
+  std::vector<uint8_t*> new_slabs;
   uint8_t* top_slab;
   size_t   slab_cursor;
   size_t   current_size;

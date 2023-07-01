@@ -35,18 +35,6 @@ struct Lexeme {
     this->span_b = span_b;
   }
 
-  int len() const {
-    return int(span_b - span_a);
-  }
-
-  inline static int text_count = 0;
-
-  // called by nodeidentifier::text and the class/struct/union/enum/typedef type lookups
-  std::string text() const {
-    text_count++;
-    return std::string(span_a, span_b);
-  }
-
   //----------------------------------------------------------------------------
 
   void dump_lexeme() const {
@@ -136,6 +124,7 @@ struct Lexeme {
 //------------------------------------------------------------------------------
 // Does this actually work?
 
+/*
 struct AngleSpan;
 struct BraceSpan;
 struct BrackSpan;
@@ -182,38 +171,7 @@ struct SQuoteSpan : public PatternWrapper<SQuoteSpan> {
 
 inline const char* find_matching_delim(void* ctx, const char* a, const char* b) {
   return AnySpan::match(ctx, a, b);
-  /*
-  char ldelim = *a++;
-
-  char rdelim = 0;
-  if (ldelim == '<')  rdelim = '>';
-  if (ldelim == '{')  rdelim = '}';
-  if (ldelim == '[')  rdelim = ']';
-  if (ldelim == '"')  rdelim = '"';
-  if (ldelim == '\'') rdelim = '\'';
-  if (!rdelim) return nullptr;
-
-  while(a && *a && a < b) {
-    if (*a == rdelim) return a;
-
-    if (*a == '<' || *a == '{' || *a == '[' || *a == '"' || *a == '\'') {
-      a = find_matching_delim(a, b);
-      if (!a) return nullptr;
-      a++;
-    }
-    else if (ldelim == '"' && a[0] == '\\' && a[1] == '"') {
-      a += 2;
-    }
-    else if (ldelim == '\'' && a[0] == '\\' && a[1] == '\'') {
-      a += 2;
-    }
-    else {
-      a++;
-    }
-  }
-
-  return nullptr;
-  */
 }
+*/
 
 //------------------------------------------------------------------------------

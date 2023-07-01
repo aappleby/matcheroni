@@ -198,22 +198,22 @@ void C99Parser::dump_stats() {
     set_color(0);
   }
   printf("Total time     %f msec\n", total_time);
+  printf("Total bytes    %d\n", file_bytes);
+  printf("Total lines    %d\n", file_lines);
+  printf("Bytes/sec      %f\n", 1000.0 * double(file_bytes) / double(total_time));
+  printf("Lines/sec      %f\n", 1000.0 * double(file_lines) / double(total_time));
+  printf("Average line   %f bytes\n", double(file_bytes) / double(file_lines));
+  printf("\n");
   printf("IO time        %f msec\n", io_accum);
   printf("Lexing time    %f msec\n", lex_accum);
   printf("Parsing time   %f msec\n", parse_accum);
   printf("Cleanup time   %f msec\n", cleanup_accum);
-  printf("\n");
-  printf("Bytes/sec      %f\n", 1000.0 * double(file_bytes) / double(total_time));
-  printf("Lines/sec      %f\n", 1000.0 * double(file_lines) / double(total_time));
   printf("\n");
   printf("Total nodes    %d\n", ParseNode::constructor_count);
   printf("Node pool      %ld bytes\n", ParseNode::slabs.max_size);
   printf("File pass      %d\n", file_pass);
   printf("File fail      %d\n", file_fail);
   printf("File skip      %d\n", file_skip);
-  printf("File bytes     %d\n", file_bytes);
-  printf("File lines     %d\n", file_lines);
-  printf("Average line   %f bytes\n", double(file_bytes) / double(file_lines));
 
   if (file_fail) {
     set_color(0x008080FF);
