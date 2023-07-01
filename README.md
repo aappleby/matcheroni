@@ -65,9 +65,9 @@ Matcheroni is based on two fundamental primitives -
 
  - A **"matching function"** is a function of the form ```atom* match(void* ctx, atom* a, atom* b)```, where ```atom``` can be any data type you can store in an array, ```ctx``` is an opaque pointer to whatever bookkeeping data structure your app requires, and ```a``` and ```b``` are the endpoints of the range of atoms in the array to match against.
 
-Matching functions should return a pointer in the range ```[a, b]``` to indicate success or failure - returning ```a``` means the match succeded but did not consume any input, returning ```b``` means the match consumed all the input, returning ```nullptr``` means the match failed, and any other pointer in the range indicates that the match succeeded and consumed some amount of the input.
-
  - A **"matcher"** is any class or struct that defines a static matching function named ```match()```.
+
+Matching functions should return a pointer in the range ```[a, b]``` to indicate success or failure - returning ```a``` means the match succeded but did not consume any input, returning ```b``` means the match consumed all the input, returning ```nullptr``` means the match failed, and any other pointer in the range indicates that the match succeeded and consumed some amount of the input.
 
 Matcheroni includes [built-in matchers for most regex-like tasks](matcheroni/Matcheroni.h#L54), but writing your own is straightforward. Matchers can be templated and can do basically whatever they like inside ```match()```. For example, if we wanted to print a message whenever some pattern matches, we could do this:
 
