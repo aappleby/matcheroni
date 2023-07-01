@@ -102,13 +102,12 @@ void C99Parser::lex() {
 
   for (auto i = 0; i < lexemes.size(); i++) {
     auto l = &lexemes[i];
-    //if (!l->is_gap() && !l->is_preproc()) {
     if (!l->is_gap()) {
       tokens.push_back(Token(l));
     }
   }
 
-  DCHECK(tokens.back().lex->is_eof());
+  CHECK(tokens.back().get_type() == LEX_EOF);
 
   lex_accum += timestamp_ms();
 }
@@ -119,34 +118,25 @@ ParseNode* C99Parser::parse() {
 
   NodeTranslationUnit* root = nullptr;
 
-  DCHECK(tokens.front().lex->type == LEX_BOF);
-  DCHECK(tokens.back().lex->type == LEX_EOF);
+  CHECK(tokens.front().get_type() == LEX_BOF);
+  CHECK(tokens.back().get_type() == LEX_EOF);
 
+  // Skip over BOF, stop before EOF
   auto tok_a = tokens.data() + 1;
   auto tok_b = tokens.data() + tokens.size() - 1;
 
-  DCHECK(tok_a->lex->type != LEX_BOF);
-  DCHECK(tok_b->lex->type == LEX_EOF);
-
-  // Skip over BOF
-  auto cursor = tok_a;
-
-  /*
-  if (cursor == tok_b) {
-    file_pass++;
-    return nullptr;
-  }
-  */
+  CHECK(tok_a->get_type() != LEX_BOF);
+  CHECK(tok_b->get_type() == LEX_EOF);
 
   parse_accum -= timestamp_ms();
-  cursor = NodeTranslationUnit::match(this, cursor, tok_b);
+  auto end = NodeTranslationUnit::match(this, tok_a, tok_b);
   parse_accum += timestamp_ms();
 
-  if (cursor) {
-    DCHECK(tok_a->get_span()->is_a<NodeTranslationUnit>());
+  if (end) {
+    CHECK(tok_a->get_span()->is_a<NodeTranslationUnit>());
     root = tok_a->get_span()->as_a<NodeTranslationUnit>();
 
-    if (cursor != tok_b) {
+    if (end != tok_b) {
       file_fail++;
       printf("\n");
       dump_tokens();
@@ -250,8 +240,6 @@ void print_escaped(const char* s, int len, unsigned int color) {
   }
   while(len--) putc('#', stdout);
   set_color(0);
-
-  //for (int i = 32; i < 256; i++) putc(i, stdout);
 
   return;
 }

@@ -49,16 +49,6 @@ struct Token {
     return lex2->span_b;
   }
 
-  bool is_punct() const {
-    const_cast<Token*>(this)->span = nullptr;
-    return lex2->is_punct();
-  }
-
-  bool is_punct(char p) const {
-    const_cast<Token*>(this)->span = nullptr;
-    return lex2->is_punct(p);
-  }
-
   int get_len() const {
     return int(span_b() - span_a());
   }
@@ -71,59 +61,15 @@ struct Token {
     span = n;
   }
 
+  const char* type_to_str() const {
+    return lex2->type_to_str();
+  }
 
+  uint32_t type_to_color() const {
+    return lex2->type_to_color();
+  }
 
   void dump_token();
-
-  //----------------------------------------------------------------------------
-
-  const char* type_to_str() {
-    switch(lex2->type) {
-      case LEX_INVALID    : return "LEX_INVALID";
-      case LEX_SPACE      : return "LEX_SPACE";
-      case LEX_NEWLINE    : return "LEX_NEWLINE";
-      case LEX_STRING     : return "LEX_STRING";
-      case LEX_KEYWORD    : return "LEX_KEYWORD";
-      case LEX_IDENTIFIER : return "LEX_IDENTIFIER";
-      case LEX_COMMENT    : return "LEX_COMMENT";
-      case LEX_PREPROC    : return "LEX_PREPROC";
-      case LEX_FLOAT      : return "LEX_FLOAT";
-      case LEX_INT        : return "LEX_INT";
-      case LEX_PUNCT      : return "LEX_PUNCT";
-      case LEX_CHAR       : return "LEX_CHAR";
-      case LEX_SPLICE     : return "LEX_SPLICE";
-      case LEX_FORMFEED   : return "LEX_FORMFEED";
-      case LEX_BOF        : return "LEX_BOF";
-      case LEX_EOF        : return "LEX_EOF";
-      case LEX_LAST       : return "<lex last>";
-    }
-    return "<invalid>";
-  }
-
-  //----------------------------------------------------------------------------
-
-  uint32_t type_to_color() {
-    switch(lex2->type) {
-      case LEX_INVALID    : return 0x0000FF;
-      case LEX_SPACE      : return 0x804040;
-      case LEX_NEWLINE    : return 0x404080;
-      case LEX_STRING     : return 0x4488AA;
-      case LEX_KEYWORD    : return 0x0088FF;
-      case LEX_IDENTIFIER : return 0xCCCC40;
-      case LEX_COMMENT    : return 0x66AA66;
-      case LEX_PREPROC    : return 0xCC88CC;
-      case LEX_FLOAT      : return 0xFF88AA;
-      case LEX_INT        : return 0xFF8888;
-      case LEX_PUNCT      : return 0x808080;
-      case LEX_CHAR       : return 0x44DDDD;
-      case LEX_SPLICE     : return 0x00CCFF;
-      case LEX_FORMFEED   : return 0xFF00FF;
-      case LEX_BOF        : return 0x00FF00;
-      case LEX_EOF        : return 0x0000FF;
-      case LEX_LAST       : return 0xFF00FF;
-    }
-    return 0x0000FF;
-  }
 
   //----------------------------------------------------------------------------
 
@@ -162,34 +108,6 @@ struct ParseNode {
     else {
       head = child;
       tail = child;
-    }
-  }
-
-  //----------------------------------------
-
-  void check_solid() const {
-    if (head && head->tok_a != tok_a) {
-      printf("head for %p not at tok_a\n", this);
-      for (auto t = tok_a; t <= tok_b; t++) t->dump_token();
-      dump_tree(this, 0, 0);
-      return;
-    }
-    if (tail && tail->tok_b != tok_b) {
-      printf("tail for %p not at tok_b\n", this);
-      for (auto t = tok_a; t <= tok_b; t++) t->dump_token();
-      dump_tree(this, 0, 0);
-      return;
-    }
-
-    for (auto child = head; child; child = child->next) {
-      child->check_solid();
-
-      if (child->next) {
-        if (child->tok_b + 1 != child->next->tok_a) {
-          printf("child at %p not tight against its sibling\n", child);
-          return;
-        }
-      }
     }
   }
 
@@ -285,24 +203,24 @@ struct ParseNode {
 
   //----------------------------------------
 
-  void sanity() {
+  void check_sanity() {
     // All our children should be sane.
     for (auto cursor = head; cursor; cursor = cursor->next) {
-      cursor->sanity();
+      cursor->check_sanity();
     }
 
     // Our prev/next pointers should be hooked up correctly
-    DCHECK(!next || next->prev == this);
-    DCHECK(!prev || prev->next == this);
+    CHECK(!next || next->prev == this);
+    CHECK(!prev || prev->next == this);
 
     ParseNode* cursor = nullptr;
 
     // Check node chain
     for (cursor = head; cursor && cursor->next; cursor = cursor->next);
-    DCHECK(cursor == tail);
+    CHECK(cursor == tail);
 
     for (cursor = tail; cursor && cursor->prev; cursor = cursor->prev);
-    DCHECK(cursor == head);
+    CHECK(cursor == head);
   }
 
   //----------------------------------------
@@ -364,16 +282,6 @@ struct NodeMaker : public ParseNode {
   }
 };
 
-//------------------------------------------------------------------------------
-
-
-
-
-
-
-
-
-
 //----------------------------------------------------------------------------
 
 inline void Token::dump_token() {
@@ -396,84 +304,6 @@ inline void Token::dump_token() {
   }
   printf("\n");
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 //------------------------------------------------------------------------------
 
@@ -512,30 +342,6 @@ inline Token* match_punct(void* ctx, Token* a, Token* b, const char* lit, int li
   auto end = a + lit_len;
   return end;
 }
-
-//------------------------------------------------------------------------------
-
-// The optimization below does not actually improve performance in this
-// parser, though it could be significant in other ones.
-
-// Parseroni C parser without:
-// Total time     27887.913728 msec
-// Constructor 565766993
-
-// Parseroni C parser with:
-// Total time     28685.710080 msec
-// Constructor 559067842
-
-// See if there's a node on the token that we can reuse
-/*
-if (a->top) {
-  if (typeid(*(a->top)) == typeid(NodeType)) {
-    return a->top->tok_b;
-  }
-}
-// No node. Create a new node if the pattern matches, bail if it doesn't.
-*/
-
 
 //------------------------------------------------------------------------------
 
