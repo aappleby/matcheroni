@@ -5,11 +5,11 @@
 #include <string>
 
 #define BENCHMARK_BASELINE
-//#define BENCHMARK_MATCHERONI
-//#define BENCHMARK_CTRE
-//#define BENCHMARK_BOOST
-//#define BENCHMARK_STD_REGEX
-//#define BENCHMARK_SRELL
+#define BENCHMARK_MATCHERONI
+#define BENCHMARK_CTRE
+#define BENCHMARK_BOOST
+#define BENCHMARK_STD_REGEX
+#define BENCHMARK_SRELL
 
 #ifdef BENCHMARK_SRELL
 #include "srell.hpp"
@@ -260,7 +260,7 @@ void benchmark_std_regex(const char* path) {
 #ifdef BENCHMARK_BOOST
 
 void benchmark_boost_regex(const char* path) {
-  std::string buf = read();
+  std::string buf = read(path);
 
   const char* regex_email = "[\\w.+-]+@[\\w.-]+\\.[\\w.-]+";
   const char* regex_url   = "[\\w]+:\\/\\/[^\\/\\s?#]+[^\\s?#]+(?:\\?[^\\s#]*)?(?:#[^\\s]*)?";
