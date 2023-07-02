@@ -6,8 +6,13 @@
 #include <stdio.h>
 
 //#define MATCHERONI_ENABLE_TRACE
+#define MATCHERONI_USE_NAMESPACE
 
 void print_escaped(const char* s, int len, unsigned int color);
+
+#ifdef MATCHERONI_USE_NAMESPACE
+namespace matcheroni {
+#endif
 
 //------------------------------------------------------------------------------
 // Not a matcher, but a template helper that allows us to use strings as
@@ -120,10 +125,6 @@ struct Trace {
 
 
 
-
-#ifdef MATCHERONI_USE_NAMESPACE
-namespace matcheroni {
-#endif
 
 //------------------------------------------------------------------------------
 // Matcheroni is based on building trees of "matcher" functions. A matcher takes
@@ -403,7 +404,7 @@ struct Not {
 };
 
 //------------------------------------------------------------------------------
-// Repetition, equivalent to M{N} in regex.
+// Repetition, equivalent to P{N} in regex.
 
 template<int N, typename P>
 struct Rep {
@@ -412,6 +413,27 @@ struct Rep {
     for(auto i = 0; i < N; i++) {
       auto c = P::match(ctx, a, b);
       if (!c) return nullptr;
+      a = c;
+    }
+    return a;
+  }
+};
+
+//------------------------------------------------------------------------------
+// Repetition, equivalent to P{M,N} in regex.
+
+template<int M, int N, typename P>
+struct RepRange {
+  template<typename atom>
+  static atom* match(void* ctx, atom* a, atom* b) {
+    for(auto i = 0; i < M; i++) {
+      auto c = P::match(ctx, a, b);
+      if (!c) return nullptr;
+      a = c;
+    }
+    for(auto i = 0; i < (N-M); i++) {
+      auto c = P::match(ctx, a, b);
+      if (!c) return a;
       a = c;
     }
     return a;
@@ -455,6 +477,17 @@ struct Range {
   }
 };
 
+template<auto RA, decltype(RA) RB>
+struct NotRange {
+  template<typename atom>
+  static atom* match(void* ctx, atom* a, atom* b) {
+    if (!a || a == b) return nullptr;
+    if (atom_cmp(*a, RA) < 0) return a + 1;
+    if (atom_cmp(*a, RB) > 0) return a + 1;
+    return nullptr;
+  }
+};
+
 //------------------------------------------------------------------------------
 // Advances the cursor until the pattern matches or we hit EOF. Does _not_
 // consume the pattern. Equivalent to Any<Seq<Not<M>,AnyAtom>>
@@ -470,6 +503,64 @@ struct Until {
     return nullptr;
   }
 };
+
+#if 0
+// Match some P until we see T. No T = no match.
+template<typename P, typename T>
+struct SomeUntil {
+  template<typename atom>
+  static atom* match(void* ctx, atom* a, atom* b) {
+    auto c = AnyUntil<P,T>::match(ctx, a, b);
+    return c == a ? nullptr : c;
+  }
+};
+
+// Match any P until we see T. No T = no match.
+template<typename P, typename T>
+struct AnyUntil {
+  template<typename atom>
+  static atom* match(void* ctx, atom* a, atom* b) {
+    while(a < b) {
+      if (T::match(ctx, a, b)) return a;
+      if (auto end = P::match(ctx, a, b)) {
+        a = end;
+      }
+      else {
+        return nullptr;
+      }
+    }
+    return nullptr;
+  }
+};
+
+// Match some P unless it would match T.
+template<typename P, typename T>
+struct SomeUnless {
+  template<typename atom>
+  static atom* match(void* ctx, atom* a, atom* b) {
+    auto c = AnyUnless<P,T>::match(ctx, a, b);
+    return c == a ? nullptr : c;
+  }
+};
+
+// Match any P unless it would match T.
+template<typename P, typename T>
+struct AnyUnless {
+  template<typename atom>
+  static atom* match(void* ctx, atom* a, atom* b) {
+    while(a < b) {
+      if (T::match(ctx, a, b)) return a;
+      if (auto end = P::match(ctx, a, b)) {
+        a = end;
+      }
+      else {
+        return a;
+      }
+    }
+    return nullptr;
+  }
+};
+#endif
 
 //------------------------------------------------------------------------------
 // Reference to a global matcher functions.
@@ -644,6 +735,24 @@ struct Keyword {
     }
   }
 };
+
+//------------------------------------------------------------------------------
+
+/*
+template<typename P>
+struct Search {
+  template<typename atom>
+  static atom* match(void* ctx, atom* a, atom* b) {
+    if (!a || a == b) return nullptr;
+    while(1) {
+      auto end = P::match(ctx, a, b);
+      if (end) return end;
+      a++;
+      if (a == b) return nullptr;
+    }
+  }
+};
+*/
 
 //------------------------------------------------------------------------------
 // Matches larger sets of atoms packed into a string literal.

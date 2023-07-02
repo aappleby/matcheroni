@@ -1,42 +1,55 @@
-#include "Matcheroni.h"
-
-//#include <regex>
 #include <chrono>
+#include <filesystem>
+#include <fstream>
+#include <iostream>
 #include <string>
+
+#define BENCHMARK_BASELINE
+//#define BENCHMARK_MATCHERONI
+//#define BENCHMARK_CTRE
+//#define BENCHMARK_BOOST
+//#define BENCHMARK_STD_REGEX
+//#define BENCHMARK_SRELL
+
+#ifdef BENCHMARK_SRELL
+#include "srell.hpp"
+#endif
+
+#ifdef BENCHMARK_STD_REGEX
+#include <regex>
+#endif
+
+#ifdef BENCHMARK_BOOST
+#include <boost/regex.hpp>
+#endif
+
+#ifdef BENCHMARK_MATCHERONI
+#include "Matcheroni.h"
+#endif
+
+#ifdef BENCHMARK_CTRE
+#include "ctre.hpp"
+#endif
 
 #ifdef MATCHERONI_USE_NAMESPACE
 using namespace matcheroni;
 #endif
 
-int r_matches = 0;
-int i_matches = 0;
-int h_matches = 0;
-int m_matches = 0;
-
-double r_time = 0;
-double m_time = 0;
-double h_time = 0;
-double i_time = 0;
+// Reference regexes (as C strings):
+// Email "[\\w.+-]+@[\\w.-]+\\.[\\w.-]+"
+// URI   "[\\w]+:\\/\\/[^\\/\\s?#]+[^\\s?#]+(?:\\?[^\\s#]*)?(?:#[^\\s]*)?"
+// IP    "(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9])\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9])"
 
 //------------------------------------------------------------------------------
-// Fill a buffer with 1 million random characters from "()abcdef", with a max
-// paren nesting depth of 5.
 
-void generate_buffer(std::string& buf) {
-  const int buf_size = 1000000;
-  buf.resize(buf_size);
-
-  int depth = 0;
-  int cursor = 0;
-  while(cursor < buf_size) {
-    auto c = "()abcdef"[rand() % 8];
-    if (c == '(' && depth == 5) continue;
-    if (c == ')' && depth == 0) continue;
-
-    buf[cursor++] = c;
-    if (c == '(') depth++;
-    if (c == ')') depth--;
-  }
+std::string read(const char* path) {
+  auto size = std::filesystem::file_size(path);
+  std::string buf;
+  buf.resize(size);
+  FILE* f = fopen(path, "rb");
+  auto _ = fread(buf.data(), size, 1, f);
+  fclose(f);
+  return buf;
 }
 
 //------------------------------------------------------------------------------
@@ -57,308 +70,403 @@ double timestamp_ms() {
 
 //------------------------------------------------------------------------------
 
-/*
-struct MatchingParens {
-  static const char* match(const char* a, const char* b) {
-    using pattern =
+#ifdef BENCHMARK_BASELINE
+
+void benchmark_baseline(const char* path) {
+  std::string buf = read(path);
+
+  {
+    int checksum = 0;
+    double time = -timestamp_ms();
+    for (auto c : buf) {
+      checksum = checksum * 0x1234567 ^ c;
+    }
+    time += timestamp_ms();
+    printf("Email: Checksum 0x%08x, time %f\n", checksum, time);
+  }
+
+  {
+    int checksum = 0;
+    double time = -timestamp_ms();
+    for (auto c : buf) {
+      checksum = checksum * 0x7654321 ^ c;
+    }
+    time += timestamp_ms();
+    printf("Email: Checksum 0x%08x, time %f\n", checksum, time);
+  }
+
+  {
+    int checksum = 0;
+    double time = -timestamp_ms();
+    for (auto c : buf) {
+      checksum = checksum * 0x123321 ^ c;
+    }
+    time += timestamp_ms();
+    printf("Email: Checksum 0x%08x, time %f\n", checksum, time);
+  }
+}
+
+#endif
+
+//------------------------------------------------------------------------------
+
+#ifdef BENCHMARK_MATCHERONI
+
+template<typename P>
+void benchmark_pattern(const char* span_a, const char* span_b) {
+  int matches = 0;
+  double time = 0;
+
+  time -= timestamp_ms();
+  auto cursor = span_a;
+  while(cursor != span_b) {
+    auto end = P::match(nullptr, cursor, span_b);
+    if (end) {
+      matches++;
+      cursor = end;
+    }
+    else {
+      cursor++;
+    }
+  }
+  time += timestamp_ms();
+
+  printf("Match count %4d, time %f msec\n", matches, time);
+  fflush(stdout);
+}
+
+using w = Oneof<Range<'a','z'>, Range<'A','Z'>, Range<'0','9'>, Atom<'_'>>;
+using dot = Atom<'.'>;
+using at = Atom<'@'>;
+using plus = Atom<'+'>;
+using minus = Atom<'-'>;
+
+using matcheroni_email_pattern = Seq<
+  Some<w, dot, plus, minus>,
+  at,
+  Some<w, minus>,
+  dot,
+  Some<w, dot, minus>
+>;
+
+using matcheroni_url_pattern =
+Seq<
+  Some<w>,
+  Lit<"://">,
+  Some<NotAtom<'/',' ','\t','\n','?','#'>>,
+  Any<NotAtom<' ','\t','\n','?','#'>>,
+
+  Opt<
     Seq<
-      Atom<'('>,
-      Any<MatchingParens, NotAtom<')'>>,
-      Atom<')'>
-    >;
-    return pattern::match(ctx, a, b);
-  }
-};
-*/
+      Atom<'?'>,
+      Any<NotAtom<' ','\t','\n','#'>>
+    >
+  >,
+  Opt<
+    Seq<
+      Atom<'#'>,
+      Any<NotAtom<' ','\t','\n'>>
+    >
+  >
+>;
 
-__attribute__((noinline))
-const char* matcheroni_match_parens(void* ctx, const char* a, const char* b) {
-  using pattern =
-  Seq<
-    Atom<'('>,
-    Any<Ref<matcheroni_match_parens>, NotAtom<')'>>,
-    Atom<')'>
-  >;
-  return pattern::match(ctx, a, b);
+using zero_to_255 = Oneof<
+  Seq< Atom<'2'>, Atom<'5'>,      Range<'0', '5'> >,
+  Seq< Atom<'2'>, Range<'0','4'>, Range<'0', '9'> >,
+  Seq< Atom<'1'>, Range<'0','9'>, Range<'0', '9'> >,
+  Seq<            Range<'0','9'>, Range<'0', '9'> >,
+  Seq<                            Range<'0', '9'> >
+>;
+
+using matcheroni_ip4_pattern = Seq<
+  Rep<3, Seq<zero_to_255, Atom<'.'>>>,
+  zero_to_255
+>;
+
+void benchmark_matcheroni(const char* path) {
+  std::string buf = read(path);
+
+  printf("Email: ");
+  benchmark_pattern<matcheroni_email_pattern>(buf.data(), buf.data() + buf.size());
+
+  printf("URL:   ");
+  benchmark_pattern<matcheroni_url_pattern>(buf.data(), buf.data() + buf.size());
+
+  printf("IP4:   ");
+  benchmark_pattern<matcheroni_ip4_pattern>(buf.data(), buf.data() + buf.size());
 }
+#endif
 
 //------------------------------------------------------------------------------
 
-__attribute__((noinline))
-static const char* recursive_matching_parens(void* ctx, const char* a, const char* b) {
-  if (*a != '(') return nullptr;
-  a++;
-  while (a != b) {
-    if (*a == ')') return a + 1;
-    else if (*a == '(') {
-      if (auto end = recursive_matching_parens(ctx, a, b)) {
-        a = end;
-      }
-      else {
-        return nullptr;
-      }
-    }
-    else {
-      a++;
-    }
-  }
-  return nullptr;
-}
+#ifdef BENCHMARK_STD_REGEX
 
-__attribute__((noinline))
-static const char* nonrecursive_matching_parens(void* ctx, const char* a, const char* b) {
-  if (*a != '(') return nullptr;
-  a++;
-  int depth = 1;
-  while (a != b) {
-    if (*a == ')') {
-      depth--;
-      if (depth == 0) return a + 1;
+void benchmark_std_regex(const char* path) {
+  std::string buf = read(path);
+
+  const char* regex_email = "[\\w.+-]+@[\\w.-]+\\.[\\w.-]+";
+  const char* regex_url   = "[\\w]+:\\/\\/[^\\/\\s?#]+[^\\s?#]+(?:\\?[^\\s#]*)?(?:#[^\\s]*)?";
+  const char* regex_ip4   = "(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9])\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9])";
+
+  {
+    static std::regex r(regex_email);
+    std::cregex_iterator it (buf.data(), buf.data() + buf.size(), r);
+    std::cregex_iterator end;
+
+    int match_count = 0;
+    double time = -timestamp_ms();
+    while (it != end) {
+      match_count++;
+      it++;
     }
-    else if (*a == '(') {
-      depth++;
-    }
-    a++;
+    time += timestamp_ms();
+    printf("Email: Match count %4d, time %f\n", match_count, time);
   }
-  return nullptr;
+
+  {
+    static std::regex r(regex_url);
+    std::cregex_iterator it (buf.data(), buf.data() + buf.size(), r);
+    std::cregex_iterator end;
+
+    int match_count = 0;
+    double time = -timestamp_ms();
+    while (it != end) {
+      match_count++;
+      it++;
+    }
+    time += timestamp_ms();
+    printf("URL:   Match count %4d, time %f\n", match_count, time);
+  }
+
+  {
+    static std::regex r(regex_ip4);
+    std::cregex_iterator it (buf.data(), buf.data() + buf.size(), r);
+    std::cregex_iterator end;
+
+    int match_count = 0;
+    double time = -timestamp_ms();
+    while (it != end) {
+      match_count++;
+      it++;
+    }
+    time += timestamp_ms();
+    printf("IP4:   Match count %4d, time %f\n", match_count, time);
+  }
 }
+#endif
 
 //------------------------------------------------------------------------------
 
-void benchmark_paired_parens() {
-  std::string buf;
-  generate_buffer(buf);
+#ifdef BENCHMARK_BOOST
 
-  printf("Warmup reps");
-  const int reps = 10;
-  for (int rep = 0; rep < reps; rep++) {
-    if (rep == reps - 1) {
-      printf("\n");
-      printf("Benchmarking...\n\n");
-      r_time = 0;
-      m_time = 0;
-      h_time = 0;
-      i_time = 0;
-      r_matches = 0;
-      i_matches = 0;
-      h_matches = 0;
-      m_matches = 0;
+void benchmark_boost_regex(const char* path) {
+  std::string buf = read();
+
+  const char* regex_email = "[\\w.+-]+@[\\w.-]+\\.[\\w.-]+";
+  const char* regex_url   = "[\\w]+:\\/\\/[^\\/\\s?#]+[^\\s?#]+(?:\\?[^\\s#]*)?(?:#[^\\s]*)?";
+  const char* regex_ip4   = "(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9])\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9])";
+
+  {
+    static boost::regex r(regex_email);
+    boost::cregex_iterator it (buf.data(), buf.data() + buf.size(), r);
+    boost::cregex_iterator end;
+
+    int match_count = 0;
+    double time = -timestamp_ms();
+    while (it != end) {
+      match_count++;
+      it++;
     }
-    else {
-      printf(".");
-      fflush(stdout);
+    time += timestamp_ms();
+    printf("Email: Match count %4d, time %f\n", match_count, time);
+  }
+
+  {
+    static boost::regex r(regex_url);
+    boost::cregex_iterator it (buf.data(), buf.data() + buf.size(), r);
+    boost::cregex_iterator end;
+
+    int match_count = 0;
+    double time = -timestamp_ms();
+    while (it != end) {
+      match_count++;
+      it++;
     }
+    time += timestamp_ms();
+    printf("URL:   Match count %4d, time %f\n", match_count, time);
+  }
 
-    // Straightforward handwritten matcher
-    {
-      const char* lparen = 0;
+  {
+    static boost::regex r(regex_ip4);
+    boost::cregex_iterator it (buf.data(), buf.data() + buf.size(), r);
+    boost::cregex_iterator end;
 
-      h_time -= timestamp_ms();
-      const char* a = buf.data();
-      const char* b = buf.data() + buf.size();
-      while(a != b) {
-        /*
-        auto end1 = recursive_matching_parens(a, b);
-        auto end2 = nonrecursive_matching_parens(a, b);
-        auto end3 = unrolled_matcheroni_matching_parens(a, b);
-        auto end4 = MatchingParens::match(ctx, a, b);
-
-        if (end1 != end2 || end2 != end3 || end3 != end4) {
-          printf("mismatch?\n");
-          end3 = unrolled_matcheroni_matching_parens(a, b);
-        }
-        */
-
-        if (auto end = recursive_matching_parens(nullptr, a, b)) {
-          h_matches++;
-          a = end;
-        }
-        else {
-          a++;
-        }
-      }
-      h_time += timestamp_ms();
+    int match_count = 0;
+    double time = -timestamp_ms();
+    while (it != end) {
+      match_count++;
+      it++;
     }
-
-    // Matcheroni matcher
-    {
-      m_time -= timestamp_ms();
-      const char* a = buf.data();
-      const char* b = buf.data() + buf.size();
-      while(a != b) {
-        if (m_matches == 669) {
-          int x = 1;
-          x++;
-        }
-
-        if (auto end = matcheroni_match_parens(nullptr, a, b)) {
-          m_matches++;
-          a = end;
-        }
-        else {
-          a++;
-        }
-      }
-      m_time += timestamp_ms();
-    }
+    time += timestamp_ms();
+    printf("IP4:   Match count %4d, time %f\n", match_count, time);
   }
 }
+#endif
 
 //------------------------------------------------------------------------------
 
-void benchmark_paren_letters() {
-  std::string buf;
-  generate_buffer(buf);
+#ifdef BENCHMARK_CTRE
+void benchmark_ctre(const char* path) {
+  std::string buf = read(path);
 
-  printf("Warmup reps");
-  const int reps = 10;
-  for (int rep = 0; rep < reps; rep++) {
-    if (rep == reps - 1) {
-      printf("\n");
-      printf("Benchmarking...\n\n");
-      r_time = 0;
-      m_time = 0;
-      h_time = 0;
-      i_time = 0;
-      r_matches = 0;
-      i_matches = 0;
-      h_matches = 0;
-      m_matches = 0;
+  auto match_email = ctre::search<"[\\w\\.+\\-]+@[\\w\\.\\-]+\\.[\\w\\.\\-]+">;
+  auto match_url = ctre::search<"[\\w]+://[^/\\s?#]+[^\\s?#]+(?:\\?[^\\s#]*)?(?:#[^\\s]*)?">;
+  auto match_ip4 = ctre::search<"(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9])\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9])">;
+
+  printf("CTRE email\n");
+  {
+    const char* cursor = buf.data();
+    int match_count = 0;
+    double time = 0;
+    time -= timestamp_ms();
+    while (auto r = match_email(cursor)) {
+      match_count++;
+      cursor = r.end();
     }
-    else {
-      printf(".");
-      fflush(stdout);
+    time += timestamp_ms();
+    printf("Email: Match count %4d, time %f\n", match_count, time);
+  }
+
+  {
+    const char* cursor = buf.data();
+    int match_count = 0;
+    double time = 0;
+    time -= timestamp_ms();
+    while (auto r = match_url(cursor)) {
+      match_count++;
+      cursor = r.end();
     }
+    time += timestamp_ms();
+    printf("URL:   Match count %4d, time %f\n", match_count, time);
+  }
 
-#if 0
-    // Naive use of std::regex that calls regex_search() to find each match.
-    {
-      static std::regex paren_match_regex(R"(\([^()]+\))");
-
-      r_time -= timestamp_ms();
-      const char* a = buf.data();
-      const char* b = buf.data() + buf.size();
-      while(*a) {
-        std::cmatch m;
-        if (std::regex_search(a, m, paren_match_regex)) {
-          r_matches++;
-          auto p = m.position();
-          auto l = m.length();
-          a = a + p + l;
-        }
-        else {
-          a++;
-        }
-      }
-      r_time += timestamp_ms();
+  {
+    const char* cursor = buf.data();
+    int match_count = 0;
+    double time = 0;
+    time -= timestamp_ms();
+    while (auto r = match_ip4(cursor)) {
+      match_count++;
+      cursor = r.end();
     }
-#endif
-
-#if 0
-    // Better use of std::regex via regex_iterator
-    {
-      static std::regex paren_match_regex(R"(\([^()]+\))");
-      std::cregex_iterator it (buf.data(), buf.data() + buf.size(), paren_match_regex);
-      std::cregex_iterator end;
-
-      i_time -= timestamp_ms();
-      while (it != end) {
-        i_matches++;
-        ++it;
-      }
-      i_time += timestamp_ms();
-    }
-#endif
-
-#if 1
-    // Straightforward handwritten matcher
-    {
-      const char* lparen = 0;
-
-      h_time -= timestamp_ms();
-      const char* a = buf.data();
-      const char* b = buf.data() + buf.size();
-      while(a != b) {
-        if (*a == '(') {
-          lparen = a;
-        } else if (*a == ')') {
-          if (lparen && ((a - lparen) > 1)) {
-            h_matches++;
-          }
-          lparen = nullptr;
-        }
-        a++;
-      }
-      h_time += timestamp_ms();
-    }
-#endif
-
-#if 1
-    // Matcheroni matcher
-    {
-      using matcher = Seq<Atom<'('>, Some<NotAtom<'(', ')'>>, Atom<')'>>;
-
-      m_time -= timestamp_ms();
-      const char* a = buf.data();
-      const char* b = buf.data() + buf.size();
-      while(a != b) {
-        if (auto end = matcher::match(nullptr, a, b)) {
-          m_matches++;
-          a = end;
-        }
-        else {
-          a++;
-        }
-      }
-      m_time += timestamp_ms();
-    }
-#endif
+    time += timestamp_ms();
+    printf("IP4:   Match count %4d, time %f\n", match_count, time);
   }
 }
+#endif
+
+//------------------------------------------------------------------------------
+
+#ifdef BENCHMARK_SRELL
+
+void benchmark_srell(const char* path) {
+  std::string buf = read(path);
+
+  const char* regex_email = "[\\w.+-]+@[\\w.-]+\\.[\\w.-]+";
+  const char* regex_url   = "[\\w]+:\\/\\/[^\\/\\s?#]+[^\\s?#]+(?:\\?[^\\s#]*)?(?:#[^\\s]*)?";
+  const char* regex_ip4   = "(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9])\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9])";
+
+  {
+    static srell::regex r(regex_email);
+    srell::cregex_iterator it (buf.data(), buf.data() + buf.size(), r);
+    srell::cregex_iterator end;
+
+    int match_count = 0;
+    double time = -timestamp_ms();
+    while (it != end) {
+      match_count++;
+      it++;
+    }
+    time += timestamp_ms();
+    printf("Email: Match count %4d, time %f\n", match_count, time);
+  }
+
+  {
+    static srell::regex r(regex_url);
+    srell::cregex_iterator it (buf.data(), buf.data() + buf.size(), r);
+    srell::cregex_iterator end;
+
+    int match_count = 0;
+    double time = -timestamp_ms();
+    while (it != end) {
+      match_count++;
+      it++;
+    }
+    time += timestamp_ms();
+    printf("URL:   Match count %4d, time %f\n", match_count, time);
+  }
+
+  {
+    static srell::regex r(regex_ip4);
+    srell::cregex_iterator it (buf.data(), buf.data() + buf.size(), r);
+    srell::cregex_iterator end;
+
+    int match_count = 0;
+    double time = -timestamp_ms();
+    while (it != end) {
+      match_count++;
+      it++;
+    }
+    time += timestamp_ms();
+    printf("IP4:   Match count %4d, time %f\n", match_count, time);
+  }
+}
+#endif
 
 //------------------------------------------------------------------------------
 
 int main(int argc, char** argv) {
+  printf("Regex benchmark shootout\n");
 
-  /*
-  std::string temp = "(a)(((((";
+  const char* path = nullptr;
+  if (argc > 1) path = argv[1];
+  else          path = "../regex-benchmark/input-text.txt";
 
-  const char* a = temp.data();
-  const char* b = a + temp.size();
-
-  while(a != b) {
-    if (auto end = MatchingParens::match(ctx, a, b)) {
-      a = end;
-    }
-    else {
-      a++;
-    }
-  }
-  exit(0);
-  */
-
-  //benchmark_paired_parens();
-  benchmark_paren_letters();
-
-  printf("std::regex match count %d\n", r_matches);
-  printf("std::regex elapsed time %f ms\n", r_time);
+#ifdef BENCHMARK_BASELINE
+  printf("Benchmarking baseline:\n");
+  benchmark_baseline(path);
   printf("\n");
+#endif
 
-  printf("std::regex_iterator match count %d\n", i_matches);
-  printf("std::regex_iterator elapsed time %f ms\n", i_time);
+#ifdef BENCHMARK_MATCHERONI
+  printf("Benchmarking Matcheroni:\n");
+  benchmark_matcheroni(path);
   printf("\n");
+#endif
 
-  printf("Handwritten match count %d\n", h_matches);
-  printf("Handwritten elapsed time %f ms\n", h_time);
+#ifdef BENCHMARK_STD_REGEX
+  printf("Benchmarking std::regex:\n");
+  benchmark_std_regex(path);
   printf("\n");
+#endif
 
-  printf("Matcheroni match count %d\n", m_matches);
-  printf("Matcheroni elapsed time %f ms\n", m_time);
+#ifdef BENCHMARK_CTRE
+  printf("Benchmarking CTRE:\n");
+  benchmark_ctre(path);
   printf("\n");
+#endif
 
-  printf("Matcheroni is %f times faster than std::regex_search\n", r_time / m_time);
-  printf("Matcheroni is %f times faster than std::regex_iterator\n", i_time / m_time);
-  printf("Matcheroni is %f times faster than handwritten\n", h_time / m_time);
+#ifdef BENCHMARK_BOOST
+  printf("Benchmarking Boost:\n");
+  benchmark_boost_regex(path);
+  printf("\n");
+#endif
+
+#ifdef BENCHMARK_SRELL
+  printf("Benchmarking Srell:\n");
+  benchmark_srell(path);
+  printf("\n");
+#endif
 
   return 0;
 }

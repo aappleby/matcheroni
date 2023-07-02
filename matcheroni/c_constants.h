@@ -3,6 +3,10 @@
 #include <string.h>
 #include "Matcheroni.h"
 
+#ifdef MATCHERONI_USE_NAMESPACE
+using namespace matcheroni;
+#endif
+
 //------------------------------------------------------------------------------
 // Sorted string table matcher thing.
 

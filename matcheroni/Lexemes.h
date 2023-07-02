@@ -4,6 +4,10 @@
 
 #include "Matcheroni.h"
 
+#ifdef MATCHERONI_USE_NAMESPACE
+using namespace matcheroni;
+#endif
+
 //------------------------------------------------------------------------------
 
 enum LexemeType {

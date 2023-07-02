@@ -1,6 +1,10 @@
-  #include "Matcheroni.h"
-  #include "Lexemes.h"
-  #include "c_lexer.h"
+#include "Matcheroni.h"
+#include "Lexemes.h"
+#include "c_lexer.h"
+
+#ifdef MATCHERONI_USE_NAMESPACE
+using namespace matcheroni;
+#endif
 
 // These are not intended to be usable grammar bits, they are just from the C99
 // spec for reference.

@@ -51,6 +51,16 @@ bool should_skip(const std::string& path) {
     "20010518-1.c",
     "pr44784.c",
 
+    // uses va_arg, which is actually a macro
+    "20041214-1.c",
+    "pr38151.c",
+    "pr43066.c",
+    "pr40023.c",
+    "20001123-1.c",
+    "pr34334.c",
+    "20081119-1.c",
+    "20071214-1.c",
+
     // Double-typedef
     "pr61159.c",
   };
@@ -104,13 +114,6 @@ int test_parser(int argc, char** argv) {
     //printf("Loading %s\n", path.c_str());
     parser.load(path);
 
-    // va_arg is a macro
-    if (parser.text.find("va_arg") != std::string::npos) {
-      //printf("Skipping %s\n", path.c_str());
-      parser.file_skip++;
-      continue;
-    }
-
     //printf("Lexing %s\n", path.c_str());
     parser.lex();
     if (parser.tokens.empty() || parser.tokens.size() == 2) {
@@ -133,13 +136,6 @@ int test_parser(int argc, char** argv) {
       }
     }
 
-    /*
-    if (verbose) {
-      parser.dump_tokens();
-      printf("\n");
-    }
-    */
-
     printf("%04d: Parsing %s\n", parser.file_pass, path.c_str());
     auto root = parser.parse();
 
@@ -152,13 +148,8 @@ int test_parser(int argc, char** argv) {
         printf("Dumping tree:\n");
         dump_tree(root);
         printf("\n");
-
-        //printf("Dumping tokens:\n");
-        //parser.dump_tokens();
-        //printf("\n");
       }
     }
-
 
     auto tok_a = parser.tokens.data();
     auto tok_b = parser.tokens.data() + parser.tokens.size() - 1;
