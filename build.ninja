@@ -1,8 +1,8 @@
 #build_mode = -g -O0 -DDEBUG -DMATCHERONI_ENABLE_TRACE -DEXTRA_DEBUG
-#build_mode = -g -O0 -DDEBUG
+build_mode = -g -O0 -DDEBUG
 #build_mode = -g -Og -DDEBUG
 #build_mode = -O3 -fdata-sections -ffunction-sections -Wl,--gc-sections -Wl,-s
-build_mode = -O3
+#build_mode = -O3
 #build_mode = -Os -fdata-sections -ffunction-sections -Wl,--gc-sections -Wl,-s
 
 #defs = -DSRELL_NO_UNICODE_ICASE -DSRELL_NO_UNICODE_PROPERTY -DSRELL_NO_UNICODE_DATA -DSRELL_NO_NAMEDCAPTURE -DSRELL_NO_VMODE -DSRELL_NO_APIEXT

@@ -12,6 +12,7 @@ struct NodeStructType;
 struct NodeTypedefType;
 struct NodeUnionType;
 
+struct NodeSuffixInitializerList;
 struct NodeAbstractDeclarator;
 struct NodeClass;
 struct NodeConstructor;
@@ -449,7 +450,20 @@ struct NodeAccessSpecifier : public NodeMaker<NodeAccessSpecifier> {
 //   unary-expression
 //   ( type-name ) cast-expression
 
-struct NodeExpressionCast : public NodeMaker<NodeExpressionCast> {
+struct NodeParenType : public NodeMaker<NodeParenType> {
+  using pattern = Seq<
+    Atom<'('>,
+    NodeTypeName,
+    Atom<')'>
+  >;
+};
+
+struct NodePrefixCast : public NodeMaker<NodePrefixCast> {
+  virtual void init(Token* tok_a, Token* tok_b) override {
+    NodeMaker::init(tok_a, tok_b);
+    this->precedence = 3;
+  }
+
   using pattern = Seq<
     Atom<'('>,
     NodeTypeName,
@@ -460,6 +474,21 @@ struct NodeExpressionCast : public NodeMaker<NodeExpressionCast> {
 //------------------------------------------------------------------------------
 
 struct NodeExpressionParen : public NodeMaker<NodeExpressionParen> {
+  using pattern =
+  DelimitedList<
+    Atom<'('>,
+    NodeExpression,
+    Atom<','>,
+    Atom<')'>
+  >;
+};
+
+struct NodeSuffixParen : public NodeMaker<NodeSuffixParen> {
+  virtual void init(Token* tok_a, Token* tok_b) override {
+    NodeMaker::init(tok_a, tok_b);
+    this->precedence = 2;
+  }
+
   using pattern =
   DelimitedList<
     Atom<'('>,
@@ -481,9 +510,29 @@ struct NodeExpressionBraces : public NodeMaker<NodeExpressionBraces> {
   >;
 };
 
+struct NodeSuffixBraces : public NodeMaker<NodeSuffixBraces> {
+  virtual void init(Token* tok_a, Token* tok_b) override {
+    NodeMaker::init(tok_a, tok_b);
+    this->precedence = 2;
+  }
+
+  using pattern =
+  DelimitedList<
+    Atom<'{'>,
+    NodeExpression,
+    Atom<','>,
+    Atom<'}'>
+  >;
+};
+
 //------------------------------------------------------------------------------
 
-struct NodeExpressionSubscript : public NodeMaker<NodeExpressionSubscript> {
+struct NodeSuffixSubscript : public NodeMaker<NodeSuffixSubscript> {
+  virtual void init(Token* tok_a, Token* tok_b) override {
+    NodeMaker::init(tok_a, tok_b);
+    this->precedence = 2;
+  }
+
   using pattern =
   DelimitedList<
     Atom<'['>,
@@ -514,7 +563,7 @@ struct NodeExpressionSizeof  : public NodeMaker<NodeExpressionSizeof> {
   using pattern = Seq<
     Keyword<"sizeof">,
     Oneof<
-      NodeExpressionCast,
+      NodeParenType,
       NodeExpressionParen,
       NodeExpression
     >
@@ -525,7 +574,7 @@ struct NodeExpressionAlignof  : public NodeMaker<NodeExpressionAlignof> {
   using pattern = Seq<
     Keyword<"__alignof__">,
     Oneof<
-      NodeExpressionCast,
+      NodeParenType,
       NodeExpressionParen
     >
   >;
@@ -547,14 +596,38 @@ struct NodeExpressionOffsetof  : public NodeMaker<NodeExpressionOffsetof> {
 
 //----------------------------------------
 
+template<StringParam lit>
+struct NodePrefixKeyword : public NodeMaker<NodePrefixKeyword<lit>> {
+  virtual void init(Token* tok_a, Token* tok_b) override {
+    NodeMaker<NodePrefixKeyword<lit>>::init(tok_a, tok_b);
+    this->precedence = 3;
+  }
+
+  //using pattern = Keyword<lit>;
+  static Token* match(void* ctx, Token* a, Token* b) {
+    if (!a || a == b) return nullptr;
+    if (!a->get_type() == LEX_KEYWORD) return nullptr;
+
+    Token* end = nullptr;
+    print_trace_start<NodePrefixKeyword<lit>, Token>(a);
+    if (atom_cmp(*a, lit) == 0) {
+      auto node = new NodePrefixKeyword<lit>();
+      node->init(a, a);
+      end = a + 1;
+    }
+    print_trace_end<NodePrefixKeyword<lit>, Token>(a, end);
+    return end;
+  }
+};
+
 using ExpressionPrefixOp =
 Oneof<
-  NodeExpressionCast,
-  NodeKeyword<"__extension__">,
-  NodeKeyword<"__real">,
-  NodeKeyword<"__real__">,
-  NodeKeyword<"__imag">,
-  NodeKeyword<"__imag__">,
+  NodePrefixCast,
+  NodePrefixKeyword<"__extension__">,
+  NodePrefixKeyword<"__real">,
+  NodePrefixKeyword<"__real__">,
+  NodePrefixKeyword<"__imag">,
+  NodePrefixKeyword<"__imag__">,
   MatchOpPrefix<"++">,
   MatchOpPrefix<"--">,
   MatchOpPrefix<"+">,
@@ -583,16 +656,17 @@ using ExpressionCore = Oneof<
 
 using ExpressionSuffixOp =
 Oneof<
-  NodeInitializerList,   // must be before NodeExpressionBraces
-  NodeExpressionBraces,
-  NodeExpressionParen,
-  NodeExpressionSubscript,
+  NodeSuffixInitializerList,   // must be before NodeSuffixBraces
+  NodeSuffixBraces,
+  NodeSuffixParen,
+  NodeSuffixSubscript,
   MatchOpSuffix<"++">,
   MatchOpSuffix<"--">
 >;
 
 //----------------------------------------
 
+/*
 struct NodeExpressionUnit : public NodeMaker<NodeExpressionUnit> {
   using pattern = Seq<
     Any<ExpressionPrefixOp>,
@@ -600,6 +674,7 @@ struct NodeExpressionUnit : public NodeMaker<NodeExpressionUnit> {
     Any<ExpressionSuffixOp>
   >;
 };
+*/
 
 
 struct NodeExpression : public ParseNode {
@@ -647,42 +722,47 @@ struct NodeExpression : public ParseNode {
       auto prefix_start = a;
       auto prefix_end   = Any<ExpressionPrefixOp>::match(ctx, prefix_start, b);
 
-      for (auto c = prefix_start; c < prefix_end; c++) c->dump_token();
+      //for (auto c = prefix_start; c < prefix_end; c++) c->dump_token();
 
       auto core_start   = prefix_end;
       auto core_end     = ExpressionCore::match(ctx, core_start, b);
 
-      for (auto c = prefix_start; c < core_end; c++) c->dump_token();
+      //for (auto c = prefix_start; c < core_end; c++) c->dump_token();
 
       auto suffix_start = core_end;
       auto suffix_end   = Any<ExpressionSuffixOp>::match(ctx, suffix_start, b);
 
-      for (auto c = prefix_start; c < suffix_end; c++) c->dump_token();
+      //for (auto c = prefix_start; c < suffix_end; c++) c->dump_token();
       auto core = core_start->get_span();
 
       /*while(1)*/ {
-        auto prefix = (core_start - 1)->get_span()->as_a<NodeOpPrefix>();
-        auto suffix = core_end->get_span()->as_a<NodeOpSuffix>();
+        auto prefix = (core_start - 1)->get_span();
+        auto suffix = core_end->get_span();
+
+        if (prefix) printf("prefix precedence %d\n", prefix->precedence);
+        if (suffix) printf("suffix precedence %d\n", suffix->precedence);
 
         if (core) {
           if (prefix && suffix) {
-            dump_tree(prefix, 0, 0);
-            dump_tree(core, 0, 0);
-            dump_tree(suffix, 0, 0);
+            //dump_tree(prefix, 0, 0);
+            //dump_tree(core, 0, 0);
+            //dump_tree(suffix, 0, 0);
           }
           else if (prefix) {
-            dump_tree(prefix, 0, 0);
-            dump_tree(core, 0, 0);
+            //dump_tree(prefix, 0, 0);
+            //dump_tree(core, 0, 0);
           }
           else if (suffix) {
-            dump_tree(core, 0, 0);
-            dump_tree(suffix, 0, 0);
+            //dump_tree(core, 0, 0);
+            //dump_tree(suffix, 0, 0);
           }
         }
       }
 
-      for (auto c = prefix_start; c < suffix_end; c++) c->dump_token();
-      printf("derp\n");
+      //printf("----\n");
+      //for (auto c = prefix_start; c < suffix_end; c++) c->dump_token();
+      //printf("----\n");
+      //printf("derp\n");
     }
 #endif
 
@@ -691,17 +771,20 @@ struct NodeExpression : public ParseNode {
       ExpressionCore,
       Any<ExpressionSuffixOp>
     >;
-    cursor = NodeExpressionUnit::match(ctx, a, b);
+    //cursor = NodeExpressionUnit::match(ctx, a, b);
+    cursor = pattern::match(ctx, a, b);
     if (!cursor) return nullptr;
 
     // And see if we can chain it to a ternary or binary op.
 
     //using binary_pattern = Seq<BaseBinaryOp, NodeExpressionUnit>;
-    using binary_pattern = Seq<Ref<match_binary_op>, NodeExpressionUnit>;
+    //using binary_pattern = Seq<Ref<match_binary_op>, NodeExpressionUnit>;
+    using binary_pattern = Seq<Ref<match_binary_op>, pattern>;
 
     while (auto end = binary_pattern::match(ctx, cursor, b)) {
 
       // Fold up as many nodes based on precedence as we can
+#if 0
       while(1) {
         ParseNode*    na = nullptr;
         NodeOpBinary* ox = nullptr;
@@ -748,6 +831,7 @@ struct NodeExpression : public ParseNode {
           break;
         }
       }
+#endif
 
       cursor = end;
     }
@@ -755,6 +839,7 @@ struct NodeExpression : public ParseNode {
     // Any binary operators left on the tokens are in increasing-precedence
     // order, but since there are no more operators we can just fold them up
     // right-to-left
+#if 0
     while(1) {
       ParseNode*    nb = nullptr;
       NodeOpBinary* oy = nullptr;
@@ -770,6 +855,7 @@ struct NodeExpression : public ParseNode {
       auto node = new NodeExpressionBinary();
       node->init(nb->tok_a(), nc->tok_b());
     }
+#endif
 
     using SpanTernaryOp = // Not covered by csmith
     Seq<
@@ -781,10 +867,31 @@ struct NodeExpression : public ParseNode {
       Opt<comma_separated<NodeExpression>>
     >;
 
+#if 0
     if (auto end = SpanTernaryOp::match(ctx, cursor, b)) {
       auto node = new NodeExpressionTernary();
       node->init(a, end - 1);
       cursor = end;
+    }
+#endif
+
+    {
+      printf("---EXPRESSION---\n");
+      const Token* c = a;
+      while(1) {
+        //c->dump_token();
+        if (auto s = c->get_span()) {
+          dump_tree(s, 1, 0);
+        }
+        if (auto end = c->get_span()->tok_b()) {
+          c = end + 1;
+        }
+        else {
+          c++;
+        }
+        if (c == cursor) break;
+      }
+      printf("----------------\n");
     }
 
     auto node = new NodeExpression();
@@ -1306,6 +1413,29 @@ struct NodeInitializerList : public NodeMaker<NodeInitializerList> {
     Atom<'}'>
   >;
 };
+
+struct NodeSuffixInitializerList : public NodeMaker<NodeSuffixInitializerList> {
+
+  virtual void init(Token* tok_a, Token* tok_b) override {
+    NodeMaker::init(tok_a, tok_b);
+    this->precedence = 2;
+  }
+
+  using pattern =
+  DelimitedList<
+    Atom<'{'>,
+    Seq<
+      Opt<
+        Seq<NodeDesignation, Atom<'='>>,
+        Seq<NodeIdentifier,  Atom<':'>> // This isn't in the C grammar but compndlit-1.c uses it?
+      >,
+      NodeInitializer
+    >,
+    Atom<','>,
+    Atom<'}'>
+  >;
+};
+
 
 struct NodeInitializer : public NodeMaker<NodeInitializer> {
   using pattern = Oneof<

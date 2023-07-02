@@ -20,6 +20,104 @@ void set_color(uint32_t c);
 #define CHECK(A) assert(A)
 
 //------------------------------------------------------------------------------
+
+void print_escaped(const char* s, int len, unsigned int color);
+
+inline void print_typeid_name(const char* name) {
+  int name_len = 0;
+  if (sscanf(name, "%d", &name_len)) {
+    while((*name >= '0') && (*name <= '9')) name++;
+    for (int i = 0; i < name_len; i++) {
+      putc(name[i], stdout);
+    }
+  }
+  else {
+    printf("%s", name);
+  }
+}
+
+inline static int indent_depth = 0;
+
+template<typename NodeType>
+inline void print_class_name() {
+  const char* name = typeid(NodeType).name();
+  int name_len = 0;
+  if (sscanf(name, "%d", &name_len)) {
+    while((*name >= '0') && (*name <= '9')) name++;
+  }
+
+  for (int i = 0; i < name_len; i++) {
+    putc(name[i], stdout);
+  }
+}
+
+template<typename NodeType, typename atom>
+void print_trace_start(atom* a) {
+#ifdef MATCHERONI_ENABLE_TRACE
+  static constexpr int context_len = 40;
+  printf("[");
+  print_escaped(a->get_lex_debug()->span_a, context_len, 0x404040);
+  printf("] ");
+  for (int i = 0; i < indent_depth; i++) printf("|   ");
+  print_class_name<NodeType>();
+  printf("?\n");
+  indent_depth += 1;
+#endif
+}
+
+template<typename NodeType, typename atom>
+void print_trace_end(atom* a, atom* end) {
+#ifdef MATCHERONI_ENABLE_TRACE
+  static constexpr int context_len = 40;
+  indent_depth -= 1;
+  printf("[");
+  if (end) {
+    int match_len = end->get_lex_debug()->span_a - a->get_lex_debug()->span_a;
+    if (match_len > context_len) match_len = context_len;
+    int left_len = context_len - match_len;
+    print_escaped(a->get_lex_debug()->span_a, match_len,  0x60C000);
+    print_escaped(end->get_lex_debug()->span_a, left_len, 0x404040);
+  }
+  else {
+    print_escaped(a->get_lex_debug()->span_a, context_len, 0x2020A0);
+  }
+  printf("] ");
+  for (int i = 0; i < indent_depth; i++) printf("|   ");
+  print_class_name<NodeType>();
+  printf(end ? " OK\n" : " XXX\n");
+
+#ifdef EXTRA_DEBUG
+  if (end) {
+    printf("\n");
+    print_class_name<NodeType>();
+    printf("\n");
+
+    for (auto c = a; c < end; c++) {
+      c->dump_token();
+    }
+    printf("\n");
+  }
+#endif
+
+#endif
+}
+
+template<typename NodeType>
+struct Trace {
+  template<typename atom>
+  static atom* match(void* ctx, atom* a, atom* b) {
+    static constexpr int context_len = 40;
+
+    print_trace_start<NodeType, atom>(a);
+    auto end = NodeType::match(ctx, a, b);
+    print_trace_end<NodeType, atom>(a, end);
+
+    return end;
+  }
+};
+
+
+//------------------------------------------------------------------------------
 // Tokens associate lexemes with parse nodes.
 // Tokens store bookkeeping data during parsing.
 
@@ -63,6 +161,10 @@ struct Token {
   //----------------------------------------
 
   ParseNode* get_span() {
+    return span;
+  }
+
+  const ParseNode* get_span() const {
     return span;
   }
 
@@ -113,7 +215,7 @@ struct ParseNode {
 
   //----------------------------------------
 
-  void init(Token* tok_a, Token* tok_b) {
+  virtual void init(Token* tok_a, Token* tok_b) {
     constructor_count++;
     DCHECK(tok_a <= tok_b);
 
@@ -269,8 +371,8 @@ struct ParseNode {
 
   //----------------------------------------
 
-  Token* tok_a() { return _tok_a; }
-  Token* tok_b() { return _tok_b; }
+  Token* tok_a() { return this ? _tok_a : nullptr; }
+  Token* tok_b() { return this ? _tok_b : nullptr; }
   const Token* tok_a() const { return _tok_a; }
   const Token* tok_b() const { return _tok_b; }
 
@@ -326,7 +428,7 @@ inline void Token::dump_token() const {
   if (span) {
     printf("{");
     span->print_class_name(20);
-    printf("}");
+    printf("} prec %d", span->precedence);
   }
   else {
     printf("{                    }");

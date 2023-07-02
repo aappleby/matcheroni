@@ -1,130 +1,9 @@
 #ifndef __MATCHERONI_H__
 #define __MATCHERONI_H__
 
-#include <typeinfo>
-#include <string.h>
-#include <stdio.h>
-
-//#define MATCHERONI_ENABLE_TRACE
-#define MATCHERONI_USE_NAMESPACE
-
-void print_escaped(const char* s, int len, unsigned int color);
-
 #ifdef MATCHERONI_USE_NAMESPACE
 namespace matcheroni {
 #endif
-
-//------------------------------------------------------------------------------
-// Not a matcher, but a template helper that allows us to use strings as
-// template parameters. The parameter behaves as a fixed-length character array
-// that does ___NOT___ include the trailing null.
-
-template<int N>
-struct StringParam {
-  constexpr StringParam(const char (&str)[N]) {
-    for (int i = 0; i < N; i++) str_val[i] = str[i];
-  }
-  constexpr static auto str_len = N-1;
-  char str_val[str_len + 1];
-};
-
-// print_typeid_name(typeid(T).name());
-
-inline void print_typeid_name(const char* name) {
-  int name_len = 0;
-  if (sscanf(name, "%d", &name_len)) {
-    while((*name >= '0') && (*name <= '9')) name++;
-    for (int i = 0; i < name_len; i++) {
-      putc(name[i], stdout);
-    }
-  }
-  else {
-    printf("%s", name);
-  }
-}
-
-inline static int indent_depth = 0;
-
-template<typename NodeType>
-inline void print_class_name() {
-  const char* name = typeid(NodeType).name();
-  int name_len = 0;
-  if (sscanf(name, "%d", &name_len)) {
-    while((*name >= '0') && (*name <= '9')) name++;
-  }
-
-  for (int i = 0; i < name_len; i++) {
-    putc(name[i], stdout);
-  }
-}
-
-template<typename NodeType, typename atom>
-void print_trace_start(atom* a) {
-#ifdef MATCHERONI_ENABLE_TRACE
-  static constexpr int context_len = 40;
-  printf("[");
-  print_escaped(a->get_lex_debug()->span_a, context_len, 0x404040);
-  printf("] ");
-  for (int i = 0; i < indent_depth; i++) printf("|   ");
-  print_class_name<NodeType>();
-  printf("?\n");
-  indent_depth += 1;
-#endif
-}
-
-template<typename NodeType, typename atom>
-void print_trace_end(atom* a, atom* end) {
-#ifdef MATCHERONI_ENABLE_TRACE
-  static constexpr int context_len = 40;
-  indent_depth -= 1;
-  printf("[");
-  if (end) {
-    int match_len = end->get_lex_debug()->span_a - a->get_lex_debug()->span_a;
-    if (match_len > context_len) match_len = context_len;
-    int left_len = context_len - match_len;
-    print_escaped(a->get_lex_debug()->span_a, match_len,  0x60C000);
-    print_escaped(end->get_lex_debug()->span_a, left_len, 0x404040);
-  }
-  else {
-    print_escaped(a->get_lex_debug()->span_a, context_len, 0x2020A0);
-  }
-  printf("] ");
-  for (int i = 0; i < indent_depth; i++) printf("|   ");
-  print_class_name<NodeType>();
-  printf(end ? " OK\n" : " XXX\n");
-
-#ifdef EXTRA_DEBUG
-  if (end) {
-    printf("\n");
-    print_class_name<NodeType>();
-    printf("\n");
-
-    for (auto c = a; c < end; c++) {
-      c->dump_token();
-    }
-    printf("\n");
-  }
-#endif
-
-#endif
-}
-
-template<typename NodeType>
-struct Trace {
-  template<typename atom>
-  static atom* match(void* ctx, atom* a, atom* b) {
-    static constexpr int context_len = 40;
-
-    print_trace_start<NodeType, atom>(a);
-    auto end = NodeType::match(ctx, a, b);
-    print_trace_end<NodeType, atom>(a, end);
-
-    return end;
-  }
-};
-
-
-
 
 //------------------------------------------------------------------------------
 // Matcheroni is based on building trees of "matcher" functions. A matcher takes
@@ -140,8 +19,6 @@ using matcher_function = atom* (*) (void* ctx, atom* a, atom* b);
 // Matcheroni needs some way to compare different types of atoms - for
 // convenience, comparators for "const char" are provided here.
 // Comparators should return <0 for a<b, ==0 for a==b, and >0 for a>b.
-
-// enum class _Ord : type { equivalent = 0, less = -1, greater = 1 };
 
 inline int atom_cmp(const char& a, const char& b) {
   return int(a) - int(b);
@@ -229,15 +106,6 @@ struct AnyAtom {
 
 // Examples:
 // Seq<Atom<'a'>, Atom<'b'>::match("abcd") == "cd"
-
-// FIXME Is there any way we can implement this to work correctly with Seq?
-// Template specialization?
-template<typename P>
-struct EarlyOut {
-  template<typename atom>
-  static atom* match(void* ctx, atom* a, atom* b) {
-  }
-};
 
 template<typename P, typename... rest>
 struct Seq {
@@ -362,17 +230,6 @@ struct SeqOpt<P> {
 };
 
 //------------------------------------------------------------------------------
-
-template<typename P>
-struct NotEmpty {
-  template<typename atom>
-  static atom* match(void* ctx, atom* a, atom* b) {
-    auto c = P::match(ctx, a, b);
-    return c == a ? nullptr : c;
-  }
-};
-
-//------------------------------------------------------------------------------
 // The 'and' predicate, which matches but does _not_ advance the cursor. Used
 // for lookahead.
 
@@ -400,6 +257,23 @@ struct Not {
   static atom* match(void* ctx, atom* a, atom* b) {
     auto c = P::match(ctx, a, b);
     return c ? nullptr : a;
+  }
+};
+
+//------------------------------------------------------------------------------
+// Turns empty sequence matches into non-matches. Useful if you have
+// "a OR b OR ab" patterns, as you can turn them into NonEmpty<Opt<A>, Opt<B>>.
+
+// NotEmpty<Opt<Atom<'c'>>, Opt<Atom<'d'>>>::match("cq") == "q"
+// NotEmpty<Opt<Atom<'c'>>, Opt<Atom<'d'>>>::match("dq") == "q"
+// NotEmpty<Opt<Atom<'c'>>, Opt<Atom<'d'>>>::match("zq") == nullptr
+
+template<typename... rest>
+struct NotEmpty {
+  template<typename atom>
+  static atom* match(void* ctx, atom* a, atom* b) {
+    auto end = Seq<rest...>::match(ctx, a, b);
+    return (end == a) ? nullptr : end;
   }
 };
 
@@ -505,6 +379,8 @@ struct Until {
 };
 
 #if 0
+// These patterns need better names and explanations...
+
 // Match some P until we see T. No T = no match.
 template<typename P, typename T>
 struct SomeUntil {
@@ -580,12 +456,15 @@ struct Ref<F> {
 
 //------------------------------------------------------------------------------
 // Reference to a member matcher function.
+// You _MUST_ pass a pointer to a Foo in the 'ctx' parameter when using these.
 
 // struct Foo {
 //   const char* match(const char* a, const char* b);
 // };
 //
 // using pattern = Ref<&Foo::match>;
+// Foo my_foo;
+// auto end = pattern::match(&my_foo, a, b);
 
 template <typename T, typename atom, atom* (T::*F)(atom* a, atom* b)>
 struct Ref<F>
@@ -699,7 +578,21 @@ struct EOL {
 };
 
 //------------------------------------------------------------------------------
-// Matches string literals. Does ___NOT___ include the trailing null.
+// Not a matcher, but a template helper that allows us to use strings as
+// template parameters. The parameter behaves as a fixed-length character array
+// that does ___NOT___ match the trailing null.
+
+template<int N>
+struct StringParam {
+  constexpr StringParam(const char (&str)[N]) {
+    for (int i = 0; i < N; i++) str_val[i] = str[i];
+  }
+  constexpr static auto str_len = N-1;
+  char str_val[str_len + 1];
+};
+
+//------------------------------------------------------------------------------
+// Matches string literals. Does ___NOT___ match the trailing null.
 
 // Lit<"foo">::match("foobar") == "bar"
 
@@ -719,7 +612,7 @@ struct Lit {
 
 
 //------------------------------------------------------------------------------
-// Matches string literals as if they were atoms. Does ___NOT___ include the
+// Matches string literals as if they were atoms. Does ___NOT___ match the
 // trailing null.
 // You'll need to define atom_cmp(atom& a, StringParam<N>& b) to use this.
 
@@ -737,22 +630,31 @@ struct Keyword {
 };
 
 //------------------------------------------------------------------------------
+// Not a matcher, just a convenience helper - searches for a pattern anywhere
+// in the input span and returns offset/length of the match if found.
 
-/*
+struct SearchResult {
+  operator bool() const { return length > 0; }
+  int offset;
+  int length;
+};
+
 template<typename P>
 struct Search {
   template<typename atom>
-  static atom* match(void* ctx, atom* a, atom* b) {
-    if (!a || a == b) return nullptr;
+  static SearchResult search(void* ctx, atom* a, atom* b) {
+    if (!a || a == b) return {0,0};
+    auto cursor = a;
     while(1) {
-      auto end = P::match(ctx, a, b);
-      if (end) return end;
-      a++;
-      if (a == b) return nullptr;
+      auto end = P::match(ctx, cursor, b);
+      if (end) {
+        return {cursor-a, end-cursor};
+      }
+      cursor++;
+      if (cursor == b) return {0,0};
     }
   }
 };
-*/
 
 //------------------------------------------------------------------------------
 // Matches larger sets of atoms packed into a string literal.

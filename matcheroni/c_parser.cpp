@@ -283,6 +283,16 @@ void dump_tree(const ParseNode* n, int max_depth, int indentation) {
 
   for (int i = 0; i < indentation; i++) printf(" | ");
 
+  if (n->precedence) {
+    printf("[%02d%c] ",
+      n->precedence,
+      n->assoc > 0 ? '>' : n->assoc < 0 ? '<' : '-'
+    );
+  }
+  else {
+    printf("[-O-] ");
+  }
+
   if (n->tok_a()) set_color(n->tok_a()->type_to_color());
   //if (!field.empty()) printf("%-10.10s : ", field.c_str());
 
