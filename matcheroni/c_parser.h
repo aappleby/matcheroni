@@ -784,7 +784,6 @@ struct NodeExpression : public ParseNode {
     while (auto end = binary_pattern::match(ctx, cursor, b)) {
 
       // Fold up as many nodes based on precedence as we can
-#if 0
       while(1) {
         ParseNode*    na = nullptr;
         NodeOpBinary* ox = nullptr;
@@ -831,7 +830,6 @@ struct NodeExpression : public ParseNode {
           break;
         }
       }
-#endif
 
       cursor = end;
     }
@@ -839,7 +837,6 @@ struct NodeExpression : public ParseNode {
     // Any binary operators left on the tokens are in increasing-precedence
     // order, but since there are no more operators we can just fold them up
     // right-to-left
-#if 0
     while(1) {
       ParseNode*    nb = nullptr;
       NodeOpBinary* oy = nullptr;
@@ -855,7 +852,6 @@ struct NodeExpression : public ParseNode {
       auto node = new NodeExpressionBinary();
       node->init(nb->tok_a(), nc->tok_b());
     }
-#endif
 
     using SpanTernaryOp = // Not covered by csmith
     Seq<
@@ -867,14 +863,13 @@ struct NodeExpression : public ParseNode {
       Opt<comma_separated<NodeExpression>>
     >;
 
-#if 0
     if (auto end = SpanTernaryOp::match(ctx, cursor, b)) {
       auto node = new NodeExpressionTernary();
       node->init(a, end - 1);
       cursor = end;
     }
-#endif
 
+#if 0
     {
       printf("---EXPRESSION---\n");
       const Token* c = a;
@@ -893,6 +888,7 @@ struct NodeExpression : public ParseNode {
       }
       printf("----------------\n");
     }
+#endif
 
     auto node = new NodeExpression();
     node->init(a, cursor - 1);
