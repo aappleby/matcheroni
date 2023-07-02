@@ -63,7 +63,7 @@ void print_trace_start(atom* a) {
 #ifdef MATCHERONI_ENABLE_TRACE
   static constexpr int context_len = 40;
   printf("[");
-  print_escaped(a->lex->span_a, context_len, 0x404040);
+  print_escaped(a->get_lex_debug()->span_a, context_len, 0x404040);
   printf("] ");
   for (int i = 0; i < indent_depth; i++) printf("|   ");
   print_class_name<NodeType>();
@@ -79,14 +79,14 @@ void print_trace_end(atom* a, atom* end) {
   indent_depth -= 1;
   printf("[");
   if (end) {
-    int match_len = end->lex->span_a - a->lex->span_a;
+    int match_len = end->get_lex_debug()->span_a - a->get_lex_debug()->span_a;
     if (match_len > context_len) match_len = context_len;
     int left_len = context_len - match_len;
-    print_escaped(a->lex->span_a, match_len,  0x60C000);
-    print_escaped(end->lex->span_a, left_len, 0x404040);
+    print_escaped(a->get_lex_debug()->span_a, match_len,  0x60C000);
+    print_escaped(end->get_lex_debug()->span_a, left_len, 0x404040);
   }
   else {
-    print_escaped(a->lex->span_a, context_len, 0x2020A0);
+    print_escaped(a->get_lex_debug()->span_a, context_len, 0x2020A0);
   }
   printf("] ");
   for (int i = 0; i < indent_depth; i++) printf("|   ");
@@ -100,7 +100,7 @@ void print_trace_end(atom* a, atom* end) {
     printf("\n");
 
     for (auto c = a; c < end; c++) {
-      dump_token(*c);
+      c->dump_token();
     }
     printf("\n");
   }

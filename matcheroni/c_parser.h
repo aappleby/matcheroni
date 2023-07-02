@@ -642,6 +642,50 @@ struct NodeExpression : public ParseNode {
   static Token* match2(void* ctx, Token* a, Token* b) {
     Token* cursor = a;
 
+#if 0
+    if (1) {
+      auto prefix_start = a;
+      auto prefix_end   = Any<ExpressionPrefixOp>::match(ctx, prefix_start, b);
+
+      for (auto c = prefix_start; c < prefix_end; c++) c->dump_token();
+
+      auto core_start   = prefix_end;
+      auto core_end     = ExpressionCore::match(ctx, core_start, b);
+
+      for (auto c = prefix_start; c < core_end; c++) c->dump_token();
+
+      auto suffix_start = core_end;
+      auto suffix_end   = Any<ExpressionSuffixOp>::match(ctx, suffix_start, b);
+
+      for (auto c = prefix_start; c < suffix_end; c++) c->dump_token();
+      auto core = core_start->get_span();
+
+      /*while(1)*/ {
+        auto prefix = (core_start - 1)->get_span()->as_a<NodeOpPrefix>();
+        auto suffix = core_end->get_span()->as_a<NodeOpSuffix>();
+
+        if (core) {
+          if (prefix && suffix) {
+            dump_tree(prefix, 0, 0);
+            dump_tree(core, 0, 0);
+            dump_tree(suffix, 0, 0);
+          }
+          else if (prefix) {
+            dump_tree(prefix, 0, 0);
+            dump_tree(core, 0, 0);
+          }
+          else if (suffix) {
+            dump_tree(core, 0, 0);
+            dump_tree(suffix, 0, 0);
+          }
+        }
+      }
+
+      for (auto c = prefix_start; c < suffix_end; c++) c->dump_token();
+      printf("derp\n");
+    }
+#endif
+
     using pattern = Seq<
       Any<ExpressionPrefixOp>,
       ExpressionCore,
@@ -673,13 +717,13 @@ struct NodeExpression : public ParseNode {
 
         if (!na || !ox || !nb || !oy || !nc) break;
 
-        if (na->tok_b < a) break;
+        if (na->tok_b() < a) break;
 
         if (ox->precedence < oy->precedence) {
           // Left-associate because right operator is "lower" precedence.
           // "a * b + c" -> "(a * b) + c"
           auto node = new NodeExpressionBinary();
-          node->init(na->tok_a, nb->tok_b);
+          node->init(na->tok_a(), nb->tok_b());
         }
         else if (ox->precedence == oy->precedence) {
           DCHECK(ox->assoc == oy->assoc);
@@ -688,13 +732,13 @@ struct NodeExpression : public ParseNode {
             // Left to right
             // "a + b - c" -> "(a + b) - c"
             auto node = new NodeExpressionBinary();
-            node->init(na->tok_a, nb->tok_b);
+            node->init(na->tok_a(), nb->tok_b());
           }
           else if (ox->assoc == -1) {
             // Right to left
             // "a = b = c" -> "a = (b = c)"
             auto node = new NodeExpressionBinary();
-            node->init(nb->tok_a, nc->tok_b);
+            node->init(nb->tok_a(), nc->tok_b());
           }
           else {
             CHECK(false);
@@ -721,10 +765,10 @@ struct NodeExpression : public ParseNode {
       nb = oy ? oy->left_neighbor()->as_a<ParseNode>() : nullptr;
 
       if (!nb || !oy || !nc) break;
-      if (nb->tok_b < a) break;
+      if (nb->tok_b() < a) break;
 
       auto node = new NodeExpressionBinary();
-      node->init(nb->tok_a, nc->tok_b);
+      node->init(nb->tok_a(), nc->tok_b());
     }
 
     using SpanTernaryOp = // Not covered by csmith
@@ -1601,9 +1645,9 @@ struct NodeTypedef : public NodeMaker<NodeTypedef> {
     >
   >;
 
-  static void extract_declarator(void* ctx, const NodeDeclarator* decl) {
+  static void extract_declarator(void* ctx, NodeDeclarator* decl) {
     if (auto id = decl->child<NodeIdentifier>()) {
-      ((C99Parser*)ctx)->add_typedef_type(id->tok_a);
+      ((C99Parser*)ctx)->add_typedef_type(id->tok_a());
     }
 
     for (auto child : decl) {
@@ -1613,7 +1657,7 @@ struct NodeTypedef : public NodeMaker<NodeTypedef> {
     }
   }
 
-  static void extract_declarator_list(void* ctx, const NodeDeclaratorList* decls) {
+  static void extract_declarator_list(void* ctx, NodeDeclaratorList* decls) {
     if (!decls) return;
     for (auto child : decls) {
       if (auto decl = child->as_a<NodeDeclarator>()) {

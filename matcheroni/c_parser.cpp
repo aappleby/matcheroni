@@ -245,15 +245,15 @@ void print_escaped(const char* s, int len, unsigned int color) {
 }
 
 std::string escape_span(const ParseNode* n) {
-  if (!n->tok_a || !n->tok_b) {
+  if (!n->tok_a() || !n->tok_b()) {
     return "<bad span>";
   }
 
-  auto len = n->tok_b->span_b() - n->tok_a->span_a();
+  auto len = n->tok_b()->get_lex_debug()->span_b - n->tok_a()->get_lex_debug()->span_a;
 
   std::string result;
   for (auto i = 0; i < len; i++) {
-    auto c = n->tok_a->span_a()[i];
+    auto c = n->tok_a()->debug_span_a()[i];
     if (c == '\n') {
       result.push_back('\\');
       result.push_back('n');
@@ -279,11 +279,11 @@ std::string escape_span(const ParseNode* n) {
 void dump_tree(const ParseNode* n, int max_depth, int indentation) {
   if (max_depth && indentation == max_depth) return;
 
-  printf("%p {%p-%p} ", n, n->tok_a, n->tok_b);
+  printf("%p {%p-%p} ", n, n->tok_a(), n->tok_b());
 
   for (int i = 0; i < indentation; i++) printf(" | ");
 
-  if (n->tok_a) set_color(n->tok_a->type_to_color());
+  if (n->tok_a()) set_color(n->tok_a()->type_to_color());
   //if (!field.empty()) printf("%-10.10s : ", field.c_str());
 
   n->print_class_name(20);

@@ -25,33 +25,42 @@ void set_color(uint32_t c);
 
 struct Token {
   Token(const Lexeme* lex) {
-    this->lex2  = lex;
+    this->lex  = lex;
     this->span = nullptr;
   }
 
+  //----------------------------------------
+  // These methods REMOVE THE SPAN FROM THE NODE - that's why they're not
+  // const. This is required to ensure that if an Opt<> matcher fails to match
+  // a branch, when it tries to match the next branch we will always pull the
+  // defunct nodes off the tokens.
+
   LexemeType get_type() {
-    const_cast<Token*>(this)->span = nullptr;
-    return lex2->type;
+    span = nullptr;
+    return lex->type;
   }
 
-  const char* as_str() const {
-    const_cast<Token*>(this)->span = nullptr;
-    return lex2->span_a;
+  const char* as_str() {
+    span = nullptr;
+    return lex->span_a;
   }
 
-  const char* span_a() const {
-    const_cast<Token*>(this)->span = nullptr;
-    return lex2->span_a;
+  const char* span_a() {
+    span = nullptr;
+    return lex->span_a;
   }
 
-  const char* span_b() const {
-    const_cast<Token*>(this)->span = nullptr;
-    return lex2->span_b;
+  const char* span_b() {
+    span = nullptr;
+    return lex->span_b;
   }
 
-  int get_len() const {
-    return int(span_b() - span_a());
+  int get_len() {
+    span = nullptr;
+    return int(lex->span_b - lex->span_a);
   }
+
+  //----------------------------------------
 
   ParseNode* get_span() {
     return span;
@@ -62,20 +71,29 @@ struct Token {
   }
 
   const char* type_to_str() const {
-    return lex2->type_to_str();
+    return lex->type_to_str();
   }
 
   uint32_t type_to_color() const {
-    return lex2->type_to_color();
+    return lex->type_to_color();
   }
 
-  void dump_token();
+  void dump_token() const;
+
+  //----------------------------------------
+
+  const char* debug_span_a() const { return lex->span_a; }
+  const char* debug_span_b() const { return lex->span_b; }
+
+  const Lexeme* get_lex_debug() const {
+    return lex;
+  }
 
   //----------------------------------------------------------------------------
 
 private:
   ParseNode* span;
-  const Lexeme* lex2;
+  const Lexeme* lex;
 };
 
 //------------------------------------------------------------------------------
@@ -92,6 +110,32 @@ struct ParseNode {
   static void  operator delete[](void*)         { }
 
   virtual ~ParseNode() {}
+
+  //----------------------------------------
+
+  void init(Token* tok_a, Token* tok_b) {
+    constructor_count++;
+    DCHECK(tok_a <= tok_b);
+
+    this->_tok_a = tok_a;
+    this->_tok_b = tok_b;
+
+    // Attach all the tops under this node to it.
+    auto cursor = tok_a;
+    while (cursor <= tok_b) {
+      auto child = cursor->get_span();
+      if (child) {
+        attach_child(child);
+        cursor = child->tok_b() + 1;
+      }
+      else {
+        cursor++;
+      }
+    }
+
+    tok_a->set_span(this);
+    tok_b->set_span(this);
+  }
 
   //----------------------------------------
 
@@ -125,12 +169,12 @@ struct ParseNode {
 
   ParseNode* left_neighbor() {
     if (this == nullptr) return nullptr;
-    return (tok_a - 1)->get_span();
+    return (_tok_a - 1)->get_span();
   }
 
   ParseNode* right_neighbor() {
     if (this == nullptr) return nullptr;
-    return (tok_b + 1)->get_span();
+    return (_tok_b + 1)->get_span();
   }
 
   //----------------------------------------
@@ -225,42 +269,27 @@ struct ParseNode {
 
   //----------------------------------------
 
-  inline static int constructor_count = 0;
+  Token* tok_a() { return _tok_a; }
+  Token* tok_b() { return _tok_b; }
+  const Token* tok_a() const { return _tok_a; }
+  const Token* tok_b() const { return _tok_b; }
 
-  Token* tok_a = nullptr; // First token, inclusivve
-  Token* tok_b = nullptr; // Last token, inclusive
+  //----------------------------------------
+
+  inline static int constructor_count = 0;
 
   int precedence = 0;
   int assoc = 0;
 
-  ParseNode* prev   = nullptr;
-  ParseNode* next   = nullptr;
-  ParseNode* head   = nullptr;
-  ParseNode* tail   = nullptr;
+  ParseNode* prev = nullptr;
+  ParseNode* next = nullptr;
+  ParseNode* head = nullptr;
+  ParseNode* tail = nullptr;
 
-  void init(Token* tok_a, Token* tok_b) {
-    constructor_count++;
-    DCHECK(tok_a <= tok_b);
+private:
 
-    this->tok_a = tok_a;
-    this->tok_b = tok_b;
-
-    // Attach all the tops under this node to it.
-    auto cursor = tok_a;
-    while (cursor <= tok_b) {
-      auto child = cursor->get_span();
-      if (child) {
-        attach_child(child);
-        cursor = child->tok_b + 1;
-      }
-      else {
-        cursor++;
-      }
-    }
-
-    tok_a->set_span(this);
-    tok_b->set_span(this);
-  }
+  Token* _tok_a = nullptr; // First token, inclusivve
+  Token* _tok_b = nullptr; // Last token, inclusive
 };
 
 //------------------------------------------------------------------------------
@@ -284,13 +313,13 @@ struct NodeMaker : public ParseNode {
 
 //----------------------------------------------------------------------------
 
-inline void Token::dump_token() {
+inline void Token::dump_token() const {
   // Dump token
   printf("tok @ %p :", this);
 
   printf(" %14.14s ", type_to_str());
   set_color(type_to_color());
-  lex2->dump_lexeme();
+  lex->dump_lexeme();
   set_color(0);
 
   printf("    span %14p ", span);
@@ -346,19 +375,35 @@ inline Token* match_punct(void* ctx, Token* a, Token* b, const char* lit, int li
 //------------------------------------------------------------------------------
 
 struct ParseNodeIterator {
-  ParseNodeIterator(const ParseNode* cursor) : n(cursor) {}
+  ParseNodeIterator(ParseNode* cursor) : n(cursor) {}
   ParseNodeIterator& operator++() { n = n->next; return *this; }
-  bool operator!=(const ParseNodeIterator& b) const { return n != b.n; }
+  bool operator!=(ParseNodeIterator& b) const { return n != b.n; }
+  ParseNode* operator*() const { return n; }
+  ParseNode* n;
+};
+
+inline ParseNodeIterator begin(ParseNode* parent) {
+  return ParseNodeIterator(parent->head);
+}
+
+inline ParseNodeIterator end(ParseNode* parent) {
+  return ParseNodeIterator(nullptr);
+}
+
+struct ConstParseNodeIterator {
+  ConstParseNodeIterator(const ParseNode* cursor) : n(cursor) {}
+  ConstParseNodeIterator& operator++() { n = n->next; return *this; }
+  bool operator!=(const ConstParseNodeIterator& b) const { return n != b.n; }
   const ParseNode* operator*() const { return n; }
   const ParseNode* n;
 };
 
-inline ParseNodeIterator begin(const ParseNode* parent) {
-  return ParseNodeIterator(parent->head);
+inline ConstParseNodeIterator begin(const ParseNode* parent) {
+  return ConstParseNodeIterator(parent->head);
 }
 
-inline ParseNodeIterator end(const ParseNode* parent) {
-  return ParseNodeIterator(nullptr);
+inline ConstParseNodeIterator end(const ParseNode* parent) {
+  return ConstParseNodeIterator(nullptr);
 }
 
 //------------------------------------------------------------------------------

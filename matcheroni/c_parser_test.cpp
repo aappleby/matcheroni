@@ -83,8 +83,8 @@ int test_parser(int argc, char** argv) {
 
 #if 0
   paths = {
-    //"tests/scratch.c",
-    "../gcc/gcc/testsuite/gcc.c-torture/compile/pr44784.c",
+    "tests/scratch.c",
+    //"../gcc/gcc/testsuite/gcc.c-torture/compile/pr44784.c",
   };
 
   verbose = true;
@@ -154,8 +154,8 @@ int test_parser(int argc, char** argv) {
     auto tok_a = parser.tokens.data();
     auto tok_b = parser.tokens.data() + parser.tokens.size() - 1;
 
-    CHECK(root->tok_a == tok_a + 1);
-    CHECK(root->tok_b == tok_b - 1);
+    CHECK(root->tok_a() == tok_a + 1);
+    CHECK(root->tok_b() == tok_b - 1);
 
 #ifdef DEBUG
     root->check_sanity();
