@@ -263,6 +263,9 @@ struct Token {
 
   void dump_token() const;
 
+  Token* step_left();
+  Token* step_right();
+
   //----------------------------------------
 
   const char* debug_span_a() const { return lex->span_a; }
@@ -311,6 +314,10 @@ struct ParseNode {
 
   virtual ~ParseNode() {}
 
+  bool in_range(const Token* a, const Token* b) {
+    return _tok_a >= a && _tok_b <= b;
+  }
+
   //----------------------------------------
 
   virtual void init(Token* tok_a, Token* tok_b) {
@@ -333,8 +340,12 @@ struct ParseNode {
       }
     }
 
-    tok_a->set_span(this);
-    tok_b->set_span(this);
+    _tok_a->set_span(this);
+    _tok_b->set_span(this);
+  }
+
+  void init(ParseNode* node_a, ParseNode* node_b) {
+    return init(node_a->tok_a(), node_b->tok_b());
   }
 
   //----------------------------------------
@@ -479,6 +490,8 @@ struct ParseNode {
   inline static int constructor_count = 0;
 
   int precedence = 0;
+
+  // -2 = prefix, -1 = right-to-left, 0 = none, 1 = left-to-right, 2 = suffix
   int assoc = 0;
 
   ParseNode* prev = nullptr;
@@ -493,11 +506,22 @@ private:
 };
 
 //------------------------------------------------------------------------------
+
+inline Token* Token::step_left() {
+  return (this - 1)->get_span()->tok_a();
+}
+
+inline Token* Token::step_right() {
+  return get_span()->tok_b() + 1;
+}
+
+//------------------------------------------------------------------------------
 // Consumes spans from all tokens it matches with and creates a new node on top of them.
 
 template<typename NodeType>
 struct NodeMaker : public ParseNode {
   static Token* match(void* ctx, Token* a, Token* b) {
+    if (!a || a == b) return nullptr;
 
     print_trace_start<NodeType, Token>(a);
     auto end = NodeType::pattern::match(ctx, a, b);

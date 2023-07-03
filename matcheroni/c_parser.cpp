@@ -281,12 +281,16 @@ void dump_tree(const ParseNode* n, int max_depth, int indentation) {
 
   printf("%p {%p-%p} ", n, n->tok_a(), n->tok_b());
 
+  printf("{%-40.40s}", escape_span(n).c_str());
+
+
   for (int i = 0; i < indentation; i++) printf(" | ");
 
   if (n->precedence) {
-    printf("[%02d%c] ",
+    printf("[%02d %2d] ",
       n->precedence,
-      n->assoc > 0 ? '>' : n->assoc < 0 ? '<' : '-'
+      n->assoc
+      //n->assoc > 0 ? '>' : n->assoc < 0 ? '<' : '-'
     );
   }
   else {
@@ -298,8 +302,7 @@ void dump_tree(const ParseNode* n, int max_depth, int indentation) {
 
   n->print_class_name(20);
   set_color(0);
-
-  printf(" '%s'\n", escape_span(n).c_str());
+  printf("\n");
 
   for (auto c = n->head; c; c = c->next) {
     dump_tree(c, max_depth, indentation + 1);

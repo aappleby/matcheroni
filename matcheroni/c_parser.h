@@ -457,6 +457,7 @@ struct NodePrefixCast : public NodeMaker<NodePrefixCast> {
   virtual void init(Token* tok_a, Token* tok_b) override {
     NodeMaker::init(tok_a, tok_b);
     this->precedence = 3;
+    this->assoc = -2;
   }
 
   using pattern = Seq<
@@ -482,6 +483,7 @@ struct NodeSuffixParen : public NodeMaker<NodeSuffixParen> {
   virtual void init(Token* tok_a, Token* tok_b) override {
     NodeMaker::init(tok_a, tok_b);
     this->precedence = 2;
+    this->assoc = 2;
   }
 
   using pattern =
@@ -509,6 +511,7 @@ struct NodeSuffixBraces : public NodeMaker<NodeSuffixBraces> {
   virtual void init(Token* tok_a, Token* tok_b) override {
     NodeMaker::init(tok_a, tok_b);
     this->precedence = 2;
+    this->assoc = 2;
   }
 
   using pattern =
@@ -526,6 +529,7 @@ struct NodeSuffixSubscript : public NodeMaker<NodeSuffixSubscript> {
   virtual void init(Token* tok_a, Token* tok_b) override {
     NodeMaker::init(tok_a, tok_b);
     this->precedence = 2;
+    this->assoc = 2;
   }
 
   using pattern =
@@ -553,6 +557,8 @@ struct NodeExpressionGccCompound : public NodeMaker<NodeExpressionGccCompound> {
 
 struct NodeExpressionTernary : public ParseNode {};
 struct NodeExpressionBinary  : public ParseNode {};
+struct NodeExpressionPrefix  : public ParseNode {};
+struct NodeExpressionSuffix  : public ParseNode {};
 
 struct NodeExpressionSizeof  : public NodeMaker<NodeExpressionSizeof> {
   using pattern = Seq<
@@ -596,6 +602,7 @@ struct NodePrefixKeyword : public NodeMaker<NodePrefixKeyword<lit>> {
   virtual void init(Token* tok_a, Token* tok_b) override {
     NodeMaker<NodePrefixKeyword<lit>>::init(tok_a, tok_b);
     this->precedence = 3;
+    this->assoc = -2;
   }
 
   //using pattern = Keyword<lit>;
@@ -659,6 +666,12 @@ Oneof<
 
 //----------------------------------------
 
+using unit_pattern = Seq<
+  Any<ExpressionPrefixOp>,
+  ExpressionCore,
+  Any<ExpressionSuffixOp>
+>;
+
 /*
 struct NodeExpressionUnit : public NodeMaker<NodeExpressionUnit> {
   using pattern = Seq<
@@ -669,6 +682,35 @@ struct NodeExpressionUnit : public NodeMaker<NodeExpressionUnit> {
 };
 */
 
+/*
+using SpanTernaryOp = // Not covered by csmith
+Seq<
+  // pr68249.c - ternary option can be empty
+  // pr49474.c - ternary branches can be comma-lists
+  MatchOpBinary<"?">,
+  Opt<comma_separated<unit_pattern>>,
+  MatchOpBinary<":">,
+  Opt<comma_separated<unit_pattern>>
+>;
+*/
+
+struct NodeTernaryOp : public NodeMaker<NodeTernaryOp> {
+  virtual void init(Token* tok_a, Token* tok_b) override {
+    NodeMaker<NodeTernaryOp>::init(tok_a, tok_b);
+    this->precedence = 16;
+    this->assoc = -1;
+  }
+
+  using pattern =
+  Seq<
+    MatchOpBinary<"?">,
+    Opt<comma_separated<NodeExpression>>,
+    MatchOpBinary<":">
+  >;
+};
+
+
+//----------------------------------------
 
 struct NodeExpression : public ParseNode {
 
@@ -691,9 +733,14 @@ struct NodeExpression : public ParseNode {
       case '^': return Oneof< MatchOpBinary<"^=">, MatchOpBinary<"^"> >::match(ctx, a, b);
       case '%': return Oneof< MatchOpBinary<"%=">, MatchOpBinary<"%"> >::match(ctx, a, b);
       case '.': return Oneof< MatchOpBinary<".*">, MatchOpBinary<"."> >::match(ctx, a, b);
-      case ':': return MatchOpBinary<"::">::match(ctx, a, b);
-      default:  return nullptr;
+      case '?': return NodeTernaryOp::match(ctx, a, b);
+
+      // FIXME this is only for C++, and
+      //case ':': return MatchOpBinary<"::">::match(ctx, a, b);
+      //default:  return nullptr;
     }
+
+    return nullptr;
   }
 
   //----------------------------------------
@@ -708,128 +755,139 @@ struct NodeExpression : public ParseNode {
   */
 
   static Token* match2(void* ctx, Token* a, Token* b) {
-    Token* cursor = a;
+    //Token* cursor = a;
+    //cursor = NodeExpressionUnit::match(ctx, a, b);
+    /*
+    cursor = unit_pattern::match(ctx, a, b);
+    if (!cursor) return nullptr;
 
-#if 0
-    if (1) {
-      auto prefix_start = a;
-      auto prefix_end   = Any<ExpressionPrefixOp>::match(ctx, prefix_start, b);
+    using binary_pattern = Seq<Ref<match_binary_op>, unit_pattern>;
 
-      //for (auto c = prefix_start; c < prefix_end; c++) c->dump_token();
+    while (auto end = binary_pattern::match(ctx, cursor, b)) {
+      cursor = end;
+    }
+    */
 
-      auto core_start   = prefix_end;
-      auto core_end     = ExpressionCore::match(ctx, core_start, b);
+    using pattern =
+    Seq<
+      unit_pattern,
+      Any<Seq<
+        Ref<match_binary_op>,
+        unit_pattern
+      >>
+    >;
 
-      //for (auto c = prefix_start; c < core_end; c++) c->dump_token();
+    auto tok_a = a;
+    auto tok_b = pattern::match(ctx, a, b);
+    if (tok_b == nullptr) return nullptr;
 
-      auto suffix_start = core_end;
-      auto suffix_end   = Any<ExpressionSuffixOp>::match(ctx, suffix_start, b);
 
-      //for (auto c = prefix_start; c < suffix_end; c++) c->dump_token();
-      auto core = core_start->get_span();
+    while(1) {
+      
+      {
+        auto c = tok_a;
+        while(c && c < tok_b) {
+          dump_tree(c->get_span(), 0, 1);
+          c = c->step_right();
+        }
+        printf("\n");
+      }
 
-      /*while(1)*/ {
-        auto prefix = (core_start - 1)->get_span();
-        auto suffix = core_end->get_span();
+      auto c = tok_a;
+      while(c && c->get_span()->precedence && c < tok_b) {
+        c = c->step_right();
+      }
 
-        if (prefix) printf("prefix precedence %d\n", prefix->precedence);
-        if (suffix) printf("suffix precedence %d\n", suffix->precedence);
+      c->dump_token();
 
-        if (core) {
-          if (prefix && suffix) {
-            //dump_tree(prefix, 0, 0);
-            //dump_tree(core, 0, 0);
-            //dump_tree(suffix, 0, 0);
-          }
-          else if (prefix) {
-            //dump_tree(prefix, 0, 0);
-            //dump_tree(core, 0, 0);
-          }
-          else if (suffix) {
-            //dump_tree(core, 0, 0);
-            //dump_tree(suffix, 0, 0);
-          }
+      // ran out of units?
+      if (c->get_span()->precedence) break;
+
+      auto l = c - 1;
+      if (l && l >= tok_a) {
+        if (l->get_span()->assoc == -2) {
+          auto node = new NodeExpressionPrefix();
+          node->init(l->get_span(), c->get_span());
+          continue;
         }
       }
 
-      //printf("----\n");
-      //for (auto c = prefix_start; c < suffix_end; c++) c->dump_token();
-      //printf("----\n");
-      //printf("derp\n");
+      /*
+      auto r = c->step_right();
+      if (r && r < tok_b) {
+      }
+      */
+
+      break;
     }
-#endif
 
-    using pattern = Seq<
-      Any<ExpressionPrefixOp>,
-      ExpressionCore,
-      Any<ExpressionSuffixOp>
-    >;
-    //cursor = NodeExpressionUnit::match(ctx, a, b);
-    cursor = pattern::match(ctx, a, b);
-    if (!cursor) return nullptr;
 
-    // And see if we can chain it to a ternary or binary op.
+    //dump_tree(n, 0, 0);
 
-    //using binary_pattern = Seq<BaseBinaryOp, NodeExpressionUnit>;
-    //using binary_pattern = Seq<Ref<match_binary_op>, NodeExpressionUnit>;
-    using binary_pattern = Seq<Ref<match_binary_op>, pattern>;
 
-    while (auto end = binary_pattern::match(ctx, cursor, b)) {
 
-      // Fold up as many nodes based on precedence as we can
-      while(1) {
-        ParseNode*    na = nullptr;
-        NodeOpBinary* ox = nullptr;
-        ParseNode*    nb = nullptr;
-        NodeOpBinary* oy = nullptr;
-        ParseNode*    nc = nullptr;
 
-        nc =    (end - 1)->get_span()->as_a<ParseNode>();
-        oy = nc ? nc->left_neighbor()->as_a<NodeOpBinary>()   : nullptr;
-        nb = oy ? oy->left_neighbor()->as_a<ParseNode>() : nullptr;
-        ox = nb ? nb->left_neighbor()->as_a<NodeOpBinary>()   : nullptr;
-        na = ox ? ox->left_neighbor()->as_a<ParseNode>() : nullptr;
+    // Fold up as many nodes based on precedence as we can
+#if 0
+    while(1) {
+      ParseNode*    na = nullptr;
+      NodeOpBinary* ox = nullptr;
+      ParseNode*    nb = nullptr;
+      NodeOpBinary* oy = nullptr;
+      ParseNode*    nc = nullptr;
 
-        if (!na || !ox || !nb || !oy || !nc) break;
+      nc = (cursor - 1)->get_span()->as_a<ParseNode>();
+      oy = nc ? nc->left_neighbor()->as_a<NodeOpBinary>()   : nullptr;
+      nb = oy ? oy->left_neighbor()->as_a<ParseNode>() : nullptr;
+      ox = nb ? nb->left_neighbor()->as_a<NodeOpBinary>()   : nullptr;
+      na = ox ? ox->left_neighbor()->as_a<ParseNode>() : nullptr;
 
-        if (na->tok_b() < a) break;
 
-        if (ox->precedence < oy->precedence) {
-          // Left-associate because right operator is "lower" precedence.
-          // "a * b + c" -> "(a * b) + c"
+
+
+      if (!na || !ox || !nb || !oy || !nc) break;
+
+      if (na->tok_b() < a) break;
+
+      if (ox->precedence < oy->precedence) {
+        // Left-associate because right operator is "lower" precedence.
+        // "a * b + c" -> "(a * b) + c"
+        auto node = new NodeExpressionBinary();
+        node->init(na->tok_a(), nb->tok_b());
+      }
+      else if (ox->precedence == oy->precedence) {
+        DCHECK(ox->assoc == oy->assoc);
+
+        if (ox->assoc == 1) {
+          // Left to right
+          // "a + b - c" -> "(a + b) - c"
           auto node = new NodeExpressionBinary();
           node->init(na->tok_a(), nb->tok_b());
         }
-        else if (ox->precedence == oy->precedence) {
-          DCHECK(ox->assoc == oy->assoc);
-
-          if (ox->assoc == 1) {
-            // Left to right
-            // "a + b - c" -> "(a + b) - c"
-            auto node = new NodeExpressionBinary();
-            node->init(na->tok_a(), nb->tok_b());
-          }
-          else if (ox->assoc == -1) {
-            // Right to left
-            // "a = b = c" -> "a = (b = c)"
-            auto node = new NodeExpressionBinary();
-            node->init(nb->tok_a(), nc->tok_b());
-          }
-          else {
-            CHECK(false);
-          }
+        else if (ox->assoc == -1) {
+          // Right to left
+          // "a = b = c" -> "a = (b = c)"
+          auto node = new NodeExpressionBinary();
+          node->init(nb->tok_a(), nc->tok_b());
         }
         else {
-          break;
+          CHECK(false);
         }
       }
-
-      cursor = end;
+      else {
+        break;
+      }
     }
+#endif
+
+
+
+
 
     // Any binary operators left on the tokens are in increasing-precedence
     // order, but since there are no more operators we can just fold them up
     // right-to-left
+#if 0
     while(1) {
       ParseNode*    nb = nullptr;
       NodeOpBinary* oy = nullptr;
@@ -845,24 +903,17 @@ struct NodeExpression : public ParseNode {
       auto node = new NodeExpressionBinary();
       node->init(nb->tok_a(), nc->tok_b());
     }
+#endif
 
-    using SpanTernaryOp = // Not covered by csmith
-    Seq<
-      // pr68249.c - ternary option can be empty
-      // pr49474.c - ternary branches can be comma-lists
-      MatchOpBinary<"?">,
-      Opt<comma_separated<NodeExpression>>,
-      MatchOpBinary<":">,
-      Opt<comma_separated<NodeExpression>>
-    >;
-
+#if 0
     if (auto end = SpanTernaryOp::match(ctx, cursor, b)) {
       auto node = new NodeExpressionTernary();
       node->init(a, end - 1);
       cursor = end;
     }
+#endif
 
-#if 0
+#if 1
     {
       printf("---EXPRESSION---\n");
       const Token* c = a;
@@ -877,14 +928,16 @@ struct NodeExpression : public ParseNode {
         else {
           c++;
         }
-        if (c == cursor) break;
+        if (c == tok_b) break;
       }
       printf("----------------\n");
     }
 #endif
 
-    return cursor;
+    return tok_b;
   }
+
+  //----------------------------------------
 
   static Token* match(void* ctx, Token* a, Token* b) {
     print_trace_start<NodeExpression, Token>(a);
@@ -1411,6 +1464,7 @@ struct NodeSuffixInitializerList : public NodeMaker<NodeSuffixInitializerList> {
   virtual void init(Token* tok_a, Token* tok_b) override {
     NodeMaker::init(tok_a, tok_b);
     this->precedence = 2;
+    this->assoc = 2;
   }
 
   using pattern =

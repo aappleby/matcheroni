@@ -504,14 +504,14 @@ constexpr int prefix_precedence(const char* op) {
 }
 
 constexpr int prefix_assoc(const char* op) {
-  if (strcmp(op, "++")  == 0) return -1;
-  if (strcmp(op, "--")  == 0) return -1;
-  if (strcmp(op, "+")   == 0) return -1;
-  if (strcmp(op, "-")   == 0) return -1;
-  if (strcmp(op, "!")   == 0) return -1;
-  if (strcmp(op, "~")   == 0) return -1;
-  if (strcmp(op, "*")   == 0) return -1;
-  if (strcmp(op, "&")   == 0) return -1;
+  if (strcmp(op, "++")  == 0) return -2;
+  if (strcmp(op, "--")  == 0) return -2;
+  if (strcmp(op, "+")   == 0) return -2;
+  if (strcmp(op, "-")   == 0) return -2;
+  if (strcmp(op, "!")   == 0) return -2;
+  if (strcmp(op, "~")   == 0) return -2;
+  if (strcmp(op, "*")   == 0) return -2;
+  if (strcmp(op, "&")   == 0) return -2;
 
   // 2 type(a) type{a}
   // 3 (type)a sizeof a sizeof(a) co_await a
@@ -611,7 +611,7 @@ constexpr int suffix_precedence(const char* op) {
 }
 
 constexpr int suffix_assoc(const char* op) {
-  if (strcmp(op, "++")  == 0) return 1;
-  if (strcmp(op, "--")  == 0) return 1;
+  if (strcmp(op, "++")  == 0) return 2;
+  if (strcmp(op, "--")  == 0) return 2;
   return 0;
 }
