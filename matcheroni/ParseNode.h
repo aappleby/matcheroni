@@ -553,7 +553,7 @@ struct NodeMaker : public ParseNode {
 };
 
 template<typename NodeType>
-struct LeafMaker : public ParseNode {
+struct LeafMaker {
   static Token* match(void* ctx, Token* a, Token* b) {
     if (!a || a == b) return nullptr;
 

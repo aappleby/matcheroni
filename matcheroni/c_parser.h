@@ -176,24 +176,24 @@ public:
 //------------------------------------------------------------------------------
 
 template<auto P>
-struct NodeAtom : public LeafMaker<NodeAtom<P>> {
+struct NodeAtom : public ParseNode, public LeafMaker<NodeAtom<P>> {
   using pattern = Atom<P>;
 };
 
 template<StringParam lit>
-struct NodeKeyword : public LeafMaker<NodeKeyword<lit>> {
+struct NodeKeyword : public ParseNode, public LeafMaker<NodeKeyword<lit>> {
   using pattern = Keyword<lit>;
 };
 
 template<StringParam lit>
-struct NodeLiteral : public LeafMaker<NodeLiteral<lit>> {
+struct NodeLiteral : public ParseNode, public LeafMaker<NodeLiteral<lit>> {
   using pattern = Literal2<lit>;
 };
 
 //------------------------------------------------------------------------------
 // Our builtin types are any sequence of prefixes followed by a builtin type
 
-struct NodeBuiltinType : public LeafMaker<NodeBuiltinType> {
+struct NodeBuiltinType : public ParseNode, public LeafMaker<NodeBuiltinType> {
   using match_prefix = Ref<&C99Parser::match_builtin_type_prefix>;
   using match_base   = Ref<&C99Parser::match_builtin_type_base>;
   using match_suffix = Ref<&C99Parser::match_builtin_type_suffix>;
@@ -205,7 +205,7 @@ struct NodeBuiltinType : public LeafMaker<NodeBuiltinType> {
   >;
 };
 
-struct NodeTypedefType : public LeafMaker<NodeTypedefType> {
+struct NodeTypedefType : public ParseNode, public LeafMaker<NodeTypedefType> {
   using pattern = Ref<&C99Parser::match_typedef_type>;
 };
 
@@ -217,7 +217,7 @@ struct NodeTypedefType : public LeafMaker<NodeTypedefType> {
 // - Because "uint8_t *x = 5" gets misparsed as an expression if uint8_t matches
 // as an identifier
 
-struct NodeIdentifier : public LeafMaker<NodeIdentifier> {
+struct NodeIdentifier : public ParseNode, public LeafMaker<NodeIdentifier> {
   using pattern =
   Seq<
     Not<NodeBuiltinType>,
@@ -228,31 +228,19 @@ struct NodeIdentifier : public LeafMaker<NodeIdentifier> {
 
 //------------------------------------------------------------------------------
 
-struct NodePreproc : public LeafMaker<NodePreproc> {
+struct NodePreproc : public ParseNode, public LeafMaker<NodePreproc> {
   using pattern = Atom<LEX_PREPROC>;
 };
 
 //------------------------------------------------------------------------------
 
-struct NodeConstant : public LeafMaker<NodeConstant> {
+struct NodeConstant : public ParseNode, public LeafMaker<NodeConstant> {
   using pattern = Oneof<
     Atom<LEX_FLOAT>,
     Atom<LEX_INT>,
     Atom<LEX_CHAR>,
     Some<Atom<LEX_STRING>>
   >;
-};
-
-template<StringParam lit>
-struct NodeOperator : public ParseNode {
-  static Token* match(void* ctx, Token* a, Token* b) {
-    auto end = match_punct<lit>(ctx, a, b);
-    if (end && end != a) {
-      auto node = new NodeOperator<lit>();
-      node->init_leaf(a, end - 1);
-    }
-    return end;
-  }
 };
 
 //------------------------------------------------------------------------------
@@ -293,56 +281,38 @@ using opt_comma_separated = Opt<comma_separated<P>>;
 
 //------------------------------------------------------------------------------
 
-struct NodeOpPrefix : public ParseNode {};
-
 template<StringParam lit>
-struct MatchOpPrefix {
-  static Token* match(void* ctx, Token* a, Token* b) {
-    auto end = match_punct<lit>(ctx, a, b);
-    if (end) {
-      auto node = new NodeOpPrefix();
-      node->precedence = prefix_precedence(lit.str_val);
-      node->assoc      = prefix_assoc(lit.str_val);
-      node->init_leaf(a, end - 1);
-    }
-    return end;
+struct NodePrefixOp : public ParseNode, public LeafMaker<NodePrefixOp<lit>> {
+  NodePrefixOp() {
+    precedence = prefix_precedence(lit.str_val);
+    assoc      = prefix_assoc(lit.str_val);
   }
+
+  using pattern = Ref<match_punct<lit>>;
 };
 
 //------------------------------------------------------------------------------
 
-struct NodeOpBinary : public ParseNode {};
-
 template<StringParam lit>
-struct MatchOpBinary {
-  static Token* match(void* ctx, Token* a, Token* b) {
-    auto end = match_punct<lit>(ctx, a, b);
-    if (end) {
-      auto node = new NodeOpBinary();
-      node->precedence = binary_precedence(lit.str_val);
-      node->assoc      = binary_assoc(lit.str_val);
-      node->init_leaf(a, end - 1);
-    }
-    return end;
+struct NodeBinaryOp : public ParseNode, public LeafMaker<NodeBinaryOp<lit>> {
+  NodeBinaryOp() {
+    precedence = binary_precedence(lit.str_val);
+    assoc      = binary_assoc(lit.str_val);
   }
+
+  using pattern = Ref<match_punct<lit>>;
 };
 
 //------------------------------------------------------------------------------
 
-struct NodeOpSuffix : public ParseNode {};
-
 template<StringParam lit>
-struct MatchOpSuffix {
-  static Token* match(void* ctx, Token* a, Token* b) {
-    auto end = match_punct<lit>(ctx, a, b);
-    if (end) {
-      auto node = new NodeOpSuffix();
-      node->precedence = suffix_precedence(lit.str_val);
-      node->assoc      = suffix_assoc(lit.str_val);
-      node->init_leaf(a, end - 1);
-    }
-    return end;
+struct NodeSuffixOp : public ParseNode, public LeafMaker<NodeSuffixOp<lit>> {
+  NodeSuffixOp() {
+    precedence = suffix_precedence(lit.str_val);
+    assoc      = suffix_assoc(lit.str_val);
   }
+
+  using pattern = Ref<match_punct<lit>>;
 };
 
 //------------------------------------------------------------------------------
@@ -378,7 +348,7 @@ struct NodeAsmSuffix : public NodeMaker<NodeAsmSuffix> {
 
 //------------------------------------------------------------------------------
 
-struct NodeAccessSpecifier : public LeafMaker<NodeAccessSpecifier> {
+struct NodeAccessSpecifier : public ParseNode, public LeafMaker<NodeAccessSpecifier> {
   using pattern = Seq<
     Oneof<
       Literal2<"public">,
@@ -607,26 +577,13 @@ struct NodeExpressionOffsetof  : public NodeMaker<NodeExpressionOffsetof> {
 //----------------------------------------
 
 template<StringParam lit>
-struct NodePrefixKeyword : public LeafMaker<NodePrefixKeyword<lit>> {
-  virtual void init_leaf(Token* tok_a, Token* tok_b) override {
-    LeafMaker<NodePrefixKeyword<lit>>::init_leaf(tok_a, tok_b);
+struct NodePrefixKeyword : public ParseNode, public LeafMaker<NodePrefixKeyword<lit>> {
+  NodePrefixKeyword() {
     this->precedence = 3;
     this->assoc = -2;
   }
 
-  //using pattern = Keyword<lit>;
-  static Token* match(void* ctx, Token* a, Token* b) {
-    if (!a || a == b) return nullptr;
-
-    print_trace_start<NodePrefixKeyword<lit>, Token>(a);
-    Token* end = Keyword<lit>::match(ctx, a, b);
-    if (end) {
-      auto node = new NodePrefixKeyword<lit>();
-      node->init_leaf(a, a);
-    }
-    print_trace_end<NodePrefixKeyword<lit>, Token>(a, end);
-    return end;
-  }
+  using pattern = Keyword<lit>;
 };
 
 using ExpressionPrefixOp =
@@ -637,14 +594,14 @@ Oneof<
   NodePrefixKeyword<"__real__">,
   NodePrefixKeyword<"__imag">,
   NodePrefixKeyword<"__imag__">,
-  MatchOpPrefix<"++">,
-  MatchOpPrefix<"--">,
-  MatchOpPrefix<"+">,
-  MatchOpPrefix<"-">,
-  MatchOpPrefix<"!">,
-  MatchOpPrefix<"~">,
-  MatchOpPrefix<"*">,
-  MatchOpPrefix<"&">
+  NodePrefixOp<"++">,
+  NodePrefixOp<"--">,
+  NodePrefixOp<"+">,
+  NodePrefixOp<"-">,
+  NodePrefixOp<"!">,
+  NodePrefixOp<"~">,
+  NodePrefixOp<"*">,
+  NodePrefixOp<"&">
 >;
 
 //----------------------------------------
@@ -669,8 +626,8 @@ Oneof<
   NodeSuffixBraces,
   NodeSuffixParen,
   NodeSuffixSubscript,
-  MatchOpSuffix<"++">,
-  MatchOpSuffix<"--">
+  NodeSuffixOp<"++">,
+  NodeSuffixOp<"--">
 >;
 
 //----------------------------------------
@@ -696,9 +653,9 @@ using SpanTernaryOp = // Not covered by csmith
 Seq<
   // pr68249.c - ternary option can be empty
   // pr49474.c - ternary branches can be comma-lists
-  MatchOpBinary<"?">,
+  NodeBinaryOp<"?">,
   Opt<comma_separated<unit_pattern>>,
-  MatchOpBinary<":">,
+  NodeBinaryOp<":">,
   Opt<comma_separated<unit_pattern>>
 >;
 */
@@ -712,9 +669,9 @@ struct NodeTernaryOp : public NodeMaker<NodeTernaryOp> {
 
   using pattern =
   Seq<
-    MatchOpBinary<"?">,
+    NodeBinaryOp<"?">,
     Opt<comma_separated<NodeExpression>>,
-    MatchOpBinary<":">
+    NodeBinaryOp<":">
   >;
 };
 
@@ -729,23 +686,23 @@ struct NodeExpression : public ParseNode {
     if (atom_cmp(*a, LEX_PUNCT)) return nullptr;
 
     switch(a->unsafe_span_a()[0]) {
-      case '+': return Oneof< MatchOpBinary<"+=">, MatchOpBinary<"+"> >::match(ctx, a, b);
-      case '-': return Oneof< MatchOpBinary<"->*">, MatchOpBinary<"->">, MatchOpBinary<"-=">, MatchOpBinary<"-"> >::match(ctx, a, b);
-      case '*': return Oneof< MatchOpBinary<"*=">, MatchOpBinary<"*"> >::match(ctx, a, b);
-      case '/': return Oneof< MatchOpBinary<"/=">, MatchOpBinary<"/"> >::match(ctx, a, b);
-      case '=': return Oneof< MatchOpBinary<"==">, MatchOpBinary<"="> >::match(ctx, a, b);
-      case '<': return Oneof< MatchOpBinary<"<<=">, MatchOpBinary<"<=>">, MatchOpBinary<"<=">, MatchOpBinary<"<<">, MatchOpBinary<"<"> >::match(ctx, a, b);
-      case '>': return Oneof< MatchOpBinary<">>=">, MatchOpBinary<">=">, MatchOpBinary<">>">, MatchOpBinary<">"> >::match(ctx, a, b);
-      case '!': return MatchOpBinary<"!=">::match(ctx, a, b);
-      case '&': return Oneof< MatchOpBinary<"&&">, MatchOpBinary<"&=">, MatchOpBinary<"&"> >::match(ctx, a, b);
-      case '|': return Oneof< MatchOpBinary<"||">, MatchOpBinary<"|=">, MatchOpBinary<"|"> >::match(ctx, a, b);
-      case '^': return Oneof< MatchOpBinary<"^=">, MatchOpBinary<"^"> >::match(ctx, a, b);
-      case '%': return Oneof< MatchOpBinary<"%=">, MatchOpBinary<"%"> >::match(ctx, a, b);
-      case '.': return Oneof< MatchOpBinary<".*">, MatchOpBinary<"."> >::match(ctx, a, b);
+      case '+': return Oneof< NodeBinaryOp<"+=">, NodeBinaryOp<"+"> >::match(ctx, a, b);
+      case '-': return Oneof< NodeBinaryOp<"->*">, NodeBinaryOp<"->">, NodeBinaryOp<"-=">, NodeBinaryOp<"-"> >::match(ctx, a, b);
+      case '*': return Oneof< NodeBinaryOp<"*=">, NodeBinaryOp<"*"> >::match(ctx, a, b);
+      case '/': return Oneof< NodeBinaryOp<"/=">, NodeBinaryOp<"/"> >::match(ctx, a, b);
+      case '=': return Oneof< NodeBinaryOp<"==">, NodeBinaryOp<"="> >::match(ctx, a, b);
+      case '<': return Oneof< NodeBinaryOp<"<<=">, NodeBinaryOp<"<=>">, NodeBinaryOp<"<=">, NodeBinaryOp<"<<">, NodeBinaryOp<"<"> >::match(ctx, a, b);
+      case '>': return Oneof< NodeBinaryOp<">>=">, NodeBinaryOp<">=">, NodeBinaryOp<">>">, NodeBinaryOp<">"> >::match(ctx, a, b);
+      case '!': return NodeBinaryOp<"!=">::match(ctx, a, b);
+      case '&': return Oneof< NodeBinaryOp<"&&">, NodeBinaryOp<"&=">, NodeBinaryOp<"&"> >::match(ctx, a, b);
+      case '|': return Oneof< NodeBinaryOp<"||">, NodeBinaryOp<"|=">, NodeBinaryOp<"|"> >::match(ctx, a, b);
+      case '^': return Oneof< NodeBinaryOp<"^=">, NodeBinaryOp<"^"> >::match(ctx, a, b);
+      case '%': return Oneof< NodeBinaryOp<"%=">, NodeBinaryOp<"%"> >::match(ctx, a, b);
+      case '.': return Oneof< NodeBinaryOp<".*">, NodeBinaryOp<"."> >::match(ctx, a, b);
       case '?': return NodeTernaryOp::match(ctx, a, b);
 
       // FIXME this is only for C++, and
-      //case ':': return MatchOpBinary<"::">::match(ctx, a, b);
+      //case ':': return NodeBinaryOp<"::">::match(ctx, a, b);
       //default:  return nullptr;
     }
 
@@ -1034,9 +991,9 @@ struct NodeTypeDecl : public NodeMaker<NodeTypeDecl> {
 struct NodePointer : public NodeMaker<NodePointer> {
   using pattern =
   Seq<
-    MatchOpPrefix<"*">,
+    Literal2<"*">,
     Any<
-      MatchOpPrefix<"*">,
+      Literal2<"*">,
       NodeModifier
     >
   >;
@@ -1044,9 +1001,15 @@ struct NodePointer : public NodeMaker<NodePointer> {
 
 //------------------------------------------------------------------------------
 
+struct NodeEllipsis : public ParseNode, public LeafMaker<NodeEllipsis> {
+  using pattern = Ref<match_punct<"...">>;
+};
+
+//------------------------------------------------------------------------------
+
 struct NodeParam : public NodeMaker<NodeParam> {
   using pattern = Oneof<
-    NodeOperator<"...">,
+    NodeEllipsis,
     Seq<
       Any<NodeModifier>,
       NodeSpecifier,
@@ -1079,7 +1042,7 @@ struct NodeArraySuffix : public NodeMaker<NodeArraySuffix> {
     Seq<Atom<'['>,                         Any<NodeModifier>,                           Opt<NodeExpression>, Atom<']'>>,
     Seq<Atom<'['>, NodeKeyword<"static">,  Any<NodeModifier>,                               NodeExpression,  Atom<']'>>,
     Seq<Atom<'['>,                         Any<NodeModifier>,   NodeKeyword<"static">,      NodeExpression,  Atom<']'>>,
-    Seq<Atom<'['>,                         Any<NodeModifier>,   NodeOperator<"*">,                           Atom<']'>>
+    Seq<Atom<'['>,                         Any<NodeModifier>,   Literal2<"*">,                               Atom<']'>>
   >;
 };
 
@@ -1261,7 +1224,7 @@ struct NodeNamespace : public NodeMaker<NodeNamespace> {
 
 //------------------------------------------------------------------------------
 
-struct NodeStructType : public LeafMaker<NodeStructType> {
+struct NodeStructType : public ParseNode, public LeafMaker<NodeStructType> {
   using pattern = Ref<&C99Parser::match_struct_type>;
 };
 
@@ -1337,7 +1300,7 @@ struct NodeUnion : public NodeMaker<NodeUnion> {
 
 //------------------------------------------------------------------------------
 
-struct NodeClassType : public LeafMaker<NodeClassType> {
+struct NodeClassType : public ParseNode, public LeafMaker<NodeClassType> {
   using pattern = Ref<&C99Parser::match_class_type>;
 };
 
@@ -1392,7 +1355,7 @@ struct NodeTemplate : public NodeMaker<NodeTemplate> {
 //------------------------------------------------------------------------------
 // FIXME should probably have a few diffeerent versions instead of all the opts
 
-struct NodeEnumType : public LeafMaker<NodeEnumType> {
+struct NodeEnumType : public ParseNode, public LeafMaker<NodeEnumType> {
   using pattern = Ref<&C99Parser::match_enum_type>;
 };
 
@@ -1662,7 +1625,7 @@ struct NodeStatementCase : public NodeMaker<NodeStatementCase> {
     NodeExpression,
     Opt<Seq<
       // case 1...2: - this is supported by GCC?
-      NodeOperator<"...">,
+      NodeEllipsis,
       NodeExpression
     >>,
     Atom<':'>,
