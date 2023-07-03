@@ -107,7 +107,7 @@ void C99Parser::lex() {
     }
   }
 
-  CHECK(tokens.back().get_type() == LEX_EOF);
+  CHECK(atom_cmp(tokens.back(), LEX_EOF) == 0);
 
   lex_accum += timestamp_ms();
 }
@@ -118,15 +118,15 @@ ParseNode* C99Parser::parse() {
 
   NodeTranslationUnit* root = nullptr;
 
-  CHECK(tokens.front().get_type() == LEX_BOF);
-  CHECK(tokens.back().get_type() == LEX_EOF);
+  CHECK(atom_cmp(tokens.front(), LEX_BOF) == 0);
+  CHECK(atom_cmp(tokens.back(), LEX_EOF) == 0);
 
   // Skip over BOF, stop before EOF
   auto tok_a = tokens.data() + 1;
   auto tok_b = tokens.data() + tokens.size() - 1;
 
-  CHECK(tok_a->get_type() != LEX_BOF);
-  CHECK(tok_b->get_type() == LEX_EOF);
+  CHECK(atom_cmp(*tok_a, LEX_BOF) != 0);
+  CHECK(atom_cmp(*tok_b, LEX_EOF) == 0);
 
   parse_accum -= timestamp_ms();
   auto end = NodeTranslationUnit::match(this, tok_a, tok_b);
@@ -159,19 +159,19 @@ ParseNode* C99Parser::parse() {
 
 Token* C99Parser::match_builtin_type_base(Token* a, Token* b) {
   if (!a || a == b) return nullptr;
-  auto result = SST<builtin_type_base>::match(a->span_a(), a->span_b());
+  auto result = SST<builtin_type_base>::contains(*a);
   return result ? a + 1 : nullptr;
 }
 
 Token* C99Parser::match_builtin_type_prefix(Token* a, Token* b) {
   if (!a || a == b) return nullptr;
-  auto result = SST<builtin_type_prefix>::match(a->span_a(), a->span_b());
+  auto result = SST<builtin_type_prefix>::contains(*a);
   return result ? a + 1 : nullptr;
 }
 
 Token* C99Parser::match_builtin_type_suffix(Token* a, Token* b) {
   if (!a || a == b) return nullptr;
-  auto result = SST<builtin_type_suffix>::match(a->span_a(), a->span_b());
+  auto result = SST<builtin_type_suffix>::contains(*a);
   return result ? a + 1 : nullptr;
 }
 

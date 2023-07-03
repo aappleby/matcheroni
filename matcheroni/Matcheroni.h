@@ -612,24 +612,6 @@ struct Lit {
 
 
 //------------------------------------------------------------------------------
-// Matches string literals as if they were atoms. Does ___NOT___ match the
-// trailing null.
-// You'll need to define atom_cmp(atom& a, StringParam<N>& b) to use this.
-
-template<StringParam lit>
-struct Keyword {
-  template<typename atom>
-  static atom* match(void* ctx, atom* a, atom* b) {
-    if (!a || a == b) return nullptr;
-    if (atom_cmp(*a, lit) == 0) {
-      return a + 1;
-    } else {
-      return nullptr;
-    }
-  }
-};
-
-//------------------------------------------------------------------------------
 // Not a matcher, just a convenience helper - searches for a pattern anywhere
 // in the input span and returns offset/length of the match if found.
 

@@ -2,6 +2,8 @@
 #pragma once
 #include "Lexemes.h"
 #include "SlabAlloc.h"
+#include "c_constants.h"
+
 #include <typeinfo>
 #include <assert.h>
 
@@ -18,6 +20,25 @@ void set_color(uint32_t c);
 #endif
 
 #define CHECK(A) assert(A)
+
+
+//------------------------------------------------------------------------------
+// Matches string literals as if they were atoms. Does ___NOT___ match the
+// trailing null.
+// You'll need to define atom_cmp(atom& a, StringParam<N>& b) to use this.
+
+template<StringParam lit>
+struct Keyword {
+  static_assert(SST<c99_keywords>::contains(lit.str_val));
+
+  template<typename atom>
+  static atom* match(void* ctx, atom* a, atom* b) {
+    if (!a || a == b) return nullptr;
+    if (atom_cmp(*a, LEX_KEYWORD)) return nullptr;
+    if (atom_cmp(*a, lit)) return nullptr;
+    return a + 1;
+  }
+};
 
 //------------------------------------------------------------------------------
 
@@ -54,7 +75,7 @@ inline void print_class_name() {
 template<typename NodeType, typename atom>
 void print_trace_start(atom* a) {
 #ifdef MATCHERONI_ENABLE_TRACE
-  static constexpr int context_len = 40;
+  static constexpr int context_len = 60;
   printf("[");
   print_escaped(a->get_lex_debug()->span_a, context_len, 0x404040);
   printf("] ");
@@ -68,7 +89,7 @@ void print_trace_start(atom* a) {
 template<typename NodeType, typename atom>
 void print_trace_end(atom* a, atom* end) {
 #ifdef MATCHERONI_ENABLE_TRACE
-  static constexpr int context_len = 40;
+  static constexpr int context_len = 60;
   indent_depth -= 1;
   printf("[");
   if (end) {
@@ -106,7 +127,7 @@ template<typename NodeType>
 struct Trace {
   template<typename atom>
   static atom* match(void* ctx, atom* a, atom* b) {
-    static constexpr int context_len = 40;
+    static constexpr int context_len = 60;
 
     print_trace_start<NodeType, atom>(a);
     auto end = NodeType::match(ctx, a, b);
@@ -133,6 +154,50 @@ struct Token {
   // a branch, when it tries to match the next branch we will always pull the
   // defunct nodes off the tokens.
 
+  int atom_cmp(const LexemeType& b) {
+    clear_span();
+    if (int c = int(lex->type) - int(b)) return c;
+    return 0;
+  }
+
+  int atom_cmp(const char& b) {
+    clear_span();
+    if (int c = lex->len() - 1)     return c;
+    if (int c = lex->span_a[0] - b) return c;
+    return 0;
+  }
+
+  int atom_cmp(const char* b) {
+    clear_span();
+    if (int c = cmp_span_lit(lex->span_a, lex->span_b, b)) return c;
+    return 0;
+  }
+
+  template<int N>
+  int atom_cmp(const StringParam<N>& b) {
+    clear_span();
+    if (int c = lex->len() - b.str_len) return c;
+    for (auto i = 0; i < b.str_len; i++) {
+      if (auto c = lex->span_a[i] - b.str_val[i]) return c;
+    }
+    return 0;
+  }
+
+  int atom_cmp(const Token& b) {
+    clear_span();
+    if (int c = lex->type  - b.lex->type) return c;
+    if (int c = lex->len() - b.lex->len()) return c;
+    for (auto i = 0; i < lex->len(); i++) {
+      if (auto c = lex->span_a[i] - b.lex->span_a[i]) return c;
+    }
+    return 0;
+  }
+
+  const char* unsafe_span_a() {
+    return lex->span_a;
+  }
+
+  /*
   LexemeType get_type() {
     span = nullptr;
     return lex->type;
@@ -157,6 +222,7 @@ struct Token {
     span = nullptr;
     return int(lex->span_b - lex->span_a);
   }
+  */
 
   //----------------------------------------
 
@@ -169,7 +235,12 @@ struct Token {
   }
 
   void set_span(ParseNode* n) {
+    DCHECK(n);
     span = n;
+  }
+
+  void clear_span() {
+    span = nullptr;
   }
 
   const char* type_to_str() const {
@@ -191,12 +262,29 @@ struct Token {
     return lex;
   }
 
-  //----------------------------------------------------------------------------
-
 private:
   ParseNode* span;
   const Lexeme* lex;
 };
+
+//----------
+
+inline int atom_cmp(Token& a, const LexemeType& b) {
+  return a.atom_cmp(b);
+}
+
+inline int atom_cmp(Token& a, const char& b) {
+  return a.atom_cmp(b);
+}
+
+inline int atom_cmp(Token& a, const char* b) {
+  return a.atom_cmp(b);
+}
+
+template<int N>
+inline int atom_cmp(Token& a, const StringParam<N>& b) {
+  return a.atom_cmp(b);
+}
 
 //------------------------------------------------------------------------------
 
@@ -438,38 +526,15 @@ inline void Token::dump_token() const {
 
 //------------------------------------------------------------------------------
 
-inline int atom_cmp(Token& a, const LexemeType& b) {
-  return int(a.get_type()) - int(b);
-}
-
-inline int atom_cmp(Token& a, const char& b) {
-  int len_cmp = a.get_len() - 1;
-  if (len_cmp != 0) return len_cmp;
-  return int(a.as_str()[0]) - int(b);
-}
-
-template<int N>
-inline int atom_cmp(Token& a, const StringParam<N>& b) {
-  // FIXME do we really need this comparison?
-  int len_cmp = int(a.get_len()) - int(b.str_len);
-  if (len_cmp != 0) return len_cmp;
-
-  for (auto i = 0; i < b.str_len; i++) {
-    int cmp = int(a.as_str()[i]) - int(b.str_val[i]);
-    if (cmp) return cmp;
-  }
-
-  return 0;
-}
-
-//------------------------------------------------------------------------------
-
 inline Token* match_punct(void* ctx, Token* a, Token* b, const char* lit, int lit_len) {
   if (!a || a == b) return nullptr;
   if (a + lit_len > b) return nullptr;
+
   for (auto i = 0; i < lit_len; i++) {
-    if (a->as_str()[i] != lit[i]) return nullptr;
+    if (atom_cmp(a[i], LEX_PUNCT)) return nullptr;
+    if (atom_cmp(a->unsafe_span_a()[i], lit[i])) return nullptr;
   }
+
   auto end = a + lit_len;
   return end;
 }

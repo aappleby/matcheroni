@@ -10,6 +10,17 @@ using namespace matcheroni;
 
 //------------------------------------------------------------------------------
 
+struct cspan {
+  const char* a;
+  const char* b;
+};
+
+inline int atom_cmp(const cspan& s, const char* b) {
+  return cmp_span_lit(s.a, s.b, b);
+}
+
+//------------------------------------------------------------------------------
+
 enum LexemeType {
   LEX_INVALID = 0,
   LEX_SPACE,
@@ -59,6 +70,10 @@ struct Lexeme {
         return true;
     }
     return false;
+  }
+
+  int len() const {
+    return span_b - span_a;
   }
 
   //----------------------------------------------------------------------------

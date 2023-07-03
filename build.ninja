@@ -1,5 +1,6 @@
 #build_mode = -g -O0 -DDEBUG -DMATCHERONI_ENABLE_TRACE -DEXTRA_DEBUG
-build_mode = -g -O0 -DDEBUG
+build_mode = -g -O0 -DDEBUG -DMATCHERONI_ENABLE_TRACE
+#build_mode = -g -O0 -DDEBUG
 #build_mode = -g -Og -DDEBUG
 #build_mode = -O3 -fdata-sections -ffunction-sections -Wl,--gc-sections -Wl,-s
 #build_mode = -O3

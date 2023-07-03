@@ -1,12 +1,26 @@
   #include "Matcheroni.h"
   #include "Lexemes.h"
   #include "c_lexer.h"
+  #include "c_constants.h"
 
 // These are not intended to be usable grammar bits, they are just from the C99
 // spec for reference.
 
 template<typename P>
 using comma_separated = Seq<P, Any<Seq<Atom<','>, P>>, Opt<Atom<','>> >;
+
+template<StringParam lit>
+struct Keyword {
+  static_assert(SST<c99_keywords>::contains(lit.str_val));
+
+  template<typename atom>
+  static atom* match(void* ctx, atom* a, atom* b) {
+    if (!a || a == b) return nullptr;
+    if (atom_cmp(*a, LEX_KEYWORD)) return nullptr;
+    if (atom_cmp(*a, lit)) return nullptr;
+    return a + 1;
+  }
+};
 
 template<StringParam q>
 struct Operator {

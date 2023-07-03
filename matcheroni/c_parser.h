@@ -20,7 +20,7 @@ struct NodeDeclaration;
 struct NodeDeclarator;
 struct NodeEnum;
 struct NodeExpression;
-struct NodeFunction;
+struct NodeFunctionDefinition;
 struct NodeInitializer;
 struct NodeInitializerList;
 struct NodeSpecifier;
@@ -32,6 +32,8 @@ struct NodeTemplate;
 struct NodeTypeDecl;
 struct NodeTypeName;
 struct NodeUnion;
+
+typedef std::vector<const Token*> token_list;
 
 //------------------------------------------------------------------------------
 
@@ -45,26 +47,24 @@ struct TypeScope {
     typedef_types.clear();
   }
 
-  bool has_type(const std::vector<std::string>& types, Token* a) {
-    if(a->get_type() != LEX_IDENTIFIER) return false;
+  bool has_type(token_list& types, Token* a) {
+    if(atom_cmp(*a, LEX_IDENTIFIER)) return false;
 
-    for (const auto& c : types) {
-      auto r = cmp_span_lit(a->span_a(), a->span_b(), c.c_str());
-      if (r == 0) return true;
+    for (const auto c : types) {
+      if (a->atom_cmp(*c) == 0) return true;
     }
 
     return false;
   }
 
-  void add_type(std::vector<std::string>& types, Token* a) {
-    assert(a->get_type() == LEX_IDENTIFIER);
+  void add_type(token_list& types, Token* a) {
+    DCHECK(atom_cmp(*a, LEX_IDENTIFIER) == 0);
 
     for (const auto& c : types) {
-      auto r = cmp_span_lit(a->span_a(), a->span_b(), c.c_str());
-      if (r == 0) return;
+      if (a->atom_cmp(*c) == 0) return;
     }
 
-    types.push_back(std::string(a->span_a(), a->span_b()));
+    types.push_back(a);
   }
 
   //----------------------------------------
@@ -82,11 +82,11 @@ struct TypeScope {
   void add_typedef_type(Token* a) { return add_type(typedef_types, a); }
 
   TypeScope* parent;
-  std::vector<std::string> class_types;
-  std::vector<std::string> struct_types;
-  std::vector<std::string> union_types;
-  std::vector<std::string> enum_types;
-  std::vector<std::string> typedef_types;
+  token_list class_types;
+  token_list struct_types;
+  token_list union_types;
+  token_list enum_types;
+  token_list typedef_types;
 };
 
 //------------------------------------------------------------------------------
@@ -170,14 +170,13 @@ struct NodeKeyword : public NodeMaker<NodeKeyword<lit>> {
   //using pattern = Keyword<lit>;
   static Token* match(void* ctx, Token* a, Token* b) {
     if (!a || a == b) return nullptr;
-    if (!a->get_type() == LEX_KEYWORD) return nullptr;
+    if (a->atom_cmp(LEX_KEYWORD)) return nullptr;
 
-    Token* end = nullptr;
     print_trace_start<NodeKeyword<lit>, Token>(a);
-    if (atom_cmp(*a, lit) == 0) {
+    auto end = Keyword<lit>::match(ctx, a, b);
+    if (end) {
       auto node = new NodeKeyword<lit>();
       node->init(a, a);
-      end = a + 1;
     }
     print_trace_end<NodeKeyword<lit>, Token>(a, end);
     return end;
@@ -241,6 +240,11 @@ struct NodeConstant : public NodeMaker<NodeConstant> {
 template<StringParam lit>
 struct NodeOperator : public ParseNode {
   static Token* match(void* ctx, Token* a, Token* b) {
+    /*
+    for (auto c = a; c < b; c++) {
+      c->clear_span();
+    }
+    */
     auto end = match_punct(ctx, a, b, lit.str_val, lit.str_len);
     if (end && end != a) {
       auto node = new NodeOperator<lit>();
@@ -345,8 +349,7 @@ struct MatchOpSuffix {
 struct NodeQualifier : public NodeMaker<NodeQualifier> {
   static Token* match(void* ctx, Token* a, Token* b) {
     if (!a || a == b) return nullptr;
-    auto result = SST<qualifiers>::match(a->span_a(), a->span_b());
-    if (result) {
+    if (SST<qualifiers>::contains(*a)) {
       auto node = new NodeQualifier();
       node->init(a, a);
       return a + 1;
@@ -606,14 +609,12 @@ struct NodePrefixKeyword : public NodeMaker<NodePrefixKeyword<lit>> {
   //using pattern = Keyword<lit>;
   static Token* match(void* ctx, Token* a, Token* b) {
     if (!a || a == b) return nullptr;
-    if (!a->get_type() == LEX_KEYWORD) return nullptr;
 
-    Token* end = nullptr;
     print_trace_start<NodePrefixKeyword<lit>, Token>(a);
-    if (atom_cmp(*a, lit) == 0) {
+    Token* end = Keyword<lit>::match(ctx, a, b);
+    if (end) {
       auto node = new NodePrefixKeyword<lit>();
       node->init(a, a);
-      end = a + 1;
     }
     print_trace_end<NodePrefixKeyword<lit>, Token>(a, end);
     return end;
@@ -682,9 +683,9 @@ struct NodeExpression : public ParseNode {
   static Token* match_binary_op(void* ctx, Token* a, Token* b) {
     if (!a || a == b) return nullptr;
 
-    if (a->get_type() != LEX_PUNCT) return nullptr;
+    if (atom_cmp(*a, LEX_PUNCT)) return nullptr;
 
-    switch(a->span_a()[0]) {
+    switch(a->unsafe_span_a()[0]) {
       case '+': return Oneof< MatchOpBinary<"+=">, MatchOpBinary<"+"> >::match(ctx, a, b);
       case '-': return Oneof< MatchOpBinary<"->*">, MatchOpBinary<"->">, MatchOpBinary<"-=">, MatchOpBinary<"-"> >::match(ctx, a, b);
       case '*': return Oneof< MatchOpBinary<"*=">, MatchOpBinary<"*"> >::match(ctx, a, b);
@@ -890,15 +891,18 @@ struct NodeExpression : public ParseNode {
     }
 #endif
 
-    auto node = new NodeExpression();
-    node->init(a, cursor - 1);
-
     return cursor;
   }
 
   static Token* match(void* ctx, Token* a, Token* b) {
-    auto result = match2(ctx, a, b);
-    return result;
+    print_trace_start<NodeExpression, Token>(a);
+    auto end = match2(ctx, a, b);
+    if (end) {
+      auto node = new NodeExpression();
+      node->init(a, end - 1);
+    }
+    print_trace_end<NodeExpression, Token>(a, end);
+    return end;
   }
 
 };
@@ -1172,7 +1176,7 @@ struct NodeField : public PatternWrapper<NodeField> {
     Atom<';'>,
     NodeAccessSpecifier,
     NodeConstructor,
-    NodeFunction,
+    NodeFunctionDefinition,
     NodeStruct,
     NodeUnion,
     NodeTemplate,
@@ -1452,25 +1456,24 @@ struct NodeFunctionIdentifier : public NodeMaker<NodeFunctionIdentifier> {
   >;
 };
 
-struct NodeFunction : public NodeMaker<NodeFunction> {
+//function-definition:
+//    declaration-specifiers declarator declaration-listopt compound-statement
+
+struct NodeFunctionDefinition : public NodeMaker<NodeFunctionDefinition> {
   using pattern = Seq<
-    Any<
-      NodeModifier,
-      NodeAttribute,
-      NodeSpecifier
-    >,
+    Any<NodeModifier>,
+    Opt<NodeSpecifier>,
+    Any<NodeModifier>,
     NodeFunctionIdentifier,
     NodeParamList,
+    Any<NodeModifier>,
     Opt<NodeAsmSuffix>,
     Opt<NodeKeyword<"const">>,
     // This is old-style declarations after param list
     Opt<Some<
       Seq<NodeDeclaration, Atom<';'>>
     >>,
-    Oneof<
-      Atom<';'>,
-      NodeStatementCompound
-    >
+    NodeStatementCompound
   >;
 };
 
@@ -1868,7 +1871,7 @@ struct NodeStatement : public PatternWrapper<NodeStatement> {
 
     // These don't - but they might confuse a keyword with an identifier...
     NodeStatementLabel,
-    NodeFunction,
+    NodeFunctionDefinition,
 
     // If declaration is before expression, we parse "x = 1;" as a declaration
     // because it matches a declarator (bare identifier) + initializer list :/
@@ -1893,7 +1896,7 @@ struct NodeTranslationUnit : public NodeMaker<NodeTranslationUnit> {
 
       NodePreproc,
       Seq<NodeTemplate, Atom<';'>>,
-      NodeFunction,
+      NodeFunctionDefinition,
       Seq<NodeDeclaration, Atom<';'>>,
       Atom<';'>
     >

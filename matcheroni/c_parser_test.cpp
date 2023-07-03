@@ -83,8 +83,8 @@ int test_parser(int argc, char** argv) {
 
 #if 1
   paths = {
-    //"tests/scratch.c",
-    "../gcc/gcc/testsuite/gcc.c-torture/execute/pr41239.c",
+    "tests/scratch.c",
+    //"../gcc/gcc/testsuite/gcc.c-torture/execute/20030626-2.c",
   };
 
   verbose = true;
@@ -124,8 +124,8 @@ int test_parser(int argc, char** argv) {
     // Filter all files containing preproc, but not if they're a csmith file
     if (path.find("csmith") == std::string::npos) {
       bool has_preproc = false;
-      for (auto t : parser.tokens) {
-        if (t.get_type() == LEX_PREPROC) {
+      for (auto& t : parser.tokens) {
+        if (atom_cmp(t, LEX_PREPROC) == 0) {
           has_preproc = true;
           break;
         }
