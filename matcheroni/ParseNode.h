@@ -40,6 +40,16 @@ struct Keyword {
   }
 };
 
+template<StringParam lit>
+struct Literal2 {
+  template<typename atom>
+  static atom* match(void* ctx, atom* a, atom* b) {
+    if (!a || a == b) return nullptr;
+    if (atom_cmp(*a, lit)) return nullptr;
+    return a + 1;
+  }
+};
+
 //------------------------------------------------------------------------------
 
 void print_escaped(const char* s, int len, unsigned int color);

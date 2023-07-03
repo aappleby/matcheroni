@@ -52,6 +52,7 @@ bool should_skip(const std::string& path) {
     "pr44784.c",
 
     // uses va_arg, which is actually a macro
+    "pr48767.c",
     "20041214-1.c",
     "pr38151.c",
     "pr43066.c",
@@ -81,10 +82,10 @@ int test_parser(int argc, char** argv) {
 
   bool verbose = false;
 
-#if 1
+#if 0
   paths = {
-    "tests/scratch.c",
-    //"../gcc/gcc/testsuite/gcc.c-torture/execute/20030626-2.c",
+    //"tests/scratch.c",
+    "../gcc/gcc/testsuite/gcc.c-torture/execute/loop-9.c",
   };
 
   verbose = true;

@@ -91,10 +91,10 @@ constexpr std::array c99_keywords = {
 "_Sat",
 "_Static_assert",
 "_Thread_local",
-"__FUNCTION__",
+//"__FUNCTION__", behaves as identifier
 "__GIMPLE",
 "__PHI",
-"__PRETTY_FUNCTION__",
+//"__PRETTY_FUNCTION__", behaves as identifier
 "__RTL",
 "__alignof",
 "__alignof__",
@@ -108,17 +108,17 @@ constexpr std::array c99_keywords = {
 "__builtin_assoc_barrier",
 "__builtin_bit_cast",
 "__builtin_call_with_static_chain",
-"__builtin_choose_expr",
+//"__builtin_choose_expr", behaves as a function
 "__builtin_complex",
 "__builtin_convertvector",
 "__builtin_has_attribute",
 "__builtin_launder",
 "__builtin_offsetof",
-"__builtin_shuffle",
-"__builtin_shufflevector",
+//"__builtin_shuffle", behaves as a function
+//"__builtin_shufflevector",
 "__builtin_tgmath",
 "__builtin_types_compatible_p",
-"__builtin_va_arg",
+//"__builtin_va_arg", behaves as a function
 "__complex",
 "__complex__",
 "__const",
@@ -128,7 +128,7 @@ constexpr std::array c99_keywords = {
 "__decltype",
 "__direct_bases",
 "__extension__",
-"__func__",
+//"__func__", behaves as identifier
 "__has_nothrow_assign",
 "__has_nothrow_constructor",
 "__has_nothrow_copy",
@@ -169,7 +169,7 @@ constexpr std::array c99_keywords = {
 "__is_trivially_constructible",
 "__is_trivially_copyable",
 "__is_union",
-"__label__",
+//"__label__", this is a type
 "__null",
 "__real",
 "__real__",
@@ -211,7 +211,7 @@ constexpr std::array c99_keywords = {
 "char16_t",
 "char32_t",
 "char8_t",
-"class",
+//"class", not in c99
 "co_await",
 "co_return",
 "co_yield",
@@ -223,23 +223,23 @@ constexpr std::array c99_keywords = {
 "constexpr",
 "constinit",
 "continue",
-"copy",
+//"copy", not in c99
 "decltype",
 "default",
 "defs",
-"delete",
+//"delete", not in c99
 "do",
 "double",
 "dynamic",
 "dynamic_cast",
 "else",
 "encode",
-"end",
+//"end", not in C99
 "enum",
 "explicit",
 "export",
 "extern",
-"false",
+//"false", not in c99
 "finally",
 "float",
 "for",
@@ -249,7 +249,7 @@ constexpr std::array c99_keywords = {
 "if",
 "implementation",
 "import ",
-"in",
+//"in", not in c99
 "inline",
 "inout",
 "int",
@@ -258,7 +258,7 @@ constexpr std::array c99_keywords = {
 "module ",
 "mutable",
 "namespace",
-"new",
+//"new", not in c99
 "noexcept",
 "nonatomic",
 "nonnull",
@@ -270,13 +270,13 @@ constexpr std::array c99_keywords = {
 "oneway",
 "operator",
 "optional",
-"out",
+//"out", not in C99
 "package",
-"private",
+//"private", not in c99
 "property",
 "protected",
-"protocol",
-"public",
+//"protocol", not in c99
+//"public", not in c99
 "readonly",
 "readwrite",
 "register",
@@ -298,12 +298,12 @@ constexpr std::array c99_keywords = {
 "switch",
 "synchronized",
 "synthesize",
-"template",
-"this",
+//"template",
+//"this", not in c99
 "thread_local",
 "throw",
-"true",
-"try",
+//"true", not in c99
+//"try", not in c99
 "typedef",
 "typeid",
 "typename",

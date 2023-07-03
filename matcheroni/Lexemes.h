@@ -139,7 +139,8 @@ struct Lexeme {
     }
 
     int len = span_b - span_a;
-    if (len > 10) len = 10;
+    const int span_len = 16;
+    if (len > span_len) len = span_len;
     printf("{");
     for (int i = 0; i < len; i++) {
       auto c = span_a[i];
@@ -150,7 +151,7 @@ struct Lexeme {
         putc(span_a[i], stdout);
       }
     }
-    for (int i = len; i < 10; i++) {
+    for (int i = len; i < span_len; i++) {
       printf(" ");
     }
     printf("}");

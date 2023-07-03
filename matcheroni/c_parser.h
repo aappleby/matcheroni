@@ -167,20 +167,12 @@ struct NodeAtom : public NodeMaker<NodeAtom<P>> {
 
 template<StringParam lit>
 struct NodeKeyword : public NodeMaker<NodeKeyword<lit>> {
-  //using pattern = Keyword<lit>;
-  static Token* match(void* ctx, Token* a, Token* b) {
-    if (!a || a == b) return nullptr;
-    if (a->atom_cmp(LEX_KEYWORD)) return nullptr;
+  using pattern = Keyword<lit>;
+};
 
-    print_trace_start<NodeKeyword<lit>, Token>(a);
-    auto end = Keyword<lit>::match(ctx, a, b);
-    if (end) {
-      auto node = new NodeKeyword<lit>();
-      node->init(a, a);
-    }
-    print_trace_end<NodeKeyword<lit>, Token>(a, end);
-    return end;
-  }
+template<StringParam lit>
+struct NodeLiteral : public NodeMaker<NodeLiteral<lit>> {
+  using pattern = Literal2<lit>;
 };
 
 //------------------------------------------------------------------------------
@@ -380,8 +372,8 @@ struct NodeAsmSuffix : public NodeMaker<NodeAsmSuffix> {
 struct NodeAccessSpecifier : public NodeMaker<NodeAccessSpecifier> {
   using pattern = Seq<
     Oneof<
-      NodeKeyword<"public">,
-      NodeKeyword<"private">
+      NodeLiteral<"public">,
+      NodeLiteral<"private">
     >,
     Atom<':'>
   >;
@@ -920,7 +912,7 @@ struct NodeAttribute : public NodeMaker<NodeAttribute> {
       Seq<Atom<'('>, Atom<'('>>,
       Oneof<
         NodeExpression,
-        Keyword<"const"> // __attribute__((const))
+        Atom<LEX_KEYWORD>
       >,
       Atom<','>,
       Seq<Atom<')'>, Atom<')'>>
@@ -1059,7 +1051,7 @@ struct NodeSpecifier : public NodeMaker<NodeSpecifier> {
     Oneof<
       // These have to be NodeIdentifier because "void foo(struct S);" is valid
       // even without the definition of S.
-      Seq<Keyword<"class">,  Oneof<NodeIdentifier, NodeTypedefType>>,
+      Seq<NodeLiteral<"class">,  Oneof<NodeIdentifier, NodeTypedefType>>,
       Seq<Keyword<"union">,  Oneof<NodeIdentifier, NodeTypedefType>>,
       Seq<Keyword<"struct">, Oneof<NodeIdentifier, NodeTypedefType>>,
       Seq<Keyword<"enum">,   Oneof<NodeIdentifier, NodeTypedefType>>,
@@ -1306,7 +1298,7 @@ struct NodeClassTypeAdder : public NodeIdentifier {
 struct NodeClass : public NodeMaker<NodeClass> {
   using pattern = Seq<
     Any<NodeModifier>,
-    Keyword<"class">,
+    NodeLiteral<"class">,
     Any<NodeAttribute>,
     Opt<NodeClassTypeAdder>,
     Opt<NodeFieldList>,
@@ -1329,7 +1321,7 @@ struct NodeTemplateParams : public NodeMaker<NodeTemplateParams> {
 
 struct NodeTemplate : public NodeMaker<NodeTemplate> {
   using pattern = Seq<
-    Keyword<"template">,
+    NodeLiteral<"template">,
     NodeTemplateParams,
     NodeClass
   >;
@@ -1379,7 +1371,7 @@ struct NodeEnum : public NodeMaker<NodeEnum> {
   using pattern = Seq<
     Any<NodeModifier>,
     Keyword<"enum">,
-    Opt<Keyword<"class">>,
+    Opt<NodeLiteral<"class">>,
     Opt<NodeEnumTypeAdder>,
     Opt<Seq<Atom<':'>, NodeTypeDecl>>,
     Opt<NodeEnumerators>,
