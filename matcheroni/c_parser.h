@@ -134,6 +134,20 @@ public:
 
   //----------------------------------------------------------------------------
 
+  void append_node(ParseNode* node) {
+    if (tail) {
+      tail->next = node;
+      node->prev = tail;
+      tail = node;
+    }
+    else {
+      head = node;
+      tail = node;
+    }
+  }
+
+  //----------------------------------------------------------------------------
+
   void dump_stats();
   void dump_lexemes();
   void dump_tokens();
@@ -142,7 +156,8 @@ public:
   std::vector<Lexeme> lexemes;
   std::vector<Token>  tokens;
 
-  ParseNode* root = nullptr;
+  ParseNode* head = nullptr;
+  ParseNode* tail = nullptr;
 
   int file_pass = 0;
   int file_fail = 0;
@@ -782,8 +797,8 @@ struct NodeExpression : public ParseNode {
     if (tok_b == nullptr) return nullptr;
 
 
-    while(1) {
-      
+    while(0) {
+
       {
         auto c = tok_a;
         while(c && c < tok_b) {
@@ -913,7 +928,7 @@ struct NodeExpression : public ParseNode {
     }
 #endif
 
-#if 1
+#if 0
     {
       printf("---EXPRESSION---\n");
       const Token* c = a;

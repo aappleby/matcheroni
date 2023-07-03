@@ -151,7 +151,8 @@ ParseNode* C99Parser::parse() {
     }
   }
 
-  this->root = root;
+  this->head = root;
+  this->tail = root;
   return root;
 }
 
