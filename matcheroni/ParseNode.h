@@ -320,7 +320,34 @@ struct ParseNode {
 
   //----------------------------------------
 
-  virtual void init(Token* tok_a, Token* tok_b) {
+  virtual void init_node(Token* tok_a, Token* tok_b, ParseNode* node_a, ParseNode* node_b) {
+    constructor_count++;
+    DCHECK(tok_a <= tok_b);
+
+    this->_tok_a = tok_a;
+    this->_tok_b = tok_b;
+
+    // Attach all the tops under this node to it.
+    //bool has_child = false;
+    auto cursor = tok_a;
+    while (cursor <= tok_b) {
+      auto child = cursor->get_span();
+      if (child) {
+        //has_child = true;
+        attach_child(child);
+        cursor = child->tok_b() + 1;
+      }
+      else {
+        cursor++;
+      }
+    }
+    //assert(has_child);
+
+    _tok_a->set_span(this);
+    _tok_b->set_span(this);
+  }
+
+  virtual void init_leaf(Token* tok_a, Token* tok_b) {
     constructor_count++;
     DCHECK(tok_a <= tok_b);
 
@@ -330,22 +357,12 @@ struct ParseNode {
     // Attach all the tops under this node to it.
     auto cursor = tok_a;
     while (cursor <= tok_b) {
-      auto child = cursor->get_span();
-      if (child) {
-        attach_child(child);
-        cursor = child->tok_b() + 1;
-      }
-      else {
-        cursor++;
-      }
+      assert(!cursor->get_span());
+      cursor++;
     }
 
     _tok_a->set_span(this);
     _tok_b->set_span(this);
-  }
-
-  void init(ParseNode* node_a, ParseNode* node_b) {
-    return init(node_a->tok_a(), node_b->tok_b());
   }
 
   //----------------------------------------
@@ -529,7 +546,24 @@ struct NodeMaker : public ParseNode {
 
     if (end && end != a) {
       auto node = new NodeType();
-      node->init(a, end-1);
+      node->init_node(a, end-1, a->get_span(), (end-1)->get_span());
+    }
+    return end;
+  }
+};
+
+template<typename NodeType>
+struct LeafMaker : public ParseNode {
+  static Token* match(void* ctx, Token* a, Token* b) {
+    if (!a || a == b) return nullptr;
+
+    print_trace_start<NodeType, Token>(a);
+    auto end = NodeType::pattern::match(ctx, a, b);
+    print_trace_end<NodeType, Token>(a, end);
+
+    if (end && end != a) {
+      auto node = new NodeType();
+      node->init_leaf(a, end-1);
     }
     return end;
   }

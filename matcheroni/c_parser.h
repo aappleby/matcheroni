@@ -176,37 +176,36 @@ public:
 //------------------------------------------------------------------------------
 
 template<auto P>
-struct NodeAtom : public NodeMaker<NodeAtom<P>> {
+struct NodeAtom : public LeafMaker<NodeAtom<P>> {
   using pattern = Atom<P>;
 };
 
 template<StringParam lit>
-struct NodeKeyword : public NodeMaker<NodeKeyword<lit>> {
+struct NodeKeyword : public LeafMaker<NodeKeyword<lit>> {
   using pattern = Keyword<lit>;
 };
 
 template<StringParam lit>
-struct NodeLiteral : public NodeMaker<NodeLiteral<lit>> {
+struct NodeLiteral : public LeafMaker<NodeLiteral<lit>> {
   using pattern = Literal2<lit>;
 };
 
 //------------------------------------------------------------------------------
 // Our builtin types are any sequence of prefixes followed by a builtin type
 
-struct NodeBuiltinType : public NodeMaker<NodeBuiltinType> {
+struct NodeBuiltinType : public LeafMaker<NodeBuiltinType> {
   using match_prefix = Ref<&C99Parser::match_builtin_type_prefix>;
   using match_base   = Ref<&C99Parser::match_builtin_type_base>;
   using match_suffix = Ref<&C99Parser::match_builtin_type_suffix>;
 
   using pattern = Seq<
-    //And<Oneof<Atom<LEX_KEYWORD>, Atom<LEX_IDENTIFIER>>>,
     Any<Seq<match_prefix, And<match_base>>>,
     match_base,
     Opt<match_suffix>
   >;
 };
 
-struct NodeTypedefType : public NodeMaker<NodeTypedefType> {
+struct NodeTypedefType : public LeafMaker<NodeTypedefType> {
   using pattern = Ref<&C99Parser::match_typedef_type>;
 };
 
@@ -218,7 +217,7 @@ struct NodeTypedefType : public NodeMaker<NodeTypedefType> {
 // - Because "uint8_t *x = 5" gets misparsed as an expression if uint8_t matches
 // as an identifier
 
-struct NodeIdentifier : public NodeMaker<NodeIdentifier> {
+struct NodeIdentifier : public LeafMaker<NodeIdentifier> {
   using pattern =
   Seq<
     Not<NodeBuiltinType>,
@@ -229,13 +228,13 @@ struct NodeIdentifier : public NodeMaker<NodeIdentifier> {
 
 //------------------------------------------------------------------------------
 
-struct NodePreproc : public NodeMaker<NodePreproc> {
+struct NodePreproc : public LeafMaker<NodePreproc> {
   using pattern = Atom<LEX_PREPROC>;
 };
 
 //------------------------------------------------------------------------------
 
-struct NodeConstant : public NodeMaker<NodeConstant> {
+struct NodeConstant : public LeafMaker<NodeConstant> {
   using pattern = Oneof<
     Atom<LEX_FLOAT>,
     Atom<LEX_INT>,
@@ -255,7 +254,7 @@ struct NodeOperator : public ParseNode {
     auto end = match_punct(ctx, a, b, lit.str_val, lit.str_len);
     if (end && end != a) {
       auto node = new NodeOperator<lit>();
-      node->init(a, end - 1);
+      node->init_leaf(a, end - 1);
     }
     return end;
   }
@@ -309,7 +308,7 @@ struct MatchOpPrefix {
       auto node = new NodeOpPrefix();
       node->precedence = prefix_precedence(lit.str_val);
       node->assoc      = prefix_assoc(lit.str_val);
-      node->init(a, end - 1);
+      node->init_leaf(a, end - 1);
     }
     return end;
   }
@@ -327,7 +326,7 @@ struct MatchOpBinary {
       auto node = new NodeOpBinary();
       node->precedence = binary_precedence(lit.str_val);
       node->assoc      = binary_assoc(lit.str_val);
-      node->init(a, end - 1);
+      node->init_leaf(a, end - 1);
     }
     return end;
   }
@@ -345,7 +344,7 @@ struct MatchOpSuffix {
       auto node = new NodeOpSuffix();
       node->precedence = suffix_precedence(lit.str_val);
       node->assoc      = suffix_assoc(lit.str_val);
-      node->init(a, end - 1);
+      node->init_leaf(a, end - 1);
     }
     return end;
   }
@@ -353,12 +352,12 @@ struct MatchOpSuffix {
 
 //------------------------------------------------------------------------------
 
-struct NodeQualifier : public NodeMaker<NodeQualifier> {
+struct NodeQualifier : public ParseNode {
   static Token* match(void* ctx, Token* a, Token* b) {
     if (!a || a == b) return nullptr;
     if (SST<qualifiers>::contains(*a)) {
       auto node = new NodeQualifier();
-      node->init(a, a);
+      node->init_leaf(a, a);
       return a + 1;
     }
     else {
@@ -384,11 +383,11 @@ struct NodeAsmSuffix : public NodeMaker<NodeAsmSuffix> {
 
 //------------------------------------------------------------------------------
 
-struct NodeAccessSpecifier : public NodeMaker<NodeAccessSpecifier> {
+struct NodeAccessSpecifier : public LeafMaker<NodeAccessSpecifier> {
   using pattern = Seq<
     Oneof<
-      NodeLiteral<"public">,
-      NodeLiteral<"private">
+      Literal2<"public">,
+      Literal2<"private">
     >,
     Atom<':'>
   >;
@@ -469,8 +468,8 @@ struct NodeParenType : public NodeMaker<NodeParenType> {
 };
 
 struct NodePrefixCast : public NodeMaker<NodePrefixCast> {
-  virtual void init(Token* tok_a, Token* tok_b) override {
-    NodeMaker::init(tok_a, tok_b);
+  virtual void init_node(Token* tok_a, Token* tok_b, ParseNode* node_a, ParseNode* node_b) override {
+    NodeMaker::init_node(tok_a, tok_b, node_a, node_b);
     this->precedence = 3;
     this->assoc = -2;
   }
@@ -495,8 +494,8 @@ struct NodeExpressionParen : public NodeMaker<NodeExpressionParen> {
 };
 
 struct NodeSuffixParen : public NodeMaker<NodeSuffixParen> {
-  virtual void init(Token* tok_a, Token* tok_b) override {
-    NodeMaker::init(tok_a, tok_b);
+  virtual void init_node(Token* tok_a, Token* tok_b, ParseNode* node_a, ParseNode* node_b) override {
+    NodeMaker::init_node(tok_a, tok_b, node_a, node_b);
     this->precedence = 2;
     this->assoc = 2;
   }
@@ -523,8 +522,8 @@ struct NodeExpressionBraces : public NodeMaker<NodeExpressionBraces> {
 };
 
 struct NodeSuffixBraces : public NodeMaker<NodeSuffixBraces> {
-  virtual void init(Token* tok_a, Token* tok_b) override {
-    NodeMaker::init(tok_a, tok_b);
+  virtual void init_node(Token* tok_a, Token* tok_b, ParseNode* node_a, ParseNode* node_b) override {
+    NodeMaker::init_node(tok_a, tok_b, node_a, node_b);
     this->precedence = 2;
     this->assoc = 2;
   }
@@ -541,8 +540,8 @@ struct NodeSuffixBraces : public NodeMaker<NodeSuffixBraces> {
 //------------------------------------------------------------------------------
 
 struct NodeSuffixSubscript : public NodeMaker<NodeSuffixSubscript> {
-  virtual void init(Token* tok_a, Token* tok_b) override {
-    NodeMaker::init(tok_a, tok_b);
+  virtual void init_node(Token* tok_a, Token* tok_b, ParseNode* node_a, ParseNode* node_b) override {
+    NodeMaker::init_node(tok_a, tok_b, node_a, node_b);
     this->precedence = 2;
     this->assoc = 2;
   }
@@ -613,9 +612,9 @@ struct NodeExpressionOffsetof  : public NodeMaker<NodeExpressionOffsetof> {
 //----------------------------------------
 
 template<StringParam lit>
-struct NodePrefixKeyword : public NodeMaker<NodePrefixKeyword<lit>> {
-  virtual void init(Token* tok_a, Token* tok_b) override {
-    NodeMaker<NodePrefixKeyword<lit>>::init(tok_a, tok_b);
+struct NodePrefixKeyword : public LeafMaker<NodePrefixKeyword<lit>> {
+  virtual void init_leaf(Token* tok_a, Token* tok_b) override {
+    LeafMaker<NodePrefixKeyword<lit>>::init_leaf(tok_a, tok_b);
     this->precedence = 3;
     this->assoc = -2;
   }
@@ -628,7 +627,7 @@ struct NodePrefixKeyword : public NodeMaker<NodePrefixKeyword<lit>> {
     Token* end = Keyword<lit>::match(ctx, a, b);
     if (end) {
       auto node = new NodePrefixKeyword<lit>();
-      node->init(a, a);
+      node->init_leaf(a, a);
     }
     print_trace_end<NodePrefixKeyword<lit>, Token>(a, end);
     return end;
@@ -710,8 +709,8 @@ Seq<
 */
 
 struct NodeTernaryOp : public NodeMaker<NodeTernaryOp> {
-  virtual void init(Token* tok_a, Token* tok_b) override {
-    NodeMaker<NodeTernaryOp>::init(tok_a, tok_b);
+  virtual void init_node(Token* tok_a, Token* tok_b, ParseNode* node_a, ParseNode* node_b) override {
+    NodeMaker::init_node(tok_a, tok_b, node_a, node_b);
     this->precedence = 16;
     this->assoc = -1;
   }
@@ -822,7 +821,7 @@ struct NodeExpression : public ParseNode {
       if (l && l >= tok_a) {
         if (l->get_span()->assoc == -2) {
           auto node = new NodeExpressionPrefix();
-          node->init(l->get_span(), c->get_span());
+          node->init_node(l, c, l->get_span(), c->get_span());
           continue;
         }
       }
@@ -959,7 +958,7 @@ struct NodeExpression : public ParseNode {
     auto end = match2(ctx, a, b);
     if (end) {
       auto node = new NodeExpression();
-      node->init(a, end - 1);
+      node->init_node(a, end - 1, a->get_span(), (end-1)->get_span());
     }
     print_trace_end<NodeExpression, Token>(a, end);
     return end;
@@ -1267,7 +1266,7 @@ struct NodeNamespace : public NodeMaker<NodeNamespace> {
 
 //------------------------------------------------------------------------------
 
-struct NodeStructType : public NodeMaker<NodeStructType> {
+struct NodeStructType : public LeafMaker<NodeStructType> {
   using pattern = Ref<&C99Parser::match_struct_type>;
 };
 
@@ -1307,7 +1306,7 @@ struct NodeUnionType : public ParseNode {
     auto end = p->match_union_type(a, b);
     if (end) {
       auto node = new NodeUnionType();
-      node->init(a, end - 1);
+      node->init_leaf(a, end - 1);
     }
     return end;
   }
@@ -1343,7 +1342,7 @@ struct NodeUnion : public NodeMaker<NodeUnion> {
 
 //------------------------------------------------------------------------------
 
-struct NodeClassType : public NodeMaker<NodeClassType> {
+struct NodeClassType : public LeafMaker<NodeClassType> {
   using pattern = Ref<&C99Parser::match_class_type>;
 };
 
@@ -1398,7 +1397,7 @@ struct NodeTemplate : public NodeMaker<NodeTemplate> {
 //------------------------------------------------------------------------------
 // FIXME should probably have a few diffeerent versions instead of all the opts
 
-struct NodeEnumType : public NodeMaker<NodeEnumType> {
+struct NodeEnumType : public LeafMaker<NodeEnumType> {
   using pattern = Ref<&C99Parser::match_enum_type>;
 };
 
@@ -1476,8 +1475,8 @@ struct NodeInitializerList : public NodeMaker<NodeInitializerList> {
 
 struct NodeSuffixInitializerList : public NodeMaker<NodeSuffixInitializerList> {
 
-  virtual void init(Token* tok_a, Token* tok_b) override {
-    NodeMaker::init(tok_a, tok_b);
+  virtual void init_node(Token* tok_a, Token* tok_b, ParseNode* node_a, ParseNode* node_b) override {
+    NodeMaker<NodeSuffixInitializerList>::init_node(tok_a, tok_b, node_a, node_b);
     this->precedence = 2;
     this->assoc = 2;
   }
