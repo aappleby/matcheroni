@@ -594,16 +594,17 @@ inline void Token::dump_token() const {
 
 //------------------------------------------------------------------------------
 
-inline Token* match_punct(void* ctx, Token* a, Token* b, const char* lit, int lit_len) {
+template<StringParam lit>
+inline Token* match_punct(void* ctx, Token* a, Token* b) {
   if (!a || a == b) return nullptr;
-  if (a + lit_len > b) return nullptr;
+  if (a + lit.str_len > b) return nullptr;
 
-  for (auto i = 0; i < lit_len; i++) {
+  for (auto i = 0; i < lit.str_len; i++) {
     if (atom_cmp(a[i], LEX_PUNCT)) return nullptr;
-    if (atom_cmp(a->unsafe_span_a()[i], lit[i])) return nullptr;
+    if (atom_cmp(a->unsafe_span_a()[i], lit.str_val[i])) return nullptr;
   }
 
-  auto end = a + lit_len;
+  auto end = a + lit.str_len;
   return end;
 }
 

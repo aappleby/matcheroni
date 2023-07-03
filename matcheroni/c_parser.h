@@ -246,12 +246,7 @@ struct NodeConstant : public LeafMaker<NodeConstant> {
 template<StringParam lit>
 struct NodeOperator : public ParseNode {
   static Token* match(void* ctx, Token* a, Token* b) {
-    /*
-    for (auto c = a; c < b; c++) {
-      c->clear_span();
-    }
-    */
-    auto end = match_punct(ctx, a, b, lit.str_val, lit.str_len);
+    auto end = match_punct<lit>(ctx, a, b);
     if (end && end != a) {
       auto node = new NodeOperator<lit>();
       node->init_leaf(a, end - 1);
@@ -303,7 +298,7 @@ struct NodeOpPrefix : public ParseNode {};
 template<StringParam lit>
 struct MatchOpPrefix {
   static Token* match(void* ctx, Token* a, Token* b) {
-    auto end = match_punct(ctx, a, b, lit.str_val, lit.str_len);
+    auto end = match_punct<lit>(ctx, a, b);
     if (end) {
       auto node = new NodeOpPrefix();
       node->precedence = prefix_precedence(lit.str_val);
@@ -321,7 +316,7 @@ struct NodeOpBinary : public ParseNode {};
 template<StringParam lit>
 struct MatchOpBinary {
   static Token* match(void* ctx, Token* a, Token* b) {
-    auto end = match_punct(ctx, a, b, lit.str_val, lit.str_len);
+    auto end = match_punct<lit>(ctx, a, b);
     if (end) {
       auto node = new NodeOpBinary();
       node->precedence = binary_precedence(lit.str_val);
@@ -339,7 +334,7 @@ struct NodeOpSuffix : public ParseNode {};
 template<StringParam lit>
 struct MatchOpSuffix {
   static Token* match(void* ctx, Token* a, Token* b) {
-    auto end = match_punct(ctx, a, b, lit.str_val, lit.str_len);
+    auto end = match_punct<lit>(ctx, a, b);
     if (end) {
       auto node = new NodeOpSuffix();
       node->precedence = suffix_precedence(lit.str_val);
