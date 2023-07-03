@@ -167,7 +167,7 @@ This repo contains an example C lexer and parser built using Matcheroni. The lex
 
 Here's our parser for C's ```for``` loops:
 ```
-struct NodeStatementFor : public NodeMaker<NodeStatementFor> {
+struct NodeStatementFor : public ParseNode, public NodeMaker<NodeStatementFor> {
   using pattern = Seq<
     Keyword<"for">,
     Atom<'('>,

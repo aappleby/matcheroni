@@ -536,7 +536,7 @@ inline Token* Token::step_right() {
 // Consumes spans from all tokens it matches with and creates a new node on top of them.
 
 template<typename NodeType>
-struct NodeMaker : public ParseNode {
+struct NodeMaker {
   static Token* match(void* ctx, Token* a, Token* b) {
     if (!a || a == b) return nullptr;
 
