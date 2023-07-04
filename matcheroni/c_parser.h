@@ -433,10 +433,9 @@ struct NodeParenType : public ParseNode, public NodeMaker<NodeParenType> {
 };
 
 struct NodePrefixCast : public ParseNode, public NodeMaker<NodePrefixCast> {
-  virtual void init_node(Token* tok_a, Token* tok_b, ParseNode* node_a, ParseNode* node_b) override {
-    ParseNode::init_node(tok_a, tok_b, node_a, node_b);
-    this->precedence = 3;
-    this->assoc = -2;
+  NodePrefixCast() {
+    precedence = 3;
+    assoc = -2;
   }
 
   using pattern = Seq<
@@ -459,10 +458,9 @@ struct NodeExpressionParen : public ParseNode, public NodeMaker<NodeExpressionPa
 };
 
 struct NodeSuffixParen : public ParseNode, public NodeMaker<NodeSuffixParen> {
-  virtual void init_node(Token* tok_a, Token* tok_b, ParseNode* node_a, ParseNode* node_b) override {
-    ParseNode::init_node(tok_a, tok_b, node_a, node_b);
-    this->precedence = 2;
-    this->assoc = 2;
+  NodeSuffixParen() {
+    precedence = 2;
+    assoc = 2;
   }
 
   using pattern =
@@ -487,10 +485,9 @@ struct NodeExpressionBraces : public ParseNode, public NodeMaker<NodeExpressionB
 };
 
 struct NodeSuffixBraces : public ParseNode, public NodeMaker<NodeSuffixBraces> {
-  virtual void init_node(Token* tok_a, Token* tok_b, ParseNode* node_a, ParseNode* node_b) override {
-    ParseNode::init_node(tok_a, tok_b, node_a, node_b);
-    this->precedence = 2;
-    this->assoc = 2;
+  NodeSuffixBraces() {
+    precedence = 2;
+    assoc = 2;
   }
 
   using pattern =
@@ -505,10 +502,9 @@ struct NodeSuffixBraces : public ParseNode, public NodeMaker<NodeSuffixBraces> {
 //------------------------------------------------------------------------------
 
 struct NodeSuffixSubscript : public ParseNode, public NodeMaker<NodeSuffixSubscript> {
-  virtual void init_node(Token* tok_a, Token* tok_b, ParseNode* node_a, ParseNode* node_b) override {
-    ParseNode::init_node(tok_a, tok_b, node_a, node_b);
-    this->precedence = 2;
-    this->assoc = 2;
+  NodeSuffixSubscript() {
+    precedence = 2;
+    assoc = 2;
   }
 
   using pattern =
@@ -579,8 +575,8 @@ struct NodeExpressionOffsetof  : public ParseNode, public NodeMaker<NodeExpressi
 template<StringParam lit>
 struct NodePrefixKeyword : public ParseNode, public LeafMaker<NodePrefixKeyword<lit>> {
   NodePrefixKeyword() {
-    this->precedence = 3;
-    this->assoc = -2;
+    precedence = 3;
+    assoc = -2;
   }
 
   using pattern = Keyword<lit>;
@@ -638,33 +634,10 @@ using unit_pattern = Seq<
   Any<ExpressionSuffixOp>
 >;
 
-/*
-struct NodeExpressionUnit : public ParseNode, public NodeMaker<NodeExpressionUnit> {
-  using pattern = Seq<
-    Any<ExpressionPrefixOp>,
-    ExpressionCore,
-    Any<ExpressionSuffixOp>
-  >;
-};
-*/
-
-/*
-using SpanTernaryOp = // Not covered by csmith
-Seq<
-  // pr68249.c - ternary option can be empty
-  // pr49474.c - ternary branches can be comma-lists
-  NodeBinaryOp<"?">,
-  Opt<comma_separated<unit_pattern>>,
-  NodeBinaryOp<":">,
-  Opt<comma_separated<unit_pattern>>
->;
-*/
-
 struct NodeTernaryOp : public ParseNode, public NodeMaker<NodeTernaryOp> {
-  virtual void init_node(Token* tok_a, Token* tok_b, ParseNode* node_a, ParseNode* node_b) override {
-    ParseNode::init_node(tok_a, tok_b, node_a, node_b);
-    this->precedence = 16;
-    this->assoc = -1;
+  NodeTernaryOp() {
+    precedence = 16;
+    assoc = -1;
   }
 
   using pattern =
@@ -1433,10 +1406,9 @@ struct NodeInitializerList : public ParseNode, public NodeMaker<NodeInitializerL
 
 struct NodeSuffixInitializerList : public ParseNode, public NodeMaker<NodeSuffixInitializerList> {
 
-  virtual void init_node(Token* tok_a, Token* tok_b, ParseNode* node_a, ParseNode* node_b) override {
-    ParseNode::init_node(tok_a, tok_b, node_a, node_b);
-    this->precedence = 2;
-    this->assoc = 2;
+  NodeSuffixInitializerList() {
+    precedence = 2;
+    assoc = 2;
   }
 
   using pattern =
