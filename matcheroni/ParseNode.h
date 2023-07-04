@@ -282,26 +282,6 @@ private:
 
 //----------
 
-inline int atom_cmp(void* ctx, Token& a, const LexemeType& b) {
-  return a.atom_cmp(ctx, b);
-}
-
-inline int atom_cmp(void* ctx, Token& a, const char& b) {
-  return a.atom_cmp(ctx, b);
-}
-
-inline int atom_cmp(void* ctx, Token& a, const char* b) {
-  return a.atom_cmp(ctx, b);
-}
-
-template<int N>
-inline int atom_cmp(void* ctx, Token& a, const StringParam<N>& b) {
-  return a.atom_cmp(ctx, b);
-}
-
-inline int atom_cmp(void* ctx, Token& a, const Token& b) {
-  return a.atom_cmp(ctx, b);
-}
 
 //------------------------------------------------------------------------------
 

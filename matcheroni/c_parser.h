@@ -171,7 +171,51 @@ public:
   double cleanup_accum = 0;
 
   TypeScope* type_scope;
+
+  int atom_cmp(Token& a, const LexemeType& b) {
+    return a.atom_cmp(this, b);
+  }
+
+  int atom_cmp(Token& a, const char& b) {
+    return a.atom_cmp(this, b);
+  }
+
+  int atom_cmp(Token& a, const char* b) {
+    return a.atom_cmp(this, b);
+  }
+
+  template<int N>
+  int atom_cmp(Token& a, const StringParam<N>& b) {
+    return a.atom_cmp(this, b);
+  }
+
+  int atom_cmp(Token& a, const Token& b) {
+    return a.atom_cmp(this, b);
+  }
 };
+
+//------------------------------------------------------------------------------
+
+inline int atom_cmp(void* ctx, Token& a, const LexemeType& b) {
+  return ((C99Parser*)ctx)->atom_cmp(a, b);
+}
+
+inline int atom_cmp(void* ctx, Token& a, const char& b) {
+  return ((C99Parser*)ctx)->atom_cmp(a, b);
+}
+
+inline int atom_cmp(void* ctx, Token& a, const char* b) {
+  return ((C99Parser*)ctx)->atom_cmp(a, b);
+}
+
+template<int N>
+inline int atom_cmp(void* ctx, Token& a, const StringParam<N>& b) {
+  return ((C99Parser*)ctx)->atom_cmp(a, b);
+}
+
+inline int atom_cmp(void* ctx, Token& a, const Token& b) {
+  return ((C99Parser*)ctx)->atom_cmp(a, b);
+}
 
 //------------------------------------------------------------------------------
 

@@ -107,7 +107,7 @@ void C99Parser::lex() {
     }
   }
 
-  CHECK(atom_cmp(this, tokens.back(), LEX_EOF) == 0);
+  CHECK(atom_cmp(tokens.back(), LEX_EOF) == 0);
 
   lex_accum += timestamp_ms();
 }
@@ -118,15 +118,15 @@ ParseNode* C99Parser::parse() {
 
   NodeTranslationUnit* root = nullptr;
 
-  CHECK(atom_cmp(this, tokens.front(), LEX_BOF) == 0);
-  CHECK(atom_cmp(this, tokens.back(), LEX_EOF) == 0);
+  CHECK(atom_cmp(tokens.front(), LEX_BOF) == 0);
+  CHECK(atom_cmp(tokens.back(), LEX_EOF) == 0);
 
   // Skip over BOF, stop before EOF
   auto tok_a = tokens.data() + 1;
   auto tok_b = tokens.data() + tokens.size() - 1;
 
-  CHECK(atom_cmp(this, *tok_a, LEX_BOF) != 0);
-  CHECK(atom_cmp(this, *tok_b, LEX_EOF) == 0);
+  CHECK(atom_cmp(*tok_a, LEX_BOF) != 0);
+  CHECK(atom_cmp(*tok_b, LEX_EOF) == 0);
 
   parse_accum -= timestamp_ms();
   auto end = NodeTranslationUnit::match(this, tok_a, tok_b);
@@ -183,7 +183,7 @@ void C99Parser::dump_stats() {
 
   // 681730869 - 571465032 = Benchmark creates 110M expression wrapper
 
-  if (file_pass == 10000 && ParseNode::constructor_count != 548796467) {
+  if (file_pass == 10000 && ParseNode::constructor_count != 520803633) {
     set_color(0x008080FF);
     printf("############## NODE COUNT MISMATCH\n");
     set_color(0);
