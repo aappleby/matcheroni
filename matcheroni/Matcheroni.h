@@ -20,8 +20,13 @@ using matcher_function = atom* (*) (void* ctx, atom* a, atom* b);
 // convenience, comparators for "const char" are provided here.
 // Comparators should return <0 for a<b, ==0 for a==b, and >0 for a>b.
 
-inline int atom_cmp(void* ctx, const char* a, char b) {
-  return int(*a) - int(b);
+template<typename atom1, typename atom2>
+inline int atom_cmp(void* ctx, atom1* a, atom2 b) {
+  return int(*a - b);
+}
+
+template<typename atom>
+inline void atom_rewind(void* ctx, atom* a, atom* b) {
 }
 
 //------------------------------------------------------------------------------

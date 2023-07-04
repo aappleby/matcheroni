@@ -293,7 +293,7 @@ struct NodeConstant : public ParseNode, public LeafMaker<NodeConstant> {
 
 /*
 template<typename NodeType, typename pattern>
-struct Capture {
+struct CaptureLeaf {
   static Token* match(void* ctx, Token* a, Token* b) {
     if (!a || a == b) return nullptr;
     auto end = pattern::match(ctx, a, b);
