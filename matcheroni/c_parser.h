@@ -48,20 +48,20 @@ struct TypeScope {
   }
 
   bool has_type(void* ctx, Token* a, token_list& types) {
-    if(atom_cmp(ctx, *a, LEX_IDENTIFIER)) return false;
+    if(atom_cmp(ctx, a, LEX_IDENTIFIER)) return false;
 
     for (const auto c : types) {
-      if (atom_cmp(ctx, *a, *c) == 0) return true;
+      if (atom_cmp(ctx, a, c) == 0) return true;
     }
 
     return false;
   }
 
   void add_type(void* ctx, Token* a, token_list& types) {
-    DCHECK(atom_cmp(ctx, *a, LEX_IDENTIFIER) == 0);
+    DCHECK(atom_cmp(ctx, a, LEX_IDENTIFIER) == 0);
 
     for (const auto& c : types) {
-      if (atom_cmp(ctx, *a, *c) == 0) return;
+      if (atom_cmp(ctx, a, c) == 0) return;
     }
 
     types.push_back(a);
@@ -172,48 +172,50 @@ public:
 
   TypeScope* type_scope;
 
-  int atom_cmp(Token& a, const LexemeType& b) {
-    return a.atom_cmp(this, b);
+  Token* highwater;
+
+  int atom_cmp(Token* a, const LexemeType& b) {
+    return a->atom_cmp(this, b);
   }
 
-  int atom_cmp(Token& a, const char& b) {
-    return a.atom_cmp(this, b);
+  int atom_cmp(Token* a, const char& b) {
+    return a->atom_cmp(this, b);
   }
 
-  int atom_cmp(Token& a, const char* b) {
-    return a.atom_cmp(this, b);
+  int atom_cmp(Token* a, const char* b) {
+    return a->atom_cmp(this, b);
   }
 
   template<int N>
-  int atom_cmp(Token& a, const StringParam<N>& b) {
-    return a.atom_cmp(this, b);
+  int atom_cmp(Token* a, const StringParam<N>& b) {
+    return a->atom_cmp(this, b);
   }
 
-  int atom_cmp(Token& a, const Token& b) {
-    return a.atom_cmp(this, b);
+  int atom_cmp(Token* a, const Token* b) {
+    return a->atom_cmp(this, b);
   }
 };
 
 //------------------------------------------------------------------------------
 
-inline int atom_cmp(void* ctx, Token& a, const LexemeType& b) {
+inline int atom_cmp(void* ctx, Token* a, LexemeType b) {
   return ((C99Parser*)ctx)->atom_cmp(a, b);
 }
 
-inline int atom_cmp(void* ctx, Token& a, const char& b) {
+inline int atom_cmp(void* ctx, Token* a, char b) {
   return ((C99Parser*)ctx)->atom_cmp(a, b);
 }
 
-inline int atom_cmp(void* ctx, Token& a, const char* b) {
+inline int atom_cmp(void* ctx, Token* a, const char* b) {
   return ((C99Parser*)ctx)->atom_cmp(a, b);
 }
 
 template<int N>
-inline int atom_cmp(void* ctx, Token& a, const StringParam<N>& b) {
+inline int atom_cmp(void* ctx, Token* a, const StringParam<N>& b) {
   return ((C99Parser*)ctx)->atom_cmp(a, b);
 }
 
-inline int atom_cmp(void* ctx, Token& a, const Token& b) {
+inline int atom_cmp(void* ctx, Token* a, const Token* b) {
   return ((C99Parser*)ctx)->atom_cmp(a, b);
 }
 
@@ -364,7 +366,7 @@ struct NodeSuffixOp : public ParseNode, public LeafMaker<NodeSuffixOp<lit>> {
 struct NodeQualifier : public ParseNode {
   static Token* match(void* ctx, Token* a, Token* b) {
     if (!a || a == b) return nullptr;
-    if (SST<qualifiers>::contains(ctx, *a)) {
+    if (SST<qualifiers>::contains(ctx, a)) {
       auto node = new NodeQualifier();
       node->init_leaf(a, a);
       return a + 1;
@@ -700,7 +702,7 @@ struct NodeExpression : public ParseNode {
   static Token* match_binary_op(void* ctx, Token* a, Token* b) {
     if (!a || a == b) return nullptr;
 
-    if (atom_cmp(ctx, *a, LEX_PUNCT)) return nullptr;
+    if (atom_cmp(ctx, a, LEX_PUNCT)) return nullptr;
 
     switch(a->unsafe_span_a()[0]) {
       case '+': return Oneof< NodeBinaryOp<"+=">, NodeBinaryOp<"+"> >::match(ctx, a, b);

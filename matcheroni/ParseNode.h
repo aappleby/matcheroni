@@ -34,8 +34,8 @@ struct Keyword {
   template<typename atom>
   static atom* match(void* ctx, atom* a, atom* b) {
     if (!a || a == b) return nullptr;
-    if (atom_cmp(ctx, *a, LEX_KEYWORD)) return nullptr;
-    if (atom_cmp(ctx, *a, lit)) return nullptr;
+    if (atom_cmp(ctx, a, LEX_KEYWORD)) return nullptr;
+    if (atom_cmp(ctx, a, lit)) return nullptr;
     return a + 1;
   }
 };
@@ -45,7 +45,7 @@ struct Literal2 {
   template<typename atom>
   static atom* match(void* ctx, atom* a, atom* b) {
     if (!a || a == b) return nullptr;
-    if (atom_cmp(ctx, *a, lit)) return nullptr;
+    if (atom_cmp(ctx, a, lit)) return nullptr;
     return a + 1;
   }
 };
@@ -193,12 +193,12 @@ struct Token {
     return 0;
   }
 
-  int atom_cmp(void* ctx, const Token& b) {
+  int atom_cmp(void* ctx, const Token* b) {
     clear_span();
-    if (int c = lex->type  - b.lex->type) return c;
-    if (int c = lex->len() - b.lex->len()) return c;
+    if (int c = lex->type  - b->lex->type) return c;
+    if (int c = lex->len() - b->lex->len()) return c;
     for (auto i = 0; i < lex->len(); i++) {
-      if (auto c = lex->span_a[i] - b.lex->span_a[i]) return c;
+      if (auto c = lex->span_a[i] - b->lex->span_a[i]) return c;
     }
     return 0;
   }
@@ -584,8 +584,8 @@ inline Token* match_punct(void* ctx, Token* a, Token* b) {
   if (a + lit.str_len > b) return nullptr;
 
   for (auto i = 0; i < lit.str_len; i++) {
-    if (atom_cmp(ctx, a[i], LEX_PUNCT)) return nullptr;
-    if (atom_cmp(ctx, a->unsafe_span_a()[i], lit.str_val[i])) return nullptr;
+    if (atom_cmp(ctx, a + i, LEX_PUNCT)) return nullptr;
+    if (atom_cmp(ctx, a->unsafe_span_a() + i, lit.str_val[i])) return nullptr;
   }
 
   auto end = a + lit.str_len;

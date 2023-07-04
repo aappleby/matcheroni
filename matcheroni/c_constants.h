@@ -8,12 +8,12 @@ using namespace matcheroni;
 #endif
 
 struct Token;
-int atom_cmp(void* ctx, Token& a, const LexemeType& b);
-int atom_cmp(void* ctx, Token& a, const char& b);
-int atom_cmp(void* ctx, Token& a, const char* b);
-int atom_cmp(void* ctx, Token& a, const Token& b);
+int atom_cmp(void* ctx, Token* a, LexemeType b);
+int atom_cmp(void* ctx, Token* a, char b);
+int atom_cmp(void* ctx, Token* a, const char* b);
+int atom_cmp(void* ctx, Token* a, const Token* b);
 template<int N>
-int atom_cmp(void* ctx, Token& a, const StringParam<N>& b);
+int atom_cmp(void* ctx, Token* a, const StringParam<N>& b);
 
 //------------------------------------------------------------------------------
 // Sorted string table matcher thing.
@@ -39,7 +39,7 @@ struct SST<table> {
   }
 
   template<typename atom>
-  static bool contains(void* ctx, atom& a) {
+  static bool contains(void* ctx, atom* a) {
     int bit = top_bit(N);
     int index = 0;
 

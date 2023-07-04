@@ -16,8 +16,8 @@ struct Keyword {
   template<typename atom>
   static atom* match(void* ctx, atom* a, atom* b) {
     if (!a || a == b) return nullptr;
-    if (atom_cmp(ctx, *a, LEX_KEYWORD)) return nullptr;
-    if (atom_cmp(ctx, *a, lit)) return nullptr;
+    if (atom_cmp(ctx, a, LEX_KEYWORD)) return nullptr;
+    if (atom_cmp(ctx, a, lit)) return nullptr;
     return a + 1;
   }
 };

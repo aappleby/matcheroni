@@ -20,8 +20,8 @@ using matcher_function = atom* (*) (void* ctx, atom* a, atom* b);
 // convenience, comparators for "const char" are provided here.
 // Comparators should return <0 for a<b, ==0 for a==b, and >0 for a>b.
 
-inline int atom_cmp(void* ctx, const char& a, const char& b) {
-  return int(a) - int(b);
+inline int atom_cmp(void* ctx, const char* a, char b) {
+  return int(*a) - int(b);
 }
 
 //------------------------------------------------------------------------------
@@ -72,7 +72,7 @@ struct Atom<C, rest...> {
   template<typename atom>
   static atom* match(void* ctx, atom* a, atom* b) {
     if (!a || a == b) return nullptr;
-    if (atom_cmp(ctx, *a, C) == 0) {
+    if (atom_cmp(ctx, a, C) == 0) {
       return a + 1;
     } else {
       return Atom<rest...>::match(ctx, a, b);
@@ -85,7 +85,7 @@ struct Atom<C> {
   template<typename atom>
   static atom* match(void* ctx, atom* a, atom* b) {
     if (!a || a == b) return nullptr;
-    if (atom_cmp(ctx, *a, C) == 0) {
+    if (atom_cmp(ctx, a, C) == 0) {
       return a + 1;
     } else {
       return nullptr;
@@ -323,7 +323,7 @@ struct NotAtom {
   template<typename atom>
   static atom* match(void* ctx, atom* a, atom* b) {
     if (!a || a == b) return nullptr;
-    if (atom_cmp(ctx, *a, C) == 0) return nullptr;
+    if (atom_cmp(ctx, a, C) == 0) return nullptr;
     return NotAtom<rest...>::match(ctx, a, b);
   }
 };
@@ -333,7 +333,7 @@ struct NotAtom<C> {
   template<typename atom>
   static atom* match(void* ctx, atom* a, atom* b) {
     if (!a || a == b) return nullptr;
-    return atom_cmp(ctx, *a, C) == 0 ? nullptr : a + 1;
+    return atom_cmp(ctx, a, C) == 0 ? nullptr : a + 1;
   }
 };
 
@@ -345,8 +345,8 @@ struct Range {
   template<typename atom>
   static atom* match(void* ctx, atom* a, atom* b) {
     if (!a || a == b) return nullptr;
-    if (atom_cmp(ctx, *a, RA) < 0) return nullptr;
-    if (atom_cmp(ctx, *a, RB) > 0) return nullptr;
+    if (atom_cmp(ctx, a, RA) < 0) return nullptr;
+    if (atom_cmp(ctx, a, RB) > 0) return nullptr;
     return a + 1;
   }
 };
@@ -356,8 +356,8 @@ struct NotRange {
   template<typename atom>
   static atom* match(void* ctx, atom* a, atom* b) {
     if (!a || a == b) return nullptr;
-    if (atom_cmp(ctx, *a, RA) < 0) return a + 1;
-    if (atom_cmp(ctx, *a, RB) > 0) return a + 1;
+    if (atom_cmp(ctx, a, RA) < 0) return a + 1;
+    if (atom_cmp(ctx, a, RB) > 0) return a + 1;
     return nullptr;
   }
 };
@@ -504,7 +504,7 @@ struct MatchBackref {
     int size = StoreBackref<P>::size;
     if (a + size > b) return nullptr;
     for (int i = 0; i < size; i++) {
-      if(atom_cmp(ctx, a[i], start[i]) != 0) return nullptr;
+      if(atom_cmp(ctx, a + i, start[i]) != 0) return nullptr;
     }
     return a + size;
   }
