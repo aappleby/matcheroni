@@ -126,7 +126,7 @@ int test_parser(int argc, char** argv) {
     if (path.find("csmith") == std::string::npos) {
       bool has_preproc = false;
       for (auto& t : parser.tokens) {
-        if (atom_cmp(t, LEX_PREPROC) == 0) {
+        if (atom_cmp(&parser, t, LEX_PREPROC) == 0) {
           has_preproc = true;
           break;
         }

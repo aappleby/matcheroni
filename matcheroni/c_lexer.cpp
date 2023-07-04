@@ -49,7 +49,7 @@ Lexeme next_lexeme(void* ctx, const char* cursor, const char* text_end) {
     auto end = match_identifier(ctx, cursor, text_end);
     if (end) {
       auto span = cspan{cursor, end};
-      if (SST<c99_keywords>::contains(span)) {
+      if (SST<c99_keywords>::contains(ctx, span)) {
         return Lexeme(LEX_KEYWORD   , cursor, end);
       }
       else {
@@ -207,7 +207,7 @@ const char* match_utf8_bom(void* ctx, const char* a, const char* b) {
 const char* match_keyword(void* ctx, const char* a, const char* b) {
   auto end = match_identifier(ctx, a, b);
   auto span = cspan{a, end};
-  if (SST<c99_keywords>::contains(span)) {
+  if (SST<c99_keywords>::contains(ctx, span)) {
     return end;
   }
   else {

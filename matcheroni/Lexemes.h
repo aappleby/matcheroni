@@ -15,7 +15,7 @@ struct cspan {
   const char* b;
 };
 
-inline int atom_cmp(const cspan& s, const char* b) {
+inline int atom_cmp(void* ctx, const cspan& s, const char* b) {
   return cmp_span_lit(s.a, s.b, b);
 }
 

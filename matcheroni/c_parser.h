@@ -47,21 +47,21 @@ struct TypeScope {
     typedef_types.clear();
   }
 
-  bool has_type(token_list& types, Token* a) {
-    if(atom_cmp(*a, LEX_IDENTIFIER)) return false;
+  bool has_type(void* ctx, Token* a, token_list& types) {
+    if(atom_cmp(ctx, *a, LEX_IDENTIFIER)) return false;
 
     for (const auto c : types) {
-      if (a->atom_cmp(*c) == 0) return true;
+      if (atom_cmp(ctx, *a, *c) == 0) return true;
     }
 
     return false;
   }
 
-  void add_type(token_list& types, Token* a) {
-    DCHECK(atom_cmp(*a, LEX_IDENTIFIER) == 0);
+  void add_type(void* ctx, Token* a, token_list& types) {
+    DCHECK(atom_cmp(ctx, *a, LEX_IDENTIFIER) == 0);
 
     for (const auto& c : types) {
-      if (a->atom_cmp(*c) == 0) return;
+      if (atom_cmp(ctx, *a, *c) == 0) return;
     }
 
     types.push_back(a);
@@ -69,17 +69,17 @@ struct TypeScope {
 
   //----------------------------------------
 
-  bool has_class_type  (Token* a) { if (has_type(class_types,   a)) return true; if (parent) return parent->has_class_type  (a); else return false; }
-  bool has_struct_type (Token* a) { if (has_type(struct_types,  a)) return true; if (parent) return parent->has_struct_type (a); else return false; }
-  bool has_union_type  (Token* a) { if (has_type(union_types,   a)) return true; if (parent) return parent->has_union_type  (a); else return false; }
-  bool has_enum_type   (Token* a) { if (has_type(enum_types,    a)) return true; if (parent) return parent->has_enum_type   (a); else return false; }
-  bool has_typedef_type(Token* a) { if (has_type(typedef_types, a)) return true; if (parent) return parent->has_typedef_type(a); else return false; }
+  bool has_class_type  (void* ctx, Token* a) { if (has_type(ctx, a, class_types  )) return true; if (parent) return parent->has_class_type  (ctx, a); else return false; }
+  bool has_struct_type (void* ctx, Token* a) { if (has_type(ctx, a, struct_types )) return true; if (parent) return parent->has_struct_type (ctx, a); else return false; }
+  bool has_union_type  (void* ctx, Token* a) { if (has_type(ctx, a, union_types  )) return true; if (parent) return parent->has_union_type  (ctx, a); else return false; }
+  bool has_enum_type   (void* ctx, Token* a) { if (has_type(ctx, a, enum_types   )) return true; if (parent) return parent->has_enum_type   (ctx, a); else return false; }
+  bool has_typedef_type(void* ctx, Token* a) { if (has_type(ctx, a, typedef_types)) return true; if (parent) return parent->has_typedef_type(ctx, a); else return false; }
 
-  void add_class_type  (Token* a) { return add_type(class_types,   a); }
-  void add_struct_type (Token* a) { return add_type(struct_types,  a); }
-  void add_union_type  (Token* a) { return add_type(union_types,   a); }
-  void add_enum_type   (Token* a) { return add_type(enum_types,    a); }
-  void add_typedef_type(Token* a) { return add_type(typedef_types, a); }
+  void add_class_type  (void* ctx, Token* a) { return add_type(ctx, a, class_types  ); }
+  void add_struct_type (void* ctx, Token* a) { return add_type(ctx, a, struct_types ); }
+  void add_union_type  (void* ctx, Token* a) { return add_type(ctx, a, union_types  ); }
+  void add_enum_type   (void* ctx, Token* a) { return add_type(ctx, a, enum_types   ); }
+  void add_typedef_type(void* ctx, Token* a) { return add_type(ctx, a, typedef_types); }
 
   TypeScope* parent;
   token_list class_types;
@@ -104,17 +104,17 @@ public:
   Token* match_builtin_type_prefix(Token* a, Token* b);
   Token* match_builtin_type_suffix(Token* a, Token* b);
 
-  Token* match_class_type  (Token* a, Token* b) { return type_scope->has_class_type  (a) ? a + 1 : nullptr; }
-  Token* match_struct_type (Token* a, Token* b) { return type_scope->has_struct_type (a) ? a + 1 : nullptr; }
-  Token* match_union_type  (Token* a, Token* b) { return type_scope->has_union_type  (a) ? a + 1 : nullptr; }
-  Token* match_enum_type   (Token* a, Token* b) { return type_scope->has_enum_type   (a) ? a + 1 : nullptr; }
-  Token* match_typedef_type(Token* a, Token* b) { return type_scope->has_typedef_type(a) ? a + 1 : nullptr; }
+  Token* match_class_type  (Token* a, Token* b) { return type_scope->has_class_type  (this, a) ? a + 1 : nullptr; }
+  Token* match_struct_type (Token* a, Token* b) { return type_scope->has_struct_type (this, a) ? a + 1 : nullptr; }
+  Token* match_union_type  (Token* a, Token* b) { return type_scope->has_union_type  (this, a) ? a + 1 : nullptr; }
+  Token* match_enum_type   (Token* a, Token* b) { return type_scope->has_enum_type   (this, a) ? a + 1 : nullptr; }
+  Token* match_typedef_type(Token* a, Token* b) { return type_scope->has_typedef_type(this, a) ? a + 1 : nullptr; }
 
-  void add_class_type  (Token* a) { type_scope->add_class_type  (a); }
-  void add_struct_type (Token* a) { type_scope->add_struct_type (a); }
-  void add_union_type  (Token* a) { type_scope->add_union_type  (a); }
-  void add_enum_type   (Token* a) { type_scope->add_enum_type   (a); }
-  void add_typedef_type(Token* a) { type_scope->add_typedef_type(a); }
+  void add_class_type  (Token* a) { type_scope->add_class_type  (this, a); }
+  void add_struct_type (Token* a) { type_scope->add_struct_type (this, a); }
+  void add_union_type  (Token* a) { type_scope->add_union_type  (this, a); }
+  void add_enum_type   (Token* a) { type_scope->add_enum_type   (this, a); }
+  void add_typedef_type(Token* a) { type_scope->add_typedef_type(this, a); }
 
   //----------------------------------------------------------------------------
 
@@ -320,7 +320,7 @@ struct NodeSuffixOp : public ParseNode, public LeafMaker<NodeSuffixOp<lit>> {
 struct NodeQualifier : public ParseNode {
   static Token* match(void* ctx, Token* a, Token* b) {
     if (!a || a == b) return nullptr;
-    if (SST<qualifiers>::contains(*a)) {
+    if (SST<qualifiers>::contains(ctx, *a)) {
       auto node = new NodeQualifier();
       node->init_leaf(a, a);
       return a + 1;
@@ -656,7 +656,7 @@ struct NodeExpression : public ParseNode {
   static Token* match_binary_op(void* ctx, Token* a, Token* b) {
     if (!a || a == b) return nullptr;
 
-    if (atom_cmp(*a, LEX_PUNCT)) return nullptr;
+    if (atom_cmp(ctx, *a, LEX_PUNCT)) return nullptr;
 
     switch(a->unsafe_span_a()[0]) {
       case '+': return Oneof< NodeBinaryOp<"+=">, NodeBinaryOp<"+"> >::match(ctx, a, b);

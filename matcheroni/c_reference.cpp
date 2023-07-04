@@ -20,8 +20,8 @@ struct Keyword {
   template<typename atom>
   static atom* match(void* ctx, atom* a, atom* b) {
     if (!a || a == b) return nullptr;
-    if (atom_cmp(*a, LEX_KEYWORD)) return nullptr;
-    if (atom_cmp(*a, lit)) return nullptr;
+    if (atom_cmp(ctx, *a, LEX_KEYWORD)) return nullptr;
+    if (atom_cmp(ctx, *a, lit)) return nullptr;
     return a + 1;
   }
 };
@@ -1117,7 +1117,7 @@ struct NotAfterAtom {
   template<typename atom>
   static atom* match(void* ctx, atom* a, atom* b) {
     if (!a || a == b) return nullptr;
-    if (atom_cmp(a[-1], C) == 0) {
+    if (atom_cmp(ctx, a[-1], C) == 0) {
       return nullptr;
     } else {
       return NotAfterAtom<rest...>::match(ctx, a, b);
@@ -1130,7 +1130,7 @@ struct NotAfterAtom<C> {
   template<typename atom>
   static atom* match(void* ctx, atom* a, atom* b) {
     if (!a || a == b) return nullptr;
-    if (atom_cmp(a[-1], C) == 0) {
+    if (atom_cmp(ctx, a[-1], C) == 0) {
       return nullptr;
     } else {
       return a;

@@ -7,6 +7,14 @@
 using namespace matcheroni;
 #endif
 
+struct Token;
+int atom_cmp(void* ctx, Token& a, const LexemeType& b);
+int atom_cmp(void* ctx, Token& a, const char& b);
+int atom_cmp(void* ctx, Token& a, const char* b);
+int atom_cmp(void* ctx, Token& a, const Token& b);
+template<int N>
+int atom_cmp(void* ctx, Token& a, const StringParam<N>& b);
+
 //------------------------------------------------------------------------------
 // Sorted string table matcher thing.
 
@@ -31,7 +39,7 @@ struct SST<table> {
   }
 
   template<typename atom>
-  static bool contains(atom& a) {
+  static bool contains(void* ctx, atom& a) {
     int bit = top_bit(N);
     int index = 0;
 
@@ -42,7 +50,7 @@ struct SST<table> {
         auto new_index = index | bit;
         if (new_index < N) {
           auto lit = table[new_index];
-          auto c = atom_cmp(a, lit);
+          auto c = atom_cmp(ctx, a, lit);
           if (c == 0) return lit;
           if (c > 0) index = new_index;
         }
@@ -53,7 +61,7 @@ struct SST<table> {
     else {
       // Linear scan for small tables
       for (auto lit : table) {
-        if (atom_cmp(a, lit) == 0) return true;
+        if (atom_cmp(ctx, a, lit) == 0) return true;
       }
     }
 
