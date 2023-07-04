@@ -16,20 +16,6 @@ template<typename atom>
 using matcher_function = atom* (*) (void* ctx, atom* a, atom* b);
 
 //------------------------------------------------------------------------------
-// Matcheroni needs some way to compare different types of atoms - for
-// convenience, comparators for "const char" are provided here.
-// Comparators should return <0 for a<b, ==0 for a==b, and >0 for a>b.
-
-template<typename atom1, typename atom2>
-inline int atom_cmp(void* ctx, atom1* a, atom2 b) {
-  return int(*a - b);
-}
-
-template<typename atom>
-inline void atom_rewind(void* ctx, atom* a, atom* b) {
-}
-
-//------------------------------------------------------------------------------
 // Matchers will often need to compare literal strings of text, so some helpers
 // are provided here as well.
 
@@ -62,6 +48,33 @@ inline const char* match_text(const char** texts, int text_count, const char* a,
 }
 
 //------------------------------------------------------------------------------
+// Matcheroni needs some way to compare different types of atoms - for
+// convenience, comparators for "const char" are provided here.
+// Comparators should return <0 for a<b, ==0 for a==b, and >0 for a>b.
+
+template<typename atom1, typename atom2>
+inline int atom_cmp(void* ctx, atom1* a, atom2 b) {
+  return int(*a - b);
+}
+
+template<>
+inline int atom_cmp(void* ctx, const char* a, char b) {
+  return int(*a - b);
+}
+
+//------------------------------------------------------------------------------
+// Matcheroni will call atom_rewind() to indicate to the host app that matching
+// an optional branch has failed - this can be used to clean up any
+// intermediate data structures that were created during the failed partial
+// match.
+
+// By default this does nothing, override in your application as needed.
+
+template<typename atom>
+inline void atom_rewind(void* ctx, atom* a, atom* b) {
+}
+
+//------------------------------------------------------------------------------
 // The most fundamental unit of matching is a single atom. For convenience, we
 // implement the Atom matcher so that it can handle small sets of atoms.
 
@@ -80,6 +93,7 @@ struct Atom<C, rest...> {
     if (atom_cmp(ctx, a, C) == 0) {
       return a + 1;
     } else {
+      atom_rewind(ctx, a, b);
       return Atom<rest...>::match(ctx, a, b);
     }
   }
@@ -93,6 +107,7 @@ struct Atom<C> {
     if (atom_cmp(ctx, a, C) == 0) {
       return a + 1;
     } else {
+      atom_rewind(ctx, a, b);
       return nullptr;
     }
   }
@@ -117,7 +132,13 @@ struct Seq {
   template<typename atom>
   static atom* match(void* ctx, atom* a, atom* b) {
     auto c = P::match(ctx, a, b);
-    return c ? Seq<rest...>::match(ctx, c, b) : nullptr;
+    if (c) {
+      return Seq<rest...>::match(ctx, c, b);
+    }
+    else {
+      atom_rewind(ctx, a, b);
+      return nullptr;
+    }
   }
 };
 
@@ -142,7 +163,13 @@ struct Oneof {
   template<typename atom>
   static atom* match(void* ctx, atom* a, atom* b) {
     auto c = P::match(ctx, a, b);
-    return c ? c : Oneof<rest...>::match(ctx, a, b);
+    if (c) {
+      return c;
+    }
+    else {
+      atom_rewind(ctx, a, b);
+      return Oneof<rest...>::match(ctx, a, b);
+    }
   }
 };
 
@@ -165,7 +192,13 @@ struct Opt {
   template<typename atom>
   static atom* match(void* ctx, atom* a, atom* b) {
     auto c = Oneof<rest...>::match(ctx, a, b);
-    return c ? c : a;
+    if (c) {
+      return c;
+    }
+    else {
+      atom_rewind(ctx, a, b);
+      return a;
+    }
   }
 };
 
@@ -183,8 +216,15 @@ struct Any {
   template<typename atom>
   static atom* match(void* ctx, atom* a, atom* b) {
     if (a == b) return a;
-    while(auto c = Oneof<rest...>::match(ctx, a, b)) {
-      a = c;
+    while(1) {
+      auto c = Oneof<rest...>::match(ctx, a, b);
+      if (c) {
+        a = c;
+      }
+      else {
+        atom_rewind(ctx, a, b);
+        break;
+      }
     }
     return a;
   }
@@ -208,7 +248,12 @@ struct Some {
   template<typename atom>
   static atom* match(void* ctx, atom* a, atom* b) {
     auto c = Any<rest...>::match(ctx, a, b);
-    return c == a ? nullptr : c;
+    if (c == a) {
+      return nullptr;
+    }
+    else {
+      return c;
+    }
   }
 };
 
@@ -222,7 +267,12 @@ struct SeqOpt {
   template<typename atom>
   static atom* match(void* ctx, atom* a, atom* b) {
     auto c = Opt<P>::match(ctx, a, b);
-    return (c == a) ? a : SeqOpt<rest...>::match(ctx, c, b);
+    if (c == a) {
+      return a;
+    }
+    else {
+      return SeqOpt<rest...>::match(ctx, c, b);
+    }
   }
 };
 
@@ -289,12 +339,15 @@ template<int N, typename P>
 struct Rep {
   template<typename atom>
   static atom* match(void* ctx, atom* a, atom* b) {
+    atom* c = a;
     for(auto i = 0; i < N; i++) {
-      auto c = P::match(ctx, a, b);
-      if (!c) return nullptr;
-      a = c;
+      c = P::match(ctx, a, b);
+      if (!c) {
+        atom_rewind(ctx, a, b);
+        return nullptr;
+      }
     }
-    return a;
+    return c;
   }
 };
 
@@ -305,17 +358,22 @@ template<int M, int N, typename P>
 struct RepRange {
   template<typename atom>
   static atom* match(void* ctx, atom* a, atom* b) {
+    atom* c = a;
     for(auto i = 0; i < M; i++) {
-      auto c = P::match(ctx, a, b);
-      if (!c) return nullptr;
-      a = c;
+      c = P::match(ctx, a, b);
+      if (!c) {
+        atom_rewind(ctx, a, b);
+        return nullptr;
+      }
     }
     for(auto i = 0; i < (N-M); i++) {
-      auto c = P::match(ctx, a, b);
-      if (!c) return a;
-      a = c;
+      auto d = P::match(ctx, a, b);
+      if (!d) {
+        atom_rewind(ctx, c, b);
+        return c;
+      }
     }
-    return a;
+    return c;
   }
 };
 
@@ -328,8 +386,13 @@ struct NotAtom {
   template<typename atom>
   static atom* match(void* ctx, atom* a, atom* b) {
     if (!a || a == b) return nullptr;
-    if (atom_cmp(ctx, a, C) == 0) return nullptr;
-    return NotAtom<rest...>::match(ctx, a, b);
+    if (atom_cmp(ctx, a, C) == 0) {
+      atom_rewind(ctx, a, b);
+      return nullptr;
+    }
+    else {
+      return NotAtom<rest...>::match(ctx, a, b);
+    }
   }
 };
 
@@ -338,7 +401,13 @@ struct NotAtom<C> {
   template<typename atom>
   static atom* match(void* ctx, atom* a, atom* b) {
     if (!a || a == b) return nullptr;
-    return atom_cmp(ctx, a, C) == 0 ? nullptr : a + 1;
+    if (atom_cmp(ctx, a, C) == 0) {
+      atom_rewind(ctx, a, b);
+      return nullptr;
+    }
+    else {
+      return a + 1;
+    }
   }
 };
 
@@ -350,8 +419,14 @@ struct Range {
   template<typename atom>
   static atom* match(void* ctx, atom* a, atom* b) {
     if (!a || a == b) return nullptr;
-    if (atom_cmp(ctx, a, RA) < 0) return nullptr;
-    if (atom_cmp(ctx, a, RB) > 0) return nullptr;
+    if (atom_cmp(ctx, a, RA) < 0) {
+      atom_rewind(ctx, a, b);
+      return nullptr;
+    }
+    if (atom_cmp(ctx, a, RB) > 0) {
+      atom_rewind(ctx, a, b);
+      return nullptr;
+    }
     return a + 1;
   }
 };
@@ -363,6 +438,7 @@ struct NotRange {
     if (!a || a == b) return nullptr;
     if (atom_cmp(ctx, a, RA) < 0) return a + 1;
     if (atom_cmp(ctx, a, RB) > 0) return a + 1;
+    atom_rewind(ctx, a, b);
     return nullptr;
   }
 };
@@ -375,10 +451,14 @@ template<typename P>
 struct Until {
   template<typename atom>
   static atom* match(void* ctx, atom* a, atom* b) {
-    while(a < b) {
-      if (P::match(ctx, a, b)) return a;
-      a++;
+    atom* c = a;
+    while(c < b) {
+      if (P::match(ctx, c, b)) {
+        return c;
+      }
+      c++;
     }
+    atom_rewind(ctx, a, b);
     return nullptr;
   }
 };
@@ -523,17 +603,23 @@ template<typename ldelim, typename body, typename rdelim>
 struct DelimitedBlock {
   template<typename atom>
   static atom* match(void* ctx, atom* a, atom* b) {
-    a = ldelim::match(ctx, a, b);
-    if (a == nullptr) return nullptr;
+    if (!a || a == b) return nullptr;
+    atom* c = a;
+    c = ldelim::match(ctx, a, b);
+    if (c == nullptr) {
+      atom_rewind(ctx, a, b);
+      return nullptr;
+    }
 
     while(1) {
-      if (auto end = rdelim::match(ctx, a, b)) {
+      if (auto end = rdelim::match(ctx, c, b)) {
         return end;
       }
-      else if (auto end = body::match(ctx, a, b)) {
-        a = end;
+      else if (auto end = body::match(ctx, c, b)) {
+        c = end;
       }
       else {
+        atom_rewind(ctx, a, b);
         return nullptr;
       }
     }
@@ -555,16 +641,21 @@ struct DelimitedList {
 
   template<typename atom>
   static atom* match(void* ctx, atom* a, atom* b) {
-    a = ldelim::match(ctx, a, b);
-    if (a == nullptr) return nullptr;
-
-    while(a) {
-      if (auto end = rdelim::match(ctx, a, b)) return end;
-      a = item::match(ctx, a, b);
-      if (auto end = rdelim::match(ctx, a, b)) return end;
-      a = separator::match(ctx, a, b);
+    if (!a || a == b) return nullptr;
+    atom* c = ldelim::match(ctx, a, b);
+    if (c == nullptr) {
+      atom_rewind(ctx, a, b);
+      return nullptr;
     }
-    return a;
+
+    while(c) {
+      if (auto end = rdelim::match(ctx, c, b)) return end;
+      c = item::match(ctx, c, b);
+      if (auto end = rdelim::match(ctx, c, b)) return end;
+      c = separator::match(ctx, c, b);
+    }
+    atom_rewind(ctx, a, b);
+    return nullptr;
   }
 
 };
@@ -578,6 +669,7 @@ struct EOL {
     if (!a) return nullptr;
     if (a == b) return a;
     if (*a == atom('\n')) return a;
+    atom_rewind(ctx, a, b);
     return nullptr;
   }
 };
@@ -608,10 +700,19 @@ struct Lit {
     if (!a || a == b) return nullptr;
     if (a + lit.str_len > b) return nullptr;
 
+    for (int i = 0; i < lit.str_len; i++) {
+      if (atom_cmp(ctx, a + i, lit.str_val[i])) {
+        atom_rewind(ctx, a, b);
+        return nullptr;
+      }
+    }
+    return a + lit.str_len;
+
+    /*
     for (auto i = 0; i < lit.str_len; i++) {
       if (a[i] != lit.str_val[i]) return nullptr;
     }
-    return a + lit.str_len;
+    */
   }
 };
 

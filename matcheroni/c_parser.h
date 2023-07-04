@@ -194,6 +194,9 @@ public:
   int atom_cmp(Token* a, const Token* b) {
     return a->atom_cmp(this, b);
   }
+
+  void atom_rewind(Token* a, Token* b) {
+  }
 };
 
 //------------------------------------------------------------------------------
@@ -217,6 +220,11 @@ inline int atom_cmp(void* ctx, Token* a, const StringParam<N>& b) {
 
 inline int atom_cmp(void* ctx, Token* a, const Token* b) {
   return ((C99Parser*)ctx)->atom_cmp(a, b);
+}
+
+template<>
+inline void atom_rewind(void* ctx, Token* a, Token* b) {
+  ((C99Parser*)ctx)->atom_rewind(a, b);
 }
 
 //------------------------------------------------------------------------------
