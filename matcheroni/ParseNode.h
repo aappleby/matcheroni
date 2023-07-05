@@ -344,7 +344,7 @@ struct ParseNode {
     // Attach all the tops under this node to it.
     auto cursor = tok_a;
     while (cursor <= tok_b) {
-      assert(!cursor->get_span());
+      DCHECK(!cursor->get_span());
       cursor++;
     }
 

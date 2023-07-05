@@ -184,21 +184,21 @@ public:
   Token* global_cursor;
 
   int atom_cmp(Token* a, const LexemeType& b) {
-    assert(a == global_cursor);
+    DCHECK(a == global_cursor);
     auto result = a->atom_cmp(b);
     if (result == 0) global_cursor++;
     return result;
   }
 
   int atom_cmp(Token* a, const char& b) {
-    assert(a == global_cursor);
+    DCHECK(a == global_cursor);
     auto result = a->atom_cmp(b);
     if (result == 0) global_cursor++;
     return result;
   }
 
   int atom_cmp(Token* a, const char* b) {
-    assert(a == global_cursor);
+    DCHECK(a == global_cursor);
     auto result = a->atom_cmp(b);
     if (result == 0) global_cursor++;
     return result;
@@ -206,18 +206,20 @@ public:
 
   template<int N>
   int atom_cmp(Token* a, const StringParam<N>& b) {
-    assert(a == global_cursor);
+    DCHECK(a == global_cursor);
     auto result = a->atom_cmp(b);
     if (result == 0) global_cursor++;
     return result;
   }
 
   int atom_cmp(Token* a, const Token* b) {
-    assert(a == global_cursor);
+    DCHECK(a == global_cursor);
     auto result = a->atom_cmp(b);
     if (result == 0) global_cursor++;
     return result;
   }
+
+  inline static volatile int rewind_count = 0;
 
   void atom_rewind(Token* a, Token* b) {
     //printf("rewind to %20.20s\n", a->debug_span_a());
@@ -234,7 +236,9 @@ public:
     }
     */
 
-    assert(a <= global_cursor);
+    //if (a < global_cursor) rewind_count = rewind_count + 1;
+
+    DCHECK(a <= global_cursor);
     global_cursor = a;
   }
 };
@@ -793,20 +797,10 @@ struct NodeExpression : public ParseNode {
   static Token* match_binary_op(void* ctx, Token* a, Token* b) {
     if (!a || a == b) return nullptr;
 
-    {
-      auto p = ((C99Parser*)ctx);
-      assert(p->global_cursor == a);
-    }
-
     if (atom_cmp(ctx, a, LEX_PUNCT)) {
       return nullptr;
     }
     atom_rewind(ctx, a, b);
-
-    {
-      auto p = ((C99Parser*)ctx);
-      assert(p->global_cursor == a);
-    }
 
     switch(a->unsafe_span_a()[0]) {
       case '+': return Oneof< NodeBinaryOp<"+=">, NodeBinaryOp<"+"> >::match(ctx, a, b);
