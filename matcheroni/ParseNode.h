@@ -37,7 +37,7 @@ struct Keyword {
   static atom* match(void* ctx, atom* a, atom* b) {
     if (!a || a == b) return nullptr;
     if (atom_cmp(ctx, a, LEX_KEYWORD)) return nullptr;
-    atom_rewind(ctx, a, b);
+    /**/atom_rewind(ctx, a, b);
     if (atom_cmp(ctx, a, lit)) return nullptr;
     return a + 1;
   }
@@ -529,7 +529,7 @@ struct NodeMaker {
 
     print_trace_start<NodeType, Token>(a);
     auto end = NodeType::pattern::match(ctx, a, b);
-    if (!end) atom_rewind(ctx, a, b);
+    //if (!end) atom_rewind(ctx, a, b);
     print_trace_end<NodeType, Token>(a, end);
 
     if (end && end != a) {
@@ -537,7 +537,7 @@ struct NodeMaker {
       node->init_node(a, end-1, a->get_span(), (end-1)->get_span());
     }
     else {
-      atom_rewind(ctx, a, b);
+      //atom_rewind(ctx, a, b);
     }
     return end;
   }
@@ -550,7 +550,9 @@ struct LeafMaker {
 
     print_trace_start<NodeType, Token>(a);
     auto end = NodeType::pattern::match(ctx, a, b);
-    if (!end) atom_rewind(ctx, a, b);
+    if (!end) {
+      //atom_rewind(ctx, a, b);
+    }
     print_trace_end<NodeType, Token>(a, end);
 
     if (end && end != a) {
@@ -558,7 +560,7 @@ struct LeafMaker {
       node->init_leaf(a, end-1);
     }
     else {
-      atom_rewind(ctx, a, b);
+      //atom_rewind(ctx, a, b);
     }
     return end;
   }
@@ -597,11 +599,11 @@ inline Token* match_punct(void* ctx, Token* a, Token* b) {
 
   for (auto i = 0; i < lit.str_len; i++) {
     if (atom_cmp(ctx, a + i, LEX_PUNCT)) {
-      atom_rewind(ctx, a, b);
+      //atom_rewind(ctx, a, b);
       return nullptr;
     }
     if (atom_cmp(ctx, a->unsafe_span_a() + i, lit.str_val[i])) {
-      atom_rewind(ctx, a, b);
+      //atom_rewind(ctx, a, b);
       return nullptr;
     }
   }

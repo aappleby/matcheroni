@@ -49,17 +49,17 @@ struct TypeScope {
 
   bool has_type(void* ctx, Token* a, Token* b, token_list& types) {
     if(atom_cmp(ctx, a, LEX_IDENTIFIER)) {
-      atom_rewind(ctx, a, b);
+      //atom_rewind(ctx, a, b);
       return false;
     }
-    atom_rewind(ctx, a, b);
+    /**/atom_rewind(ctx, a, b);
 
     for (const auto c : types) {
       if (atom_cmp(ctx, a, c) == 0) {
         return true;
       }
       else {
-        atom_rewind(ctx, a, b);
+        //atom_rewind(ctx, a, b);
       }
     }
 
@@ -219,7 +219,8 @@ public:
     return result;
   }
 
-  inline static volatile int rewind_count = 0;
+  inline static int rewind_count = 0;
+  inline static int didnt_rewind = 0;
 
   void atom_rewind(Token* a, Token* b) {
     //printf("rewind to %20.20s\n", a->debug_span_a());
@@ -236,9 +237,15 @@ public:
     }
     */
 
-    //if (a < global_cursor) rewind_count = rewind_count + 1;
-
     DCHECK(a <= global_cursor);
+
+    if (a < global_cursor) {
+      rewind_count++;
+    }
+    else {
+      didnt_rewind++;
+    }
+
     global_cursor = a;
   }
 };
@@ -307,7 +314,7 @@ struct NodeBuiltinType : public ParseNode, public LeafMaker<NodeBuiltinType> {
       return end;
     }
     else {
-      atom_rewind(ctx, a, b);
+      //atom_rewind(ctx, a, b);
       return nullptr;
     }
   }
@@ -322,7 +329,7 @@ struct NodeTypedefType : public ParseNode , public LeafMaker<NodeTypedefType> {
       return end;
     }
     else {
-      atom_rewind(ctx, a, b);
+      //atom_rewind(ctx, a, b);
       return nullptr;
     }
   }
@@ -346,12 +353,12 @@ struct NodeIdentifier : public ParseNode, public LeafMaker<NodeIdentifier> {
 
   static Token* match(void* ctx, Token* a, Token* b) {
     if (NodeBuiltinType::pattern::match(ctx, a, b)) {
-      atom_rewind(ctx, a, b);
+      //atom_rewind(ctx, a, b);
       return nullptr;
     }
 
     if (NodeTypedefType::pattern::match(ctx, a, b)) {
-      atom_rewind(ctx, a, b);
+      /**/atom_rewind(ctx, a, b);
       return nullptr;
     }
 
@@ -361,7 +368,7 @@ struct NodeIdentifier : public ParseNode, public LeafMaker<NodeIdentifier> {
       return end;
     }
     else {
-      atom_rewind(ctx, a, b);
+      //atom_rewind(ctx, a, b);
       return nullptr;
     }
   }
@@ -800,7 +807,7 @@ struct NodeExpression : public ParseNode {
     if (atom_cmp(ctx, a, LEX_PUNCT)) {
       return nullptr;
     }
-    atom_rewind(ctx, a, b);
+    /**/atom_rewind(ctx, a, b);
 
     switch(a->unsafe_span_a()[0]) {
       case '+': return Oneof< NodeBinaryOp<"+=">, NodeBinaryOp<"+"> >::match(ctx, a, b);
@@ -863,7 +870,7 @@ struct NodeExpression : public ParseNode {
     auto tok_a = a;
     auto tok_b = pattern::match(ctx, a, b);
     if (tok_b == nullptr) {
-      atom_rewind(ctx, a, b);
+      //atom_rewind(ctx, a, b);
       return nullptr;
     }
 
@@ -1033,7 +1040,7 @@ struct NodeExpression : public ParseNode {
       node->init_node(a, end - 1, a->get_span(), (end-1)->get_span());
     }
     else {
-      atom_rewind(ctx, a, b);
+      //atom_rewind(ctx, a, b);
     }
     print_trace_end<NodeExpression, Token>(a, end);
     return end;

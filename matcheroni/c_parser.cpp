@@ -166,7 +166,6 @@ Token* C99Parser::match_builtin_type_base(Token* a, Token* b) {
     return a + 1;
   }
   else {
-    atom_rewind(a, b);
     return nullptr;
   }
 }
@@ -178,7 +177,6 @@ Token* C99Parser::match_builtin_type_prefix(Token* a, Token* b) {
     return a + 1;
   }
   else {
-    atom_rewind(a, b);
     return nullptr;
   }
 }
@@ -190,7 +188,6 @@ Token* C99Parser::match_builtin_type_suffix(Token* a, Token* b) {
     return a + 1;
   }
   else {
-    atom_rewind(a, b);
     return nullptr;
   }
 }
@@ -221,6 +218,8 @@ void C99Parser::dump_stats() {
   printf("\n");
   printf("Total nodes    %d\n", ParseNode::constructor_count);
   printf("Node pool      %ld bytes\n", ParseNode::slabs.max_size);
+  printf("Rewind count   %d\n", C99Parser::rewind_count);
+  printf("Didn't rewind  %d\n", C99Parser::didnt_rewind);
   printf("File pass      %d\n", file_pass);
   printf("File fail      %d\n", file_fail);
   printf("File skip      %d\n", file_skip);
