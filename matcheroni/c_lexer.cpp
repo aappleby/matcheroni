@@ -1,6 +1,10 @@
 #include "c_lexer.h"
 
+void atom_rewind(void* ctx, const char* a, const char* b);
+
 #include "Lexemes.h"
+
+
 #include "Matcheroni.h"
 #include "c_constants.h"
 
@@ -13,6 +17,9 @@
 #ifdef MATCHERONI_USE_NAMESPACE
 using namespace matcheroni;
 #endif
+
+void atom_rewind(void* ctx, const char* a, const char* b) {
+}
 
 template<typename M>
 using ticked = Seq<Opt<Atom<'\''>>, M>;

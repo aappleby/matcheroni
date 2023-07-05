@@ -47,21 +47,30 @@ struct TypeScope {
     typedef_types.clear();
   }
 
-  bool has_type(void* ctx, Token* a, token_list& types) {
-    if(atom_cmp(ctx, a, LEX_IDENTIFIER)) return false;
+  bool has_type(void* ctx, Token* a, Token* b, token_list& types) {
+    if(atom_cmp(ctx, a, LEX_IDENTIFIER)) {
+      atom_rewind(ctx, a, b);
+      return false;
+    }
+    atom_rewind(ctx, a, b);
 
     for (const auto c : types) {
-      if (atom_cmp(ctx, a, c) == 0) return true;
+      if (atom_cmp(ctx, a, c) == 0) {
+        return true;
+      }
+      else {
+        atom_rewind(ctx, a, b);
+      }
     }
 
     return false;
   }
 
-  void add_type(void* ctx, Token* a, token_list& types) {
-    DCHECK(atom_cmp(ctx, a, LEX_IDENTIFIER) == 0);
+  void add_type(Token* a, token_list& types) {
+    DCHECK(a->atom_cmp(LEX_IDENTIFIER) == 0);
 
     for (const auto& c : types) {
-      if (atom_cmp(ctx, a, c) == 0) return;
+      if (a->atom_cmp(c) == 0) return;
     }
 
     types.push_back(a);
@@ -69,17 +78,17 @@ struct TypeScope {
 
   //----------------------------------------
 
-  bool has_class_type  (void* ctx, Token* a) { if (has_type(ctx, a, class_types  )) return true; if (parent) return parent->has_class_type  (ctx, a); else return false; }
-  bool has_struct_type (void* ctx, Token* a) { if (has_type(ctx, a, struct_types )) return true; if (parent) return parent->has_struct_type (ctx, a); else return false; }
-  bool has_union_type  (void* ctx, Token* a) { if (has_type(ctx, a, union_types  )) return true; if (parent) return parent->has_union_type  (ctx, a); else return false; }
-  bool has_enum_type   (void* ctx, Token* a) { if (has_type(ctx, a, enum_types   )) return true; if (parent) return parent->has_enum_type   (ctx, a); else return false; }
-  bool has_typedef_type(void* ctx, Token* a) { if (has_type(ctx, a, typedef_types)) return true; if (parent) return parent->has_typedef_type(ctx, a); else return false; }
+  bool has_class_type  (void* ctx, Token* a, Token* b) { if (has_type(ctx, a, b, class_types  )) return true; if (parent) return parent->has_class_type  (ctx, a, b); else return false; }
+  bool has_struct_type (void* ctx, Token* a, Token* b) { if (has_type(ctx, a, b, struct_types )) return true; if (parent) return parent->has_struct_type (ctx, a, b); else return false; }
+  bool has_union_type  (void* ctx, Token* a, Token* b) { if (has_type(ctx, a, b, union_types  )) return true; if (parent) return parent->has_union_type  (ctx, a, b); else return false; }
+  bool has_enum_type   (void* ctx, Token* a, Token* b) { if (has_type(ctx, a, b, enum_types   )) return true; if (parent) return parent->has_enum_type   (ctx, a, b); else return false; }
+  bool has_typedef_type(void* ctx, Token* a, Token* b) { if (has_type(ctx, a, b, typedef_types)) return true; if (parent) return parent->has_typedef_type(ctx, a, b); else return false; }
 
-  void add_class_type  (void* ctx, Token* a) { return add_type(ctx, a, class_types  ); }
-  void add_struct_type (void* ctx, Token* a) { return add_type(ctx, a, struct_types ); }
-  void add_union_type  (void* ctx, Token* a) { return add_type(ctx, a, union_types  ); }
-  void add_enum_type   (void* ctx, Token* a) { return add_type(ctx, a, enum_types   ); }
-  void add_typedef_type(void* ctx, Token* a) { return add_type(ctx, a, typedef_types); }
+  void add_class_type  (Token* a) { return add_type(a, class_types  ); }
+  void add_struct_type (Token* a) { return add_type(a, struct_types ); }
+  void add_union_type  (Token* a) { return add_type(a, union_types  ); }
+  void add_enum_type   (Token* a) { return add_type(a, enum_types   ); }
+  void add_typedef_type(Token* a) { return add_type(a, typedef_types); }
 
   TypeScope* parent;
   token_list class_types;
@@ -104,17 +113,17 @@ public:
   Token* match_builtin_type_prefix(Token* a, Token* b);
   Token* match_builtin_type_suffix(Token* a, Token* b);
 
-  Token* match_class_type  (Token* a, Token* b) { return type_scope->has_class_type  (this, a) ? a + 1 : nullptr; }
-  Token* match_struct_type (Token* a, Token* b) { return type_scope->has_struct_type (this, a) ? a + 1 : nullptr; }
-  Token* match_union_type  (Token* a, Token* b) { return type_scope->has_union_type  (this, a) ? a + 1 : nullptr; }
-  Token* match_enum_type   (Token* a, Token* b) { return type_scope->has_enum_type   (this, a) ? a + 1 : nullptr; }
-  Token* match_typedef_type(Token* a, Token* b) { return type_scope->has_typedef_type(this, a) ? a + 1 : nullptr; }
+  Token* match_class_type  (Token* a, Token* b) { return type_scope->has_class_type  (this, a, b) ? a + 1 : nullptr; }
+  Token* match_struct_type (Token* a, Token* b) { return type_scope->has_struct_type (this, a, b) ? a + 1 : nullptr; }
+  Token* match_union_type  (Token* a, Token* b) { return type_scope->has_union_type  (this, a, b) ? a + 1 : nullptr; }
+  Token* match_enum_type   (Token* a, Token* b) { return type_scope->has_enum_type   (this, a, b) ? a + 1 : nullptr; }
+  Token* match_typedef_type(Token* a, Token* b) { return type_scope->has_typedef_type(this, a, b) ? a + 1 : nullptr; }
 
-  void add_class_type  (Token* a) { type_scope->add_class_type  (this, a); }
-  void add_struct_type (Token* a) { type_scope->add_struct_type (this, a); }
-  void add_union_type  (Token* a) { type_scope->add_union_type  (this, a); }
-  void add_enum_type   (Token* a) { type_scope->add_enum_type   (this, a); }
-  void add_typedef_type(Token* a) { type_scope->add_typedef_type(this, a); }
+  void add_class_type  (Token* a) { type_scope->add_class_type  (a); }
+  void add_struct_type (Token* a) { type_scope->add_struct_type (a); }
+  void add_union_type  (Token* a) { type_scope->add_union_type  (a); }
+  void add_enum_type   (Token* a) { type_scope->add_enum_type   (a); }
+  void add_typedef_type(Token* a) { type_scope->add_typedef_type(a); }
 
   //----------------------------------------------------------------------------
 
@@ -172,30 +181,61 @@ public:
 
   TypeScope* type_scope;
 
-  Token* highwater;
+  Token* global_cursor;
 
   int atom_cmp(Token* a, const LexemeType& b) {
-    return a->atom_cmp(this, b);
+    assert(a == global_cursor);
+    auto result = a->atom_cmp(b);
+    if (result == 0) global_cursor++;
+    return result;
   }
 
   int atom_cmp(Token* a, const char& b) {
-    return a->atom_cmp(this, b);
+    assert(a == global_cursor);
+    auto result = a->atom_cmp(b);
+    if (result == 0) global_cursor++;
+    return result;
   }
 
   int atom_cmp(Token* a, const char* b) {
-    return a->atom_cmp(this, b);
+    assert(a == global_cursor);
+    auto result = a->atom_cmp(b);
+    if (result == 0) global_cursor++;
+    return result;
   }
 
   template<int N>
   int atom_cmp(Token* a, const StringParam<N>& b) {
-    return a->atom_cmp(this, b);
+    assert(a == global_cursor);
+    auto result = a->atom_cmp(b);
+    if (result == 0) global_cursor++;
+    return result;
   }
 
   int atom_cmp(Token* a, const Token* b) {
-    return a->atom_cmp(this, b);
+    assert(a == global_cursor);
+    auto result = a->atom_cmp(b);
+    if (result == 0) global_cursor++;
+    return result;
   }
 
   void atom_rewind(Token* a, Token* b) {
+    //printf("rewind to %20.20s\n", a->debug_span_a());
+
+    /*
+    if (a < global_cursor) {
+      static constexpr int context_len = 60;
+      printf("[");
+      print_escaped(global_cursor->get_lex_debug()->span_a, context_len, 0x804080);
+      printf("]\n");
+      printf("[");
+      print_escaped(a->get_lex_debug()->span_a, context_len, 0x804040);
+      printf("]\n");
+    }
+    */
+
+    assert(a <= global_cursor);
+    global_cursor = a;
   }
 };
 
@@ -222,7 +262,6 @@ inline int atom_cmp(void* ctx, Token* a, const Token* b) {
   return ((C99Parser*)ctx)->atom_cmp(a, b);
 }
 
-template<>
 inline void atom_rewind(void* ctx, Token* a, Token* b) {
   ((C99Parser*)ctx)->atom_rewind(a, b);
 }
@@ -257,10 +296,32 @@ struct NodeBuiltinType : public ParseNode, public LeafMaker<NodeBuiltinType> {
     match_base,
     Opt<match_suffix>
   >;
+
+  static Token* match(void* ctx, Token* a, Token* b) {
+    auto end = LeafMaker::match(ctx, a, b);
+    if (end) {
+      return end;
+    }
+    else {
+      atom_rewind(ctx, a, b);
+      return nullptr;
+    }
+  }
 };
 
-struct NodeTypedefType : public ParseNode, public LeafMaker<NodeTypedefType> {
+struct NodeTypedefType : public ParseNode , public LeafMaker<NodeTypedefType> {
   using pattern = Ref<&C99Parser::match_typedef_type>;
+
+  static Token* match(void* ctx, Token* a, Token* b) {
+    auto end = LeafMaker::match(ctx, a, b);
+    if (end) {
+      return end;
+    }
+    else {
+      atom_rewind(ctx, a, b);
+      return nullptr;
+    }
+  }
 };
 
 
@@ -278,6 +339,28 @@ struct NodeIdentifier : public ParseNode, public LeafMaker<NodeIdentifier> {
     Not<NodeTypedefType>,
     Atom<LEX_IDENTIFIER>
   >;
+
+  static Token* match(void* ctx, Token* a, Token* b) {
+    if (NodeBuiltinType::pattern::match(ctx, a, b)) {
+      atom_rewind(ctx, a, b);
+      return nullptr;
+    }
+
+    if (NodeTypedefType::pattern::match(ctx, a, b)) {
+      atom_rewind(ctx, a, b);
+      return nullptr;
+    }
+
+    if (auto end = Atom<LEX_IDENTIFIER>::match(ctx, a, b)) {
+      auto node = new NodeIdentifier();
+      node->init_leaf(a, end-1);
+      return end;
+    }
+    else {
+      atom_rewind(ctx, a, b);
+      return nullptr;
+    }
+  }
 };
 
 //------------------------------------------------------------------------------
@@ -710,7 +793,20 @@ struct NodeExpression : public ParseNode {
   static Token* match_binary_op(void* ctx, Token* a, Token* b) {
     if (!a || a == b) return nullptr;
 
-    if (atom_cmp(ctx, a, LEX_PUNCT)) return nullptr;
+    {
+      auto p = ((C99Parser*)ctx);
+      assert(p->global_cursor == a);
+    }
+
+    if (atom_cmp(ctx, a, LEX_PUNCT)) {
+      return nullptr;
+    }
+    atom_rewind(ctx, a, b);
+
+    {
+      auto p = ((C99Parser*)ctx);
+      assert(p->global_cursor == a);
+    }
 
     switch(a->unsafe_span_a()[0]) {
       case '+': return Oneof< NodeBinaryOp<"+=">, NodeBinaryOp<"+"> >::match(ctx, a, b);
@@ -772,7 +868,10 @@ struct NodeExpression : public ParseNode {
 
     auto tok_a = a;
     auto tok_b = pattern::match(ctx, a, b);
-    if (tok_b == nullptr) return nullptr;
+    if (tok_b == nullptr) {
+      atom_rewind(ctx, a, b);
+      return nullptr;
+    }
 
 
     while(0) {
@@ -938,6 +1037,9 @@ struct NodeExpression : public ParseNode {
     if (end) {
       auto node = new NodeExpression();
       node->init_node(a, end - 1, a->get_span(), (end-1)->get_span());
+    }
+    else {
+      atom_rewind(ctx, a, b);
     }
     print_trace_end<NodeExpression, Token>(a, end);
     return end;

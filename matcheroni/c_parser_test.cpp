@@ -85,7 +85,7 @@ int test_parser(int argc, char** argv) {
 #if 0
   paths = {
     //"tests/scratch.c",
-    "../gcc/gcc/testsuite/gcc.c-torture/execute/20030914-2.c",
+    "../gcc/gcc/testsuite/gcc.c-torture/execute/pr64718.c",
   };
 
   verbose = true;
@@ -126,6 +126,7 @@ int test_parser(int argc, char** argv) {
     if (path.find("csmith") == std::string::npos) {
       bool has_preproc = false;
       for (auto& t : parser.tokens) {
+        parser.global_cursor = &t;
         if (atom_cmp(&parser, &t, LEX_PREPROC) == 0) {
           has_preproc = true;
           break;

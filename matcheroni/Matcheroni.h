@@ -70,9 +70,11 @@ inline int atom_cmp(void* ctx, const char* a, char b) {
 
 // By default this does nothing, override in your application as needed.
 
+/*
 template<typename atom>
 inline void atom_rewind(void* ctx, atom* a, atom* b) {
 }
+*/
 
 //------------------------------------------------------------------------------
 // The most fundamental unit of matching is a single atom. For convenience, we
@@ -133,10 +135,16 @@ struct Seq {
   static atom* match(void* ctx, atom* a, atom* b) {
     auto c = P::match(ctx, a, b);
     if (c) {
-      return Seq<rest...>::match(ctx, c, b);
+      auto d = Seq<rest...>::match(ctx, c, b);
+      if (d) {
+        return d;
+      }
+      else {
+        atom_rewind(ctx, a, b);
+        return nullptr;
+      }
     }
     else {
-      atom_rewind(ctx, a, b);
       return nullptr;
     }
   }
@@ -249,6 +257,7 @@ struct Some {
   static atom* match(void* ctx, atom* a, atom* b) {
     auto c = Any<rest...>::match(ctx, a, b);
     if (c == a) {
+      atom_rewind(ctx, a, b);
       return nullptr;
     }
     else {
@@ -296,6 +305,7 @@ struct And {
   template<typename atom>
   static atom* match(void* ctx, atom* a, atom* b) {
     auto c = P::match(ctx, a, b);
+    atom_rewind(ctx, a, b);
     return c ? a : nullptr;
   }
 };
@@ -311,6 +321,7 @@ struct Not {
   template<typename atom>
   static atom* match(void* ctx, atom* a, atom* b) {
     auto c = P::match(ctx, a, b);
+    atom_rewind(ctx, a, b);
     return c ? nullptr : a;
   }
 };
@@ -328,7 +339,13 @@ struct NotEmpty {
   template<typename atom>
   static atom* match(void* ctx, atom* a, atom* b) {
     auto end = Seq<rest...>::match(ctx, a, b);
-    return (end == a) ? nullptr : end;
+    if (end == a) {
+      atom_rewind(ctx, a, b);
+      return nullptr;
+    }
+    else {
+      return end;
+    }
   }
 };
 
@@ -342,12 +359,15 @@ struct Rep {
     atom* c = a;
     for(auto i = 0; i < N; i++) {
       c = P::match(ctx, a, b);
-      if (!c) {
-        atom_rewind(ctx, a, b);
-        return nullptr;
-      }
+      if (!c) break;
     }
-    return c;
+    if (c) {
+      return c;
+    }
+    else {
+      atom_rewind(ctx, a, b);
+      return nullptr;
+    }
   }
 };
 

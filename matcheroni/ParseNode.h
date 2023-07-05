@@ -13,6 +13,8 @@ struct ParseNode;
 void dump_tree(const ParseNode* n, int max_depth, int indentation);
 void set_color(uint32_t c);
 
+void atom_rewind(void* ctx, Token* a, Token* b);
+
 #ifdef DEBUG
 #define DCHECK(A) assert(A)
 #else
@@ -35,6 +37,7 @@ struct Keyword {
   static atom* match(void* ctx, atom* a, atom* b) {
     if (!a || a == b) return nullptr;
     if (atom_cmp(ctx, a, LEX_KEYWORD)) return nullptr;
+    atom_rewind(ctx, a, b);
     if (atom_cmp(ctx, a, lit)) return nullptr;
     return a + 1;
   }
@@ -164,27 +167,27 @@ struct Token {
   // a branch, when it tries to match the next branch we will always pull the
   // defunct nodes off the tokens.
 
-  int atom_cmp(void* ctx, const LexemeType& b) {
+  int atom_cmp(const LexemeType& b) {
     clear_span();
     if (int c = int(lex->type) - int(b)) return c;
     return 0;
   }
 
-  int atom_cmp(void* ctx, const char& b) {
+  int atom_cmp(const char& b) {
     clear_span();
     if (int c = lex->len() - 1)     return c;
     if (int c = lex->span_a[0] - b) return c;
     return 0;
   }
 
-  int atom_cmp(void* ctx, const char* b) {
+  int atom_cmp(const char* b) {
     clear_span();
     if (int c = cmp_span_lit(lex->span_a, lex->span_b, b)) return c;
     return 0;
   }
 
   template<int N>
-  int atom_cmp(void* ctx, const StringParam<N>& b) {
+  int atom_cmp(const StringParam<N>& b) {
     clear_span();
     if (int c = lex->len() - b.str_len) return c;
     for (auto i = 0; i < b.str_len; i++) {
@@ -193,7 +196,7 @@ struct Token {
     return 0;
   }
 
-  int atom_cmp(void* ctx, const Token* b) {
+  int atom_cmp(const Token* b) {
     clear_span();
     if (int c = lex->type  - b->lex->type) return c;
     if (int c = lex->len() - b->lex->len()) return c;
@@ -526,11 +529,15 @@ struct NodeMaker {
 
     print_trace_start<NodeType, Token>(a);
     auto end = NodeType::pattern::match(ctx, a, b);
+    if (!end) atom_rewind(ctx, a, b);
     print_trace_end<NodeType, Token>(a, end);
 
     if (end && end != a) {
       auto node = new NodeType();
       node->init_node(a, end-1, a->get_span(), (end-1)->get_span());
+    }
+    else {
+      atom_rewind(ctx, a, b);
     }
     return end;
   }
@@ -543,11 +550,15 @@ struct LeafMaker {
 
     print_trace_start<NodeType, Token>(a);
     auto end = NodeType::pattern::match(ctx, a, b);
+    if (!end) atom_rewind(ctx, a, b);
     print_trace_end<NodeType, Token>(a, end);
 
     if (end && end != a) {
       auto node = new NodeType();
       node->init_leaf(a, end-1);
+    }
+    else {
+      atom_rewind(ctx, a, b);
     }
     return end;
   }
@@ -574,6 +585,7 @@ inline void Token::dump_token() const {
     printf("{                    }");
   }
   printf("\n");
+
 }
 
 //------------------------------------------------------------------------------
@@ -584,8 +596,14 @@ inline Token* match_punct(void* ctx, Token* a, Token* b) {
   if (a + lit.str_len > b) return nullptr;
 
   for (auto i = 0; i < lit.str_len; i++) {
-    if (atom_cmp(ctx, a + i, LEX_PUNCT)) return nullptr;
-    if (atom_cmp(ctx, a->unsafe_span_a() + i, lit.str_val[i])) return nullptr;
+    if (atom_cmp(ctx, a + i, LEX_PUNCT)) {
+      atom_rewind(ctx, a, b);
+      return nullptr;
+    }
+    if (atom_cmp(ctx, a->unsafe_span_a() + i, lit.str_val[i])) {
+      atom_rewind(ctx, a, b);
+      return nullptr;
+    }
   }
 
   auto end = a + lit.str_len;
