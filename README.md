@@ -67,7 +67,9 @@ Install [Ninja](https://ninja-build.org/) if you haven't already, then run ninja
 See build.ninja for configuration options.
 
 # It's all a bunch of templates? Really?
-If you're familiar with C++ templates, you are probably concerned that this library will cause your compiler to grind to a halt. I can assure you that that's not the case - compile times for even pretty large matchers are fine, though the resulting debug symbols are so enormous as to be useless.
+If you're familiar with C++ templates, you are probably concerned that this library will cause your binary size to explode and your compiler to grind to a halt.
+
+I can assure you that that's not the case - binary sizes and compile times for even pretty large matchers are fine, though the resulting debug symbols are so enormous as to be useless.
 
 # Fundamentals
 
