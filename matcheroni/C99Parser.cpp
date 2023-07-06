@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText:  2023 Austin Appleby <aappleby@gmail.com>
+// SPDX-License-Identifier: MIT License
+
 #include "C99Parser.hpp"
 
 #include "C99Lexer.hpp"
@@ -6,6 +9,8 @@
 #include "TypeScope.hpp"
 #include "c_parse_nodes.hpp"
 #include "utils.hpp"
+
+using namespace matcheroni;
 
 //------------------------------------------------------------------------------
 

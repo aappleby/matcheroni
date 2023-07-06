@@ -1,9 +1,14 @@
+// SPDX-FileCopyrightText:  2023 Austin Appleby <aappleby@gmail.com>
+// SPDX-License-Identifier: MIT License
+
 #include "Token.hpp"
 
 #include "Lexeme.hpp"
 #include "Matcheroni.hpp"
 #include "ParseNode.hpp"
 #include "utils.hpp"
+
+using namespace matcheroni;
 
 //----------------------------------------------------------------------------
 
@@ -33,7 +38,7 @@ int Token::atom_cmp(const char& b) {
 
 int Token::atom_cmp(const char* b) {
   clear_span();
-  if (int c = cmp_span_lit(lex->span_a, lex->span_b, b)) return c;
+  if (int c = strcmp_span(lex->span_a, lex->span_b, b)) return c;
   return 0;
 }
 

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText:  2023 Austin Appleby <aappleby@gmail.com>
+// SPDX-License-Identifier: MIT License
+
 #include "c_constants.hpp"
 #include "C99Lexer.hpp"
 #include "Lexeme.hpp"
@@ -7,9 +10,7 @@
 
 #include <array>
 
-#ifdef MATCHERONI_USE_NAMESPACE
 using namespace matcheroni;
-#endif
 
 template<typename M>
 using ticked = Seq<Opt<Atom<'\''>>, M>;
@@ -89,7 +90,7 @@ struct cspan {
 };
 
 inline int atom_cmp(void* ctx, cspan* s, const char* b) {
-  return cmp_span_lit(s->a, s->b, b);
+  return strcmp_span(s->a, s->b, b);
 }
 
 Lexeme next_lexeme(void* ctx, const char* cursor, const char* text_end) {

@@ -1,10 +1,12 @@
+// SPDX-FileCopyrightText:  2023 Austin Appleby <aappleby@gmail.com>
+// SPDX-License-Identifier: MIT License
+
 #include "Matcheroni.hpp"
 #include "Lexeme.hpp"
 #include "SST.hpp"
 #include "c_constants.hpp"
 
-#include <array>            // for array
-template <auto ...rest> struct Atom;
+using namespace matcheroni;
 
 // These are not intended to be usable grammar bits, they are just from the C99
 // spec for reference.

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText:  2023 Austin Appleby <aappleby@gmail.com>
+// SPDX-License-Identifier: MIT License
+
 #pragma once
 #include <string>
 #include <typeinfo>    // for type_info

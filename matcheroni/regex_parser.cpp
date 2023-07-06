@@ -14,6 +14,8 @@
 #include <vector>
 #include "Matcheroni.hpp"
 
+using namespace matcheroni;
+
 // Uncomment this to print a full trace of the regex matching process. Note -
 // the trace will be _very_ long, even for small regexes.
 //#define TRACE
@@ -62,8 +64,8 @@ struct Node {
 
 //------------------------------------------------------------------------------
 // To convert our pattern matches to parse nodes, we create a Factory<> matcher
-// that constructs a new Node() for a successful match, attaches any sub-nodes
-// to it, and places it on a node stack.
+// that constructs a new NodeType() for a successful match, attaches any
+// sub-nodes to it, and places it on a node stack.
 
 // If this were a larger application, we would keep the node stack inside a
 // match context object passed in via 'ctx', but a global is fine for now.
@@ -105,7 +107,7 @@ struct Factory {
 // specialized version of it Matcheroni will call it as needed.
 
 template<>
-void atom_rewind(void* ctx, const char* a, const char* b) {
+void matcheroni::atom_rewind(void* ctx, const char* a, const char* b) {
   while(node_stack.size() && node_stack.back()->b > a) {
     delete node_stack.back();
     node_stack.pop_back();
@@ -120,6 +122,7 @@ void atom_rewind(void* ctx, const char* a, const char* b) {
 // Our trace depth is a global for convenience, same thing as node_stack above.
 
 // Example snippet:
+
 // {(good|bad)\s+[a-z]*$} |  pos_set ?
 // {(good|bad)\s+[a-z]*$} |  pos_set X
 // {(good|bad)\s+[a-z]*$} |  group ?
@@ -170,7 +173,7 @@ using Capture = Factory<type, P, Node>;
 // but we can also provide a specialized one.
 
 template<>
-inline int atom_cmp(void* ctx, const char* a, char b) {
+inline int matcheroni::atom_cmp(void* ctx, const char* a, char b) {
   return int(*a - b);
 }
 

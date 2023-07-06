@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText:  2023 Austin Appleby <aappleby@gmail.com>
+// SPDX-License-Identifier: MIT License
+
 #include "C99Lexer.hpp"
 
 #include "Lexeme.hpp"
@@ -10,9 +13,7 @@
 #include <string>
 #include <vector>
 
-#ifdef MATCHERONI_USE_NAMESPACE
 using namespace matcheroni;
-#endif
 
 /*
 void test_match_string() {

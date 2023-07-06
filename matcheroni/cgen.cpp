@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText:  2023 Austin Appleby <aappleby@gmail.com>
+// SPDX-License-Identifier: MIT License
+
 // A dirty hack to generate random sequences of tokens that match the C spec.
 // Rather useless as it goes off into the weeds easily.
 

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText:  2023 Austin Appleby <aappleby@gmail.com>
+// SPDX-License-Identifier: MIT License
+
 #pragma once
 
 #include "Lexeme.hpp"
@@ -7,6 +10,8 @@
 #include "c_constants.hpp"
 #include "utils.hpp"
 #include "C99Parser.hpp"
+
+using namespace matcheroni;
 
 struct Token;
 

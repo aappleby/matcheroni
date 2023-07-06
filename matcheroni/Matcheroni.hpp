@@ -12,57 +12,44 @@
 #ifndef __MATCHERONI_H__
 #define __MATCHERONI_H__
 
-#ifdef MATCHERONI_USE_NAMESPACE
 namespace matcheroni {
-#endif
 
 //------------------------------------------------------------------------------
-// Matcheroni is based on building trees of "matcher" functions. A matcher takes
-// a range of "atoms" (could be characters, could be some application-specific
-// type) as input and returns either the endpoint of the match if found, or
-// nullptr if a match was not found.
-// Matchers must always handle null pointers and empty ranges.
+// Matcheroni is based on building trees of "matcher" functions. A matcher
+// function takes a range of "atoms" (could be characters, could be some
+// application-specific type) as input and returns either the endpoint of the
+// match if found, or nullptr if a match was not found.
+
+// Matcher functions accept an opaque context pointer 'ctx', which can be used
+// to pass in a pointer to application-specific state.
+
+// Matcher functions must always handle null pointers and empty ranges.
 
 template<typename atom>
 using matcher_function = atom* (*) (void* ctx, atom* a, atom* b);
 
 //------------------------------------------------------------------------------
-// Matchers will often need to compare literal strings of text, so some helpers
-// are provided here as well.
+// Matchers will often need to compare ranges of atoms against null-delimited
+// strings ala strcmp(), so we provide this function for convenience.
 
-inline int cmp_span_lit(const char* aa, const char* ab, const char* b) {
+inline int strcmp_span(const char* a, const char* b, const char* lit) {
   while(1) {
-    auto ca = aa == ab ? 0 : *aa;
-    auto cb = *b;
+    auto ca = a == b ? 0 : *a;
+    auto cb = *lit;
     if (ca != cb || ca == 0) return ca - cb;
-    aa++;
-    b++;
+    a++;
+    lit++;
   }
-}
-
-// This is a _prefix_ matcher, do not use if you want strcmp
-inline const char* match_text(const char* text, const char* a, const char* b) {
-  auto c = a;
-  for (;c < b && (*c == *text) && *text; c++, text++);
-  if (*text) return nullptr;
-  return c;
-}
-
-// This is a _prefix_ matcher, do not use if you want strcmp
-inline const char* match_text(const char** texts, int text_count, const char* a, const char* b) {
-  for (auto i = 0; i < text_count; i++) {
-    if (auto t = match_text(texts[i], a, b)) {
-      return t;
-    }
-  }
-  return nullptr;
 }
 
 //------------------------------------------------------------------------------
-// Matcheroni needs some way to compare atoms against pattern constants.
-// By default, we just return the difference between the atom and the constant.
+// Matcheroni needs some way to compare atoms against constants. By default, it
+// uses a generic atom_cmp function to compute the integer difference between
+// the atom and the constant.
 
-// Comparators should return <0 for a<b, ==0 for a==b, and >0 for a>b.
+// If you specialize the function below for your various atom types and
+// constant types, Matcheroni will use your code instead. Your atom_cmp()
+// should return <0 for a<b, ==0 for a==b, and >0 for a>b.
 
 template<typename atom1, typename atom2>
 inline int atom_cmp(void* ctx, atom1* a, atom2 b) {
@@ -70,12 +57,13 @@ inline int atom_cmp(void* ctx, atom1* a, atom2 b) {
 }
 
 //------------------------------------------------------------------------------
-// Matcheroni will call atom_rewind() to indicate to the host app that matching
-// an optional branch has failed - this can be used to clean up any
+// Matcheroni also needs a way to tell the host application to "rewind" its
+// state when an intermediate match fails - this can be used to clean up any
 // intermediate data structures that were created during the failed partial
 // match.
 
-// By default this does nothing, override in your application as needed.
+// By default this does nothing, but if you specialize this for your atom type
+// Matcheroni will call that instead.
 
 template<typename atom>
 inline void atom_rewind(void* ctx, atom* a, atom* b) {
@@ -117,6 +105,9 @@ struct Atom<C> {
     }
   }
 };
+
+//------------------------------------------------------------------------------
+// AnyAtom is equivalent to '.' in regex.
 
 struct AnyAtom {
   template<typename atom>
@@ -196,7 +187,7 @@ struct Oneof<P> {
 };
 
 //------------------------------------------------------------------------------
-// Zero-or-one 'optional' patterns, equivalent to M? in regex.
+// 'Opt' matches 'optional' patterns, equivalent to '?' in regex.
 
 // Opt<Atom<'a'>>::match("abcd") == "bcd"
 // Opt<Atom<'a'>>::match("bcde") == "bcde"
@@ -218,7 +209,8 @@ struct Opt {
 };
 
 //------------------------------------------------------------------------------
-// Zero-or-more patterns, roughly equivalent to M* in regex.
+// 'Any' matches zero or more copies of a pattern, equivalent to '*' in regex.
+
 // HOWEVER - Seq<Any<Atom<'a'>>, Atom<'a'>> (unlike "a*a" in regex) will
 // _never_ match anything, as the first Any<> is greedy and consumes all 'a's
 // without doing any backtracking.
@@ -254,7 +246,7 @@ struct Nothing {
 };
 
 //------------------------------------------------------------------------------
-// One-or-more patterns, equivalent to M+ in regex.
+// 'Some' matches one or more copies of a pattern, equivalent to '+' in regex.
 
 // Some<Atom<'a'>>::match("aaaab") == "b"
 // Some<Atom<'a'>>::match("bbbbc") == nullptr
@@ -275,7 +267,44 @@ struct Some {
 };
 
 //------------------------------------------------------------------------------
-// A sequence of optional items that must match in order if present.
+// The 'And' predicate matches a pattern but does _not_ advance the cursor.
+// Used for lookahead.
+
+// And<Atom<'a'>>::match("abcd") == "abcd"
+// And<Atom<'a'>>::match("bcde") == nullptr
+
+template<typename P>
+struct And {
+  template<typename atom>
+  static atom* match(void* ctx, atom* a, atom* b) {
+    if (!a) return nullptr;
+    auto c = P::match(ctx, a, b);
+    /*+*/atom_rewind(ctx, a, b);
+    return c ? a : nullptr;
+  }
+};
+
+//------------------------------------------------------------------------------
+// The 'Not' predicate is the logical negation of the 'And' predicate.
+
+// Not<Atom<'a'>>::match("abcd") == nullptr
+// Not<Atom<'a'>>::match("bcde") == "bcde"
+
+template<typename P>
+struct Not {
+  template<typename atom>
+  static atom* match(void* ctx, atom* a, atom* b) {
+    if (!a) return nullptr;
+    auto c = P::match(ctx, a, b);
+    /*+*/atom_rewind(ctx, a, b);
+    return c ? nullptr : a;
+  }
+};
+
+//------------------------------------------------------------------------------
+// 'SeqOpt' matches a sequence of items that are individually optional, but
+// that must match in order if present.
+
 // SeqOpt<Atom<'a'>, Atom<'b'>, Atom<'c'>> will match "a", "ab", and "abc" but
 // not "bc" or "c".
 
@@ -306,42 +335,7 @@ struct SeqOpt<P> {
 };
 
 //------------------------------------------------------------------------------
-// The 'and' predicate, which matches but does _not_ advance the cursor. Used
-// for lookahead.
-
-// And<Atom<'a'>>::match("abcd") == "abcd"
-// And<Atom<'a'>>::match("bcde") == nullptr
-
-template<typename P>
-struct And {
-  template<typename atom>
-  static atom* match(void* ctx, atom* a, atom* b) {
-    if (!a) return nullptr;
-    auto c = P::match(ctx, a, b);
-    /*+*/atom_rewind(ctx, a, b);
-    return c ? a : nullptr;
-  }
-};
-
-//------------------------------------------------------------------------------
-// The 'not' predicate, the logical negation of the 'and' predicate.
-
-// Not<Atom<'a'>>::match("abcd") == nullptr
-// Not<Atom<'a'>>::match("bcde") == "bcde"
-
-template<typename P>
-struct Not {
-  template<typename atom>
-  static atom* match(void* ctx, atom* a, atom* b) {
-    if (!a) return nullptr;
-    auto c = P::match(ctx, a, b);
-    /*+*/atom_rewind(ctx, a, b);
-    return c ? nullptr : a;
-  }
-};
-
-//------------------------------------------------------------------------------
-// Turns empty sequence matches into non-matches. Useful if you have
+// 'NotEmpty' turns empty sequence matches into non-matches. Useful if you have
 // "a OR b OR ab" patterns, as you can turn them into NonEmpty<Opt<A>, Opt<B>>.
 
 // NotEmpty<Opt<Atom<'c'>>, Opt<Atom<'d'>>>::match("cq") == "q"
@@ -364,7 +358,7 @@ struct NotEmpty {
 };
 
 //------------------------------------------------------------------------------
-// Repetition, equivalent to P{N} in regex.
+// 'Rep' is equivalent to '{N}' in regex.
 
 template<int N, typename P>
 struct Rep {
@@ -385,7 +379,7 @@ struct Rep {
 };
 
 //------------------------------------------------------------------------------
-// Repetition, equivalent to P{M,N} in regex.
+// 'RepRange' is equivalent '{M,N}' in regex.
 
 template<int M, int N, typename P>
 struct RepRange {
@@ -409,8 +403,8 @@ struct RepRange {
 };
 
 //------------------------------------------------------------------------------
-// Atom-not-in-set matcher, which is a bit faster than using
-// Seq<Not<Atom<...>>, AnyAtom>
+// 'NotAtom' matches any atom that is _not_ in its argument list, which is a
+// bit faster than using Seq<Not<Atom<...>>, AnyAtom>
 
 template <auto C, auto... rest>
 struct NotAtom {
@@ -441,7 +435,7 @@ struct NotAtom<C> {
 };
 
 //------------------------------------------------------------------------------
-// Ranges of atoms, inclusive.
+// 'Range' matches ranges of atoms, equivalent to '[a-b]' in regex.
 
 template<auto RA, decltype(RA) RB>
 struct Range {
@@ -458,6 +452,10 @@ struct Range {
   }
 };
 
+//------------------------------------------------------------------------------
+// 'NotRange' matches ranges of atoms not in the given range, equivalent to
+// '[^a-b]' in regex.
+
 template<auto RA, decltype(RA) RB>
 struct NotRange {
   template<typename atom>
@@ -470,8 +468,10 @@ struct NotRange {
 };
 
 //------------------------------------------------------------------------------
-// Advances the cursor until the pattern matches or we hit EOF. Does _not_
-// consume the pattern. Equivalent to Any<Seq<Not<M>,AnyAtom>>
+// 'Until' matches anything until we see the given pattern or we hit EOF.
+// The pattern is _not_ consumed.
+
+// Equivalent to Any<Seq<Not<M>,AnyAtom>>
 
 template<typename P>
 struct Until {
@@ -550,10 +550,22 @@ struct AnyUnless {
 #endif
 
 //------------------------------------------------------------------------------
-// Reference to a global matcher functions.
+// 'Ref' is used to call a user-defined matcher function from a Matcheroni
+// pattern.
+
+// 'Ref' can also be used to call member functions. You _MUST_ pass a pointer
+// to an object via the 'ctx' parameter when using these.
 
 // const char* my_special_matcher(const char* a, const char* b);
 // using pattern = Ref<my_special_matcher>;
+
+// struct Foo {
+//   const char* match(const char* a, const char* b);
+// };
+//
+// using pattern = Ref<&Foo::match>;
+// Foo my_foo;
+// auto end = pattern::match(&my_foo, a, b);
 
 template <auto F>
 struct Ref;
@@ -565,18 +577,6 @@ struct Ref<F> {
   }
 };
 
-//------------------------------------------------------------------------------
-// Reference to a member matcher function.
-// You _MUST_ pass a pointer to a Foo in the 'ctx' parameter when using these.
-
-// struct Foo {
-//   const char* match(const char* a, const char* b);
-// };
-//
-// using pattern = Ref<&Foo::match>;
-// Foo my_foo;
-// auto end = pattern::match(&my_foo, a, b);
-
 template <typename T, typename atom, atom* (T::*F)(atom* a, atom* b)>
 struct Ref<F>
 {
@@ -586,8 +586,10 @@ struct Ref<F>
 };
 
 //------------------------------------------------------------------------------
-// Stores and matches backreferences, used for raw string delimiters in the C
-// lexer. Note that the backreference is stored as a static pointer in the
+// 'StoreBackref/MatchBackref' stores and matches backreferences.
+// These are currently used for raw string delimiters in the C lexer.
+
+// Note that the backreference is stored as a static pointer in the
 // StoreBackref template, so be careful of nesting as you could clobber it.
 
 template<typename P>
@@ -622,8 +624,8 @@ struct MatchBackref {
 };
 
 //------------------------------------------------------------------------------
-// Equivalent to Seq<ldelim, Any<body>, rdelim>, but tries to match rdelim
-// before body which can save a lot of useless matching time.
+// 'DelimitedBlock' is equivalent to Seq<ldelim, Any<body>, rdelim>, but it
+// tries to match rdelim before body which can save matching time.
 
 template<typename ldelim, typename body, typename rdelim>
 struct DelimitedBlock {
@@ -651,12 +653,8 @@ struct DelimitedBlock {
 };
 
 //------------------------------------------------------------------------------
-// Equivalent to
-// Seq<
-//   ldelim,
-//   Opt<comma_separated<body>>,
-//   rdelim
-// >;
+// 'DelimitedList' is the same as 'DelimitedBlock' except that it adds a
+// separator pattern between items.
 
 template<typename ldelim, typename item, typename separator, typename rdelim>
 struct DelimitedList {
@@ -683,7 +681,7 @@ struct DelimitedList {
 };
 
 //------------------------------------------------------------------------------
-// Matches newline and EOF, but does not advance past it.
+// 'EOL' matches newline and EOF, but does not advance past it.
 
 struct EOL {
   template<typename atom>
@@ -710,7 +708,7 @@ struct StringParam {
 };
 
 //------------------------------------------------------------------------------
-// Matches string literals. Does ___NOT___ match the trailing null.
+// 'Lit' matches string literals. Does ___NOT___ match the trailing null.
 
 // Lit<"foo">::match("foobar") == "bar"
 
@@ -732,8 +730,9 @@ struct Lit {
 
 
 //------------------------------------------------------------------------------
-// Not a matcher, just a convenience helper - searches for a pattern anywhere
-// in the input span and returns offset/length of the match if found.
+// 'Search' is not a matcher, just a convenience helper - searches for a
+// pattern anywhere in the input span and returns offset/length of the match if
+// found.
 
 struct SearchResult {
   operator bool() const { return length > 0; }
@@ -759,7 +758,8 @@ struct Search {
 };
 
 //------------------------------------------------------------------------------
-// Matches larger sets of atoms packed into a string literal.
+// 'Charset' matches larger sets of atoms packed into a string literal, which
+// is more concise than Atom<'a','b','c'...> for large sets of atoms.
 
 // Charset<"abcdef">::match("defg") == "efg"
 
@@ -784,6 +784,9 @@ struct Charset {
 // much faster by allowing large arrays of options to be broken down into
 // skippable groups.
 
+// WARNING - I haven't tested this at all, I'm not sure if it's even a
+// performance improvement in most cases.
+
 // Note - the key is _NOT_ consumed, as the key pattern may be substantially
 // different than the match pattern (for example matching a single character as
 // a key for a match pattern consisting of a bunch of operators starting with
@@ -805,9 +808,11 @@ struct Map {
   template<typename atom>
   static atom* match(void* ctx, atom* a, atom* b) {
     if (P::match_key(a, b)) {
+      atom_rewind(ctx, a, b);
       return P::match(ctx, a, b);
     }
     else {
+      atom_rewind(ctx, a, b);
       return Map<rest...>::match(ctx, a, b);
     }
   }
@@ -835,19 +840,24 @@ struct KeyVal {
 };
 
 //------------------------------------------------------------------------------
+// 'PatternWrapper' is just a convenience class that lets you do this:
 
-template<typename NodeType>
+// struct MyPattern : public PatternWrapper<MyPattern> {
+//   using pattern = Atom<'a', 'b', 'c'>;
+// };
+//
+// auto end = Some<MyPattern>::match(ctx, a, b);
+
+template<typename T>
 struct PatternWrapper {
   template<typename atom>
   static atom* match(void* ctx, atom* a, atom* b) {
-    return NodeType::pattern::match(ctx, a, b);
+    return T::pattern::match(ctx, a, b);
   }
 };
 
 //------------------------------------------------------------------------------
 
-#ifdef MATCHERONI_USE_NAMESPACE
 }; // namespace Matcheroni
-#endif
 
 #endif // #ifndef __MATCHERONI_H__

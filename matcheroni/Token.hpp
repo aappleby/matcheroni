@@ -1,9 +1,14 @@
+// SPDX-FileCopyrightText:  2023 Austin Appleby <aappleby@gmail.com>
+// SPDX-License-Identifier: MIT License
+
 #pragma once
 #include <stdint.h>
 
 #include "Lexeme.hpp"
+#include "Matcheroni.hpp"
 
-template <int N> struct StringParam;
+using namespace matcheroni;
+
 struct ParseNode;
 
 //------------------------------------------------------------------------------
