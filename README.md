@@ -138,43 +138,23 @@ While writing the C lexer and parser demos, I found myself needing some addition
 - ```Map<x, ...>``` differs from the other matchers in that expects ```x``` to define both ```match()``` and ```match_key()```. ```Map<>``` is like ```Oneof<>``` except that it checks ```match_key()``` first and then returns the result of ```match()``` if the key pattern matched. It does _not_ check other alternatives once the key pattern matches. This should allow for more performant matchers, but I haven't used it much yet.
 
 # Performance
+
 After compilation, the trees of templates turn into trees of tiny simple function calls. GCC and Clang do an exceptionally good job of optimizing these down into functions that are nearly as small and fast as if you'd written them by hand. The generated assembly looks good, and the code size can actually be smaller than hand-written as GCC can dedupe redundant template instantiations in a lot of cases.
 
-I've written a quick benchmark that generates a 1 million character string consisting of letters and parenthesis, with a maximum parenthesis nesting depth of 5.
+Matcheroni includes a small [benchmark](matcheroni/benchmark.cpp) that compares build time, binary size, and performance against some other popular header-only regex libraries.
 
-For the regex pattern ```\([^()]+\)``` and the equivalent Matcheroni pattern ```Seq<Atom<'('>, Some<NotAtom<'(', ')'>>, Atom<')'>>``` (paired parenthesis containing only non-parenthesis):
-```
-Matcheroni is 153.891915 times faster than std::regex_search
-Matcheroni is 10.277835 times faster than std::regex_iterator
-Matcheroni is 1.012847 times faster than hand-written
-```
+[Results of the performance comparison are here](https://docs.google.com/spreadsheets/d/17AjRa8XYFfhlluFPoLMWJUpjH6aI_gf-psUpRgDJIUA/edit?usp=sharing)
 
-I also tested the recursive parenthesis matcher above against a recursive hand-written implementation and a non-recursive hand-written implementation.
-```
-With -O3:
-matcheroni_match_parens: 123 bytes
-recursive_matching_parens: 81 bytes
-nonrecursive_matching_parens: 75 bytes
-matcheroni_match_parens is 0.692946 times faster than recursive_matching_parens
-matcheroni_match_parens is 0.578635 times faster than nonrecursive_matching_parens
-```
-The Matcheroni version is a bit larger and slower due to extra null and range checking, but I didn't have to worry about termination conditions, null pointers, or off-by-ones.
+Overall results:
 
-It's hard to measure exactly how much the std::regex library adds to the binary, but we can compare against a build with the std::regex benchmarks commented out:
-```
-With std::regex, -O3
--rwxr-xr-x 1 aappleby aappleby 174232 Jun 20 14:11 benchmark
+ - [Matcheroni](https://github.com/aappleby/Matcheroni) adds very little to build time or binary size. Its performance compares favorably with CTRE and Boost, and is vastly faster than std::regex.
+ - [SRELL](https://www.akenotsuki.com/misc/srell/en/) is the performance champion but adds a lot to build time and binary size by default.
+ - [SRELL](https://www.akenotsuki.com/misc/srell/en/#smaller) in 'minimized' mode is smaller than Boost or std::regex but is still slow to build.
+ - [Boost](https://www.boost.org/doc/libs/1_82_0/libs/regex/doc/html/index.html) is fast, has a large impact on build time, and a moderate impact on binary size.
+ - [CTRE](https://github.com/hanickadot/compile-time-regular-expressions) is fast, has a large impact on build time, but doesn't add much to the binary size.
+ - [std::regex](https://en.cppreference.com/w/cpp/regex) is terrible by all metrics.
 
-With std::regex, -Os
--rwxr-xr-x 1 aappleby aappleby 140536 Jun 20 14:19 benchmark
-
-Without std::regex, -O3
--rwxr-xr-x 1 aappleby aappleby  17664 Jun 20 14:15 benchmark
-
-Without std::regex, -Os
--rwxr-xr-x 1 aappleby aappleby  17496 Jun 20 14:18 benchmark
-```
-So std::regex adds about 130k-150k of code for this example.
+So, if you need to do some customized pattern-matching on something like an embedded platform and you want to keep your compile-test cycle fast, give Matcheroni a try.
 
 # Demo - Lexing and Parsing C
 This repo contains an example C lexer and parser built using Matcheroni. The lexer should be conformant to the C99 spec, the parser is less conformant but is still able to parse nearly everything in GCC's torture-test suite. The output of the parser is a simple tree of parse nodes with all parent/child/sibling links as pointers.
