@@ -168,7 +168,7 @@ So, if you need to do some customized pattern-matching on something like an embe
 
 # A Small Demo - Parsing Regular Expressions
 
-There is a full working example of using Matcheroni to parse a subset of regular expression syntax, build a syntax tree, print the tree, and (optionally) trace the matching process in (regex_parser.cpp)[matcheroni/regex_parser.cpp].
+There is a full working example of using Matcheroni to parse a subset of regular expression syntax, build a syntax tree, print the tree, and (optionally) trace the matching process in [regex_parser.cpp](matcheroni/regex_parser.cpp).
 
 ```
 ~/Matcheroni$ bin/regex_parser "[a-zA-Z]*(foobarbaz|glom.*)?"
