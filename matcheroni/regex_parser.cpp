@@ -249,10 +249,10 @@ Some<
 
 using oneof =
 Seq<
-  simple,
+  Capture<"option", simple>,
   Some<Seq<
     Atom<'|'>,
-    simple
+    Capture<"option", simple>
   >>
 >;
 
