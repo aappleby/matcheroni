@@ -1,9 +1,9 @@
-#build_mode = -g -O0 -DDEBUG
+build_mode = -g -O0 -DDEBUG
 #build_mode = -g -O0 -DDEBUG -DMATCHERONI_ENABLE_TRACE
 #build_mode = -g -O0 -DDEBUG -DMATCHERONI_ENABLE_TRACE -DEXTRA_DEBUG
 #build_mode = -g -Og -DDEBUG
 #build_mode = -g -Os -flto -fdata-sections -ffunction-sections -Wl,--gc-sections -Wl,-s
-build_mode = -g -O3 -flto -fdata-sections -ffunction-sections -Wl,--gc-sections -Wl,-s
+#build_mode = -g -O3 -flto -fdata-sections -ffunction-sections -Wl,--gc-sections -Wl,-s
 
 #defs = -DSRELL_NO_UNICODE_ICASE -DSRELL_NO_UNICODE_PROPERTY -DSRELL_NO_UNICODE_DATA -DSRELL_NO_NAMEDCAPTURE -DSRELL_NO_VMODE -DSRELL_NO_APIEXT
 #defs = -DSRELL_NO_UNICODE_ICASE -DSRELL_NO_UNICODE_PROPERTY -DSRELL_NO_UNICODE_DATA -DSRELL_NO_NAMEDCAPTURE -DSRELL_NO_VMODE
@@ -30,8 +30,13 @@ build obj/Token.o          : compile_cpp matcheroni/Token.cpp
 build obj/TypeScope.o      : compile_cpp matcheroni/TypeScope.cpp
 build obj/utils.o          : compile_cpp matcheroni/utils.cpp
 
+build obj/regex_parser.o   : compile_cpp matcheroni/regex_parser.cpp
+
 build obj/c_reference.o    : compile_cpp matcheroni/c_reference.cpp
 build obj/c_reference_hax.o : compile_cpp matcheroni/c_reference_hax.cpp
+
+build bin/regex_parser: link $
+  obj/regex_parser.o
 
 build bin/c_parser_test : link $
   obj/C99Lexer.o $

@@ -12,9 +12,9 @@
       "program": "${workspaceFolder}/bin/c_parser_test",
       "cwd": "${workspaceFolder}",
       //"args" : ["tests"],
-      "args" : ["mini_tests"],
+      //"args" : ["mini_tests"],
       //"args" : ["../gcc/gcc"],
-      //"args" : ["../gcc/gcc/testsuite/gcc.c-torture"],
+      "args" : ["../gcc/gcc/testsuite/gcc.c-torture"],
       "setupCommands": [
         {
           // Display content in STL containers pretty
@@ -31,6 +31,23 @@
       "request": "launch",
       "program": "${workspaceFolder}/bin/benchmark",
       "cwd": "${workspaceFolder}",
+      "setupCommands": [
+        {
+          // Display content in STL containers pretty
+          "description": "Enable pretty-printing for gdb",
+          "text": "-enable-pretty-printing",
+          "ignoreFailures": true
+        }
+      ]
+    },
+    {
+      "name": "regex_parser",
+      "preLaunchTask": "build_matcheroni",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/bin/regex_parser",
+      "cwd": "${workspaceFolder}",
+      "args" : ["\"\\d+\\s+(very)?\\s+(good|bad)\\s+[a-z]*\""],
       "setupCommands": [
         {
           // Display content in STL containers pretty

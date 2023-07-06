@@ -129,6 +129,8 @@ template<typename P, typename... rest>
 struct Seq {
   template<typename atom>
   static atom* match(void* ctx, atom* a, atom* b) {
+    // Do NOT use this here, we MUST be able to match Any<> at EOF
+    //if (!a || a == b) return nullptr;
     auto c = P::match(ctx, a, b);
     if (c) {
       auto d = Seq<rest...>::match(ctx, c, b);
@@ -149,6 +151,8 @@ template<typename P>
 struct Seq<P> {
   template<typename atom>
   static atom* match(void* ctx, atom* a, atom* b) {
+    // Do NOT use this here, we MUST be able to match Any<> at EOF
+    //if (!a || a == b) return nullptr;
     return P::match(ctx, a, b);
   }
 };
@@ -194,6 +198,7 @@ template<typename... rest>
 struct Opt {
   template<typename atom>
   static atom* match(void* ctx, atom* a, atom* b) {
+    if (a == b) return a;
     auto c = Oneof<rest...>::match(ctx, a, b);
     if (c) {
       return c;
@@ -218,6 +223,7 @@ template <typename... rest>
 struct Any {
   template<typename atom>
   static atom* match(void* ctx, atom* a, atom* b) {
+    if (!a) return nullptr;
     if (a == b) return a;
     while(1) {
       auto c = Oneof<rest...>::match(ctx, a, b);
@@ -250,6 +256,7 @@ template<typename...rest>
 struct Some {
   template<typename atom>
   static atom* match(void* ctx, atom* a, atom* b) {
+    if (!a || a == b) return nullptr;
     auto c = Any<rest...>::match(ctx, a, b);
     if (c == a) {
       return nullptr;
@@ -269,6 +276,8 @@ template<typename P, typename... rest>
 struct SeqOpt {
   template<typename atom>
   static atom* match(void* ctx, atom* a, atom* b) {
+    if (!a) return nullptr;
+    if (a == b) return a;
     auto c = Opt<P>::match(ctx, a, b);
     if (c == a) {
       return a;
@@ -283,6 +292,8 @@ template<typename P>
 struct SeqOpt<P> {
   template<typename atom>
   static atom* match(void* ctx, atom* a, atom* b) {
+    if (!a) return nullptr;
+    if (a == b) return a;
     return Opt<P>::match(ctx, a, b);
   }
 };
@@ -298,6 +309,7 @@ template<typename P>
 struct And {
   template<typename atom>
   static atom* match(void* ctx, atom* a, atom* b) {
+    if (!a) return nullptr;
     auto c = P::match(ctx, a, b);
     /*+*/atom_rewind(ctx, a, b);
     return c ? a : nullptr;
@@ -314,6 +326,7 @@ template<typename P>
 struct Not {
   template<typename atom>
   static atom* match(void* ctx, atom* a, atom* b) {
+    if (!a) return nullptr;
     auto c = P::match(ctx, a, b);
     /*+*/atom_rewind(ctx, a, b);
     return c ? nullptr : a;
@@ -332,6 +345,7 @@ template<typename... rest>
 struct NotEmpty {
   template<typename atom>
   static atom* match(void* ctx, atom* a, atom* b) {
+    if (!a) return nullptr;
     auto end = Seq<rest...>::match(ctx, a, b);
     if (end == a) {
       return nullptr;
