@@ -52,18 +52,28 @@ and it would perform identically to the one-line version.
 
 Unlike regexes, matchers can be recursive:
 ```
-// Recursively match correctly-paired nested parenthesis
-const char* matcheroni_match_parens(void* ctx, const char* a, const char* b) {
-  using pattern =
-  Seq<
-    Atom<'('>,
-    Any<Ref<matcheroni_match_parens>, NotAtom<')'>>,
-    Atom<')'>
-  >;
-  return pattern::match(ctx, a, b);
+// Forward-declare our matching function so we can use it recursively.
+const char* match_parens_recurse(void* ctx, const char* a, const char* b);
+
+// Define our recursive matching pattern.
+using match_parens =
+Seq<
+  Atom<'('>,
+  Any<Ref<match_parens_recurse>, NotAtom<')'>>,
+  Atom<')'>
+>;
+
+// Implement the forward-declared function by recursing into the pattern.
+const char* match_parens_recurse(void* ctx, const char* a, const char* b) {
+  return match_parens::match(ctx, a, b);
 }
+
+// Now we can use the pattern
+std::string text = "(((foo)bar)baz)tail";
+auto end = match_parens::match(nullptr, text.data(), text.data() + text.size());
+printf("%s", end); // prints "tail"
 ```
-Note that you can't nest "pattern" inside itself directly, as "using pattern" doesn't count as a declaration. Wrapping it in a function or class works though.
+Note that you can't nest "match_parens" inside itself directly, as "using pattern" doesn't count as a declaration. Wrapping it in a function or class works though.
 
 # Building Matcheroni
 Install [Ninja](https://ninja-build.org/) if you haven't already, then run ninja in the repo root.
