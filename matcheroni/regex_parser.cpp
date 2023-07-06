@@ -107,16 +107,17 @@ using set_item  = Capture<"set_item",  Oneof<range, rchar>>;
 using pos_set   = Capture<"pos_set",   Seq<Atom<'['>, Some<set_item>, Atom<']'>>>;
 using neg_set   = Capture<"neg_set",   Seq<Atom<'['>, Atom<'^'>, Some<set_item>, Atom<']'>>>;
 using set       = Capture<"set",       Oneof<neg_set, pos_set>>; // Negative first, so we catch the ^!
-using eol       = Capture<"eos",       Atom<'$'>>;
+using bol       = Capture<"bol",       Atom<'^'>>;
+using eol       = Capture<"eol",       Atom<'$'>>;
 using dot       = Capture<"dot",       Atom<'.'>>;
 using group     = Capture<"group",     Seq<Atom<'('>, regex, Atom<')'>>>;
-using unit      =                      Oneof<group, dot, eol, text, set>;
+using unit      =                      Oneof<group, dot, bol, eol, text, set>;
 using star      = Capture<"star",      Seq<unit, Atom<'*'>>>;
 using plus      = Capture<"plus",      Seq<unit, Atom<'+'>>>;
 using opt       = Capture<"opt",       Seq<unit, Atom<'?'>>>;
 using simple    =                      Some<star, plus, opt, unit>;
 using alternate = Capture<"alternate", Seq< simple, Some<Seq< Atom<'|'>, simple >> > >;
-using regex_top = Capture<"regex",     Oneof< alternate, simple > >;
+using regex_top =                      Oneof< alternate, simple >;
 
 const char* match_regex(void* ctx, const char* a, const char* b) {
   return regex_top::match(ctx, a, b);
@@ -129,7 +130,7 @@ int main(int argc, char** argv) {
   if (argc == 2) printf("argv[1] = %s\n", argv[1]);
 
   const char* regex = argv[1];
-  //regex = "ab|bc|cd";
+  //regex = "^(ab|bc|cd)";
   auto end = regex::match(nullptr, regex, regex + + strlen(regex));
 
   if (FactoryState::node_stack.size()) {
