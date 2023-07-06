@@ -16,6 +16,8 @@ Matcheroni matchers are more readable and more modular than regexes - you can bu
 
 Matcheroni allows you to freely intermingle C++ code with your matcher templates so that you can build parse trees, log stats, or do whatever else you need to do while processing your data.
 
+Matcheroni doesn't have to match text - you can customize it to match patterns in arrays of any type as long as you define appropriate comparison functions for your types.
+
 # Examples
 Matchers are roughly equivalent to regular expressions. A regular expression using the std::regex C++ library
 ```
