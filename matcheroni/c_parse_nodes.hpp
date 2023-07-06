@@ -6,7 +6,7 @@
 #include "Trace.hpp"
 #include "c_constants.hpp"
 #include "utils.hpp"
-#include "c_parser.hpp"
+#include "C99Parser.hpp"
 
 struct Token;
 

@@ -1,9 +1,10 @@
-#include "c_lexer.hpp"
-
 #include "c_constants.hpp"
+#include "C99Lexer.hpp"
 #include "Lexeme.hpp"
 #include "Matcheroni.hpp"
 #include "SST.hpp"
+#include "utils.hpp"
+
 #include <array>
 
 #ifdef MATCHERONI_USE_NAMESPACE
@@ -12,6 +13,8 @@ using namespace matcheroni;
 
 template<typename M>
 using ticked = Seq<Opt<Atom<'\''>>, M>;
+
+Lexeme next_lexeme(void* ctx, const char* cursor, const char* text_end);
 
 const char* match_never      (void* ctx, const char* a, const char* b);
 const char* match_space      (void* ctx, const char* a, const char* b);
@@ -28,6 +31,55 @@ const char* match_punct      (void* ctx, const char* a, const char* b);
 const char* match_splice     (void* ctx, const char* a, const char* b);
 const char* match_formfeed   (void* ctx, const char* a, const char* b);
 const char* match_eof        (void* ctx, const char* a, const char* b);
+
+//------------------------------------------------------------------------------
+
+C99Lexer::C99Lexer() {
+  lexemes.reserve(65536);
+}
+
+void C99Lexer::reset() {
+  lexemes.clear();
+}
+
+//------------------------------------------------------------------------------
+
+bool C99Lexer::lex(const std::string& text) {
+
+  auto text_a = text.data();
+  auto text_b = text_a + text.size();
+
+  lexemes.push_back(Lexeme(LEX_BOF, nullptr, nullptr));
+
+  const char* cursor = text_a;
+  while (cursor) {
+    auto lex = next_lexeme(nullptr, cursor, text_b);
+    lexemes.push_back(lex);
+
+    if (lex.type == LEX_INVALID) {
+      return false;
+    }
+    if (lex.type == LEX_EOF) {
+      break;
+    }
+
+    cursor = lex.span_b;
+  }
+
+
+  return true;
+}
+
+//------------------------------------------------------------------------------
+
+void C99Lexer::dump_lexemes() {
+  for (auto& l : lexemes) {
+    printf("{");
+    l.dump_lexeme();
+    printf("}");
+    printf("\n");
+  }
+}
 
 //------------------------------------------------------------------------------
 
@@ -104,6 +156,7 @@ const char* match_newline(void* ctx, const char* a, const char* b) {
 // 6.4.4.1 Integer constants
 
 const char* match_int(void* ctx, const char* a, const char* b) {
+  // clang-format off
   using digit                = Range<'0', '9'>;
   using nonzero_digit        = Range<'1', '9'>;
 
@@ -160,6 +213,7 @@ const char* match_int(void* ctx, const char* a, const char* b) {
   >;
 
   return integer_constant::match(ctx, a, b);
+  // clang-format on
 }
 
 //------------------------------------------------------------------------------

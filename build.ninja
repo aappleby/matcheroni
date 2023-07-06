@@ -1,6 +1,6 @@
-#build_mode = -g -O0 -DDEBUG -DMATCHERONI_ENABLE_TRACE -DEXTRA_DEBUG
-#build_mode = -g -O0 -DDEBUG -DMATCHERONI_ENABLE_TRACE
 #build_mode = -g -O0 -DDEBUG
+#build_mode = -g -O0 -DDEBUG -DMATCHERONI_ENABLE_TRACE
+#build_mode = -g -O0 -DDEBUG -DMATCHERONI_ENABLE_TRACE -DEXTRA_DEBUG
 #build_mode = -g -Og -DDEBUG
 #build_mode = -g -Os -flto -fdata-sections -ffunction-sections -Wl,--gc-sections -Wl,-s
 build_mode = -g -O3 -flto -fdata-sections -ffunction-sections -Wl,--gc-sections -Wl,-s
@@ -21,25 +21,27 @@ rule compile_c
 rule link
   command = g++ ${build_mode} ${in} -lboost_system -lboost_regex -o ${out}
 
-build obj/c_lexer.o        : compile_cpp matcheroni/c_lexer.cpp
 build obj/c_parser_test.o  : compile_cpp matcheroni/c_parser_test.cpp
-build obj/c_parser.o       : compile_cpp matcheroni/c_parser.cpp
+build obj/C99Lexer.o       : compile_cpp matcheroni/C99Lexer.cpp
+build obj/C99Parser.o      : compile_cpp matcheroni/C99Parser.cpp
 build obj/Lexeme.o         : compile_cpp matcheroni/Lexeme.cpp
 build obj/ParseNode.o      : compile_cpp matcheroni/ParseNode.cpp
 build obj/Token.o          : compile_cpp matcheroni/Token.cpp
 build obj/TypeScope.o      : compile_cpp matcheroni/TypeScope.cpp
+build obj/utils.o          : compile_cpp matcheroni/utils.cpp
 
 build obj/c_reference.o    : compile_cpp matcheroni/c_reference.cpp
 build obj/c_reference_hax.o : compile_cpp matcheroni/c_reference_hax.cpp
 
 build bin/c_parser_test : link $
-  obj/c_lexer.o $
+  obj/C99Lexer.o $
   obj/c_parser_test.o $
-  obj/c_parser.o $
+  obj/C99Parser.o $
   obj/Lexeme.o $
   obj/ParseNode.o $
   obj/Token.o $
-  obj/TypeScope.o
+  obj/TypeScope.o $
+  obj/utils.o
 
 
 #build obj/benchmark.o      : compile_cpp matcheroni/benchmark.cpp

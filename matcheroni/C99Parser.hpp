@@ -17,9 +17,7 @@ class C99Parser {
   C99Parser();
 
   void reset();
-  void load(const std::string& path);
-  void lex();
-  ParseNode* parse();
+  bool parse(std::vector<Lexeme>& lexemes);
 
   Token* match_builtin_type_base(Token* a, Token* b);
   Token* match_builtin_type_prefix(Token* a, Token* b);
@@ -63,25 +61,12 @@ class C99Parser {
 
   //----------------------------------------
 
-  std::string text;
-  std::vector<Lexeme> lexemes;
   std::vector<Token> tokens;
+  TypeScope* type_scope;
 
   ParseNode* head = nullptr;
   ParseNode* tail = nullptr;
-
-  int file_pass = 0;
-  int file_fail = 0;
-  int file_skip = 0;
-  int file_bytes = 0;
-  int file_lines = 0;
-
-  double io_accum = 0;
-  double lex_accum = 0;
-  double parse_accum = 0;
-  double cleanup_accum = 0;
-
-  TypeScope* type_scope;
+  ParseNode* root = nullptr;
 
   Token* global_cursor;
   inline static int rewind_count = 0;

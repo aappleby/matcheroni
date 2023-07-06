@@ -55,6 +55,8 @@ struct Token {
   const char* debug_span_b() const;
   const Lexeme* get_lex_debug() const;
 
+  bool dirty = false;
+
 private:
   ParseNode* span;
   const Lexeme* lex;
