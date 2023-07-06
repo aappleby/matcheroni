@@ -3,13 +3,14 @@
 
 #pragma once
 
-#include "Lexeme.hpp"
 #include "Matcheroni.hpp"
-#include "SST.hpp"
-#include "Trace.hpp"
-#include "c_constants.hpp"
 #include "utils.hpp"
-#include "C99Parser.hpp"
+
+#include "c99/Lexeme.hpp"
+#include "c99/SST.hpp"
+#include "c99/Trace.hpp"
+#include "c99/c_constants.hpp"
+#include "c99/C99Parser.hpp"
 
 using namespace matcheroni;
 

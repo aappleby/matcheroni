@@ -1,12 +1,13 @@
 // SPDX-FileCopyrightText:  2023 Austin Appleby <aappleby@gmail.com>
 // SPDX-License-Identifier: MIT License
 
-#include "c_constants.hpp"
-#include "C99Lexer.hpp"
-#include "Lexeme.hpp"
 #include "Matcheroni.hpp"
-#include "SST.hpp"
 #include "utils.hpp"
+
+#include "c99/c_constants.hpp"
+#include "c99/C99Lexer.hpp"
+#include "c99/Lexeme.hpp"
+#include "c99/SST.hpp"
 
 #include <array>
 

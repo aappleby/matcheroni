@@ -1,11 +1,11 @@
 // SPDX-FileCopyrightText:  2023 Austin Appleby <aappleby@gmail.com>
 // SPDX-License-Identifier: MIT License
 
-#include "ParseNode.hpp"
+#include "c99/ParseNode.hpp"
 
-#include "Lexeme.hpp"     // for Lexeme
-#include "SlabAlloc.hpp"
-#include "Token.hpp"
+#include "c99/Lexeme.hpp"     // for Lexeme
+#include "c99/SlabAlloc.hpp"
+#include "c99/Token.hpp"
 #include "utils.hpp"
 #include <stdio.h>        // for printf, putc, sscanf, stdout
 #include <string>         // for string, allocator

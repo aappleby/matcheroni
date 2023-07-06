@@ -2,9 +2,10 @@
 // SPDX-License-Identifier: MIT License
 
 #include "Matcheroni.hpp"
-#include "Lexeme.hpp"
-#include "SST.hpp"
-#include "c_constants.hpp"
+
+#include "c99/Lexeme.hpp"
+#include "c99/SST.hpp"
+#include "c99/c_constants.hpp"
 
 using namespace matcheroni;
 
@@ -45,12 +46,32 @@ struct RefBase {
 
 struct string_literal;
 struct punctuator;
+struct expression;
 struct header_name;
 struct pp_number;
 struct constant;
 struct escape_sequence;
 struct assignment_expression;
-struct type_name;
+struct declarator_suffix;
+struct declarator;
+struct initializer_list;
+struct type_cast;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 //------------------------------------------------------------------------------
 // A.1 Lexical grammar
@@ -472,163 +493,166 @@ struct pp_number : public RefBase<pp_number> {
 //------------------------------------------------------------------------------
 // A.2 Phrase structure grammar
 
-struct argument_expression_list;
-struct initializer_list;
-struct cast_expression;
-struct expression;
-
-/*6.5.1*/ using primary_expression =
+using expression_prefix =
 Oneof<
-  identifier,
-  constant,
-  string_literal,
-  Seq<Atom<'('>, expression, Atom<')'>>
+  Operator<"++">,
+  Operator<"--">,
+  Keyword<"sizeof">,
+  Charset<"&*+-~!">,
+  type_cast
 >;
 
-/*6.5.2*/
 using expression_suffix =
 Oneof<
   Seq<Atom<'['>, expression, Atom<']'>>,
-  Seq<Atom<'('>, Opt<argument_expression_list>, Atom<')'>>,
+  Seq<Atom<'('>, Opt<comma_separated<assignment_expression>>, Atom<')'>>,
   Seq<Operator<".">, identifier>,
   Seq<Operator<"->">, identifier>,
   Operator<"++">,
   Operator<"--">
 >;
 
-using postfix_expression =
-Seq<
-  Oneof<
-    primary_expression,
-    Seq<Atom<'('>, type_name, Atom<')'>, Atom<'{'>, initializer_list, Atom<'}'>>,
-    Seq<Atom<'('>, type_name, Atom<')'>, Atom<'{'>, initializer_list, Atom<','>, Atom<'}'>>
-  >,
-  Any<expression_suffix>
->;
-
-/*6.5.2*/
-struct argument_expression_list : public RefBase<argument_expression_list> {
-  using pattern = comma_separated<assignment_expression>;
-};
-
-/*6.5.3*/
-using unary_operator = Charset<"&*+-~!">;
-
-/*6.5.3*/
 struct unary_expression : public RefBase<unary_expression> {
-  using pattern = Oneof<
-    postfix_expression,
-    Seq<Operator<"++">, unary_expression>,
-    Seq<Operator<"--">, unary_expression>,
-    Seq<unary_operator, cast_expression>,
-    Seq<Keyword<"sizeof">, unary_expression>,
-    Seq<Keyword<"sizeof">, Atom<'('>, type_name, Atom<')'>>
+  using pattern = Seq<
+    Any<expression_prefix>,
+    Oneof<
+      identifier,
+      constant,
+      string_literal,
+      Seq<Atom<'('>, expression, Atom<')'>>,
+      initializer_list,
+      Seq<Keyword<"sizeof">, type_cast>
+    >,
+    Any<expression_suffix>
   >;
 };
-
 
 /*6.5.4*/
 struct cast_expression : public RefBase<cast_expression> {
-  using pattern = Oneof<
-    unary_expression,
-    Seq<Atom<'('>, type_name, Atom<')'>, cast_expression>
-  >;
+  using pattern = Seq<Any<type_cast>, unary_expression>;
 };
 
 /*6.5.5*/
 struct multiplicative_expression : public RefBase<multiplicative_expression> {
-  using pattern = Oneof<
+  using pattern = Seq<
     cast_expression,
-    Seq<multiplicative_expression, Atom<'*'>, cast_expression>,
-    Seq<multiplicative_expression, Atom<'/'>, cast_expression>,
-    Seq<multiplicative_expression, Atom<'%'>, cast_expression>
+    Any<
+      Seq<Atom<'*'>, cast_expression>,
+      Seq<Atom<'/'>, cast_expression>,
+      Seq<Atom<'%'>, cast_expression>
+    >
   >;
 };
 
 /*6.5.6*/
 struct additive_expression : public RefBase<additive_expression> {
-  using pattern = Oneof<
+  using pattern = Seq<
     multiplicative_expression,
-    Seq<additive_expression, Atom<'+'>, multiplicative_expression>,
-    Seq<additive_expression, Atom<'-'>, multiplicative_expression>
+    Any<
+      Seq<Atom<'+'>, multiplicative_expression>,
+      Seq<Atom<'-'>, multiplicative_expression>
+    >
   >;
 };
 
 /*6.5.7*/
 struct shift_expression : public RefBase<shift_expression> {
-  using pattern = Oneof<
+  using pattern = Seq<
     additive_expression,
-    Seq<shift_expression, Operator<"<<">, additive_expression>,
-    Seq<shift_expression, Operator<">>">, additive_expression>
+    Any<
+      Seq<Operator<"<<">, additive_expression>,
+      Seq<Operator<">>">, additive_expression>
+    >
   >;
 };
 
 /*6.5.8*/
 struct relational_expression : public RefBase<relational_expression> {
-  using pattern = Oneof<
+  using pattern = Seq<
     shift_expression,
-    Seq<relational_expression, Operator<"<">,  shift_expression>,
-    Seq<relational_expression, Operator<">">,  shift_expression>,
-    Seq<relational_expression, Operator<"<=">, shift_expression>,
-    Seq<relational_expression, Operator<">=">, shift_expression>
+    Any<
+      Seq<Operator<"<">,  shift_expression>,
+      Seq<Operator<">">,  shift_expression>,
+      Seq<Operator<"<=">, shift_expression>,
+      Seq<Operator<">=">, shift_expression>
+    >
   >;
 };
 
 /*6.5.9*/
 struct equality_expression : public RefBase<equality_expression> {
-  using pattern = Oneof<
+  using pattern = Seq<
     relational_expression,
-    Seq<equality_expression, Operator<"==">, relational_expression>,
-    Seq<equality_expression, Operator<"!=">, relational_expression>
+    Any<
+      Seq<Operator<"==">, relational_expression>,
+      Seq<Operator<"!=">, relational_expression>
+    >
   >;
 };
 
 /*6.5.10*/
 struct AND_expression : public RefBase<AND_expression> {
-  using pattern = Oneof<
+  using pattern = Seq<
     equality_expression,
-    Seq<AND_expression, Operator<"&">, equality_expression>
+    Any<
+      Seq<Operator<"&">, equality_expression>
+    >
   >;
 };
 
 /*6.5.11*/
 struct exclusive_OR_expression : public RefBase<exclusive_OR_expression> {
-  using pattern = Oneof<
+  using pattern = Seq<
     AND_expression,
-    Seq<exclusive_OR_expression, Operator<"^">, AND_expression>
+    Any<
+      Seq<Operator<"^">, AND_expression>
+    >
   >;
 };
 
 /*6.5.12*/
 struct inclusive_OR_expression : public RefBase<inclusive_OR_expression> {
-  using pattern = Oneof<
+  using pattern = Seq<
     exclusive_OR_expression,
-    Seq<inclusive_OR_expression, Operator<"|">, exclusive_OR_expression>
+    Any<
+      Seq<Operator<"|">, exclusive_OR_expression>
+    >
   >;
 };
 
 /*6.5.13*/
 struct logical_AND_expression : public RefBase<logical_AND_expression> {
-  using pattern = Oneof<
+  using pattern = Seq<
     inclusive_OR_expression,
-    Seq<logical_AND_expression, Operator<"&&">, inclusive_OR_expression>
+    Any<
+      Seq<Operator<"&&">, inclusive_OR_expression>
+    >
   >;
 };
 
 /*6.5.14*/
 struct logical_OR_expression : public RefBase<logical_OR_expression> {
-  using pattern = Oneof<
+  using pattern = Seq<
     logical_AND_expression,
-    Seq<logical_OR_expression, Operator<"||">, logical_AND_expression>
+    Any<
+      Seq<Operator<"||">, logical_AND_expression>
+    >
   >;
 };
 
 /*6.5.15*/
 struct conditional_expression : public RefBase<conditional_expression> {
-  using pattern = Oneof<
+  using pattern = Seq<
     logical_OR_expression,
-    Seq<logical_OR_expression, Operator<"?">, expression, Operator<":">, conditional_expression>
+    Any<
+      Seq<Operator<"?">, expression, Operator<":">, expression>
+    >
   >;
+};
+
+/*6.6*/
+struct constant_expression : public RefBase<constant_expression> {
+  using pattern = conditional_expression;
 };
 
 /*6.5.16*/
@@ -649,24 +673,25 @@ Oneof<
 
 /*6.5.16*/
 struct assignment_expression : public RefBase<assignment_expression> {
-  using pattern = Oneof<
+  using pattern = Seq<
     conditional_expression,
-    Seq<unary_expression, assignment_operator, assignment_expression>
+    Any<
+      Seq<assignment_operator, conditional_expression>
+    >
   >;
 };
 
 /*6.5.17*/
 struct expression : public RefBase<expression> {
-  using pattern = Oneof<
+  using pattern = Seq<
     assignment_expression,
-    Seq<expression, Atom<','>, assignment_expression>
+    Any<
+      Seq<Atom<','>, assignment_expression>
+    >
   >;
 };
 
-/*6.6*/
-struct constant_expression : public RefBase<constant_expression> {
-  using pattern = conditional_expression;
-};
+
 
 
 
@@ -692,253 +717,268 @@ struct constant_expression : public RefBase<constant_expression> {
 //------------------------------------------------------------------------------
 // A.2.2 Declarations
 
-/*6.7.3*/ using type_qualifier =
-Oneof<
-  Keyword<"const">,
-  Keyword<"restrict">,
-  Keyword<"volatile">
+// Equivalent to NotEmpty<Seq<Opt<a>, Opt<b>, ...>>
+
+template<typename P, typename... rest>
+struct PickSome {
+  template<typename atom>
+  static atom* match(void* ctx, atom* a, atom* b) {
+    auto c = Opt<P>::match(ctx, a, b);
+    auto d = PickSome<rest...>::match(ctx, c, b);
+    if (d) {
+      // Rest match was non-empty, succeed
+      return d;
+    }
+    else if (c != a) {
+      // First match was non-empty, succeed
+      return c;
+    }
+    else {
+      // Total match was empty, fail
+      return nullptr;
+    }
+  }
+};
+
+template<typename P>
+struct PickSome<P> {
+  template<typename atom>
+  static atom* match(void* ctx, atom* a, atom* b) {
+    return P::match(ctx, a, b);
+  }
+};
+
+using enum_body =
+Seq<
+  Atom<'{'>,
+  comma_separated<
+    Seq<
+      enumeration_constant,
+      Opt<Seq<Atom<'='>, constant_expression>>
+    >
+  >,
+  Atom<'}'>
 >;
 
-/*6.7.2.1*/ using struct_or_union =
-Oneof<
-  Keyword<"struct">,
-  Keyword<"union">
->;
-
-/*6.7.1*/ using storage_class_specifier =
-Oneof<
-  Keyword<"typedef">,
-  Keyword<"extern">,
-  Keyword<"static">,
-  Keyword<"auto">,
-  Keyword<"register">
->;
-
-/*6.7.2.2*/ using enumerator =
-Oneof<
-  enumeration_constant,
-  Seq<enumeration_constant, Atom<'='>, constant_expression>
->;
-
-/*6.7.2.2*/ using enumerator_list = // Original was recursive
-comma_separated<enumerator>;
-
-/*6.7.2.2*/ using enum_specifier =
-Opt<
-  Seq<Keyword<"enum">, Opt<identifier>, Atom<'{'>, enumerator_list, Atom<'}'>>,
-  Seq<Keyword<"enum">, Opt<identifier>, Atom<'{'>, enumerator_list, Atom<','>, Atom<'}'>>,
-  Seq<Keyword<"enum">, identifier>
+/*6.7.2.2*/
+using enum_specifier =
+Seq<
+  Keyword<"enum">,
+  PickSome<
+    identifier,
+    enum_body
+  >
 >;
 
 /*6.7.7*/ using typedef_name = identifier;
 
 struct struct_or_union_specifier;
 
-/*6.7.2*/
-struct type_specifier {
+/*6.7*/ using declaration_specifier =
+Oneof<
+  Keyword<"auto">, //
+  Keyword<"extern">, //
+  Keyword<"inline">, //
+  Keyword<"register">, //
+  Keyword<"static">, //
+  Keyword<"typedef">, //
+
+  Keyword<"_Bool">,
+  Keyword<"_Complex">,
+  Keyword<"char">,
+  Keyword<"const">,
+  Keyword<"double">,
+  Keyword<"float">,
+  Keyword<"int">,
+  Keyword<"long">,
+  Keyword<"restrict">,
+  Keyword<"short">,
+  Keyword<"signed">,
+  Keyword<"unsigned">,
+  Keyword<"void">,
+  Keyword<"volatile">,
+  struct_or_union_specifier,
+  enum_specifier,
+  typedef_name
+>;
+
+/*6.7.2.1*/
+using specifier_qualifier =
+Oneof<
+  Keyword<"_Bool">,
+  Keyword<"_Complex">,
+  Keyword<"char">,
+  Keyword<"const">,
+  Keyword<"double">,
+  Keyword<"float">,
+  Keyword<"int">,
+  Keyword<"long">,
+  Keyword<"restrict">,
+  Keyword<"short">,
+  Keyword<"signed">,
+  Keyword<"unsigned">,
+  Keyword<"void">,
+  Keyword<"volatile">,
+  struct_or_union_specifier,
+  enum_specifier,
+  typedef_name
+>;
+
+
+using struct_body =
+Seq<
+  Atom<'{'>,
+  Some<
+    Seq<
+      Some<specifier_qualifier>,
+      comma_separated<
+        PickSome<
+          declarator,
+          Seq<Atom<':'>, constant_expression>
+        >
+      >,
+      Atom<';'>
+    >
+  >,
+  Atom<'}'>
+>;
+
+
+struct struct_or_union_specifier : public RefBase<struct_or_union_specifier> {
   using pattern =
-  Oneof<
-    Keyword<"void">,
-    Keyword<"char">,
-    Keyword<"short">,
-    Keyword<"int">,
-    Keyword<"long">,
-    Keyword<"float">,
-    Keyword<"double">,
-    Keyword<"signed">,
-    Keyword<"unsigned">,
-    Keyword<"_Bool">,
-    Keyword<"_Complex">,
-    struct_or_union_specifier,
-    enum_specifier,
-    typedef_name
+  Seq<
+    Oneof<
+      Keyword<"struct">,
+      Keyword<"union">
+    >,
+    PickSome<
+      identifier,
+      struct_body
+    >
   >;
 };
 
-/*6.7.4*/ using function_specifier =
-Keyword<"inline">;
-
-/*6.7*/ using declaration_specifiers =
+/*6.7.5*/ using type_qualifier_list =
 Some<
-  storage_class_specifier,
-  type_specifier,
-  type_qualifier,
-  function_specifier
+  Keyword<"const">,
+  Keyword<"restrict">,
+  Keyword<"volatile">
 >;
 
-struct declarator;
-struct initializer;
-
-/*6.7*/ using init_declarator =
-Oneof<
-  declarator,
-  Seq<declarator, Atom<'='>, initializer>
+using pointer =
+Seq<
+  Atom<'*'>,
+  Opt<type_qualifier_list>
 >;
-
-/*6.7*/ using init_declarator_list = // original was recursive
-comma_separated<init_declarator>;
 
 /*6.7*/
 using declaration =
 Seq<
-  declaration_specifiers,
-  Opt<init_declarator_list>,
+  Some<declaration_specifier>,
+  Opt<comma_separated<
+    Seq<
+      declarator,
+      Opt<
+        Atom<'='>,
+        Oneof<
+          assignment_expression,
+          initializer_list
+        >
+      >
+    >
+  >>,
   Atom<';'>
->;
-
-/*6.7.2.1*/
-using specifier_qualifier_list = Some<type_specifier, type_qualifier>;
-
-/*6.7.2.1*/ using struct_declarator =
-Oneof<
-  declarator,
-  Seq<Opt<declarator>, Atom<':'>, constant_expression>
->;
-
-/*6.7.2.1*/
-using struct_declarator_list = comma_separated<struct_declarator>;
-
-/*6.7.2.1*/
-using struct_declaration = Seq<
-  specifier_qualifier_list,
-  struct_declarator_list,
-  Atom<';'>
->;
-
-/*6.7.2.1*/
-using struct_declaration_list = Some<struct_declaration>;
-
-/*6.7.2.1*/
-struct struct_or_union_specifier : public RefBase<struct_or_union_specifier> {
-  using pattern = Oneof<
-    Seq<struct_or_union, Opt<identifier>, Atom<'{'>, struct_declaration_list, Atom<'}'>>,
-    Seq<struct_or_union, identifier>
-  >;
-};
-
-/*6.7.5*/ using type_qualifier_list = // Original was recursive
-Some<type_qualifier>;
-
-struct abstract_declarator;
-
-/*6.7.5*/ using parameter_declaration =
-Oneof<
-  Seq<declaration_specifiers, declarator>,
-  Seq<declaration_specifiers, Opt<abstract_declarator>>
->;
-
-/*6.7.5*/ using parameter_list = // original was recursive
-comma_separated<parameter_declaration>;
-
-/*6.7.5*/
-using parameter_type_list =
-Oneof<
-  parameter_list,
-  Seq<parameter_list, Atom<','>, Keyword<"...">>
->;
-
-/*6.7.5*/
-using identifier_list = comma_separated<identifier>;
-
-/*6.7.5 - direct-declarator - Had to tear this one apart a bit. */
-
-using direct_declarator_suffix =
-Oneof<
-  Seq<Atom<'['>, Opt<type_qualifier_list>, Opt<assignment_expression>, Atom<']'>>,
-  Seq<Atom<'['>, Keyword<"static">, Opt<type_qualifier_list>, assignment_expression, Atom<']'>>,
-  Seq<Atom<'['>, type_qualifier_list, Keyword<"static">, assignment_expression, Atom<']'>>,
-  Seq<Atom<'['>, Opt<type_qualifier_list>, Atom<'*'>, Atom<']'>>,
-  Seq<Atom<'('>, parameter_type_list, Atom<')'>>,
-  Seq<Atom<'('>, Opt<identifier_list>, Atom<')'>>
->;
-
-using direct_declarator =
-Seq<
-  Oneof<
-    identifier,
-    Seq<Atom<'('>, declarator, Atom<')'>>,
-    Seq<Atom<'['>, Opt<type_qualifier_list>, Opt<assignment_expression>, Atom<']'>>,
-    Seq<Atom<'['>, Keyword<"static">, Opt<type_qualifier_list>, assignment_expression, Atom<']'>>,
-    Seq<Atom<'['>, type_qualifier_list, Keyword<"static">, assignment_expression, Atom<']'>>,
-    Seq<Atom<'['>, Opt<type_qualifier_list>, Atom<'*'>, Atom<']'>>,
-    Seq<Atom<'('>, parameter_type_list, Atom<')'>>,
-    Seq<Atom<'('>, Opt<identifier_list>, Atom<')'>>
-  >,
-  Any<direct_declarator_suffix>
->;
-
-struct pointer;
-
-/*6.7.5*/
-struct declarator : public RefBase<declarator> {
-  using pattern = Seq<Opt<pointer>, direct_declarator>;
-};
-
-/*6.7.5*/
-struct pointer : public RefBase<pointer> {
-  using pattern = Oneof<
-    Seq<Atom<'*'>, Opt<type_qualifier_list>>,
-    Seq<Atom<'*'>, Opt<type_qualifier_list>, pointer>
-  >;
-};
-
-/*6.7.6*/
-struct type_name : public RefBase<type_name> {
-  using pattern = Seq<specifier_qualifier_list, Opt<abstract_declarator>>;
-};
-
-/*6.7.6*/
-using declarator_suffix = Oneof<
-  Seq<Atom<'['>, Opt<type_qualifier_list>, Opt<assignment_expression>, Atom<']'>>,
-  Seq<Atom<'['>, Keyword<"static">, Opt<type_qualifier_list>, assignment_expression, Atom<']'>>,
-  Seq<Atom<'['>, type_qualifier_list, Keyword<"static">, assignment_expression, Atom<']'>>,
-  Seq<Atom<'['>, Atom<'*'>, Atom<']'>>,
-  Seq<Atom<'('>, Opt<parameter_type_list>, Atom<')'>>
->;
-
-using direct_abstract_declarator =
-Seq<
-  Oneof<
-    Seq<Atom<'('>, abstract_declarator, Atom<')'>>
-  >,
-  Any<declarator_suffix>
 >;
 
 /*6.7.6*/
 struct abstract_declarator : public RefBase<abstract_declarator> {
   using pattern = Oneof<
-    pointer,
-    Seq<Opt<pointer>, direct_abstract_declarator>
+    Some<pointer>,
+    Seq<
+      Seq<Atom<'('>, abstract_declarator, Atom<')'>>,
+      Any<declarator_suffix>
+    >
   >;
 };
 
-/*6.7.8*/
-struct initializer : public RefBase<initializer> {
+/*6.7.5*/
+struct declarator : public RefBase<declarator> {
+  using pattern = Seq<
+    Any<pointer>,
+    Oneof<
+      identifier,
+      Seq<Atom<'('>, declarator, Atom<')'>>
+    >,
+    Any<
+      declarator_suffix,
+      Seq<Atom<'('>, comma_separated<identifier>, Atom<')'>>
+    >
+  >;
+};
+
+struct declarator_suffix : public RefBase<declarator_suffix> {
   using pattern = Oneof<
-    assignment_expression,
-    Seq<Atom<'{'>, initializer_list, Atom<'}'>>,
-    Seq<Atom<'{'>, initializer_list, Atom<','>, Atom<'}'>>
+    Seq<Atom<'['>,                                                                                     Atom<']'>>,
+    Seq<Atom<'['>,                     type_qualifier_list,                                            Atom<']'>>,
+    Seq<Atom<'['>,                                                              assignment_expression, Atom<']'>>,
+    Seq<Atom<'['>,                     type_qualifier_list,                     assignment_expression, Atom<']'>>,
+    Seq<Atom<'['>, Keyword<"static">,  type_qualifier_list,                     assignment_expression, Atom<']'>>,
+    Seq<Atom<'['>, Keyword<"static">,                                           assignment_expression, Atom<']'>>,
+    Seq<Atom<'['>,                     type_qualifier_list,  Keyword<"static">, assignment_expression, Atom<']'>>,
+
+
+    Seq<Atom<'['>, Atom<'*'>, Atom<']'>>,
+
+    Seq<
+      Atom<'('>,
+      comma_separated<
+        Seq<
+          Some<declaration_specifier>,
+          Opt<declarator, abstract_declarator>
+        >
+      >,
+      Opt<Seq<Atom<','>, Operator<"...">>>,
+      Atom<')'>
+    >,
+
+    Seq<Atom<'('>, Atom<')'>>
   >;
 };
 
-/*6.7.8*/
-using designator =
-Oneof<
-  Seq<Atom<'['>, constant_expression, Atom<']'>>,
-  Seq<Atom<'.'>, identifier>
->;
+struct type_cast : public RefBase<type_cast> {
+  using pattern =
+  Seq<
+    Atom<'('>,
+    Seq<
+      Some<specifier_qualifier>,
+      Opt<abstract_declarator>
+    >,
+    Atom<')'>
+  >;
+};
 
-/*6.7.8*/
-using designator_list = Some<designator>;
-
-/*6.7.8*/
-using designation = Seq<designator_list, Atom<'='>>;
-
-/*6.7.8*/
 struct initializer_list : public RefBase<initializer_list> {
-  using pattern = Oneof<
-    Seq<Opt<designation>, initializer>,
-    Seq<initializer_list, Atom<','>, Opt<designation>, initializer>
+  using pattern =
+  Seq<
+    Atom<'{'>,
+    comma_separated<
+      Seq<
+        Opt<
+          Seq<
+            Some<
+              Seq<Atom<'['>, constant_expression, Atom<']'>>,
+              Seq<Atom<'.'>, identifier>
+            >,
+            Atom<'='>
+          >
+        >,
+        Oneof<
+          assignment_expression,
+          initializer_list
+        >
+      >
+    >,
+    Atom<'}'>
   >;
 };
 
@@ -1034,18 +1074,19 @@ struct statement : public RefBase<statement> {
 };
 
 /*6.9.1*/
-using declaration_list = Some<declaration>;
-
-/*6.9.1*/
 using function_definition = Seq<
-  declaration_specifiers,
+  Some<declaration_specifier>,
   declarator,
-  Opt<declaration_list>,
+  Any<declaration>,
   compound_statement
 >;
 
 /*6.9*/
-using external_declaration = Oneof<function_definition, declaration>;
+using external_declaration =
+Oneof<
+  function_definition,
+  declaration
+>;
 
 // A.2.4 External definitions
 /*6.9*/
@@ -1135,9 +1176,9 @@ Oneof<
   Seq<Atom<'#'>, Keyword<"pragma">,  Opt<pp_tokens>, new_line>,
   Seq<Atom<'#'>,                                     new_line>,
   Seq<Atom<'#'>, Keyword<"define">,  identifier,     replacement_list, new_line>,
-  Seq<Atom<'#'>, Keyword<"define">,  identifier,     lparen, Opt<identifier_list>,                       Atom<')'>, replacement_list, new_line>,
-  Seq<Atom<'#'>, Keyword<"define">,  identifier,     lparen, Keyword<"...">,                             Atom<')'>, replacement_list, new_line>,
-  Seq<Atom<'#'>, Keyword<"define">,  identifier,     lparen, identifier_list, Atom<','>, Keyword<"...">, Atom<')'>, replacement_list, new_line>
+  Seq<Atom<'#'>, Keyword<"define">,  identifier,     lparen, Opt<comma_separated<identifier>>,                       Atom<')'>, replacement_list, new_line>,
+  Seq<Atom<'#'>, Keyword<"define">,  identifier,     lparen, Keyword<"...">,                                         Atom<')'>, replacement_list, new_line>,
+  Seq<Atom<'#'>, Keyword<"define">,  identifier,     lparen, comma_separated<identifier>, Atom<','>, Keyword<"...">, Atom<')'>, replacement_list, new_line>
 >;
 
 struct group;

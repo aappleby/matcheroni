@@ -1,11 +1,12 @@
 // SPDX-FileCopyrightText:  2023 Austin Appleby <aappleby@gmail.com>
 // SPDX-License-Identifier: MIT License
 
-#include "Token.hpp"
+#include "c99/Token.hpp"
 
-#include "Lexeme.hpp"
+#include "c99/Lexeme.hpp"
+#include "c99/ParseNode.hpp"
+
 #include "Matcheroni.hpp"
-#include "ParseNode.hpp"
 #include "utils.hpp"
 
 using namespace matcheroni;

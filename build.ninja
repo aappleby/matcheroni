@@ -1,12 +1,45 @@
-build_mode = -g -O0 -DDEBUG
-#build_mode = -g -O0 -DDEBUG -DMATCHERONI_ENABLE_TRACE
-#build_mode = -g -O0 -DDEBUG -DMATCHERONI_ENABLE_TRACE -DEXTRA_DEBUG
-#build_mode = -g -Og -DDEBUG
-#build_mode = -g -Os -flto -fdata-sections -ffunction-sections -Wl,--gc-sections -Wl,-s
-#build_mode = -g -O3 -flto -fdata-sections -ffunction-sections -Wl,--gc-sections -Wl,-s
+#-------------------------------------------------------------------------------
+# Configuration
 
-#defs = -DSRELL_NO_UNICODE_ICASE -DSRELL_NO_UNICODE_PROPERTY -DSRELL_NO_UNICODE_DATA -DSRELL_NO_NAMEDCAPTURE -DSRELL_NO_VMODE -DSRELL_NO_APIEXT
-#defs = -DSRELL_NO_UNICODE_ICASE -DSRELL_NO_UNICODE_PROPERTY -DSRELL_NO_UNICODE_DATA -DSRELL_NO_NAMEDCAPTURE -DSRELL_NO_VMODE
+#build_mode = -g -O0
+#build_mode = -g -Os
+build_mode = -g -O3
+
+# -O3 needs LTO to maximize performance
+build_mode = ${build_mode} -flto
+
+# -Os needs stripping to minimize size
+#build_mode = ${build_mode} -fdata-sections -ffunction-sections -Wl,--gc-sections -Wl,-s
+
+# DEBUG enables DCHECK()
+#defs = ${defs} -DDEBUG
+
+# Turning tracing on will generate _ton_ of spam in the C99 demo.
+#defs = ${defs} -DMATCHERONI_ENABLE_TRACE
+
+# Turning EXTRA_DEBUG on will generate even more spam.
+#defs = ${defs} -DEXTRA_DEBUG
+
+# These are the various regex libraries that Matcheroni can be benchmarked
+# against. CTRE and SRELL require that you copy their header into matcheroni/.
+
+defs = ${defs} -DBENCHMARK_BASELINE
+defs = ${defs} -DBENCHMARK_MATCHERONI
+#defs = ${defs} -DBENCHMARK_CTRE
+#defs = ${defs} -DBENCHMARK_BOOST
+defs = ${defs} -DBENCHMARK_STD_REGEX
+#defs = ${defs} -DBENCHMARK_SRELL
+
+# These defines are required to reduce the compiled size of the SRELL library used in the benchmark.
+#defs = ${defs} -DSRELL_NO_UNICODE_ICASE -DSRELL_NO_UNICODE_PROPERTY -DSRELL_NO_UNICODE_DATA -DSRELL_NO_NAMEDCAPTURE -DSRELL_NO_VMODE
+
+# This SRELL define seems to break things
+#defs = ${defs} -DSRELL_NO_APIEXT
+
+includes = -Imatcheroni
+
+#-------------------------------------------------------------------------------
+# Rules
 
 rule compile_cpp
   command = g++ -std=c++20 ${build_mode} ${defs} ${includes} -MMD -MF ${out}.d -c ${in} -o ${out}
@@ -21,22 +54,30 @@ rule compile_c
 rule link
   command = g++ ${build_mode} ${in} -lboost_system -lboost_regex -o ${out}
 
-build obj/c_parser_test.o  : compile_cpp matcheroni/c_parser_test.cpp
-build obj/C99Lexer.o       : compile_cpp matcheroni/C99Lexer.cpp
-build obj/C99Parser.o      : compile_cpp matcheroni/C99Parser.cpp
-build obj/Lexeme.o         : compile_cpp matcheroni/Lexeme.cpp
-build obj/ParseNode.o      : compile_cpp matcheroni/ParseNode.cpp
-build obj/Token.o          : compile_cpp matcheroni/Token.cpp
-build obj/TypeScope.o      : compile_cpp matcheroni/TypeScope.cpp
-build obj/utils.o          : compile_cpp matcheroni/utils.cpp
+#-------------------------------------------------------------------------------
+# Targets
 
-build obj/regex_parser.o   : compile_cpp matcheroni/regex_parser.cpp
+# Utility functions
+build obj/utils.o : compile_cpp matcheroni/utils.cpp
 
-build obj/c_reference.o    : compile_cpp matcheroni/c_reference.cpp
-build obj/c_reference_hax.o : compile_cpp matcheroni/c_reference_hax.cpp
+# Regex parser example
+build obj/regex_parser.o : compile_cpp matcheroni/regex_parser.cpp
+build bin/regex_parser   : link obj/regex_parser.o
 
-build bin/regex_parser: link $
-  obj/regex_parser.o
+# Trivial benchmark
+build obj/benchmark.o : compile_cpp matcheroni/benchmark.cpp
+build bin/benchmark   : link obj/utils.o obj/benchmark.o
+
+# C99 lexer/parser example (not finished)
+build obj/c99/c_parser_test.o   : compile_cpp matcheroni/c99/c_parser_test.cpp
+build obj/c99/C99Lexer.o        : compile_cpp matcheroni/c99/C99Lexer.cpp
+build obj/c99/C99Parser.o       : compile_cpp matcheroni/c99/C99Parser.cpp
+build obj/c99/Lexeme.o          : compile_cpp matcheroni/c99/Lexeme.cpp
+build obj/c99/ParseNode.o       : compile_cpp matcheroni/c99/ParseNode.cpp
+build obj/c99/Token.o           : compile_cpp matcheroni/c99/Token.cpp
+build obj/c99/TypeScope.o       : compile_cpp matcheroni/c99/TypeScope.cpp
+build obj/c99/c_reference.o     : compile_cpp matcheroni/c99/c_reference.cpp
+build obj/c99/c_reference_hax.o : compile_cpp matcheroni/c99/c_reference_hax.cpp
 
 build bin/c_parser_test : link $
   obj/C99Lexer.o $
@@ -47,7 +88,3 @@ build bin/c_parser_test : link $
   obj/Token.o $
   obj/TypeScope.o $
   obj/utils.o
-
-
-#build obj/benchmark.o      : compile_cpp matcheroni/benchmark.cpp
-#build bin/benchmark        : link obj/benchmark.o

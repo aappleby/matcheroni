@@ -3,11 +3,12 @@
 
 #include <filesystem>
 
-#include "C99Lexer.hpp"
-#include "C99Parser.hpp"
-#include "ParseNode.hpp"
 #include "utils.hpp"
-#include "SlabAlloc.hpp"
+
+#include "c99/C99Lexer.hpp"
+#include "c99/C99Parser.hpp"
+#include "c99/ParseNode.hpp"
+#include "c99/SlabAlloc.hpp"
 
 //------------------------------------------------------------------------------
 // File filters

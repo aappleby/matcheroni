@@ -2,13 +2,7 @@
 // SPDX-License-Identifier: MIT License
 
 #include <stdio.h>
-
-//#define BENCHMARK_BASELINE
-//#define BENCHMARK_MATCHERONI
-//#define BENCHMARK_CTRE
-//#define BENCHMARK_BOOST
-//#define BENCHMARK_STD_REGEX
-//#define BENCHMARK_SRELL
+#include "utils.hpp"
 
 #ifdef BENCHMARK_SRELL
 #include "srell.hpp"

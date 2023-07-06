@@ -1,10 +1,10 @@
 // SPDX-FileCopyrightText:  2023 Austin Appleby <aappleby@gmail.com>
 // SPDX-License-Identifier: MIT License
 
-#include "TypeScope.hpp"
+#include "c99/TypeScope.hpp"
 
-#include "Lexeme.hpp"  // for LEX_IDENTIFIER
-#include "Token.hpp"
+#include "c99/Lexeme.hpp"  // for LEX_IDENTIFIER
+#include "c99/Token.hpp"
 #include "utils.hpp"
 
 void TypeScope::clear() {

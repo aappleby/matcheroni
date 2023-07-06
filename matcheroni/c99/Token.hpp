@@ -4,7 +4,7 @@
 #pragma once
 #include <stdint.h>
 
-#include "Lexeme.hpp"
+#include "c99/Lexeme.hpp"
 #include "Matcheroni.hpp"
 
 using namespace matcheroni;

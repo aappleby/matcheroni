@@ -6,8 +6,8 @@
 #include <string>  // for string
 #include <vector>  // for vector
 
-#include "Lexeme.hpp"  // for Lexeme, LexemeType
-#include "Token.hpp"
+#include "c99/Lexeme.hpp"  // for Lexeme, LexemeType
+#include "c99/Token.hpp"
 #include "utils.hpp"
 
 struct ParseNode;

@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText:  2023 Austin Appleby <aappleby@gmail.com>
 // SPDX-License-Identifier: MIT License
 
-#include "Lexeme.hpp"
+#include "c99/Lexeme.hpp"
 
 #include <stdio.h>
 
