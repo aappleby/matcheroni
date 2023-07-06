@@ -63,6 +63,7 @@ Note that you can't nest "pattern" inside itself directly, as "using pattern" do
 
 # Building Matcheroni
 Install [Ninja](https://ninja-build.org/) if you haven't already, then run ninja in the repo root.
+
 See build.ninja for configuration options.
 
 # It's all a bunch of templates? Really?
