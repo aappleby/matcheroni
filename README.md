@@ -158,25 +158,30 @@ Overall results:
 
 So, if you need to do some customized pattern-matching on something like an embedded platform and you want to keep your compile-test cycle fast, give Matcheroni a try.
 
-# Demo - Lexing and Parsing C
-This repo contains an example C lexer and parser built using Matcheroni. The lexer should be conformant to the C99 spec, the parser is less conformant but is still able to parse nearly everything in GCC's torture-test suite. The output of the parser is a simple tree of parse nodes with all parent/child/sibling links as pointers.
+# A Larger Demo - Lexing and Parsing C
+This repo contains a work-in-progress example C lexer and parser built using Matcheroni.
+
+The lexer should be conformant to the C99 spec, the parser is less conformant but is still able to parse nearly everything in GCC's torture-test suite.
+
+The output of the parser is a simple tree of parse nodes with all parent/child/sibling links as pointers.
 
 Here's our parser for C's ```for``` loops:
 ```
 struct NodeStatementFor : public ParseNode, public NodeMaker<NodeStatementFor> {
-  using pattern = Seq<
+  using pattern =
+  Seq<
     Keyword<"for">,
     Atom<'('>,
-    Opt<comma_separated<Oneof<
-      MatchExpression,
-      NodeDeclaration
-    >>>,
+    Oneof<
+      Seq<comma_separated<NodeExpression>,  Atom<';'>>,
+      Seq<comma_separated<NodeDeclaration>, Atom<';'>>,
+      Atom<';'>
+    >,
+    Opt<comma_separated<NodeExpression>>,
     Atom<';'>,
-    Opt<comma_separated<MatchExpression>>,
-    Atom<';'>,
-    Opt<comma_separated<MatchExpression>>,
+    Opt<comma_separated<NodeExpression>>,
     Atom<')'>,
-    NodeStatement
+    Oneof<NodeStatementCompound, NodeStatement>
   >;
 };
 ```
@@ -203,13 +208,12 @@ Here's the code I use to match C99 integers, plus a few additions from the C++ s
 If you follow along in Appendix A of the [C99 spec](https://www.open-std.org/jtc1/sc22/wg14/www/docs/n1256.pdf), you'll see it lines up quite closely.
 
 ```
-const char* match_int(const char* a, const char* b) {
-  using digit         = Range<'0', '9'>;
-  using nonzero_digit = Range<'1', '9'>;
+const char* match_int(void* ctx, const char* a, const char* b) {
+  // clang-format off
+  using digit                = Range<'0', '9'>;
+  using nonzero_digit        = Range<'1', '9'>;
 
-  // The 'ticked' template allows for an optional single-quote to be inserted
-  // before each digit.
-  using decimal_constant = Seq<nonzero_digit, Any<ticked<digit>>>;
+  using decimal_constant     = Seq<nonzero_digit, Any<ticked<digit>>>;
 
   using hexadecimal_prefix         = Oneof<Lit<"0x">, Lit<"0X">>;
   using hexadecimal_digit          = Oneof<Range<'0', '9'>, Range<'a', 'f'>, Range<'A', 'F'>>;
@@ -262,5 +266,6 @@ const char* match_int(const char* a, const char* b) {
   >;
 
   return integer_constant::match(ctx, a, b);
+  // clang-format on
 }
 ```
