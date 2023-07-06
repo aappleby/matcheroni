@@ -1,3 +1,14 @@
+//------------------------------------------------------------------------------
+// Matcheroni is a single-header, zero-dependency toolkit that makes building
+// custom pattern matchers, lexers, and parsers easier. Matcheroni is based on
+// "Parsing Expression Grammars" (PEGs), which are similar in concept to
+// regular expressions but behave slightly differently.
+
+// See https://en.wikipedia.org/wiki/Parsing_expression_grammar for details.
+
+// SPDX-FileCopyrightText:  2023 Austin Appleby <aappleby@gmail.com>
+// SPDX-License-Identifier: MIT License
+
 #ifndef __MATCHERONI_H__
 #define __MATCHERONI_H__
 

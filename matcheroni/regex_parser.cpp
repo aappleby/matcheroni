@@ -1,9 +1,7 @@
 //------------------------------------------------------------------------------
-// This is a full working example of using Matcheroni to build a parser that
-// can parse a subset of regular expressions.
-
-// Supported operators are ^, $, ., *, ?, +, |, (), [], [^], and escaped
-// characters.
+// This file is a full working example of using Matcheroni to build a parser
+// that can parse a subset of regular expressions. Supported operators are
+// ^, $, ., *, ?, +, |, (), [], [^], and escaped characters.
 
 // Example usage:
 // bin/regex_parser "(^\d+\s+(very)?\s+(good|bad)\s+[a-z]*$)"
@@ -11,10 +9,10 @@
 // SPDX-FileCopyrightText:  2023 Austin Appleby <aappleby@gmail.com>
 // SPDX-License-Identifier: MIT License
 
-#include "Matcheroni.hpp"
 #include <stdio.h>
 #include <string.h>
 #include <vector>
+#include "Matcheroni.hpp"
 
 // Uncomment this to print a full trace of the regex matching process. Note -
 // the trace will be _very_ long, even for small regexes.
