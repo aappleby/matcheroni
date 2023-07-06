@@ -1,4 +1,9 @@
+------
+### TL;DR - Copy-paste [Matcheroni.hpp](matcheroni/Matcheroni.hpp) into your C++20 project and you can build simple [parsers](matcheroni/regex_parser.cpp) without needing a parser generator or a regex library.
+------
+
 # Matcheroni
+
 Matcheroni is a minimal, zero-dependency (not even stdlib), single-file header library for building pattern-matchers, [lexers](matcheroni/C99Lexer.cpp), and [parsers](matcheroni/C99Parser.h) out of trees of C++20 templates.
 
 Matcheroni is a generalization of [Parsing Expression Grammars](https://en.wikipedia.org/wiki/Parsing_expression_grammar) and can be used in place of regular expressions in most cases.
