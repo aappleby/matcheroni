@@ -33,8 +33,10 @@ Unlike std::regex, we don't need to link in any additional libraries or instanti
 ```
 const std::string text = "aaabbaaccdefxyz";
 
+// The first argument to match() is a user-defined context pointer.
+// The second two arguments are the range of text to match against.
 // The match function returns the _end_ of the match, or nullptr if there was no match.
-const char* result = my_pattern::match(text.data(), text.data() + text.size());
+const char* result = my_pattern::match(nullptr, text.data(), text.data() + text.size());
 
 // Since we matched "aabbaaccdef", this prints "xyz".
 printf("%s\n", result);
@@ -51,7 +53,7 @@ and it would perform identically to the one-line version.
 Unlike regexes, matchers can be recursive:
 ```
 // Recursively match correctly-paired nested parenthesis
-const char* matcheroni_match_parens(const char* a, const char* b) {
+const char* matcheroni_match_parens(void* ctx, const char* a, const char* b) {
   using pattern =
   Seq<
     Atom<'('>,
