@@ -47,7 +47,7 @@
       "request": "launch",
       "program": "${workspaceFolder}/bin/regex_parser",
       "cwd": "${workspaceFolder}",
-      "args" : ["\"\\d+\\s+(very)?\\s+(good|bad)\\s+[a-z]*\""],
+      "args" : ["\"(^\\d+\\s+(very)?\\s+(good|bad)\\s+[a-z]*$)\""],
       "setupCommands": [
         {
           // Display content in STL containers pretty

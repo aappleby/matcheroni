@@ -48,17 +48,13 @@ inline const char* match_text(const char** texts, int text_count, const char* a,
 }
 
 //------------------------------------------------------------------------------
-// Matcheroni needs some way to compare different types of atoms - for
-// convenience, comparators for "const char" are provided here.
+// Matcheroni needs some way to compare atoms against pattern constants.
+// By default, we just return the difference between the atom and the constant.
+
 // Comparators should return <0 for a<b, ==0 for a==b, and >0 for a>b.
 
 template<typename atom1, typename atom2>
 inline int atom_cmp(void* ctx, atom1* a, atom2 b) {
-  return int(*a - b);
-}
-
-template<>
-inline int atom_cmp(void* ctx, const char* a, char b) {
   return int(*a - b);
 }
 
