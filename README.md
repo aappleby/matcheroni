@@ -7,7 +7,7 @@ Matcheroni generates tiny code - 100s of bytes for moderately-sized patterns ver
 
 Matcheroni generates fast code - often 10x faster than std::regex.
 
-Matcheroni matchers are more readable and more modular than regexes - you can build [large matchers](matcheroni/C99Lexer.cpp#L180) out of small simple matchers without affecting performance.
+Matcheroni matchers are more readable and more modular than regexes - you can build [large matchers](matcheroni/C99Lexer.cpp#L158) out of small simple matchers without affecting performance.
 
 Matcheroni allows you to freely intermingle C++ code with your matcher templates so that you can build parse trees, log stats, or do whatever else you need to do while processing your data.
 
