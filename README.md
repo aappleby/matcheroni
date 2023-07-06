@@ -1,5 +1,5 @@
 # Matcheroni
-Matcheroni is a minimal, zero-dependency (not even stdlib), header-only library for building pattern-matchers, [lexers](matcheroni/C99Lexer.cpp), and [parsers](matcheroni/C99Parser.h) out of trees of C++20 templates.
+Matcheroni is a minimal, zero-dependency (not even stdlib), single-file header library for building pattern-matchers, [lexers](matcheroni/C99Lexer.cpp), and [parsers](matcheroni/C99Parser.h) out of trees of C++20 templates.
 
 Matcheroni is a generalization of [Parsing Expression Grammars](https://en.wikipedia.org/wiki/Parsing_expression_grammar) and can be used in place of regular expressions in most cases.
 
