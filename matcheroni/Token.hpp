@@ -22,8 +22,17 @@ struct Token {
   int atom_cmp(const LexemeType& b);
   int atom_cmp(const char& b);
   int atom_cmp(const char* b);
-  template<int N>
-  int atom_cmp(const StringParam<N>& b);
+
+  template <int N>
+  int atom_cmp(const StringParam<N>& b) {
+    clear_span();
+    if (int c = lex->len() - b.str_len) return c;
+    for (auto i = 0; i < b.str_len; i++) {
+      if (auto c = lex->span_a[i] - b.str_val[i]) return c;
+    }
+    return 0;
+  }
+
   int atom_cmp(const Token* b);
   const char* unsafe_span_a();
 
@@ -57,8 +66,9 @@ int atom_cmp(void* ctx, Token* a, LexemeType b);
 int atom_cmp(void* ctx, Token* a, char b);
 int atom_cmp(void* ctx, Token* a, const char* b);
 int atom_cmp(void* ctx, Token* a, const Token* b);
-template<int N>
-int atom_cmp(void* ctx, Token* a, const StringParam<N>& b);
+
+//template<int N>
+//int atom_cmp(void* ctx, Token* a, const StringParam<N>& b);
 
 void atom_rewind(void* ctx, Token* a, Token* b);
 

@@ -22,24 +22,24 @@ rule link
   command = g++ ${build_mode} ${in} -lboost_system -lboost_regex -o ${out}
 
 build obj/c_lexer.o        : compile_cpp matcheroni/c_lexer.cpp
+build obj/c_parser_test.o  : compile_cpp matcheroni/c_parser_test.cpp
 build obj/c_parser.o       : compile_cpp matcheroni/c_parser.cpp
-#build obj/c_parser_test.o  : compile_cpp matcheroni/c_parser_test.cpp
-build obj/c_reference.o    : compile_cpp matcheroni/c_reference.cpp
 build obj/Lexeme.o         : compile_cpp matcheroni/Lexeme.cpp
 build obj/ParseNode.o      : compile_cpp matcheroni/ParseNode.cpp
 build obj/Token.o          : compile_cpp matcheroni/Token.cpp
 build obj/TypeScope.o      : compile_cpp matcheroni/TypeScope.cpp
 
-#build obj/c_reference_hax.o : compile_cpp matcheroni/c_reference_hax.cpp
+build obj/c_reference.o    : compile_cpp matcheroni/c_reference.cpp
+build obj/c_reference_hax.o : compile_cpp matcheroni/c_reference_hax.cpp
 
-#build bin/c_parser_test : link $
-#  obj/c_lexer.o $
-#  obj/c_parser.o $
-#  obj/c_parser_test.o $
-#  obj/c_reference.o $
-#  obj/Lexeme.o $
-#  obj/ParseNode.o $
-#  obj/Token.o
+build bin/c_parser_test : link $
+  obj/c_lexer.o $
+  obj/c_parser_test.o $
+  obj/c_parser.o $
+  obj/Lexeme.o $
+  obj/ParseNode.o $
+  obj/Token.o $
+  obj/TypeScope.o
 
 
 #build obj/benchmark.o      : compile_cpp matcheroni/benchmark.cpp

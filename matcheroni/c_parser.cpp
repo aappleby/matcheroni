@@ -3,6 +3,8 @@
 #include "ParseNode.hpp"
 #include "SlabAlloc.hpp"
 #include "TypeScope.hpp"
+#include "c_lexer.hpp"
+#include "c_parse_nodes.hpp"
 #include "utils.hpp"
 
 //------------------------------------------------------------------------------
@@ -55,8 +57,6 @@ void C99Parser::load(const std::string& path) {
   file_bytes += text.size();
 }
 
-#if 0
-
 //------------------------------------------------------------------------------
 
 void C99Parser::lex() {
@@ -68,7 +68,7 @@ void C99Parser::lex() {
   lexemes.push_back(Lexeme(LEX_BOF, nullptr, nullptr));
 
   const char* cursor = text_a;
-  while(cursor) {
+  while (cursor) {
     auto lex = next_lexeme(nullptr, cursor, text_b);
     lexemes.push_back(lex);
     if (lex.type == LEX_EOF) {
@@ -84,7 +84,7 @@ void C99Parser::lex() {
     }
   }
 
-  //CHECK(atom_cmp(&tokens.back(), LEX_EOF) == 0);
+  // CHECK(atom_cmp(&tokens.back(), LEX_EOF) == 0);
 
   lex_accum += timestamp_ms();
 }
@@ -92,18 +92,17 @@ void C99Parser::lex() {
 //------------------------------------------------------------------------------
 
 ParseNode* C99Parser::parse() {
-
   NodeTranslationUnit* root = nullptr;
 
-  //CHECK(atom_cmp(&tokens.front(), LEX_BOF) == 0);
-  //CHECK(atom_cmp(&tokens.back(), LEX_EOF) == 0);
+  // CHECK(atom_cmp(&tokens.front(), LEX_BOF) == 0);
+  // CHECK(atom_cmp(&tokens.back(), LEX_EOF) == 0);
 
   // Skip over BOF, stop before EOF
   auto tok_a = tokens.data() + 1;
   auto tok_b = tokens.data() + tokens.size() - 1;
 
-  //CHECK(atom_cmp(tok_a, LEX_BOF) != 0);
-  //CHECK(atom_cmp(tok_b, LEX_EOF) == 0);
+  // CHECK(atom_cmp(tok_a, LEX_BOF) != 0);
+  // CHECK(atom_cmp(tok_b, LEX_EOF) == 0);
 
   parse_accum -= timestamp_ms();
   global_cursor = tok_a;
@@ -119,12 +118,11 @@ ParseNode* C99Parser::parse() {
       printf("\n");
       dump_tokens();
       printf("\n");
-      dump_tree(root);
+      root->dump_tree(0, 0);
       printf("\n");
       printf("fail!\n");
       exit(1);
-    }
-    else {
+    } else {
       file_pass++;
     }
   }
@@ -134,95 +132,97 @@ ParseNode* C99Parser::parse() {
   return root;
 }
 
+//------------------------------------------------------------------------------
 
-  int atom_cmp(Token* a, const LexemeType& b) {
-    DCHECK(a == global_cursor);
-    auto result = a->atom_cmp(b);
-    if (result == 0) global_cursor++;
-    return result;
+int C99Parser::atom_cmp(Token* a, const LexemeType& b) {
+  DCHECK(a == global_cursor);
+  auto result = a->atom_cmp(b);
+  if (result == 0) global_cursor++;
+  return result;
+}
+
+int C99Parser::atom_cmp(Token* a, const char& b) {
+  DCHECK(a == global_cursor);
+  auto result = a->atom_cmp(b);
+  if (result == 0) global_cursor++;
+  return result;
+}
+
+int C99Parser::atom_cmp(Token* a, const char* b) {
+  DCHECK(a == global_cursor);
+  auto result = a->atom_cmp(b);
+  if (result == 0) global_cursor++;
+  return result;
+}
+
+/*
+template<int N>
+int C99Parser::atom_cmp(Token* a, const StringParam<N>& b) {
+  DCHECK(a == global_cursor);
+  auto result = a->atom_cmp(b);
+  if (result == 0) global_cursor++;
+  return result;
+}
+*/
+
+int C99Parser::atom_cmp(Token* a, const Token* b) {
+  DCHECK(a == global_cursor);
+  auto result = a->atom_cmp(b);
+  if (result == 0) global_cursor++;
+  return result;
+}
+
+void C99Parser::atom_rewind(Token* a, Token* b) {
+  // printf("rewind to %20.20s\n", a->debug_span_a());
+
+  /*
+  if (a < global_cursor) {
+    static constexpr int context_len = 60;
+    printf("[");
+    print_escaped(global_cursor->get_lex_debug()->span_a, context_len,
+  0x804080); printf("]\n"); printf("[");
+    print_escaped(a->get_lex_debug()->span_a, context_len, 0x804040);
+    printf("]\n");
+  }
+  */
+
+  DCHECK(a <= global_cursor);
+
+  if (a < global_cursor) {
+    rewind_count++;
+  } else {
+    didnt_rewind++;
   }
 
-  int atom_cmp(Token* a, const char& b) {
-    DCHECK(a == global_cursor);
-    auto result = a->atom_cmp(b);
-    if (result == 0) global_cursor++;
-    return result;
-  }
+  global_cursor = a;
+}
 
-  int atom_cmp(Token* a, const char* b) {
-    DCHECK(a == global_cursor);
-    auto result = a->atom_cmp(b);
-    if (result == 0) global_cursor++;
-    return result;
-  }
+//------------------------------------------------------------------------------
 
-  template<int N>
-  int atom_cmp(Token* a, const StringParam<N>& b) {
-    DCHECK(a == global_cursor);
-    auto result = a->atom_cmp(b);
-    if (result == 0) global_cursor++;
-    return result;
-  }
-
-  int atom_cmp(Token* a, const Token* b) {
-    DCHECK(a == global_cursor);
-    auto result = a->atom_cmp(b);
-    if (result == 0) global_cursor++;
-    return result;
-  }
-
-  inline static int rewind_count = 0;
-  inline static int didnt_rewind = 0;
-
-  void atom_rewind(Token* a, Token* b) {
-    //printf("rewind to %20.20s\n", a->debug_span_a());
-
-    /*
-    if (a < global_cursor) {
-      static constexpr int context_len = 60;
-      printf("[");
-      print_escaped(global_cursor->get_lex_debug()->span_a, context_len, 0x804080);
-      printf("]\n");
-      printf("[");
-      print_escaped(a->get_lex_debug()->span_a, context_len, 0x804040);
-      printf("]\n");
-    }
-    */
-
-    DCHECK(a <= global_cursor);
-
-    if (a < global_cursor) {
-      rewind_count++;
-    }
-    else {
-      didnt_rewind++;
-    }
-
-    global_cursor = a;
-  }
-
-inline int atom_cmp(void* ctx, Token* a, LexemeType b) {
+int atom_cmp(void* ctx, Token* a, LexemeType b) {
   return ((C99Parser*)ctx)->atom_cmp(a, b);
 }
 
-inline int atom_cmp(void* ctx, Token* a, char b) {
+int atom_cmp(void* ctx, Token* a, char b) {
   return ((C99Parser*)ctx)->atom_cmp(a, b);
 }
 
-inline int atom_cmp(void* ctx, Token* a, const char* b) {
+int atom_cmp(void* ctx, Token* a, const char* b) {
   return ((C99Parser*)ctx)->atom_cmp(a, b);
 }
 
+/*
 template<int N>
 inline int atom_cmp(void* ctx, Token* a, const StringParam<N>& b) {
   return ((C99Parser*)ctx)->atom_cmp(a, b);
 }
+*/
 
-inline int atom_cmp(void* ctx, Token* a, const Token* b) {
+int atom_cmp(void* ctx, Token* a, const Token* b) {
   return ((C99Parser*)ctx)->atom_cmp(a, b);
 }
 
-inline void atom_rewind(void* ctx, Token* a, Token* b) {
+void atom_rewind(void* ctx, Token* a, Token* b) {
   ((C99Parser*)ctx)->atom_rewind(a, b);
 }
 
@@ -285,35 +285,17 @@ void C99Parser::enclose_nodes(ParseNode* start, ParseNode* node) {
 
 Token* C99Parser::match_builtin_type_base(Token* a, Token* b) {
   if (!a || a == b) return nullptr;
-  auto result = SST<builtin_type_base>::contains(this, a);
-  if (result) {
-    return a + 1;
-  }
-  else {
-    return nullptr;
-  }
+  return SST<builtin_type_base>::match(this, a, b);
 }
 
 Token* C99Parser::match_builtin_type_prefix(Token* a, Token* b) {
   if (!a || a == b) return nullptr;
-  auto result = SST<builtin_type_prefix>::contains(this, a);
-  if (result) {
-    return a + 1;
-  }
-  else {
-    return nullptr;
-  }
+  return SST<builtin_type_prefix>::match(this, a, b);
 }
 
 Token* C99Parser::match_builtin_type_suffix(Token* a, Token* b) {
   if (!a || a == b) return nullptr;
-  auto result = SST<builtin_type_suffix>::contains(this, a);
-  if (result) {
-    return a + 1;
-  }
-  else {
-    return nullptr;
-  }
+  return SST<builtin_type_suffix>::match(this, a, b);
 }
 
 //------------------------------------------------------------------------------
@@ -384,4 +366,3 @@ void C99Parser::dump_tokens() {
 }
 
 //------------------------------------------------------------------------------
-#endif

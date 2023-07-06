@@ -1,8 +1,9 @@
 #include "Token.hpp"
 
 #include "Lexeme.hpp"
-#include "utils.hpp"
 #include "Matcheroni.hpp"
+#include "ParseNode.hpp"
+#include "utils.hpp"
 
 //----------------------------------------------------------------------------
 
@@ -36,16 +37,6 @@ int Token::atom_cmp(const char* b) {
   return 0;
 }
 
-template <int N>
-int Token::atom_cmp(const StringParam<N>& b) {
-  clear_span();
-  if (int c = lex->len() - b.str_len) return c;
-  for (auto i = 0; i < b.str_len; i++) {
-    if (auto c = lex->span_a[i] - b.str_val[i]) return c;
-  }
-  return 0;
-}
-
 int Token::atom_cmp(const Token* b) {
   clear_span();
   if (int c = lex->type - b->lex->type) return c;
@@ -75,9 +66,18 @@ const char* Token::type_to_str() const { return lex->type_to_str(); }
 
 uint32_t Token::type_to_color() const { return lex->type_to_color(); }
 
+Token* Token::step_left() { return (this - 1)->get_span()->tok_a(); }
+
+Token* Token::step_right() { return get_span()->tok_b() + 1; }
+
+const char* Token::debug_span_a() const { return lex->span_a; }
+
+const char* Token::debug_span_b() const { return lex->span_b; }
+
+const Lexeme* Token::get_lex_debug() const { return lex; }
+
 //----------------------------------------------------------------------------
 
-/*
 void Token::dump_token() const {
   // Dump token
   printf("tok @ %p :", this);
@@ -97,19 +97,5 @@ void Token::dump_token() const {
   }
   printf("\n");
 }
-*/
-
-//------------------------------------------------------------------------------
-
-/*
-Token* Token::step_left() { return (this - 1)->get_span()->tok_a(); }
-
-Token* Token::step_right() { return get_span()->tok_b() + 1; }
-*/
-
-const char* Token::debug_span_a() const { return lex->span_a; }
-const char* Token::debug_span_b() const { return lex->span_b; }
-
-const Lexeme* Token::get_lex_debug() const { return lex; }
 
 //------------------------------------------------------------------------------

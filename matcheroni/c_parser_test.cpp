@@ -1,6 +1,8 @@
 #include "c_parser.hpp"
 
 #include <filesystem>
+#include "ParseNode.hpp"
+#include "utils.hpp"
 
 //------------------------------------------------------------------------------
 // File filters
@@ -146,7 +148,7 @@ int test_parser(int argc, char** argv) {
       if (verbose) {
         printf("\n");
         printf("Dumping tree:\n");
-        dump_tree(root);
+        root->dump_tree(0, 0);
         printf("\n");
       }
     }

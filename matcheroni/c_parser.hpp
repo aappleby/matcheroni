@@ -5,6 +5,7 @@
 
 #include "Lexeme.hpp"  // for Lexeme, LexemeType
 #include "Token.hpp"
+#include "utils.hpp"
 
 struct ParseNode;
 struct TypeScope;
@@ -52,15 +53,13 @@ class C99Parser {
   int atom_cmp(Token* a, const Token* b);
   void atom_rewind(Token* a, Token* b);
 
-  /*
   template<int N>
-  int atom_cmp(Token* a, const StringParam<N>& b);
+  inline int atom_cmp(Token* a, const StringParam<N>& b) {
     DCHECK(a == global_cursor);
     auto result = a->atom_cmp(b);
     if (result == 0) global_cursor++;
     return result;
   }
-  */
 
   //----------------------------------------
 
