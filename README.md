@@ -50,7 +50,7 @@ using my_pattern = Seq<Some<abc>, def>;
 ```
 and it would perform identically to the one-line version.
 
-Unlike regexes, matchers can be recursive:
+Unlike regexes, matchers can be recursive. Note that you can't nest a pattern inside itself directly, as "using pattern" doesn't count as a declaration. Forward-declaring a matcher function and using that in a pattern works though:
 ```
 // Forward-declare our matching function so we can use it recursively.
 const char* match_parens_recurse(void* ctx, const char* a, const char* b);
@@ -73,8 +73,6 @@ std::string text = "(((foo)bar)baz)tail";
 auto end = match_parens::match(nullptr, text.data(), text.data() + text.size());
 printf("%s", end); // prints "tail"
 ```
-Note that you can't nest "match_parens" inside itself directly, as "using pattern" doesn't count as a declaration. Wrapping it in a function or class works though.
-
 # Building Matcheroni
 Install [Ninja](https://ninja-build.org/) if you haven't already, then run ninja in the repo root.
 
