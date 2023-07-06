@@ -61,6 +61,10 @@ const char* matcheroni_match_parens(const char* a, const char* b) {
 ```
 Note that you can't nest "pattern" inside itself directly, as "using pattern" doesn't count as a declaration. Wrapping it in a function or class works though.
 
+# Building Matcheroni
+Install [Ninja](https://ninja-build.org/) if you haven't already, then run ninja in the repo root.
+See build.ninja for configuration options.
+
 # It's all a bunch of templates? Really?
 If you're familiar with C++ templates, you are probably concerned that this library will cause your compiler to grind to a halt. I can assure you that that's not the case - compile times for even pretty large matchers are fine, though the resulting debug symbols are so enormous as to be useless.
 
