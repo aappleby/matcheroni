@@ -1,8 +1,6 @@
-#include "c_parser.h"
+#include "c_parser.hpp"
 
 #include <filesystem>
-
-void dump_tree(const ParseNode* n, int max_depth = 0, int indentation = 0);
 
 //------------------------------------------------------------------------------
 // File filters

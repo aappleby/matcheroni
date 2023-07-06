@@ -1,24 +1,31 @@
 #pragma once
 
-#include "ParseNode.h"
-#include "c_constants.h"
-#include <algorithm>
+#include "Lexeme.hpp"
 
-void dump_tree(const ParseNode* n, int max_depth, int indentation);
+struct Token;
 
-struct NodeClassType;
-struct NodeEnumType;
-struct NodeStructType;
-struct NodeTypedefType;
-struct NodeUnionType;
+inline int  atom_cmp   (void* ctx, Token* a, LexemeType b);
+inline int  atom_cmp   (void* ctx, Token* a, char b);
+inline int  atom_cmp   (void* ctx, Token* a, const char* b);
+inline int  atom_cmp   (void* ctx, Token* a, const Token* b);
+inline void atom_rewind(void* ctx, Token* a, Token* b);
 
-struct NodeSuffixInitializerList;
+/*
+template<int N>
+inline int atom_cmp(void* ctx, Token* a, const StringParam<N>& b) {
+  return ((C99Parser*)ctx)->atom_cmp(a, b);
+}
+*/
+
+#if 0
 struct NodeAbstractDeclarator;
 struct NodeClass;
+struct NodeClassType;
 struct NodeConstructor;
 struct NodeDeclaration;
 struct NodeDeclarator;
 struct NodeEnum;
+struct NodeEnumType;
 struct NodeExpression;
 struct NodeFunctionDefinition;
 struct NodeInitializer;
@@ -26,256 +33,104 @@ struct NodeInitializerList;
 struct NodeSpecifier;
 struct NodeStatement;
 struct NodeStatementCompound;
-struct NodeTypedef;
 struct NodeStruct;
+struct NodeStructType;
+struct NodeSuffixInitializerList;
 struct NodeTemplate;
 struct NodeTypeDecl;
+struct NodeTypedef;
+struct NodeTypedefType;
 struct NodeTypeName;
 struct NodeUnion;
+struct NodeUnionType;
 
-typedef std::vector<const Token*> token_list;
 
 //------------------------------------------------------------------------------
+// Matches string literals as if they were atoms. Does ___NOT___ match the
+// trailing null.
+// You'll need to define atom_cmp(void* ctx, atom& a, StringParam<N>& b) to use this.
 
-struct TypeScope {
+template<StringParam lit>
+struct Keyword {
+  static_assert(SST<c99_keywords>::contains(lit.str_val));
 
-  void clear() {
-    class_types.clear();
-    struct_types.clear();
-    union_types.clear();
-    enum_types.clear();
-    typedef_types.clear();
+  template<typename atom>
+  static atom* match(void* ctx, atom* a, atom* b) {
+    if (!a || a == b) return nullptr;
+    if (atom_cmp(ctx, a, LEX_KEYWORD)) return nullptr;
+    /*+*/atom_rewind(ctx, a, b);
+    if (atom_cmp(ctx, a, lit)) return nullptr;
+    return a + 1;
   }
+};
 
-  bool has_type(void* ctx, Token* a, Token* b, token_list& types) {
-    if(atom_cmp(ctx, a, LEX_IDENTIFIER)) {
-      //atom_rewind(ctx, a, b);
-      return false;
-    }
-    /**/atom_rewind(ctx, a, b);
-
-    for (const auto c : types) {
-      if (atom_cmp(ctx, a, c) == 0) {
-        return true;
-      }
-      else {
-        //atom_rewind(ctx, a, b);
-      }
-    }
-
-    return false;
+template<StringParam lit>
+struct Literal2 {
+  template<typename atom>
+  static atom* match(void* ctx, atom* a, atom* b) {
+    if (!a || a == b) return nullptr;
+    if (atom_cmp(ctx, a, lit)) return nullptr;
+    return a + 1;
   }
-
-  void add_type(Token* a, token_list& types) {
-    DCHECK(a->atom_cmp(LEX_IDENTIFIER) == 0);
-
-    for (const auto& c : types) {
-      if (a->atom_cmp(c) == 0) return;
-    }
-
-    types.push_back(a);
-  }
-
-  //----------------------------------------
-
-  bool has_class_type  (void* ctx, Token* a, Token* b) { if (has_type(ctx, a, b, class_types  )) return true; if (parent) return parent->has_class_type  (ctx, a, b); else return false; }
-  bool has_struct_type (void* ctx, Token* a, Token* b) { if (has_type(ctx, a, b, struct_types )) return true; if (parent) return parent->has_struct_type (ctx, a, b); else return false; }
-  bool has_union_type  (void* ctx, Token* a, Token* b) { if (has_type(ctx, a, b, union_types  )) return true; if (parent) return parent->has_union_type  (ctx, a, b); else return false; }
-  bool has_enum_type   (void* ctx, Token* a, Token* b) { if (has_type(ctx, a, b, enum_types   )) return true; if (parent) return parent->has_enum_type   (ctx, a, b); else return false; }
-  bool has_typedef_type(void* ctx, Token* a, Token* b) { if (has_type(ctx, a, b, typedef_types)) return true; if (parent) return parent->has_typedef_type(ctx, a, b); else return false; }
-
-  void add_class_type  (Token* a) { return add_type(a, class_types  ); }
-  void add_struct_type (Token* a) { return add_type(a, struct_types ); }
-  void add_union_type  (Token* a) { return add_type(a, union_types  ); }
-  void add_enum_type   (Token* a) { return add_type(a, enum_types   ); }
-  void add_typedef_type(Token* a) { return add_type(a, typedef_types); }
-
-  TypeScope* parent;
-  token_list class_types;
-  token_list struct_types;
-  token_list union_types;
-  token_list enum_types;
-  token_list typedef_types;
 };
 
 //------------------------------------------------------------------------------
+// Consumes spans from all tokens it matches with and creates a new node on top of them.
 
-class C99Parser {
-public:
-  C99Parser();
-  void reset();
+template<typename NodeType>
+struct NodeMaker {
+  static Token* match(void* ctx, Token* a, Token* b) {
+    if (!a || a == b) return nullptr;
 
-  void load(const std::string& path);
-  void lex();
-  ParseNode* parse();
+    print_trace_start<NodeType, Token>(a);
+    auto end = NodeType::pattern::match(ctx, a, b);
+    print_trace_end<NodeType, Token>(a, end);
 
-  Token* match_builtin_type_base  (Token* a, Token* b);
-  Token* match_builtin_type_prefix(Token* a, Token* b);
-  Token* match_builtin_type_suffix(Token* a, Token* b);
-
-  Token* match_class_type  (Token* a, Token* b) { return type_scope->has_class_type  (this, a, b) ? a + 1 : nullptr; }
-  Token* match_struct_type (Token* a, Token* b) { return type_scope->has_struct_type (this, a, b) ? a + 1 : nullptr; }
-  Token* match_union_type  (Token* a, Token* b) { return type_scope->has_union_type  (this, a, b) ? a + 1 : nullptr; }
-  Token* match_enum_type   (Token* a, Token* b) { return type_scope->has_enum_type   (this, a, b) ? a + 1 : nullptr; }
-  Token* match_typedef_type(Token* a, Token* b) { return type_scope->has_typedef_type(this, a, b) ? a + 1 : nullptr; }
-
-  void add_class_type  (Token* a) { type_scope->add_class_type  (a); }
-  void add_struct_type (Token* a) { type_scope->add_struct_type (a); }
-  void add_union_type  (Token* a) { type_scope->add_union_type  (a); }
-  void add_enum_type   (Token* a) { type_scope->add_enum_type   (a); }
-  void add_typedef_type(Token* a) { type_scope->add_typedef_type(a); }
-
-  //----------------------------------------------------------------------------
-
-  void push_scope() {
-    TypeScope* new_scope = new TypeScope();
-    new_scope->parent = type_scope;
-    type_scope = new_scope;
-  }
-
-  void pop_scope() {
-    TypeScope* old_scope = type_scope->parent;
-    if (old_scope) {
-      delete type_scope;
-      type_scope = old_scope;
+    if (end && end != a) {
+      auto node = new NodeType();
+      node->init_node(ctx, a, end-1, a->get_span(), (end-1)->get_span());
     }
+    return end;
   }
+};
 
-  //----------------------------------------------------------------------------
+template<typename NodeType>
+struct LeafMaker {
+  static Token* match(void* ctx, Token* a, Token* b) {
+    if (!a || a == b) return nullptr;
 
-  void append_node(ParseNode* node) {
-    if (tail) {
-      tail->next = node;
-      node->prev = tail;
-      tail = node;
+    print_trace_start<NodeType, Token>(a);
+    auto end = NodeType::pattern::match(ctx, a, b);
+    print_trace_end<NodeType, Token>(a, end);
+
+    if (end && end != a) {
+      auto node = new NodeType();
+      node->init_leaf(ctx, a, end-1);
     }
-    else {
-      head = node;
-      tail = node;
-    }
-  }
-
-  //----------------------------------------------------------------------------
-
-  void dump_stats();
-  void dump_lexemes();
-  void dump_tokens();
-
-  std::string text;
-  std::vector<Lexeme> lexemes;
-  std::vector<Token>  tokens;
-
-  ParseNode* head = nullptr;
-  ParseNode* tail = nullptr;
-
-  int file_pass = 0;
-  int file_fail = 0;
-  int file_skip = 0;
-  int file_bytes = 0;
-  int file_lines = 0;
-
-  double io_accum = 0;
-  double lex_accum = 0;
-  double parse_accum = 0;
-  double cleanup_accum = 0;
-
-  TypeScope* type_scope;
-
-  Token* global_cursor;
-
-  int atom_cmp(Token* a, const LexemeType& b) {
-    DCHECK(a == global_cursor);
-    auto result = a->atom_cmp(b);
-    if (result == 0) global_cursor++;
-    return result;
-  }
-
-  int atom_cmp(Token* a, const char& b) {
-    DCHECK(a == global_cursor);
-    auto result = a->atom_cmp(b);
-    if (result == 0) global_cursor++;
-    return result;
-  }
-
-  int atom_cmp(Token* a, const char* b) {
-    DCHECK(a == global_cursor);
-    auto result = a->atom_cmp(b);
-    if (result == 0) global_cursor++;
-    return result;
-  }
-
-  template<int N>
-  int atom_cmp(Token* a, const StringParam<N>& b) {
-    DCHECK(a == global_cursor);
-    auto result = a->atom_cmp(b);
-    if (result == 0) global_cursor++;
-    return result;
-  }
-
-  int atom_cmp(Token* a, const Token* b) {
-    DCHECK(a == global_cursor);
-    auto result = a->atom_cmp(b);
-    if (result == 0) global_cursor++;
-    return result;
-  }
-
-  inline static int rewind_count = 0;
-  inline static int didnt_rewind = 0;
-
-  void atom_rewind(Token* a, Token* b) {
-    //printf("rewind to %20.20s\n", a->debug_span_a());
-
-    /*
-    if (a < global_cursor) {
-      static constexpr int context_len = 60;
-      printf("[");
-      print_escaped(global_cursor->get_lex_debug()->span_a, context_len, 0x804080);
-      printf("]\n");
-      printf("[");
-      print_escaped(a->get_lex_debug()->span_a, context_len, 0x804040);
-      printf("]\n");
-    }
-    */
-
-    DCHECK(a <= global_cursor);
-
-    if (a < global_cursor) {
-      rewind_count++;
-    }
-    else {
-      didnt_rewind++;
-    }
-
-    global_cursor = a;
+    return end;
   }
 };
 
 //------------------------------------------------------------------------------
 
-inline int atom_cmp(void* ctx, Token* a, LexemeType b) {
-  return ((C99Parser*)ctx)->atom_cmp(a, b);
+template<StringParam lit>
+inline Token* match_punct(void* ctx, Token* a, Token* b) {
+  if (!a || a == b) return nullptr;
+  if (a + lit.str_len > b) return nullptr;
+
+  for (auto i = 0; i < lit.str_len; i++) {
+    if (atom_cmp(ctx, a + i, LEX_PUNCT)) {
+      return nullptr;
+    }
+    if (atom_cmp(ctx, a->unsafe_span_a() + i, lit.str_val[i])) {
+      return nullptr;
+    }
+  }
+
+  auto end = a + lit.str_len;
+  return end;
 }
 
-inline int atom_cmp(void* ctx, Token* a, char b) {
-  return ((C99Parser*)ctx)->atom_cmp(a, b);
-}
-
-inline int atom_cmp(void* ctx, Token* a, const char* b) {
-  return ((C99Parser*)ctx)->atom_cmp(a, b);
-}
-
-template<int N>
-inline int atom_cmp(void* ctx, Token* a, const StringParam<N>& b) {
-  return ((C99Parser*)ctx)->atom_cmp(a, b);
-}
-
-inline int atom_cmp(void* ctx, Token* a, const Token* b) {
-  return ((C99Parser*)ctx)->atom_cmp(a, b);
-}
-
-inline void atom_rewind(void* ctx, Token* a, Token* b) {
-  ((C99Parser*)ctx)->atom_rewind(a, b);
-}
 
 //------------------------------------------------------------------------------
 
@@ -307,32 +162,10 @@ struct NodeBuiltinType : public ParseNode, public LeafMaker<NodeBuiltinType> {
     match_base,
     Opt<match_suffix>
   >;
-
-  static Token* match(void* ctx, Token* a, Token* b) {
-    auto end = LeafMaker::match(ctx, a, b);
-    if (end) {
-      return end;
-    }
-    else {
-      //atom_rewind(ctx, a, b);
-      return nullptr;
-    }
-  }
 };
 
 struct NodeTypedefType : public ParseNode , public LeafMaker<NodeTypedefType> {
   using pattern = Ref<&C99Parser::match_typedef_type>;
-
-  static Token* match(void* ctx, Token* a, Token* b) {
-    auto end = LeafMaker::match(ctx, a, b);
-    if (end) {
-      return end;
-    }
-    else {
-      //atom_rewind(ctx, a, b);
-      return nullptr;
-    }
-  }
 };
 
 
@@ -350,28 +183,6 @@ struct NodeIdentifier : public ParseNode, public LeafMaker<NodeIdentifier> {
     Not<NodeTypedefType>,
     Atom<LEX_IDENTIFIER>
   >;
-
-  static Token* match(void* ctx, Token* a, Token* b) {
-    if (NodeBuiltinType::pattern::match(ctx, a, b)) {
-      //atom_rewind(ctx, a, b);
-      return nullptr;
-    }
-
-    if (NodeTypedefType::pattern::match(ctx, a, b)) {
-      /**/atom_rewind(ctx, a, b);
-      return nullptr;
-    }
-
-    if (auto end = Atom<LEX_IDENTIFIER>::match(ctx, a, b)) {
-      auto node = new NodeIdentifier();
-      node->init_leaf(a, end-1);
-      return end;
-    }
-    else {
-      //atom_rewind(ctx, a, b);
-      return nullptr;
-    }
-  }
 };
 
 //------------------------------------------------------------------------------
@@ -392,21 +203,6 @@ struct NodeConstant : public ParseNode, public LeafMaker<NodeConstant> {
 };
 
 //------------------------------------------------------------------------------
-
-/*
-template<typename NodeType, typename pattern>
-struct CaptureLeaf {
-  static Token* match(void* ctx, Token* a, Token* b) {
-    if (!a || a == b) return nullptr;
-    auto end = pattern::match(ctx, a, b);
-    if (end && end != a) {
-      auto node = new NodeType();
-      node->init(a, end - 1);
-    }
-    return end;
-  }
-};
-*/
 
 template<typename P>
 using comma_separated = Seq<P, Any<Seq<Atom<','>, P>>, Opt<Atom<','>> >;
@@ -468,9 +264,9 @@ struct NodeSuffixOp : public ParseNode, public LeafMaker<NodeSuffixOp<lit>> {
 struct NodeQualifier : public ParseNode {
   static Token* match(void* ctx, Token* a, Token* b) {
     if (!a || a == b) return nullptr;
-    if (SST<qualifiers>::contains(ctx, a)) {
+    if (SST<qualifiers>::match(ctx, a, b)) {
       auto node = new NodeQualifier();
-      node->init_leaf(a, a);
+      node->init_leaf(ctx, a, a);
       return a + 1;
     }
     else {
@@ -807,7 +603,7 @@ struct NodeExpression : public ParseNode {
     if (atom_cmp(ctx, a, LEX_PUNCT)) {
       return nullptr;
     }
-    /**/atom_rewind(ctx, a, b);
+    /*+*/atom_rewind(ctx, a, b);
 
     switch(a->unsafe_span_a()[0]) {
       case '+': return Oneof< NodeBinaryOp<"+=">, NodeBinaryOp<"+"> >::match(ctx, a, b);
@@ -870,7 +666,6 @@ struct NodeExpression : public ParseNode {
     auto tok_a = a;
     auto tok_b = pattern::match(ctx, a, b);
     if (tok_b == nullptr) {
-      //atom_rewind(ctx, a, b);
       return nullptr;
     }
 
@@ -900,7 +695,7 @@ struct NodeExpression : public ParseNode {
       if (l && l >= tok_a) {
         if (l->get_span()->assoc == -2) {
           auto node = new NodeExpressionPrefix();
-          node->init_node(l, c, l->get_span(), c->get_span());
+          node->init_node(ctx, l, c, l->get_span(), c->get_span());
           continue;
         }
       }
@@ -1037,10 +832,7 @@ struct NodeExpression : public ParseNode {
     auto end = match2(ctx, a, b);
     if (end) {
       auto node = new NodeExpression();
-      node->init_node(a, end - 1, a->get_span(), (end-1)->get_span());
-    }
-    else {
-      //atom_rewind(ctx, a, b);
+      node->init_node(ctx, a, end - 1, a->get_span(), (end-1)->get_span());
     }
     print_trace_end<NodeExpression, Token>(a, end);
     return end;
@@ -1394,7 +1186,7 @@ struct NodeUnionType : public ParseNode {
     auto end = p->match_union_type(a, b);
     if (end) {
       auto node = new NodeUnionType();
-      node->init_leaf(a, end - 1);
+      node->init_leaf(ctx, a, end - 1);
     }
     return end;
   }
@@ -2051,3 +1843,4 @@ struct NodeTranslationUnit : public ParseNode, public NodeMaker<NodeTranslationU
 };
 
 //------------------------------------------------------------------------------
+#endif

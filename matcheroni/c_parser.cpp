@@ -1,39 +1,9 @@
-#include "c_parser.h"
-#include "c_lexer.h"
+#include "c_parser.hpp"
 
-#include <filesystem>
-#include <vector>
-#include <stdint.h>
-#include <cstring>
-
-void dump_tree(const ParseNode* n, int max_depth = 0, int indentation = 0);
-
-//------------------------------------------------------------------------------
-
-double timestamp_ms() {
-  using clock = std::chrono::high_resolution_clock;
-  using nano = std::chrono::nanoseconds;
-
-  static bool init = false;
-  static double origin = 0;
-
-  auto now = clock::now().time_since_epoch();
-  auto now_nanos = std::chrono::duration_cast<nano>(now).count();
-  if (!origin) origin = now_nanos;
-
-  return (now_nanos - origin) * 1.0e-6;
-}
-
-//------------------------------------------------------------------------------
-
-void set_color(uint32_t c) {
-  if (c) {
-    printf("\u001b[38;2;%d;%d;%dm", (c >> 0) & 0xFF, (c >> 8) & 0xFF, (c >> 16) & 0xFF);
-  }
-  else {
-    printf("\u001b[0m");
-  }
-}
+#include "ParseNode.hpp"
+#include "SlabAlloc.hpp"
+#include "TypeScope.hpp"
+#include "utils.hpp"
 
 //------------------------------------------------------------------------------
 
@@ -54,7 +24,7 @@ void C99Parser::reset() {
   tokens.clear();
   ParseNode::slabs.reset();
 
-  while(type_scope->parent) pop_scope();
+  while (type_scope->parent) pop_scope();
   type_scope->clear();
 
   cleanup_accum += timestamp_ms();
@@ -64,6 +34,8 @@ void C99Parser::reset() {
 
 void C99Parser::load(const std::string& path) {
   io_accum -= timestamp_ms();
+
+  /*
   auto size = std::filesystem::file_size(path);
   text.resize(size);
   memset(text.data(), 0, size);
@@ -73,12 +45,17 @@ void C99Parser::load(const std::string& path) {
   }
   auto r = fread(text.data(), 1, size, file);
   fclose(file);
+  */
+  text = read(path.c_str());
 
-  for (auto c : text) if (c == '\n') file_lines++;
+  for (auto c : text)
+    if (c == '\n') file_lines++;
 
   io_accum += timestamp_ms();
   file_bytes += text.size();
 }
+
+#if 0
 
 //------------------------------------------------------------------------------
 
@@ -155,6 +132,153 @@ ParseNode* C99Parser::parse() {
   this->head = root;
   this->tail = root;
   return root;
+}
+
+
+  int atom_cmp(Token* a, const LexemeType& b) {
+    DCHECK(a == global_cursor);
+    auto result = a->atom_cmp(b);
+    if (result == 0) global_cursor++;
+    return result;
+  }
+
+  int atom_cmp(Token* a, const char& b) {
+    DCHECK(a == global_cursor);
+    auto result = a->atom_cmp(b);
+    if (result == 0) global_cursor++;
+    return result;
+  }
+
+  int atom_cmp(Token* a, const char* b) {
+    DCHECK(a == global_cursor);
+    auto result = a->atom_cmp(b);
+    if (result == 0) global_cursor++;
+    return result;
+  }
+
+  template<int N>
+  int atom_cmp(Token* a, const StringParam<N>& b) {
+    DCHECK(a == global_cursor);
+    auto result = a->atom_cmp(b);
+    if (result == 0) global_cursor++;
+    return result;
+  }
+
+  int atom_cmp(Token* a, const Token* b) {
+    DCHECK(a == global_cursor);
+    auto result = a->atom_cmp(b);
+    if (result == 0) global_cursor++;
+    return result;
+  }
+
+  inline static int rewind_count = 0;
+  inline static int didnt_rewind = 0;
+
+  void atom_rewind(Token* a, Token* b) {
+    //printf("rewind to %20.20s\n", a->debug_span_a());
+
+    /*
+    if (a < global_cursor) {
+      static constexpr int context_len = 60;
+      printf("[");
+      print_escaped(global_cursor->get_lex_debug()->span_a, context_len, 0x804080);
+      printf("]\n");
+      printf("[");
+      print_escaped(a->get_lex_debug()->span_a, context_len, 0x804040);
+      printf("]\n");
+    }
+    */
+
+    DCHECK(a <= global_cursor);
+
+    if (a < global_cursor) {
+      rewind_count++;
+    }
+    else {
+      didnt_rewind++;
+    }
+
+    global_cursor = a;
+  }
+
+inline int atom_cmp(void* ctx, Token* a, LexemeType b) {
+  return ((C99Parser*)ctx)->atom_cmp(a, b);
+}
+
+inline int atom_cmp(void* ctx, Token* a, char b) {
+  return ((C99Parser*)ctx)->atom_cmp(a, b);
+}
+
+inline int atom_cmp(void* ctx, Token* a, const char* b) {
+  return ((C99Parser*)ctx)->atom_cmp(a, b);
+}
+
+template<int N>
+inline int atom_cmp(void* ctx, Token* a, const StringParam<N>& b) {
+  return ((C99Parser*)ctx)->atom_cmp(a, b);
+}
+
+inline int atom_cmp(void* ctx, Token* a, const Token* b) {
+  return ((C99Parser*)ctx)->atom_cmp(a, b);
+}
+
+inline void atom_rewind(void* ctx, Token* a, Token* b) {
+  ((C99Parser*)ctx)->atom_rewind(a, b);
+}
+
+//------------------------------------------------------------------------------
+
+Token* C99Parser::match_class_type  (Token* a, Token* b) { return type_scope->has_class_type  (this, a, b) ? a + 1 : nullptr; }
+Token* C99Parser::match_struct_type (Token* a, Token* b) { return type_scope->has_struct_type (this, a, b) ? a + 1 : nullptr; }
+Token* C99Parser::match_union_type  (Token* a, Token* b) { return type_scope->has_union_type  (this, a, b) ? a + 1 : nullptr; }
+Token* C99Parser::match_enum_type   (Token* a, Token* b) { return type_scope->has_enum_type   (this, a, b) ? a + 1 : nullptr; }
+Token* C99Parser::match_typedef_type(Token* a, Token* b) { return type_scope->has_typedef_type(this, a, b) ? a + 1 : nullptr; }
+
+void C99Parser::add_class_type  (Token* a) { type_scope->add_class_type  (a); }
+void C99Parser::add_struct_type (Token* a) { type_scope->add_struct_type (a); }
+void C99Parser::add_union_type  (Token* a) { type_scope->add_union_type  (a); }
+void C99Parser::add_enum_type   (Token* a) { type_scope->add_enum_type   (a); }
+void C99Parser::add_typedef_type(Token* a) { type_scope->add_typedef_type(a); }
+
+//----------------------------------------------------------------------------
+
+void C99Parser::push_scope() {
+  TypeScope* new_scope = new TypeScope();
+  new_scope->parent = type_scope;
+  type_scope = new_scope;
+}
+
+void C99Parser::pop_scope() {
+  TypeScope* old_scope = type_scope->parent;
+  if (old_scope) {
+    delete type_scope;
+    type_scope = old_scope;
+  }
+}
+
+//----------------------------------------------------------------------------
+
+void C99Parser::append_node(ParseNode* node) {
+  if (tail) {
+    tail->next = node;
+    node->prev = tail;
+    tail = node;
+  }
+  else {
+    head = node;
+    tail = node;
+  }
+}
+
+void C99Parser::enclose_nodes(ParseNode* start, ParseNode* node) {
+  // Is this right? Who knows. :D
+  node->head = start;
+  node->tail = tail;
+
+  tail->next = node;
+  start->prev = nullptr;
+
+  tail = node;
 }
 
 //------------------------------------------------------------------------------
@@ -242,94 +366,6 @@ void C99Parser::dump_stats() {
 
 //------------------------------------------------------------------------------
 
-void print_escaped(const char* s, int len, unsigned int color) {
-  if (len < 0) {
-    exit(1);
-  }
-  set_color(color);
-  while(len) {
-    auto c = *s++;
-    if      (c == 0)    break;
-    else if (c == ' ')  putc(' ', stdout);
-    else if (c == '\n') putc(' ', stdout);
-    else if (c == '\r') putc(' ', stdout);
-    else if (c == '\t') putc(' ', stdout);
-    else                putc(c,   stdout);
-    len--;
-  }
-  while(len--) putc('#', stdout);
-  set_color(0);
-
-  return;
-}
-
-std::string escape_span(const ParseNode* n) {
-  if (!n->tok_a() || !n->tok_b()) {
-    return "<bad span>";
-  }
-
-  auto len = n->tok_b()->get_lex_debug()->span_b - n->tok_a()->get_lex_debug()->span_a;
-
-  std::string result;
-  for (auto i = 0; i < len; i++) {
-    auto c = n->tok_a()->debug_span_a()[i];
-    if (c == '\n') {
-      result.push_back('\\');
-      result.push_back('n');
-    }
-    else if (c == '\r') {
-      result.push_back('\\');
-      result.push_back('r');
-    }
-    else if (c == '\t') {
-      result.push_back('\\');
-      result.push_back('t');
-    }
-    else {
-      result.push_back(c);
-    }
-    if (result.size() >= 80) break;
-  }
-
-  return result;
-}
-
-
-void dump_tree(const ParseNode* n, int max_depth, int indentation) {
-  if (max_depth && indentation == max_depth) return;
-
-  printf("%p {%p-%p} ", n, n->tok_a(), n->tok_b());
-
-  printf("{%-40.40s}", escape_span(n).c_str());
-
-
-  for (int i = 0; i < indentation; i++) printf(" | ");
-
-  if (n->precedence) {
-    printf("[%02d %2d] ",
-      n->precedence,
-      n->assoc
-      //n->assoc > 0 ? '>' : n->assoc < 0 ? '<' : '-'
-    );
-  }
-  else {
-    printf("[-O-] ");
-  }
-
-  if (n->tok_a()) set_color(n->tok_a()->type_to_color());
-  //if (!field.empty()) printf("%-10.10s : ", field.c_str());
-
-  n->print_class_name(20);
-  set_color(0);
-  printf("\n");
-
-  for (auto c = n->head; c; c = c->next) {
-    dump_tree(c, max_depth, indentation + 1);
-  }
-}
-
-//------------------------------------------------------------------------------
-
 void C99Parser::dump_lexemes() {
   for(auto& l : lexemes) {
     printf("{");
@@ -348,3 +384,4 @@ void C99Parser::dump_tokens() {
 }
 
 //------------------------------------------------------------------------------
+#endif

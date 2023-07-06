@@ -1,8 +1,4 @@
-#include <chrono>
-#include <filesystem>
-#include <fstream>
-#include <iostream>
-#include <string>
+#include <stdio.h>
 
 //#define BENCHMARK_BASELINE
 //#define BENCHMARK_MATCHERONI
@@ -24,7 +20,7 @@
 #endif
 
 #ifdef BENCHMARK_MATCHERONI
-#include "Matcheroni.h"
+#include "Matcheroni.hpp"
 #endif
 
 #ifdef BENCHMARK_CTRE
@@ -39,34 +35,6 @@ using namespace matcheroni;
 // Email "[\\w.+-]+@[\\w.-]+\\.[\\w.-]+"
 // URI   "[\\w]+:\\/\\/[^\\/\\s?#]+[^\\s?#]+(?:\\?[^\\s#]*)?(?:#[^\\s]*)?"
 // IP    "(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9])\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9])"
-
-//------------------------------------------------------------------------------
-
-std::string read(const char* path) {
-  auto size = std::filesystem::file_size(path);
-  std::string buf;
-  buf.resize(size);
-  FILE* f = fopen(path, "rb");
-  auto _ = fread(buf.data(), size, 1, f);
-  fclose(f);
-  return buf;
-}
-
-//------------------------------------------------------------------------------
-
-double timestamp_ms() {
-  using clock = std::chrono::high_resolution_clock;
-  using nano = std::chrono::nanoseconds;
-
-  static bool init = false;
-  static double origin = 0;
-
-  auto now = clock::now().time_since_epoch();
-  auto now_nanos = std::chrono::duration_cast<nano>(now).count();
-  if (!origin) origin = now_nanos;
-
-  return (now_nanos - origin) * 1.0e-6;
-}
 
 //------------------------------------------------------------------------------
 

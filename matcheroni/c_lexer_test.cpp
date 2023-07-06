@@ -1,17 +1,14 @@
-#include "c_lexer.h"
+#include "c_lexer.hpp"
 
-#include "Lexemes.h"
-#include "Matcheroni.h"
+#include "Lexeme.hpp"
+#include "utils.hpp"
 
-#include <assert.h>
-#include <chrono>
 #include <filesystem>
-#include <map>
-#include <memory.h>
-#include <set>
+#include <stdint.h>    // for uint8_t
 #include <stdio.h>
+#include <stdlib.h>    // for exit
+#include <string.h>    // for memset#include <assert.h>
 #include <string>
-#include <type_traits>
 #include <vector>
 
 #ifdef MATCHERONI_USE_NAMESPACE
@@ -35,33 +32,6 @@ void test_match_string() {
   printf("test_match_string() pass\n");
 }
 */
-
-//------------------------------------------------------------------------------
-
-double timestamp_ms() {
-  using clock = std::chrono::high_resolution_clock;
-  using nano = std::chrono::nanoseconds;
-
-  static bool init = false;
-  static double origin = 0;
-
-  auto now = clock::now().time_since_epoch();
-  auto now_nanos = std::chrono::duration_cast<nano>(now).count();
-  if (!origin) origin = now_nanos;
-
-  return (now_nanos - origin) * 1.0e-6;
-}
-
-//------------------------------------------------------------------------------
-
-void set_color(uint32_t c) {
-  if (c) {
-    printf("\u001b[38;2;%d;%d;%dm", (c >> 0) & 0xFF, (c >> 8) & 0xFF, (c >> 16) & 0xFF);
-  }
-  else {
-    printf("\u001b[0m");
-  }
-}
 
 //------------------------------------------------------------------------------
 
@@ -319,3 +289,5 @@ int main(int argc, char** argv) {
 
   return 0;
 }
+
+//------------------------------------------------------------------------------

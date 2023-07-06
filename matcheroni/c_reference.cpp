@@ -1,7 +1,11 @@
-#include "Matcheroni.h"
-#include "Lexemes.h"
-#include "c_lexer.h"
-#include "c_constants.h"
+#include "Matcheroni.hpp"
+#include "Lexeme.hpp"
+#include "SST.hpp"
+#include "c_constants.hpp"
+
+#include <array>            // for array
+
+template <auto ...rest> struct Atom;
 
 #ifdef MATCHERONI_USE_NAMESPACE
 using namespace matcheroni;
@@ -44,30 +48,12 @@ struct RefBase {
 
 struct string_literal;
 struct punctuator;
-struct expression;
 struct header_name;
 struct pp_number;
 struct constant;
 struct escape_sequence;
-struct punctuator;
-struct constant_expression;
 struct assignment_expression;
 struct type_name;
-struct unary_expression;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 //------------------------------------------------------------------------------
 // A.1 Lexical grammar
@@ -928,8 +914,6 @@ struct abstract_declarator : public RefBase<abstract_declarator> {
     Seq<Opt<pointer>, direct_abstract_declarator>
   >;
 };
-
-struct initializer_list;
 
 /*6.7.8*/
 struct initializer : public RefBase<initializer> {

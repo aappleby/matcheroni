@@ -70,11 +70,9 @@ inline int atom_cmp(void* ctx, const char* a, char b) {
 
 // By default this does nothing, override in your application as needed.
 
-/*
 template<typename atom>
 inline void atom_rewind(void* ctx, atom* a, atom* b) {
 }
-*/
 
 //------------------------------------------------------------------------------
 // The most fundamental unit of matching is a single atom. For convenience, we
@@ -138,7 +136,6 @@ struct Seq {
         return d;
       }
       else {
-        //atom_rewind(ctx, a, b);
         return nullptr;
       }
     }
@@ -173,7 +170,7 @@ struct Oneof {
       return c;
     }
     else {
-      /**/atom_rewind(ctx, a, b);
+      /*+*/atom_rewind(ctx, a, b);
       return Oneof<rest...>::match(ctx, a, b);
     }
   }
@@ -202,7 +199,7 @@ struct Opt {
       return c;
     }
     else {
-      /**/atom_rewind(ctx, a, b);
+      /*+*/atom_rewind(ctx, a, b);
       return a;
     }
   }
@@ -228,7 +225,7 @@ struct Any {
         a = c;
       }
       else {
-        /**/atom_rewind(ctx, a, b);
+        /*+*/atom_rewind(ctx, a, b);
         break;
       }
     }
@@ -255,7 +252,6 @@ struct Some {
   static atom* match(void* ctx, atom* a, atom* b) {
     auto c = Any<rest...>::match(ctx, a, b);
     if (c == a) {
-      //atom_rewind(ctx, a, b);
       return nullptr;
     }
     else {
@@ -303,7 +299,7 @@ struct And {
   template<typename atom>
   static atom* match(void* ctx, atom* a, atom* b) {
     auto c = P::match(ctx, a, b);
-    /**/atom_rewind(ctx, a, b);
+    /*+*/atom_rewind(ctx, a, b);
     return c ? a : nullptr;
   }
 };
@@ -319,7 +315,7 @@ struct Not {
   template<typename atom>
   static atom* match(void* ctx, atom* a, atom* b) {
     auto c = P::match(ctx, a, b);
-    /*?*/atom_rewind(ctx, a, b);
+    /*+*/atom_rewind(ctx, a, b);
     return c ? nullptr : a;
   }
 };
@@ -338,7 +334,6 @@ struct NotEmpty {
   static atom* match(void* ctx, atom* a, atom* b) {
     auto end = Seq<rest...>::match(ctx, a, b);
     if (end == a) {
-      //atom_rewind(ctx, a, b);
       return nullptr;
     }
     else {
@@ -363,7 +358,6 @@ struct Rep {
       return c;
     }
     else {
-      //atom_rewind(ctx, a, b);
       return nullptr;
     }
   }
@@ -380,14 +374,12 @@ struct RepRange {
     for(auto i = 0; i < M; i++) {
       c = P::match(ctx, a, b);
       if (!c) {
-        //atom_rewind(ctx, a, b);
         return nullptr;
       }
     }
     for(auto i = 0; i < (N-M); i++) {
       auto d = P::match(ctx, a, b);
       if (!d) {
-        //atom_rewind(ctx, c, b);
         return c;
       }
     }
@@ -405,7 +397,6 @@ struct NotAtom {
   static atom* match(void* ctx, atom* a, atom* b) {
     if (!a || a == b) return nullptr;
     if (atom_cmp(ctx, a, C) == 0) {
-      //atom_rewind(ctx, a, b);
       return nullptr;
     }
     else {
@@ -420,7 +411,6 @@ struct NotAtom<C> {
   static atom* match(void* ctx, atom* a, atom* b) {
     if (!a || a == b) return nullptr;
     if (atom_cmp(ctx, a, C) == 0) {
-      //atom_rewind(ctx, a, b);
       return nullptr;
     }
     else {
@@ -438,11 +428,9 @@ struct Range {
   static atom* match(void* ctx, atom* a, atom* b) {
     if (!a || a == b) return nullptr;
     if (atom_cmp(ctx, a, RA) < 0) {
-      //atom_rewind(ctx, a, b);
       return nullptr;
     }
     if (atom_cmp(ctx, a, RB) > 0) {
-      //atom_rewind(ctx, a, b);
       return nullptr;
     }
     return a + 1;
@@ -456,7 +444,6 @@ struct NotRange {
     if (!a || a == b) return nullptr;
     if (atom_cmp(ctx, a, RA) < 0) return a + 1;
     if (atom_cmp(ctx, a, RB) > 0) return a + 1;
-    //atom_rewind(ctx, a, b);
     return nullptr;
   }
 };
@@ -471,12 +458,12 @@ struct Until {
   static atom* match(void* ctx, atom* a, atom* b) {
     atom* c = a;
     while(c < b) {
-      if (P::match(ctx, c, b)) {
+      if (auto end = P::match(ctx, c, b)) {
+        atom_rewind(ctx, c, b);
         return c;
       }
       c++;
     }
-    //atom_rewind(ctx, a, b);
     return nullptr;
   }
 };
@@ -625,7 +612,6 @@ struct DelimitedBlock {
     atom* c = a;
     c = ldelim::match(ctx, a, b);
     if (c == nullptr) {
-      //atom_rewind(ctx, a, b);
       return nullptr;
     }
 
@@ -637,7 +623,6 @@ struct DelimitedBlock {
         c = end;
       }
       else {
-        //atom_rewind(ctx, a, b);
         return nullptr;
       }
     }
@@ -662,7 +647,6 @@ struct DelimitedList {
     if (!a || a == b) return nullptr;
     atom* c = ldelim::match(ctx, a, b);
     if (c == nullptr) {
-      //atom_rewind(ctx, a, b);
       return nullptr;
     }
 
@@ -672,7 +656,6 @@ struct DelimitedList {
       if (auto end = rdelim::match(ctx, c, b)) return end;
       c = separator::match(ctx, c, b);
     }
-    //atom_rewind(ctx, a, b);
     return nullptr;
   }
 
@@ -687,7 +670,6 @@ struct EOL {
     if (!a) return nullptr;
     if (a == b) return a;
     if (*a == atom('\n')) return a;
-    //atom_rewind(ctx, a, b);
     return nullptr;
   }
 };
@@ -720,17 +702,10 @@ struct Lit {
 
     for (int i = 0; i < lit.str_len; i++) {
       if (atom_cmp(ctx, a + i, lit.str_val[i])) {
-        //atom_rewind(ctx, a, b);
         return nullptr;
       }
     }
     return a + lit.str_len;
-
-    /*
-    for (auto i = 0; i < lit.str_len; i++) {
-      if (a[i] != lit.str_val[i]) return nullptr;
-    }
-    */
   }
 };
 

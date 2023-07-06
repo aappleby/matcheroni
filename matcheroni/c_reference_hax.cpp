@@ -1,7 +1,10 @@
-  #include "Matcheroni.h"
-  #include "Lexemes.h"
-  #include "c_lexer.h"
-  #include "c_constants.h"
+#include "Matcheroni.hpp"
+#include "Lexeme.hpp"
+#include "SST.hpp"
+#include "c_constants.hpp"
+
+#include <array>            // for array
+template <auto ...rest> struct Atom;
 
 // These are not intended to be usable grammar bits, they are just from the C99
 // spec for reference.
@@ -45,10 +48,13 @@ struct header_name;
 struct pp_number;
 struct constant;
 struct escape_sequence;
-struct punctuator;
-struct constant_expression;
 struct assignment_expression;
-struct unary_expression;
+struct declarator_suffix;
+struct declarator;
+struct initializer_list;
+struct type_cast;
+
+
 
 
 
@@ -484,10 +490,6 @@ struct pp_number : public RefBase<pp_number> {
 //------------------------------------------------------------------------------
 // A.2 Phrase structure grammar
 
-struct initializer_list;
-struct expression;
-struct type_cast;
-
 using expression_prefix =
 Oneof<
   Operator<"++">,
@@ -819,8 +821,6 @@ Oneof<
   typedef_name
 >;
 
-struct declarator;
-struct initializer_list;
 
 using struct_body =
 Seq<
@@ -886,9 +886,6 @@ Seq<
   >>,
   Atom<';'>
 >;
-
-struct abstract_declarator;
-struct declarator_suffix;
 
 /*6.7.6*/
 struct abstract_declarator : public RefBase<abstract_declarator> {

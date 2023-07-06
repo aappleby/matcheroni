@@ -1,25 +1,14 @@
-#include "c_lexer.h"
+#include "c_lexer.hpp"
 
-void atom_rewind(void* ctx, const char* a, const char* b);
-
-#include "Lexemes.h"
-
-
-#include "Matcheroni.h"
-#include "c_constants.h"
-
-#include <stdint.h>
-#include <stdio.h>
+#include "c_constants.hpp"
+#include "Lexeme.hpp"
+#include "Matcheroni.hpp"
+#include "SST.hpp"
 #include <array>
-#include <cstdint>
-#include <map>
 
 #ifdef MATCHERONI_USE_NAMESPACE
 using namespace matcheroni;
 #endif
-
-void atom_rewind(void* ctx, const char* a, const char* b) {
-}
 
 template<typename M>
 using ticked = Seq<Opt<Atom<'\''>>, M>;
@@ -42,21 +31,29 @@ const char* match_eof        (void* ctx, const char* a, const char* b);
 
 //------------------------------------------------------------------------------
 
-// Match char needs to come before match identifier because of its possible L'_' prefix...
+struct cspan {
+  const char* a;
+  const char* b;
+};
+
+inline int atom_cmp(void* ctx, cspan* s, const char* b) {
+  return cmp_span_lit(s->a, s->b, b);
+}
 
 Lexeme next_lexeme(void* ctx, const char* cursor, const char* text_end) {
   if (auto end = match_space      (ctx, cursor, text_end)) return Lexeme(LEX_SPACE     , cursor, end);
   if (auto end = match_newline    (ctx, cursor, text_end)) return Lexeme(LEX_NEWLINE   , cursor, end);
   if (auto end = match_string     (ctx, cursor, text_end)) return Lexeme(LEX_STRING    , cursor, end);
+
+  // Match char needs to come before match identifier because of its possible L'_' prefix...
   if (auto end = match_char       (ctx, cursor, text_end)) return Lexeme(LEX_CHAR      , cursor, end);
 
-  //if (auto end = match_keyword    (ctx, cursor, text_end)) return Lexeme(LEX_KEYWORD   , cursor, end);
-  //if (auto end = match_identifier (ctx, cursor, text_end)) return Lexeme(LEX_IDENTIFIER, cursor, end);
   {
     auto end = match_identifier(ctx, cursor, text_end);
     if (end) {
-      auto span = cspan{cursor, end};
-      if (SST<c99_keywords>::contains(ctx, &span)) {
+      auto span1 = cspan{cursor, end};
+      auto span2 = cspan{cursor, end};
+      if (SST<c99_keywords>::match(ctx, &span1, &span2)) {
         return Lexeme(LEX_KEYWORD   , cursor, end);
       }
       else {
@@ -209,20 +206,6 @@ const char* match_utf8_bom(void* ctx, const char* a, const char* b) {
 }
 
 //------------------------------------------------------------------------------
-// Keywords
-
-const char* match_keyword(void* ctx, const char* a, const char* b) {
-  auto end = match_identifier(ctx, a, b);
-  auto span = cspan{a, end};
-  if (SST<c99_keywords>::contains(ctx, &span)) {
-    return end;
-  }
-  else {
-    return nullptr;
-  }
-}
-
-//------------------------------------------------------------------------------
 // 6.4.2 Identifiers - GCC allows dollar signs in identifiers?
 
 const char* match_identifier(void* ctx, const char* a, const char* b) {
@@ -370,7 +353,7 @@ const char* match_cooked_string_literal(void* ctx, const char* a, const char* b)
   return string_literal::match(ctx, a, b);
 }
 
-//------------------------------------------------------------------------------
+//----------------------------------------
 // Raw string literals from the C++ spec
 
 const char* match_raw_string_literal(void* ctx, const char* a, const char* b) {
@@ -401,6 +384,8 @@ const char* match_raw_string_literal(void* ctx, const char* a, const char* b) {
 
   return raw_string_literal::match(ctx, a, b);
 }
+
+//----------------------------------------
 
 const char* match_string(void* ctx, const char* a, const char* b) {
   using any_string = Oneof<
