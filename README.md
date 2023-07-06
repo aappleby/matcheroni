@@ -166,12 +166,43 @@ Overall results:
 
 So, if you need to do some customized pattern-matching on something like an embedded platform and you want to keep your compile-test cycle fast, give Matcheroni a try.
 
+# A Small Demo - Parsing Regular Expressions
+
+There is a full working example of using Matcheroni to parse a subset of regular expression syntax, build a syntax tree, print the tree, and (optionally) trace the matching process in (regex_parser.cpp)[matcheroni/regex_parser.cpp].
+
+```
+aappleby@TinyTron:~/Matcheroni$ bin/regex_parser "[a-zA-Z]*(foobarbaz|glom.*)?"
+argv[0] = bin/regex_parser
+argv[1] = [a-zA-Z]* (foobarbaz|glom.*)?
+
+Parse tree:
+[a-zA-Z]*              any
+[a-zA-Z]               |--pos_set
+a-z                    |  |--range
+a                      |  |  |--begin
+z                      |  |  |--end
+A-Z                    |  |--range
+A                      |  |  |--begin
+Z                      |  |  |--end
+(foobarbaz|glom.*)?    opt
+(foobarbaz|glom.*)     |--group
+foobarbaz|glom.*       |  |--oneof
+foobarbaz              |  |  |--option
+foobarbaz              |  |  |  |--text
+glom.*                 |  |  |--option
+glom                   |  |  |  |--text
+.*                     |  |  |  |--any
+.                      |  |  |  |  |--dot
+```
+
+This should suffice to cover basic and intermediate usage of Matcheroni, including recursive matching and implementing custom matchers that maintain global state.
+
 # A Larger Demo - Lexing and Parsing C
 This repo contains a work-in-progress example C lexer and parser built using Matcheroni.
 
 The lexer should be conformant to the C99 spec, the parser is less conformant but is still able to parse nearly everything in GCC's torture-test suite.
 
-The output of the parser is a simple tree of parse nodes with all parent/child/sibling links as pointers.
+The output of the parser is a simple tree of parse nodes with all parent/child/sibling links as pointers:
 
 Here's our parser for C's ```for``` loops:
 ```
@@ -209,9 +240,11 @@ Left-recursive matchers can get stuck in an infinite loop - this is true with mo
 
 Parsers generated with a real parser generator will probably be faster.
 
-# A non-trivial example
+# A Particularly Large Matcheroni Pattern
 
 Here's the code I use to match C99 integers, plus a few additions from the C++ spec and the GCC extensions.
+
+Note that it consists of 20 ```using``` declarations and the only actual "code" is ```return integer_constant::match(ctx, a, b);```
 
 If you follow along in Appendix A of the [C99 spec](https://www.open-std.org/jtc1/sc22/wg14/www/docs/n1256.pdf), you'll see it lines up quite closely.
 
