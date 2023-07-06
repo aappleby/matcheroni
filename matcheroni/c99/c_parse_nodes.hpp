@@ -1108,14 +1108,22 @@ struct NodeStatementCompound : public ParseNode,
 
 struct NodeStatementFor : public ParseNode, public NodeMaker<NodeStatementFor> {
   using pattern =
-      Seq<Keyword<"for">, Atom<'('>,
-          // This is _not_ the same as
-          // Opt<Oneof<e, x>>, Atom<';'>
-          Oneof<Seq<comma_separated<NodeExpression>, Atom<';'>>,
-                Seq<comma_separated<NodeDeclaration>, Atom<';'>>, Atom<';'>>,
-          Opt<comma_separated<NodeExpression>>, Atom<';'>,
-          Opt<comma_separated<NodeExpression>>, Atom<')'>,
-          Oneof<NodeStatementCompound, NodeStatement>>;
+  Seq<
+    Keyword<"for">,
+    Atom<'('>,
+    // This is _not_ the same as
+    // Opt<Oneof<e, x>>, Atom<';'>
+    Oneof<
+      Seq<comma_separated<NodeExpression>,  Atom<';'>>,
+      Seq<comma_separated<NodeDeclaration>, Atom<';'>>,
+      Atom<';'>
+    >,
+    Opt<comma_separated<NodeExpression>>,
+    Atom<';'>,
+    Opt<comma_separated<NodeExpression>>,
+    Atom<')'>,
+    Oneof<NodeStatementCompound, NodeStatement>
+  >;
 };
 
 //------------------------------------------------------------------------------
