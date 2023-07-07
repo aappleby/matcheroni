@@ -20,17 +20,17 @@ Matcheroni doesn't have to match text - you can customize it to match patterns i
 
 # Examples
 Matchers are roughly equivalent to regular expressions. A regular expression using the std::regex C++ library
-```
+```cpp
 std::regex my_pattern("[abc]+def");
 ```
 would be expressed in Matcheroni as
-```
+```cpp
 using my_pattern = Seq<Some<Atom<'a','b','c'>>, Lit<"def">>;
 ```
 In the above line of code, we are defining the matcher "my_pattern" by nesting the Seq<>, Some<>, Atom<>, and Lit<> matcher templates. The resuling type (not instance) defines a static "match()" function that behaves similarly to the regex.
 
 Unlike std::regex, we don't need to link in any additional libraries or instantiate anything to use it:
-```
+```cpp
 const std::string text = "aaabbaaccdefxyz";
 
 // The first argument to match() is a user-defined context pointer.
@@ -43,7 +43,7 @@ printf("%s\n", result);
 ```
 
 Matchers are also modular - you could write the above as
-```
+```cpp
 using abc = Atom<'a','b','c'>;
 using def = Lit<"def">;
 using my_pattern = Seq<Some<abc>, def>;
@@ -51,7 +51,7 @@ using my_pattern = Seq<Some<abc>, def>;
 and it would perform identically to the one-line version.
 
 Unlike regexes, matchers can be recursive. Note that you can't nest a pattern inside itself directly, as "using pattern" doesn't count as a declaration. Forward-declaring a matcher function and using that in a pattern works though:
-```
+```cpp
 // Forward-declare our matching function so we can use it recursively.
 const char* match_parens_recurse(void* ctx, const char* a, const char* b);
 
@@ -95,7 +95,7 @@ Matching functions should return a pointer in the range ```[a, b]``` to indicate
 
 Matcheroni includes [built-in matchers for most regex-like tasks](matcheroni/Matcheroni.h#L54), but writing your own is straightforward. Matchers can be templated and can do basically whatever they like inside ```match()```. For example, if we wanted to print a message whenever some pattern matches, we could do this:
 
-```
+```cpp
 template<typename P>
 struct PrintMessage {
   static const char* match(void* ctx, const char* a, const char* b) {
@@ -112,7 +112,7 @@ struct PrintMessage {
 ```
 
 and we could use it like this:
-```
+```cpp
 using pattern = PrintMessage<Atom<'a'>>;
 const std::string text = "This does not start with 'a'";
 
@@ -205,7 +205,7 @@ The lexer should be conformant to the C99 spec, the parser is less conformant bu
 The output of the parser is a simple tree of parse nodes with all parent/child/sibling links as pointers:
 
 Here's our parser for C's ```for``` loops:
-```
+```cpp
 struct NodeStatementFor : public ParseNode, public NodeMaker<NodeStatementFor> {
   using pattern =
   Seq<
@@ -248,7 +248,7 @@ Note that it consists of 20 ```using``` declarations and the only actual "code" 
 
 If you follow along in Appendix A of the [C99 spec](https://www.open-std.org/jtc1/sc22/wg14/www/docs/n1256.pdf), you'll see it lines up quite closely.
 
-```
+```cpp
 const char* match_int(void* ctx, const char* a, const char* b) {
   // clang-format off
   using digit                = Range<'0', '9'>;
