@@ -4,4 +4,5 @@ bin
 .ninja_deps
 .ninja_log
 platform.info
-mini_tests
+csmith_files
+test_files

@@ -13,7 +13,9 @@
 			"istream": "cpp",
 			"numeric": "cpp",
 			"ostream": "cpp",
-			"sstream": "cpp"
+			"sstream": "cpp",
+			"charconv": "cpp",
+			"string": "cpp"
 		}
 	}
 }

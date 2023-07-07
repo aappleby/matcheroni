@@ -1,12 +1,12 @@
 #-------------------------------------------------------------------------------
 # Configuration
 
-#build_mode = -g -O0
+build_mode = -g -O0
 #build_mode = -g -Os
-build_mode = -g -O3
+#build_mode = -g -O3
 
 # -O3 needs LTO to maximize performance
-build_mode = ${build_mode} -flto
+#build_mode = ${build_mode} -flto
 
 # -Os needs stripping to minimize size
 #build_mode = ${build_mode} -fdata-sections -ffunction-sections -Wl,--gc-sections -Wl,-s
@@ -58,33 +58,39 @@ rule link
 # Targets
 
 # Utility functions
-build obj/utils.o : compile_cpp matcheroni/utils.cpp
+build obj/utils.o : compile_cpp examples/utils.cpp
 
 # Regex parser example
-build obj/regex_parser.o : compile_cpp matcheroni/regex_parser.cpp
-build bin/regex_parser   : link obj/regex_parser.o
+build obj/regex_parser.o : compile_cpp examples/regex_parser.cpp
+build bin/regex_parser   : link obj/utils.o obj/regex_parser.o
+
+# JSON parser example
+build obj/json_parser.o  : compile_cpp examples/json_parser.cpp
+build bin/json_parser    : link obj/utils.o obj/json_parser.o
 
 # Trivial benchmark
-build obj/benchmark.o : compile_cpp matcheroni/benchmark.cpp
-build bin/benchmark   : link obj/utils.o obj/benchmark.o
+build obj/benchmark.o    : compile_cpp examples/benchmark.cpp
+build bin/benchmark      : link obj/utils.o obj/benchmark.o
 
 # C99 lexer/parser example (not finished)
-build obj/c99/c_parser_test.o   : compile_cpp matcheroni/c99/c_parser_test.cpp
-build obj/c99/C99Lexer.o        : compile_cpp matcheroni/c99/C99Lexer.cpp
-build obj/c99/C99Parser.o       : compile_cpp matcheroni/c99/C99Parser.cpp
-build obj/c99/Lexeme.o          : compile_cpp matcheroni/c99/Lexeme.cpp
-build obj/c99/ParseNode.o       : compile_cpp matcheroni/c99/ParseNode.cpp
-build obj/c99/Token.o           : compile_cpp matcheroni/c99/Token.cpp
-build obj/c99/TypeScope.o       : compile_cpp matcheroni/c99/TypeScope.cpp
-build obj/c99/c_reference.o     : compile_cpp matcheroni/c99/c_reference.cpp
-build obj/c99/c_reference_hax.o : compile_cpp matcheroni/c99/c_reference_hax.cpp
+build obj/c99_parser/c99_parser_test.o : compile_cpp examples/c99_parser/c99_parser_test.cpp
+build obj/c99_parser/C99Lexer.o        : compile_cpp examples/c99_parser/C99Lexer.cpp
+build obj/c99_parser/C99Parser.o       : compile_cpp examples/c99_parser/C99Parser.cpp
+build obj/c99_parser/Lexeme.o          : compile_cpp examples/c99_parser/Lexeme.cpp
+build obj/c99_parser/ParseNode.o       : compile_cpp examples/c99_parser/ParseNode.cpp
+build obj/c99_parser/Token.o           : compile_cpp examples/c99_parser/Token.cpp
+build obj/c99_parser/TypeScope.o       : compile_cpp examples/c99_parser/TypeScope.cpp
 
-build bin/c_parser_test : link $
-  obj/C99Lexer.o $
-  obj/c_parser_test.o $
-  obj/C99Parser.o $
-  obj/Lexeme.o $
-  obj/ParseNode.o $
-  obj/Token.o $
-  obj/TypeScope.o $
+build bin/c99_parser : link $
+  obj/c99_parser/C99Lexer.o $
+  obj/c99_parser/c_parser_test.o $
+  obj/c99_parser/C99Parser.o $
+  obj/c99_parser/Lexeme.o $
+  obj/c99_parser/ParseNode.o $
+  obj/c99_parser/Token.o $
+  obj/c99_parser/TypeScope.o $
   obj/utils.o
+
+
+#build obj/c99_parser/c_reference_hax.o : compile_cpp examples/c99_parser/c_reference_hax.cpp
+#build obj/c99_parser/c_reference.o     : compile_cpp examples/c99_parser/c_reference.cpp
