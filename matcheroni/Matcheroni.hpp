@@ -9,8 +9,8 @@
 // SPDX-FileCopyrightText:  2023 Austin Appleby <aappleby@gmail.com>
 // SPDX-License-Identifier: MIT License
 
-#ifndef __MATCHERONI_H__
-#define __MATCHERONI_H__
+#ifndef MATCHERONI_H_
+#define MATCHERONI_H_
 
 namespace matcheroni {
 
@@ -860,4 +860,4 @@ struct PatternWrapper {
 
 }; // namespace Matcheroni
 
-#endif // #ifndef __MATCHERONI_H__
+#endif // #ifndef MATCHERONI_H_
