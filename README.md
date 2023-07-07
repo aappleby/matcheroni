@@ -73,7 +73,7 @@ std::string text = "(((foo)bar)baz)tail";
 auto end = match_parens::match(nullptr, text.data(), text.data() + text.size());
 printf("%s", end); // prints "tail"
 ```
-# Building Matcheroni
+# Building the Matcheroni examples
 Install [Ninja](https://ninja-build.org/) if you haven't already, then run ninja in the repo root.
 
 See build.ninja for configuration options.
