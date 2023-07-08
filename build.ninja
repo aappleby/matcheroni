@@ -1,12 +1,12 @@
 #-------------------------------------------------------------------------------
 # Configuration
 
-build_mode = -g -O0
+#build_mode = -g -O0
 #build_mode = -g -Os
-#build_mode = -g -O3
+build_mode = -g -O3
 
 # -O3 needs LTO to maximize performance
-#build_mode = ${build_mode} -flto
+build_mode = ${build_mode} -flto -fdata-sections -ffunction-sections -Wl,--gc-sections -Wl,-s
 
 # -Os needs stripping to minimize size
 #build_mode = ${build_mode} -fdata-sections -ffunction-sections -Wl,--gc-sections -Wl,-s
@@ -36,7 +36,9 @@ defs = ${defs} -DBENCHMARK_STD_REGEX
 # This SRELL define seems to break things
 #defs = ${defs} -DSRELL_NO_APIEXT
 
-includes = -Imatcheroni
+#includes = -Imatcheroni -Iexamples
+
+includes = -I.
 
 #-------------------------------------------------------------------------------
 # Rules
@@ -66,7 +68,7 @@ build bin/regex_parser   : link obj/utils.o obj/regex_parser.o
 
 # JSON parser example
 build obj/json_parser.o  : compile_cpp examples/json_parser.cpp
-build bin/json_parser    : link obj/utils.o obj/json_parser.o
+build bin/json_parser    : link obj/json_parser.o
 
 # Trivial benchmark
 build obj/benchmark.o    : compile_cpp examples/benchmark.cpp
@@ -82,8 +84,8 @@ build obj/c99_parser/Token.o           : compile_cpp examples/c99_parser/Token.c
 build obj/c99_parser/TypeScope.o       : compile_cpp examples/c99_parser/TypeScope.cpp
 
 build bin/c99_parser : link $
+  obj/c99_parser/c99_parser_test.o $
   obj/c99_parser/C99Lexer.o $
-  obj/c99_parser/c_parser_test.o $
   obj/c99_parser/C99Parser.o $
   obj/c99_parser/Lexeme.o $
   obj/c99_parser/ParseNode.o $

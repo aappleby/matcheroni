@@ -5,6 +5,6 @@
 
 #include <vector>
 #include <string>
-#include "c99/Lexeme.hpp"
+#include "examples/c99_parser/Lexeme.hpp"
 
 //------------------------------------------------------------------------------

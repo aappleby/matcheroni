@@ -25,6 +25,8 @@ double timestamp_ms();
 std::string read(const char* path);
 void read(const char* path, std::string& text);
 
+void read(const char* path, char*& text_out, int& size_out);
+
 //------------------------------------------------------------------------------
 
 template<typename NodeType>

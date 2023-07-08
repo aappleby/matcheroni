@@ -1,10 +1,11 @@
 // SPDX-FileCopyrightText:  2023 Austin Appleby <aappleby@gmail.com>
 // SPDX-License-Identifier: MIT License
 
-#include "c99/C99Lexer.hpp"
-#include "c99/Lexeme.hpp"
+#include "matcheroni/Matcheroni.hpp"
+#include "examples/c99_parser/C99Lexer.hpp"
+#include "examples/c99_parser/Lexeme.hpp"
 
-#include "utils.hpp"
+#include "examples/utils.hpp"
 
 #include <filesystem>
 #include <stdint.h>    // for uint8_t

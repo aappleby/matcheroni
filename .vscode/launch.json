@@ -15,14 +15,6 @@
       //"args" : ["mini_tests"],
       //"args" : ["../gcc/gcc"],
       "args" : ["../gcc/gcc/testsuite/gcc.c-torture"],
-      "setupCommands": [
-        {
-          // Display content in STL containers pretty
-          "description": "Enable pretty-printing for gdb",
-          "text": "-enable-pretty-printing",
-          "ignoreFailures": true
-        }
-      ]
     },
     {
       "name": "benchmark",
@@ -31,14 +23,6 @@
       "request": "launch",
       "program": "${workspaceFolder}/bin/benchmark",
       "cwd": "${workspaceFolder}",
-      "setupCommands": [
-        {
-          // Display content in STL containers pretty
-          "description": "Enable pretty-printing for gdb",
-          "text": "-enable-pretty-printing",
-          "ignoreFailures": true
-        }
-      ]
     },
     {
       "name": "regex_parser",
@@ -48,14 +32,15 @@
       "program": "${workspaceFolder}/bin/regex_parser",
       "cwd": "${workspaceFolder}",
       "args" : ["\"(^\\d+\\s+(very)?\\s+(good|bad)\\s+[a-z]*$)\""],
-      "setupCommands": [
-        {
-          // Display content in STL containers pretty
-          "description": "Enable pretty-printing for gdb",
-          "text": "-enable-pretty-printing",
-          "ignoreFailures": true
-        }
-      ]
+    },
+    {
+      "name": "json_parser",
+      "preLaunchTask": "build_matcheroni",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/bin/json_parser",
+      "cwd": "${workspaceFolder}",
+      "args" : ["data/test.json"],
     }
   ]
 }

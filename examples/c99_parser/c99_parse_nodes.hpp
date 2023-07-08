@@ -3,15 +3,15 @@
 
 #pragma once
 
-#include "Matcheroni.hpp"
-#include "utils.hpp"
+#include "matcheroni/Matcheroni.hpp"
+#include "examples/utils.hpp"
 
-#include "c99/ParseNode.hpp"
-#include "c99/Lexeme.hpp"
-#include "c99/SST.hpp"
-#include "c99/Trace.hpp"
-#include "c99/c_constants.hpp"
-#include "c99/C99Parser.hpp"
+#include "examples/c99_parser/ParseNode.hpp"
+#include "examples/c99_parser/Lexeme.hpp"
+#include "examples/c99_parser/SST.hpp"
+#include "examples/c99_parser/Trace.hpp"
+#include "examples/c99_parser/c_constants.hpp"
+#include "examples/c99_parser/C99Parser.hpp"
 
 using namespace matcheroni;
 

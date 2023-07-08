@@ -12,7 +12,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <vector>
-#include "Matcheroni.hpp"
+#include "matcheroni/Matcheroni.hpp"
 
 using namespace matcheroni;
 
@@ -277,7 +277,7 @@ const char* match_regex(void* ctx, const char* a, const char* b) {
 int main(int argc, char** argv) {
   if (argc < 2) {
     printf("Usage: regex_parser \"<your regex>\"\n");
-    return 0;
+    return 1;
   }
 
   printf("argv[0] = %s\n", argv[0]);

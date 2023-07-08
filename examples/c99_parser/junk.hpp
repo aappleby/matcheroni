@@ -1,3 +1,22 @@
+#if 0
+# Comparisons of Matcheroni's JSON parser against...
+
+Lexy
+ - https://github.com/foonathan/lexy/blob/main/examples/json.cpp
+ - Lexy seems much more verbose.
+
+PEGTL
+ - https://github.com/taocpp/PEGTL/blob/main/include/tao/pegtl/contrib/json.hpp
+ - PEGTL is very similar to Matcheroni.
+
+Boost.Spirit
+ - https://gist.github.com/legnaleurc/3031094
+ - json example using other biggish chunks of spirit parser
+ - harder to see how it fits together
+ - rules are member variables of a struct?
+#endif
+
+
 // SPDX-FileCopyrightText:  2023 Austin Appleby <aappleby@gmail.com>
 // SPDX-License-Identifier: MIT License
 

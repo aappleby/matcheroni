@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText:  2023 Austin Appleby <aappleby@gmail.com>
 // SPDX-License-Identifier: MIT License
 
-#include "c99/C99Parser.hpp"
+#include "examples/c99_parser/C99Parser.hpp"
 
 void TypeScope::clear() {
   class_types.clear();

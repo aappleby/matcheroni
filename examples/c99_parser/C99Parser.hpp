@@ -8,11 +8,11 @@
 #include <vector>
 #include <array>
 
-#include "utils.hpp"
-#include "c99/SlabAlloc.hpp"
-#include "c99/c_constants.hpp"
-#include "c99/SST.hpp"
-#include "Matcheroni.hpp"
+#include "examples/utils.hpp"
+#include "examples/c99_parser/SlabAlloc.hpp"
+#include "examples/c99_parser/c_constants.hpp"
+#include "examples/c99_parser/SST.hpp"
+#include "matcheroni/Matcheroni.hpp"
 using namespace matcheroni;
 
 struct C99Parser;

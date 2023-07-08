@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText:  2023 Austin Appleby <aappleby@gmail.com>
 // SPDX-License-Identifier: MIT License
 
-#include "utils.hpp"
+#include "examples/utils.hpp"
 
 #include <assert.h>
 #include <chrono>
@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <stdlib.h>    // for exit
 #include <string>
+#include <sys/stat.h>
 
 //------------------------------------------------------------------------------
 
@@ -94,6 +95,20 @@ void read(const char* path, std::string& text) {
   FILE* f = fopen(path, "rb");
   auto _ = fread(text.data(), size, 1, f);
   fclose(f);
+}
+
+void read(const char* path, char*& text_out, int& size_out) {
+  //auto size = std::filesystem::file_size(path);
+  //text.resize(size);
+
+  struct stat statbuf;
+  if (stat(path, &statbuf) != -1) {
+    text_out = new char[statbuf.st_size];
+    size_out = statbuf.st_size;
+    FILE* f = fopen(path, "rb");
+    auto _ = fread(text_out, size_out, 1, f);
+    fclose(f);
+  }
 }
 
 //------------------------------------------------------------------------------
