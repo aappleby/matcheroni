@@ -17,6 +17,7 @@
 #include "matcheroni/Parseroni.hpp"
 #include <sys/stat.h>
 #include <chrono>
+#include <time.h>
 
 #ifdef DEBUG
 #define DCHECK(A) assert(A)
@@ -28,256 +29,61 @@ using namespace matcheroni;
 
 //------------------------------------------------------------------------------
 
-void read(const char* path, char*& text_out, int& size_out) {
+void read(const char* path, const char*& text_out, int& size_out) {
   struct stat statbuf;
   if (stat(path, &statbuf) != -1) {
-    text_out = new char[statbuf.st_size + 1];
-    size_out = statbuf.st_size;
+    auto buf = new char[statbuf.st_size + 1];
     FILE* f = fopen(path, "rb");
-    auto _ = fread(text_out, size_out, 1, f);
-    text_out[statbuf.st_size] = 0;
+    auto _ = fread(buf, statbuf.st_size, 1, f);
+    buf[statbuf.st_size] = 0;
     fclose(f);
+
+    text_out = buf;
+    size_out = statbuf.st_size;
   }
 }
 
 //------------------------------------------------------------------------------
 
 double timestamp_ms() {
-  using clock = std::chrono::high_resolution_clock;
-  using nano = std::chrono::nanoseconds;
-
-  static bool init = false;
-  static double origin = 0;
-
-  auto now = clock::now().time_since_epoch();
-  auto now_nanos = std::chrono::duration_cast<nano>(now).count();
-  if (!origin) origin = now_nanos;
-
-  return (now_nanos - origin) * 1.0e-6;
-}
-
-
-//------------------------------------------------------------------------------
-
-void print_flat(const char* a, const char* b, int max_len) {
-  int len = b - a;
-  int span_len = max_len;
-  if (len > max_len) span_len -= 3;
-
-  for (int i = 0; i < span_len; i++) {
-    if      (a + i >= b)   putc(' ',  stdout);
-    else if (a[i] == '\n') putc(' ',  stdout);
-    else if (a[i] == '\r') putc(' ',  stdout);
-    else if (a[i] == '\t') putc(' ',  stdout);
-    else                   putc(a[i], stdout);
-  }
-
-  if (len > max_len) printf("...");
+  timespec t;
+  clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &t);
+  return  (double(t.tv_sec) * 1e9 + double(t.tv_nsec)) / 1e6;
 }
 
 //------------------------------------------------------------------------------
 
 struct JsonNode : public NodeBase {
 
-  //----------------------------------------
-  // Prints a text representation of the parse tree.
-
-  void print_tree(int depth = 0) {
-    //if (depth > 3) return;
-
-    // Print the node's matched text, with a "..." if it doesn't fit in 20
-    // characters.
-    print_flat(a, b, 20);
-
-    // Print out the name of the type name of the node with indentation.
-
-    printf("   ");
-    for (int i = 0; i < depth; i++) printf(i == depth-1 ? "|--" : "|  ");
-    printf("%s\n", field_name);
-    for (JsonNode* c = (JsonNode*)child_head; c; c = (JsonNode*)c->node_next) c->print_tree(depth+1);
-  }
+  using NodeBase::NodeBase;
 
   //----------------------------------------
 
   const char* field_name;
 };
 
-//------------------------------------------------------------------------------
 
-struct Parser {
+//----------------------------------------
+// Prints a text representation of the parse tree.
 
-  Parser() {}
-  virtual ~Parser() {}
+void print_tree(JsonNode* node, int depth = 0) {
+  //if (depth > 3) return;
 
-  //----------------------------------------
+  // Print the node's matched text, with a "..." if it doesn't fit in 20
+  // characters.
+  //print_flat(node->a, node->b, 20);
 
-  void link_node(NodeBase* new_node, const char* a, const char* b, NodeBase* old_tail) {
-    new_node->a = a;
-    new_node->b = b;
+  // Print out the name of the type name of the node with indentation.
 
-    auto child_head = old_tail ? old_tail->node_next : top_head;
-    auto child_tail = top_tail;
-
-    new_node->child_head = child_head;
-    new_node->child_tail = child_tail;
-
-    if (!old_tail && top_tail) {
-      // We are the new top node, enclose all the top nodes.
-      new_node->node_prev = nullptr;
-      new_node->node_next = nullptr;
-
-      top_head = new_node;
-    }
-    else if (top_tail != old_tail) {
-      // Enclose the nodes after old_tail.
-
-      child_head->node_prev = nullptr;
-      child_tail->node_next = nullptr;
-
-      new_node->node_prev = old_tail;
-      new_node->node_next = nullptr;
-
-      old_tail->node_next = new_node;
-    }
-    else {
-      // Nothing to enclose.
-      new_node->child_head = nullptr;
-      new_node->child_tail = nullptr;
-      new_node->node_prev = nullptr;
-      new_node->node_next = nullptr;
-
-      if (top_tail) {
-        new_node->node_prev = top_tail;
-        top_tail->node_next = new_node;
-      }
-    }
-
-    if (!top_head) top_head = new_node;
-    top_tail = new_node;
+  printf("   ");
+  for (int i = 0; i < depth; i++) printf(i == depth-1 ? "|--" : "|  ");
+  printf("%s\n", node->field_name);
+  for (JsonNode* c = (JsonNode*)node->child_head; c; c = (JsonNode*)c->node_next) {
+    print_tree(c, depth+1);
   }
-
-  //----------------------------------------
-  // Nodes _must_ be deleted in the reverse order they were allocated.
-  // In practice, this means we must delete the "parent" node first and then
-  // must delete the child nodes from tail to head.
-
-  void node_recycle(NodeBase* n) {
-    auto old_tail = n->child_tail;
-    delete n;
-
-    auto c = old_tail;
-    while(c) {
-      auto prev = c->node_prev;
-      node_recycle(c);
-      c = prev;
-    }
-  }
-
-  //----------------------------------------
-  // To convert our pattern matches to parse nodes, we create a Factory<>
-  // matcher that constructs a new NodeType() for a successful match, attaches
-  // any sub-nodes to it, and places it on a node list.
-
-  template<typename NodeType, typename P>
-  NodeType* node_factory(const char* a, const char* b) {
-    auto old_tail = top_tail;
-    auto end = P::match(this, a, b);
-    if (!end) return nullptr;
-
-    auto new_node = new NodeType();
-    link_node(new_node, a, end, old_tail);
-    return new_node;
-  }
-
-  //----------------------------------------
-  // There's one critical detail we need to make the factory work correctly - if
-  // we get partway through a match and then fail for some reason, we must
-  // "rewind" our match state back to the start of the failed match. This means
-  // we must also throw away any parse nodes that were created during the failed
-  // match.
-
-  void rewind(const char* a) {
-    while(top_tail && top_tail->b > a) {
-      auto dead = top_tail;
-      top_tail = top_tail->node_prev;
-      if (recycle_nodes) {
-        node_recycle(dead);
-      }
-    }
-  }
-
-  //----------------------------------------
-  // To debug our patterns, we create a Trace<> matcher that prints out a
-  // diagram of the current match context, the matchers being tried, and
-  // whether they succeeded.
-
-  // Example snippet:
-
-  // {(good|bad)\s+[a-z]*$} |  pos_set ?
-  // {(good|bad)\s+[a-z]*$} |  pos_set X
-  // {(good|bad)\s+[a-z]*$} |  group ?
-  // {good|bad)\s+[a-z]*$ } |  |  oneof ?
-  // {good|bad)\s+[a-z]*$ } |  |  |  text ?
-  // {good|bad)\s+[a-z]*$ } |  |  |  text OK
-
-  // Uncomment this to print a full trace of the regex matching process. Note -
-  // the trace will be _very_ long, even for small regexes.
-
-  inline static int trace_depth = 0;
-
-  template<StringParam type, typename P>
-  static void print_bar(const char* a, const char* b, const char* suffix) {
-    //printf("{%-20.20s}   ", a);
-    printf("|");
-    print_flat(a, b, 20);
-    printf("| ");
-    for (int i = 0; i < trace_depth; i++) printf("|  ");
-    printf("%s %s\n", type.str_val, suffix);
-  }
-
-  template<StringParam type, typename P>
-  const char* trace(const char* a, const char* b) {
-    if (!a || a == b) return nullptr;
-    print_bar<type, P>(a, b, "?");
-    trace_depth++;
-    auto end = P::match(this, a, b);
-    trace_depth--;
-    print_bar<type, P>(a, b, end ? "OK" : "X");
-    return end;
-  }
-
-  //----------------------------------------
-
-  NodeBase* top_head = nullptr;
-  NodeBase* top_tail = nullptr;
-};
-
-//------------------------------------------------------------------------------
-
-template<StringParam field_name, typename pattern, typename NodeType>
-struct CaptureNode {
-
-  static const char* match(void* ctx, const char* a, const char* b) {
-    Parser* parser = (Parser*)ctx;
-
-    if (auto n = parser->node_factory<NodeType, pattern>(a, b)) {
-      n->field_name = field_name.str_val;
-      return n->b;
-    }
-    else {
-      return nullptr;
-    }
-  }
-};
-
-//------------------------------------------------------------------------------
-// Matcheroni's default rewind callback does nothing, but if we provide a
-// specialized version of it Matcheroni will call it as needed.
-
-template<>
-void matcheroni::parser_rewind(void* ctx, const char* a, const char* b) {
-  ((Parser*)ctx)->rewind(a);
 }
+
+
 
 //------------------------------------------------------------------------------
 // To build a parse tree, we wrap the patterns we want to create nodes for
@@ -285,9 +91,6 @@ void matcheroni::parser_rewind(void* ctx, const char* a, const char* b) {
 // them in a Trace<> matcher if we want to debug our patterns.
 
 #ifdef TRACE
-
-template<StringParam type, typename P>
-using Trace = Ref<&Parser::trace<type, P>>,
 
 template<StringParam type, typename P>
 using Capture = JsonNodeFactory<type, Trace<type, P>>;
@@ -321,7 +124,14 @@ using number   = Seq<integer, Opt<fraction>, Opt<exponent>>;
 const char* match_value(void* ctx, const char* a, const char* b);
 using value = Ref<match_value>;
 
-using member = Seq<Capture<"key", string>, ws, Atom<':'>, ws, Capture<"value", value>>;
+using member =
+Seq<
+  Capture<"key", string>,
+  ws,
+  Atom<':'>,
+  ws,
+  Capture<"value", value>
+>;
 
 template<typename P>
 using comma_separated = Seq<P, Any<Seq<ws, Atom<','>, ws, P>>>;
@@ -413,14 +223,12 @@ int main(int argc, char** argv) {
         printf("Parsing %s\n", path);
       }
 
-      char* text = nullptr;
-      int text_size = 0;
-      read(path, text, text_size);
-      byte_accum += text_size;
+      read(path, parser->text, parser->text_size);
+      byte_accum += parser->text_size;
       //printf("Read %d bytes\n", text_size);
 
-      const char* text_a = (const char*)text;
-      const char* text_b = text_a + text_size;
+      const char* text_a = parser->text;
+      const char* text_b = text_a + parser->text_size;
 
       parser->top_head = parser->top_tail = nullptr;
 
@@ -452,7 +260,7 @@ int main(int argc, char** argv) {
         if (dump_tree) {
           printf("Parse tree:\n");
           for (JsonNode* n = (JsonNode*)parser->top_head; n; n = (JsonNode*)n->node_next) {
-            n->print_tree();
+            print_tree(n);
           }
         }
 
@@ -461,7 +269,7 @@ int main(int argc, char** argv) {
         }
       }
 
-      delete [] text;
+      delete [] parser->text;
 
 
       if (verbose) {

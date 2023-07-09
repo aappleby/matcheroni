@@ -15,7 +15,15 @@
 			"ostream": "cpp",
 			"sstream": "cpp",
 			"charconv": "cpp",
-			"string": "cpp"
+			"string": "cpp",
+			"array": "cpp",
+			"compare": "cpp",
+			"functional": "cpp",
+			"ratio": "cpp",
+			"tuple": "cpp",
+			"type_traits": "cpp",
+			"utility": "cpp",
+			"variant": "cpp"
 		}
 	}
 }
