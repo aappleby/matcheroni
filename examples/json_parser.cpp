@@ -76,31 +76,10 @@ void print_flat(const char* a, const char* b, int max_len) {
 }
 
 //------------------------------------------------------------------------------
-// Our parse node for this example is pretty trivial - a type name, the
-// endpoints of the matched text, and a list of child nodes.
-
-struct NodeBase {
-  inline static size_t constructor_calls = 0;
-  inline static size_t destructor_calls = 0;
-
-  const char* a;
-  const char* b;
-
-  NodeBase* prev;
-  NodeBase* next;
-
-  NodeBase* head;
-  NodeBase* tail;
-};
 
 struct JsonNode : public NodeBase {
 
-  //JsonNode() = delete;
-  //~JsonNode() = delete;
-
-  //----------
-
-  //----------
+  //----------------------------------------
   // Prints a text representation of the parse tree.
 
   void print_tree(int depth = 0) {
@@ -118,13 +97,28 @@ struct JsonNode : public NodeBase {
     for (JsonNode* c = (JsonNode*)head; c; c = (JsonNode*)c->next) c->print_tree(depth+1);
   }
 
-  size_t node_count() {
-    size_t accum = 1;
-    for (JsonNode* c = (JsonNode*)head; c; c = (JsonNode*)c->next) accum += c->node_count();
-    return accum;
+  //----------------------------------------
+
+  void init(const char* a, const char* b, JsonNode* child_head, JsonNode* child_tail) {
+    this->a = a;
+    this->b = b;
+
+    head = nullptr;
+    tail = nullptr;
+
+    prev = nullptr;
+    next = nullptr;
+
+    if (child_tail != child_head) {
+      if (child_head) {
+        // Attach all nodes after old_top_tail to the new node.
+        head = child_head->next;
+        tail = child_tail;
+      }
+    }
   }
 
-  //----------
+  //----------------------------------------
 
   const char* type;
 };
@@ -133,22 +127,17 @@ struct JsonNode : public NodeBase {
 
 struct Parser {
 
-  NodeBase* node_create(const char* a, const char* b, NodeBase* old_top_tail, NodeBase* new_top_tail) {
-    if (count_nodes) NodeBase::constructor_calls++;
-    NodeBase* new_node = (NodeBase*)slabs.alloc(sizeof(NodeBase));
-    if (construct_destruct) {
-      new(new_node) NodeBase();
-    }
+  JsonNode* node_create(const char* a, const char* b, JsonNode* old_top_tail, JsonNode* new_top_tail) {
+    if (count_nodes) JsonNode::constructor_calls++;
+    JsonNode* new_node = (JsonNode*)slabs.alloc(sizeof(JsonNode));
+    new(new_node) JsonNode();
 
-    new_node->a = a;
-    new_node->b = b;
+    new_node->init(a, b, old_top_tail, new_top_tail);
 
     if (new_top_tail != old_top_tail) {
 
       if (old_top_tail) {
         // Attach all nodes after old_top_tail to the new node.
-        new_node->head = old_top_tail->next;
-        new_node->tail = new_top_tail;
         old_top_tail->next->prev = nullptr;
         old_top_tail->next = nullptr;
         top_tail = old_top_tail;
@@ -161,22 +150,13 @@ struct Parser {
         top_tail = nullptr;
       }
     }
-    else {
-      new_node->head = nullptr;
-      new_node->tail = nullptr;
-    }
 
     if (top_tail) {
       top_tail->next = new_node;
       new_node->prev = top_tail;
-      new_node->next = nullptr;
-
       top_tail = new_node;
     }
     else {
-      new_node->prev = nullptr;
-      new_node->next = nullptr;
-
       top_head = new_node;
       top_tail = new_node;
     }
@@ -191,10 +171,8 @@ struct Parser {
       auto old_head = n->head;
       auto old_tail = n->tail;
       if (count_nodes) NodeBase::destructor_calls++;
-      if (construct_destruct) {
-        n->~NodeBase();
-      }
-      slabs.free(n, sizeof(NodeBase));
+      n->~NodeBase();
+      slabs.free(n, sizeof(JsonNode));
       auto c = old_tail;
       while(c) {
         auto prev = c->prev;
@@ -206,9 +184,9 @@ struct Parser {
 
   SlabAlloc slabs;
 
-  NodeBase* top_head = nullptr;
-  NodeBase* top_tail = nullptr;
-  NodeBase* top_dead = nullptr;
+  JsonNode* top_head = nullptr;
+  JsonNode* top_tail = nullptr;
+  JsonNode* top_dead = nullptr;
 
 
   // To convert our pattern matches to parse nodes, we create a Factory<> matcher
@@ -233,7 +211,7 @@ struct Parser {
     while(top_tail && top_tail->b > a) {
       //printf("dead!\n");
       auto dead = top_tail;
-      top_tail = top_tail->prev;
+      top_tail = (JsonNode*)top_tail->prev;
       if (recycle_nodes) {
         //static int count = 0;
         //printf("recyclin' %d\n", ++count);
@@ -487,8 +465,8 @@ int main(int argc, char** argv) {
       else {
         if (dump_tree) {
           printf("Parse tree:\n");
-          for (auto n = parser->top_head; n; n = n->next) {
-            ((JsonNode*)n)->print_tree();
+          for (JsonNode* n = parser->top_head; n; n = (JsonNode*)n->next) {
+            n->print_tree();
           }
         }
 

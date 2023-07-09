@@ -6,8 +6,7 @@
 constexpr bool verbose       = false;
 constexpr bool count_nodes   = true;
 constexpr bool recycle_nodes = true;
-constexpr bool construct_destruct = true;
-constexpr bool dump_tree = false;
+constexpr bool dump_tree     = false;
 
 //#define TRACE
 //#define FORCE_REWINDS
@@ -105,6 +104,50 @@ struct SlabAlloc {
   Slab* top_slab;
   int   current_size;
   int   max_size;
+};
+
+//------------------------------------------------------------------------------
+
+struct NodeBase {
+
+  //----------------------------------------
+
+  void init(const char* a, const char* b, NodeBase* child_head, NodeBase* child_tail) {
+    this->a = a;
+    this->b = b;
+
+    head = child_head;
+    tail = child_tail;
+    prev = nullptr;
+    next = nullptr;
+
+    if (child_head) {
+      if (child_head->prev) child_head->prev->next = nullptr;
+      child_head->prev = nullptr;
+    }
+  }
+
+  //----------------------------------------
+
+  size_t node_count() {
+    size_t accum = 1;
+    for (auto c = head; c; c = c->next) accum += c->node_count();
+    return accum;
+  }
+
+  //----------------------------------------
+
+  inline static size_t constructor_calls = 0;
+  inline static size_t destructor_calls = 0;
+
+  const char* a;
+  const char* b;
+
+  NodeBase* prev;
+  NodeBase* next;
+
+  NodeBase* head;
+  NodeBase* tail;
 };
 
 //------------------------------------------------------------------------------
