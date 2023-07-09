@@ -127,29 +127,29 @@ struct JsonNode : public NodeBase {
 
 struct Parser {
 
-  JsonNode* node_create(const char* a, const char* b, JsonNode* old_top_tail, JsonNode* new_top_tail) {
+  JsonNode* node_create(const char* a, const char* b, JsonNode* old_top_tail) {
     if (count_nodes) JsonNode::constructor_calls++;
     JsonNode* new_node = (JsonNode*)slabs.alloc(sizeof(JsonNode));
     new(new_node) JsonNode();
 
     if (old_top_tail) {
-      if (new_top_tail != old_top_tail) {
-        new_node->init(a, b, old_top_tail->next, new_top_tail);
+      if (top_tail != old_top_tail) {
+        new_node->init(a, b, old_top_tail->next, top_tail);
       }
       else {
         new_node->init(a, b, nullptr, nullptr);
       }
     }
     else {
-      if (new_top_tail != nullptr) {
-        new_node->init(a, b, top_head, new_top_tail);
+      if (top_tail != nullptr) {
+        new_node->init(a, b, top_head, top_tail);
       }
       else {
         new_node->init(a, b, nullptr, nullptr);
       }
     }
 
-    if (new_top_tail != old_top_tail) {
+    if (top_tail != old_top_tail) {
 
       if (old_top_tail) {
         top_tail = old_top_tail;
@@ -212,7 +212,7 @@ struct Parser {
 
     if (!end) return nullptr;
 
-    auto new_node = node_create(a, end, old_top_tail, new_top_tail);
+    auto new_node = node_create(a, end, old_top_tail);
     return end;
   }
 
