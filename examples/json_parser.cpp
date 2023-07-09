@@ -71,41 +71,60 @@ struct SlabAlloc {
     uint8_t buf[];
   };
 
+  // slab size is 1 hugepage. seems to work ok.
+  static constexpr size_t header_size = sizeof(Slab);
+  static constexpr size_t slab_size = 2*1024*1024 - header_size;
+
   SlabAlloc() {
-    top_slab = new uint8_t[slab_size];
-    slab_cursor = 0;
-    current_size = 0;
-    max_size = 0;
+    add_slab();
   }
 
   void destroy() {
-    for (int i = 0; i < old_slab_count; i++) delete [] old_slabs[i];
-    for (int i = 0; i < new_slab_count; i++) delete [] new_slabs[i];
-    delete [] top_slab;
+    reset();
+    auto c = top_slab;
+    while(c) {
+      auto next = c->next;
+      ::free((void*)c);
+      c = next;
+    }
+    top_slab = nullptr;
   }
 
   void reset() {
-    while (old_slab_count) {
-      new_slabs[new_slab_count++] = old_slabs[--old_slab_count];
+    while(top_slab->prev) top_slab = top_slab->prev;
+    for (auto c = top_slab; c; c = c->next) {
+      c->cursor = 0;
     }
-    slab_cursor = 0;
     current_size = 0;
   }
 
-  void* alloc(size_t size) {
-    if (slab_cursor + size > slab_size) {
-      old_slabs[old_slab_count++] = top_slab;
-      if (new_slab_count == 0) {
-        top_slab = new uint8_t[slab_size];
-      }
-      else {
-        top_slab = new_slabs[--new_slab_count];
-      }
-      slab_cursor = 0;
+  void add_slab() {
+    if (top_slab && top_slab->next) {
+      top_slab = top_slab->next;
+      DCHECK(top_slab->cursor == 0);
+      return;
     }
 
-    auto result = top_slab + slab_cursor;
-    slab_cursor += size;
+    static int count = 0;
+    printf("add_slab %d\n", ++count);
+    auto new_slab = (Slab*)malloc(header_size + slab_size);
+    new_slab->prev = nullptr;
+    new_slab->next = nullptr;
+    new_slab->cursor = 0;
+    new_slab->highwater = 0;
+
+    if (top_slab) top_slab->next = new_slab;
+    new_slab->prev = top_slab;
+    top_slab = new_slab;
+  }
+
+  void* alloc(size_t size) {
+    if (top_slab->cursor + size > slab_size) {
+      add_slab();
+    }
+
+    auto result = top_slab->buf + top_slab->cursor;
+    top_slab->cursor += size;
 
     current_size += size;
     if (current_size > max_size) max_size = current_size;
@@ -115,24 +134,20 @@ struct SlabAlloc {
 
 #ifdef RECYCLE_NODES
   void free(void* p, size_t size) {
-    auto offset = (uint8_t*)p - top_slab;
-    DCHECK(offset + size == slab_cursor);
-    slab_cursor -= size;
+    auto offset = (uint8_t*)p - top_slab->buf;
+    DCHECK(offset + size == top_slab->);
+    top_slab->cursor -= size;
+    if (top_slab->cursor == 0) {
+      if (top_slab->prev) {
+        top_slab = top_slab->prev;
+      }
+    }
   }
 #endif
 
-  // slab size is 1 hugepage. seems to work ok.
-  static constexpr size_t slab_size = 512*1024*1024;
-
-  uint8_t* old_slabs[1024];
-  int old_slab_count = 0;
-  uint8_t* new_slabs[1024];
-  int new_slab_count = 0;
-
-  uint8_t* top_slab;
-  size_t   slab_cursor;
-  size_t   current_size;
-  size_t   max_size;
+  Slab*  top_slab;
+  size_t current_size;
+  size_t max_size;
 };
 
 SlabAlloc slabs;
@@ -464,7 +479,7 @@ int main(int argc, char** argv) {
     "../nativejson-benchmark/data/twitter.json",
   };
 
-  constexpr bool verbose = false;
+  constexpr bool verbose = true;
 
   double byte_accum = 0;
   double time_accum = 0;
