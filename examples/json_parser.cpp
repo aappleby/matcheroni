@@ -99,27 +99,6 @@ struct JsonNode : public NodeBase {
 
   //----------------------------------------
 
-  void init(const char* a, const char* b, NodeBase* child_head, NodeBase* child_tail) {
-    this->a = a;
-    this->b = b;
-
-    head = nullptr;
-    tail = nullptr;
-
-    prev = nullptr;
-    next = nullptr;
-
-    head = child_head;
-    tail = child_tail;
-
-    if (child_head) {
-      if (child_head->prev) child_head->prev->next = nullptr;
-      child_head->prev = nullptr;
-    }
-  }
-
-  //----------------------------------------
-
   const char* type;
 };
 
@@ -127,49 +106,50 @@ struct JsonNode : public NodeBase {
 
 struct Parser {
 
-  JsonNode* node_create(const char* a, const char* b, JsonNode* old_top_tail) {
-    if (count_nodes) JsonNode::constructor_calls++;
-    JsonNode* new_node = (JsonNode*)slabs.alloc(sizeof(JsonNode));
-    new(new_node) JsonNode();
+  void link_node(NodeBase* new_node, const char* a, const char* b, NodeBase* old_top_tail) {
+    new_node->a = a;
+    new_node->b = b;
 
-    if (old_top_tail) {
-      if (top_tail != old_top_tail) {
-        new_node->init(a, b, old_top_tail->next, top_tail);
-      }
-      else {
-        new_node->init(a, b, nullptr, nullptr);
-      }
-    }
-    else {
-      if (top_tail != nullptr) {
-        new_node->init(a, b, top_head, top_tail);
-      }
-      else {
-        new_node->init(a, b, nullptr, nullptr);
-      }
-    }
+    if (!old_top_tail && top_tail) {
+      // We are the new top node, enclose all the top nodes.
+      new_node->head = top_head;
+      new_node->tail = top_tail;
+      new_node->prev = nullptr;
+      new_node->next = nullptr;
 
-    if (top_tail != old_top_tail) {
-
-      if (old_top_tail) {
-        top_tail = old_top_tail;
-      }
-      else {
-        // We are the new top node, assimilate all the current nodes
-        top_head = nullptr;
-        top_tail = nullptr;
-      }
-    }
-
-    if (top_tail) {
-      top_tail->next = new_node;
-      new_node->prev = top_tail;
-      top_tail = new_node;
-    }
-    else {
       top_head = new_node;
       top_tail = new_node;
     }
+    else if (top_tail != old_top_tail) {
+      // Enclose the nodes after old_top_tail.
+      new_node->head = old_top_tail->next;
+      new_node->tail = top_tail;
+      new_node->prev = top_tail;
+      new_node->next = nullptr;
+
+      top_tail = old_top_tail;
+      top_tail->next->prev = nullptr;
+      top_tail->next = new_node;
+      top_tail = new_node;
+    }
+    else {
+      new_node->head = nullptr;
+      new_node->tail = nullptr;
+      new_node->prev = top_tail;
+      new_node->next = nullptr;
+
+      if (top_tail)  top_tail->next = new_node;
+      if (!top_head) top_head = new_node;
+      top_tail = new_node;
+    }
+  }
+
+  template<typename NodeType>
+  NodeType* node_create(const char* a, const char* b, NodeBase* old_top_tail) {
+    if (count_nodes) NodeBase::constructor_calls++;
+    auto new_node = new (slabs.alloc(sizeof(NodeType))) NodeType();
+
+    link_node(new_node, a, b, old_top_tail);
 
     return new_node;
   }
@@ -194,9 +174,8 @@ struct Parser {
 
   SlabAlloc slabs;
 
-  JsonNode* top_head = nullptr;
-  JsonNode* top_tail = nullptr;
-  JsonNode* top_dead = nullptr;
+  NodeBase* top_head = nullptr;
+  NodeBase* top_tail = nullptr;
 
 
   // To convert our pattern matches to parse nodes, we create a Factory<> matcher
@@ -212,7 +191,7 @@ struct Parser {
 
     if (!end) return nullptr;
 
-    auto new_node = node_create(a, end, old_top_tail);
+    auto new_node = node_create<JsonNode>(a, end, old_top_tail);
     return end;
   }
 
@@ -288,8 +267,6 @@ void matcheroni::parser_rewind(void* ctx, const char* a, const char* b) {
   ((Parser*)ctx)->rewind(a);
 }
 
-
-
 //------------------------------------------------------------------------------
 // To build a parse tree, we wrap the patterns we want to create nodes for
 // in a Capture<> matcher that will invoke our node factory. We can also wrap
@@ -298,8 +275,7 @@ void matcheroni::parser_rewind(void* ctx, const char* a, const char* b) {
 template<StringParam type, typename P>
 struct FactoryWithType {
   static const char* match(void* ctx, const char* a, const char* b) {
-    using p = Ref<&Parser::factory<P>>;
-    auto end = p::match(ctx, a, b);
+    auto end = Ref<&Parser::factory<P>>::match(ctx, a, b);
 
     if (end) {
       Parser* parser = (Parser*)ctx;
@@ -317,7 +293,7 @@ template<StringParam type, typename P>
 using Trace = Ref<&Parser::trace<type, P>>,
 
 template<StringParam type, typename P>
-using Capture = Factory<type, Trace<type, P>, node_create<JsonNode>>;
+using Capture = FactoryWithType<type, Trace<type, P>>;
 
 #else
 template<StringParam type, typename P>
@@ -475,7 +451,7 @@ int main(int argc, char** argv) {
       else {
         if (dump_tree) {
           printf("Parse tree:\n");
-          for (JsonNode* n = parser->top_head; n; n = (JsonNode*)n->next) {
+          for (JsonNode* n = (JsonNode*)parser->top_head; n; n = (JsonNode*)n->next) {
             n->print_tree();
           }
         }

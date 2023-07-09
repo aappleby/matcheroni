@@ -110,6 +110,8 @@ struct SlabAlloc {
 
 struct NodeBase {
 
+  virtual ~NodeBase() {}
+
   //----------------------------------------
 
   void init(const char* a, const char* b, NodeBase* child_head, NodeBase* child_tail) {
