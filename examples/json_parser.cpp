@@ -30,6 +30,8 @@ constexpr bool verbose       = false;
 constexpr bool count_nodes   = true;
 constexpr bool recycle_nodes = true;
 
+//#define FORCE_REWINDS
+
 //------------------------------------------------------------------------------
 
 void read(const char* path, char*& text_out, int& size_out) {
@@ -333,7 +335,7 @@ void matcheroni::atom_rewind(void* ctx, const char* a, const char* b) {
     auto dead = top_tail;
     top_tail = top_tail->prev;
     if (recycle_nodes) {
-      static int count = 0;
+      //static int count = 0;
       //printf("recyclin' %d\n", ++count);
       Node::recycle(dead);
     }
@@ -448,7 +450,9 @@ const char* match_value(void* ctx, const char* a, const char* b) {
   using value =
   Oneof<
     Capture<"array",   array>,
-    //Capture<"blee",    test_rewind>,
+#ifdef FORCE_REWINDS
+    Capture<"blee",    test_rewind>,
+#endif
     Capture<"number",  number>,
     Capture<"object",  object>,
     Capture<"string",  string>,
@@ -503,7 +507,7 @@ int main(int argc, char** argv) {
         printf("\n");
         printf("\n");
         printf("//----------------------------------------\n");
-        printf("// Parsing %s\n", path);
+        printf("Parsing %s\n", path);
       }
 
       char* text = nullptr;
