@@ -133,16 +133,55 @@ struct JsonNode {
 template<typename NodeBase>
 struct Parser {
 
-  NodeBase* node_create() {
+  NodeBase* node_create(const char* a, const char* b, NodeBase* old_top_tail, NodeBase* new_top_tail) {
     if (count_nodes) NodeBase::constructor_calls++;
-    auto result = slabs.alloc(sizeof(NodeBase));
+    NodeBase* new_node = (NodeBase*)slabs.alloc(sizeof(NodeBase));
     if (construct_destruct) {
-      NodeBase* n = new(result) NodeBase();
-      return n;
+      new(new_node) NodeBase();
+    }
+
+    new_node->a = a;
+    new_node->b = b;
+
+    if (new_top_tail != old_top_tail) {
+
+      if (old_top_tail) {
+        // Attach all nodes after old_top_tail to the new node.
+        new_node->head = old_top_tail->next;
+        new_node->tail = new_top_tail;
+        old_top_tail->next->prev = nullptr;
+        old_top_tail->next = nullptr;
+        top_tail = old_top_tail;
+      }
+      else {
+        // We are the new top node, assimilate all the current nodes
+        new_node->head = top_head;
+        new_node->tail = top_tail;
+        top_head = nullptr;
+        top_tail = nullptr;
+      }
     }
     else {
-      return (NodeBase*)result;
+      new_node->head = nullptr;
+      new_node->tail = nullptr;
     }
+
+    if (top_tail) {
+      top_tail->next = new_node;
+      new_node->prev = top_tail;
+      new_node->next = nullptr;
+
+      top_tail = new_node;
+    }
+    else {
+      new_node->prev = nullptr;
+      new_node->next = nullptr;
+
+      top_head = new_node;
+      top_tail = new_node;
+    }
+
+    return new_node;
   }
 
   //----------
@@ -193,47 +232,8 @@ struct Factory {
 
     if (!end) return nullptr;
 
-    auto new_node = parser->node_create();
-    new_node->a = a;
-    new_node->b = end;
+    auto new_node = parser->node_create(a, end, old_top_tail, new_top_tail);
 
-    if (new_top_tail != old_top_tail) {
-
-      if (old_top_tail) {
-        // Attach all nodes after old_top_tail to the new node.
-        new_node->head = old_top_tail->next;
-        new_node->tail = new_top_tail;
-        old_top_tail->next->prev = nullptr;
-        old_top_tail->next = nullptr;
-        parser->top_tail = old_top_tail;
-      }
-      else {
-        // We are the new top node, assimilate all the current nodes
-        new_node->head = parser->top_head;
-        new_node->tail = parser->top_tail;
-        parser->top_head = nullptr;
-        parser->top_tail = nullptr;
-      }
-    }
-    else {
-      new_node->head = nullptr;
-      new_node->tail = nullptr;
-    }
-
-    if (parser->top_tail) {
-      parser->top_tail->next = new_node;
-      new_node->prev = parser->top_tail;
-      new_node->next = nullptr;
-
-      parser->top_tail = new_node;
-    }
-    else {
-      new_node->prev = nullptr;
-      new_node->next = nullptr;
-
-      parser->top_head = new_node;
-      parser->top_tail = new_node;
-    }
 
     return end;
   }
