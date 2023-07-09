@@ -93,124 +93,120 @@ struct JsonNode : public NodeBase {
 
     printf("   ");
     for (int i = 0; i < depth; i++) printf(i == depth-1 ? "|--" : "|  ");
-    printf("%s\n", type);
-    for (JsonNode* c = (JsonNode*)head; c; c = (JsonNode*)c->next) c->print_tree(depth+1);
+    printf("%s\n", field_name);
+    for (JsonNode* c = (JsonNode*)child_head; c; c = (JsonNode*)c->next) c->print_tree(depth+1);
   }
 
   //----------------------------------------
 
-  const char* type;
+  const char* field_name;
 };
 
 //------------------------------------------------------------------------------
 
 struct Parser {
 
+  Parser() {}
+  virtual ~Parser() {}
+
+  //----------------------------------------
+
   void link_node(NodeBase* new_node, const char* a, const char* b, NodeBase* old_top_tail) {
     new_node->a = a;
     new_node->b = b;
 
+    auto child_head = old_top_tail ? old_top_tail->next : top_head;
+    auto child_tail = top_tail;
+
+    new_node->child_head = child_head;
+    new_node->child_tail = child_tail;
+
     if (!old_top_tail && top_tail) {
       // We are the new top node, enclose all the top nodes.
-      new_node->head = top_head;
-      new_node->tail = top_tail;
       new_node->prev = nullptr;
       new_node->next = nullptr;
 
       top_head = new_node;
-      top_tail = new_node;
     }
     else if (top_tail != old_top_tail) {
       // Enclose the nodes after old_top_tail.
-      new_node->head = old_top_tail->next;
-      new_node->tail = top_tail;
-      new_node->prev = top_tail;
+
+      child_head->prev = nullptr;
+      child_tail->next = nullptr;
+
+      new_node->prev = old_top_tail;
       new_node->next = nullptr;
 
-      top_tail = old_top_tail;
-      top_tail->next->prev = nullptr;
-      top_tail->next = new_node;
-      top_tail = new_node;
+      old_top_tail->next = new_node;
     }
     else {
-      new_node->head = nullptr;
-      new_node->tail = nullptr;
-      new_node->prev = top_tail;
+      // Nothing to enclose.
+      new_node->child_head = nullptr;
+      new_node->child_tail = nullptr;
+      new_node->prev = nullptr;
       new_node->next = nullptr;
 
-      if (top_tail)  top_tail->next = new_node;
-      if (!top_head) top_head = new_node;
-      top_tail = new_node;
+      if (top_tail) {
+        new_node->prev = top_tail;
+        top_tail->next = new_node;
+      }
+    }
+
+    if (!top_head) top_head = new_node;
+    top_tail = new_node;
+  }
+
+  //----------------------------------------
+  // Nodes _must_ be deleted in the reverse order they were allocated.
+  // In practice, this means we must delete the "parent" node first and then
+  // must delete the child nodes from tail to head.
+
+  void node_recycle(NodeBase* n) {
+    auto old_tail = n->child_tail;
+    delete n;
+
+    auto c = old_tail;
+    while(c) {
+      auto prev = c->prev;
+      node_recycle(c);
+      c = prev;
     }
   }
 
-  template<typename NodeType>
-  NodeType* node_create(const char* a, const char* b, NodeBase* old_top_tail) {
-    if (count_nodes) NodeBase::constructor_calls++;
+  //----------------------------------------
+  // To convert our pattern matches to parse nodes, we create a Factory<>
+  // matcher that constructs a new NodeType() for a successful match, attaches
+  // any sub-nodes to it, and places it on a node list.
+
+  template<typename NodeType, typename P>
+  NodeType* node_factory(const char* a, const char* b) {
+    auto old_top_tail = top_tail;
+    auto end = P::match(this, a, b);
+    if (!end) return nullptr;
+
     auto new_node = new NodeType();
-
-    link_node(new_node, a, b, old_top_tail);
-
+    link_node(new_node, a, end, old_top_tail);
     return new_node;
   }
 
-  //----------
-
-  void node_recycle(NodeBase* n) {
-    if (recycle_nodes) {
-      auto old_head = n->head;
-      auto old_tail = n->tail;
-      if (count_nodes) NodeBase::destructor_calls++;
-
-      //n->~NodeBase();
-      //NodeBase::slabs.free(n, sizeof(JsonNode));
-      delete n;
-
-      auto c = old_tail;
-      while(c) {
-        auto prev = c->prev;
-        node_recycle(c);
-        c = prev;
-      }
-    }
-  }
-
-  NodeBase* top_head = nullptr;
-  NodeBase* top_tail = nullptr;
-
-
-  // To convert our pattern matches to parse nodes, we create a Factory<> matcher
-  // that constructs a new NodeType() for a successful match, attaches any
-  // sub-nodes to it, and places it on a node list.
-  template<typename P>
-  const char* factory(const char* a, const char* b) {
-    if (!a || a == b) return nullptr;
-
-    auto old_top_tail = top_tail;
-    auto end = P::match(this, a, b);
-    auto new_top_tail = top_tail;
-
-    if (!end) return nullptr;
-
-    auto new_node = node_create<JsonNode>(a, end, old_top_tail);
-    return end;
-  }
-
+  //----------------------------------------
+  // There's one critical detail we need to make the factory work correctly - if
+  // we get partway through a match and then fail for some reason, we must
+  // "rewind" our match state back to the start of the failed match. This means
+  // we must also throw away any parse nodes that were created during the failed
+  // match.
 
   void rewind(const char* a) {
     while(top_tail && top_tail->b > a) {
-      //printf("dead!\n");
       auto dead = top_tail;
       top_tail = (JsonNode*)top_tail->prev;
       if (recycle_nodes) {
-        //static int count = 0;
-        //printf("recyclin' %d\n", ++count);
         node_recycle(dead);
       }
     }
   }
 
-  //----------------------------------------------------------------------------
+  //----------------------------------------
   // To debug our patterns, we create a Trace<> matcher that prints out a
   // diagram of the current match context, the matchers being tried, and
   // whether they succeeded.
@@ -250,16 +246,13 @@ struct Parser {
     return end;
   }
 
+  //----------------------------------------
+
+  NodeBase* top_head = nullptr;
+  NodeBase* top_tail = nullptr;
 };
 
 //------------------------------------------------------------------------------
-
-// There's one critical detail we need to make the factory work correctly - if
-// we get partway through a match and then fail for some reason, we must
-// "rewind" our match state back to the start of the failed match. This means
-// we must also throw away any parse nodes that were created during the failed
-// match.
-
 // Matcheroni's default rewind callback does nothing, but if we provide a
 // specialized version of it Matcheroni will call it as needed.
 
@@ -273,32 +266,36 @@ void matcheroni::parser_rewind(void* ctx, const char* a, const char* b) {
 // in a Capture<> matcher that will invoke our node factory. We can also wrap
 // them in a Trace<> matcher if we want to debug our patterns.
 
-template<StringParam type, typename P>
-struct FactoryWithType {
-  static const char* match(void* ctx, const char* a, const char* b) {
-    auto end = Ref<&Parser::factory<P>>::match(ctx, a, b);
-
-    if (end) {
-      Parser* parser = (Parser*)ctx;
-      ((JsonNode*)(parser->top_tail))->type = type.str_val;
-      return end;
-    }
-
-    return end;
-  }
-};
-
 #ifdef TRACE
 
 template<StringParam type, typename P>
 using Trace = Ref<&Parser::trace<type, P>>,
 
 template<StringParam type, typename P>
-using Capture = FactoryWithType<type, Trace<type, P>>;
+using Capture = JsonNodeFactory<type, Trace<type, P>>;
 
 #else
-template<StringParam type, typename P>
-using Capture = FactoryWithType<type, P>;
+
+template<StringParam field_name, typename pattern, typename NodeType>
+struct CaptureNode {
+
+  static const char* match(void* ctx, const char* a, const char* b) {
+    Parser* parser = (Parser*)ctx;
+
+    if (auto n = parser->node_factory<NodeType, pattern>(a, b)) {
+      n->field_name = field_name.str_val;
+      return n->b;
+    }
+    else {
+      return nullptr;
+    }
+  }
+};
+
+template<StringParam field_name, typename P>
+using Capture = CaptureNode<field_name, P, JsonNode>;
+
+
 #endif
 
 //------------------------------------------------------------------------------
@@ -355,7 +352,7 @@ const char* match_value(void* ctx, const char* a, const char* b) {
 #ifdef FORCE_REWINDS
     Capture<"blee",    test_rewind>,
 #endif
-    Capture<"number",  number>,
+    CaptureNode<"number",  number, JsonNode>,
     Capture<"object",  object>,
     Capture<"string",  string>,
     Capture<"keyword", keyword>

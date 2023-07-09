@@ -126,7 +126,13 @@ struct NodeBase {
     NodeBase::slabs.free(p, s);
   }
 
-  virtual ~NodeBase() {}
+  NodeBase() {
+    if (count_nodes) NodeBase::constructor_calls++;
+  }
+
+  virtual ~NodeBase() {
+    if (count_nodes) NodeBase::destructor_calls++;
+  }
 
   //----------------------------------------
 
@@ -134,8 +140,8 @@ struct NodeBase {
     this->a = a;
     this->b = b;
 
-    head = child_head;
-    tail = child_tail;
+    child_head = child_head;
+    child_tail = child_tail;
     prev = nullptr;
     next = nullptr;
 
@@ -149,7 +155,7 @@ struct NodeBase {
 
   size_t node_count() {
     size_t accum = 1;
-    for (auto c = head; c; c = c->next) accum += c->node_count();
+    for (auto c = child_head; c; c = c->next) accum += c->node_count();
     return accum;
   }
 
@@ -166,8 +172,8 @@ struct NodeBase {
   NodeBase* prev;
   NodeBase* next;
 
-  NodeBase* head;
-  NodeBase* tail;
+  NodeBase* child_head;
+  NodeBase* child_tail;
 };
 
 //------------------------------------------------------------------------------
