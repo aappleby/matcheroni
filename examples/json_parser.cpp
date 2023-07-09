@@ -24,10 +24,11 @@
 #define DCHECK(A)
 #endif
 
-#define RECYCLE_NODES
-#define COUNT_NODES
-
 using namespace matcheroni;
+
+constexpr bool verbose       = false;
+constexpr bool count_nodes   = true;
+constexpr bool recycle_nodes = true;
 
 //------------------------------------------------------------------------------
 
@@ -106,7 +107,9 @@ struct SlabAlloc {
     }
 
     static int count = 0;
-    printf("add_slab %d\n", ++count);
+    if (verbose) {
+      printf("add_slab %d\n", ++count);
+    }
     auto new_slab = (Slab*)malloc(header_size + slab_size);
     new_slab->prev = nullptr;
     new_slab->next = nullptr;
@@ -132,18 +135,20 @@ struct SlabAlloc {
     return result;
   }
 
-#ifdef RECYCLE_NODES
   void free(void* p, size_t size) {
-    auto offset = (uint8_t*)p - top_slab->buf;
-    DCHECK(offset + size == top_slab->);
-    top_slab->cursor -= size;
-    if (top_slab->cursor == 0) {
-      if (top_slab->prev) {
-        top_slab = top_slab->prev;
+    if (recycle_nodes) {
+      auto offset = (uint8_t*)p - top_slab->buf;
+      DCHECK(offset + size == top_slab->);
+      top_slab->cursor -= size;
+      if (top_slab->cursor == 0) {
+        if (top_slab->prev) {
+          top_slab = top_slab->prev;
+        }
       }
+      current_size -= size;
+      //printf("top_slab->cursor = %ld\n", top_slab->cursor);
     }
   }
-#endif
 
   Slab*  top_slab;
   size_t current_size;
@@ -175,10 +180,8 @@ void print_flat(const char* a, const char* b, int max_len) {
 // endpoints of the matched text, and a list of child nodes.
 
 
-#ifdef COUNT_NODES
 size_t constructor_calls = 0;
 size_t destructor_calls = 0;
-#endif
 
 struct Node {
 
@@ -186,29 +189,25 @@ struct Node {
   ~Node() = delete;
 
   static Node* create() {
-#ifdef COUNT_NODES
-    constructor_calls++;
-#endif
+    if (count_nodes) constructor_calls++;
     auto result = (Node*)slabs.alloc(sizeof(Node));
     return result;
   }
 
-#ifdef RECYCLE_NODES
   static void recycle(Node* n) {
-    auto old_head = n->head;
-    auto old_tail = n->tail;
-#ifdef COUNT_NODES
-    destructor_calls++;
-#endif
-    slabs.free(n, sizeof(Node));
-    auto c = old_tail;
-    while(c) {
-      auto prev = c->prev;
-      recycle(c);
-      c = prev;
+    if (recycle_nodes) {
+      auto old_head = n->head;
+      auto old_tail = n->tail;
+      if (count_nodes) destructor_calls++;
+      slabs.free(n, sizeof(Node));
+      auto c = old_tail;
+      while(c) {
+        auto prev = c->prev;
+        recycle(c);
+        c = prev;
+      }
     }
   }
-#endif
 
   const char* type;
   const char* a;
@@ -333,9 +332,11 @@ void matcheroni::atom_rewind(void* ctx, const char* a, const char* b) {
     //printf("dead!\n");
     auto dead = top_tail;
     top_tail = top_tail->prev;
-#ifdef RECYCLE_NODES
-    Node::recycle(dead);
-#endif
+    if (recycle_nodes) {
+      static int count = 0;
+      //printf("recyclin' %d\n", ++count);
+      Node::recycle(dead);
+    }
   }
 }
 
@@ -439,15 +440,15 @@ Seq<
 
 using test_rewind =
 Seq<
-  Capture<"blah", object>,
+  Capture<"blah", number>,
   Lit<"thisisbad">
 >;
 
 const char* match_value(void* ctx, const char* a, const char* b) {
   using value =
   Oneof<
-    //Capture<"blee",    test_rewind>,
     Capture<"array",   array>,
+    //Capture<"blee",    test_rewind>,
     Capture<"number",  number>,
     Capture<"object",  object>,
     Capture<"string",  string>,
@@ -457,6 +458,11 @@ const char* match_value(void* ctx, const char* a, const char* b) {
 }
 
 using json = Seq<ws, value, ws>;
+
+__attribute__((noinline))
+const char* match_json(void* ctx, const char* a, const char* b) {
+  return json::match(ctx, a, b);
+}
 
 //------------------------------------------------------------------------------
 
@@ -479,8 +485,6 @@ int main(int argc, char** argv) {
     "../nativejson-benchmark/data/twitter.json",
   };
 
-  constexpr bool verbose = true;
-
   double byte_accum = 0;
   double time_accum = 0;
 
@@ -495,8 +499,12 @@ int main(int argc, char** argv) {
 
     for (auto path : paths) {
 
-      //printf("//----------------------------------------\n");
-      //printf("// Parsing %s\n", path);
+      if (verbose) {
+        printf("\n");
+        printf("\n");
+        printf("//----------------------------------------\n");
+        printf("// Parsing %s\n", path);
+      }
 
       char* text = nullptr;
       int text_size = 0;
@@ -512,13 +520,17 @@ int main(int argc, char** argv) {
       slabs.reset();
 
       double time = -timestamp_ms();
-#ifdef COUNT_NODES
       constructor_calls = 0;
       destructor_calls = 0;
-#endif
-      const char* end = json::match(nullptr, text_a, text_b);
+      const char* end = match_json(nullptr, text_a, text_b);
       time += timestamp_ms();
       time_accum += time;
+
+      if (verbose) {
+        printf("Parse done\n");
+        printf("\n");
+      }
+
       //printf("Matching took %f msec\n", time);
 
       // If everything went well, our node stack should now have a sequence of
@@ -543,42 +555,53 @@ int main(int argc, char** argv) {
 
       delete [] text;
 
+
       if (verbose) {
-        printf("\n");
-        printf("----------------------------------------\n");
+        printf("Slab current      %ld\n", slabs.current_size);
+        printf("Slab max          %ld\n", slabs.max_size);
         printf("Tree nodes        %ld\n", top_head->node_count());
-#ifdef COUNT_NODES
-        printf("Constructor calls %ld\n", constructor_calls);
-        printf("Destructor calls  %ld\n", destructor_calls);
-        printf("Live nodes        %ld\n", constructor_calls - destructor_calls);
-#endif
+        if (count_nodes) {
+          printf("Constructor calls %ld\n", constructor_calls);
+          printf("Destructor calls  %ld\n", destructor_calls);
+          printf("Live nodes        %ld\n", constructor_calls - destructor_calls);
+        }
       }
 
-#ifdef RECYCLE_NODES
-      Node::recycle(top_head);
-      DCHECK(constructor_calls == destructor_calls);
-      if (verbose) {
-        printf("----------after recycle----------\n");
-        printf("Tree nodes        %ld\n", top_head->node_count());
-#ifdef COUNT_NODES
-        printf("Constructor calls %ld\n", constructor_calls);
-        printf("Destructor calls  %ld\n", destructor_calls);
-        printf("Live nodes        %ld\n", constructor_calls - destructor_calls);
-#endif
+      if (recycle_nodes) {
+        if (verbose) {
+          printf("\n");
+          printf("----------recycle start----------\n");
+        }
+
+        Node::recycle(top_head);
+        DCHECK(constructor_calls == destructor_calls);
+
+        if (verbose) {
+          printf("----------recycle done----------\n");
+          printf("\n");
+          printf("Slab current      %ld\n", slabs.current_size);
+          printf("Slab max          %ld\n", slabs.max_size);
+          printf("Tree nodes        %ld\n", top_head->node_count());
+          if (count_nodes) {
+            printf("Constructor calls %ld\n", constructor_calls);
+            printf("Destructor calls  %ld\n", destructor_calls);
+            printf("Live nodes        %ld\n", constructor_calls - destructor_calls);
+          }
+        }
+
+        DCHECK(slabs.current_size == 0);
       }
-#endif
     }
   }
 
+  printf("\n");
+  printf("----------------------------------------\n");
   printf("Byte accum %f\n", byte_accum);
   printf("Time accum %f\n", time_accum);
   printf("Byte rate  %f\n", byte_accum / (time_accum / 1000.0));
   printf("Rep time   %f\n", time_accum / reps);
   printf("\n");
 
-  printf("Slab current %ld\n", slabs.current_size);
-  printf("Slab max     %ld\n", slabs.max_size);
-  printf("Slab nodes   %ld\n", slabs.current_size / sizeof(Node));
   slabs.destroy();
 
   return 0;
