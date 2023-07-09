@@ -63,6 +63,14 @@ double timestamp_ms() {
 
 struct SlabAlloc {
 
+  struct Slab {
+    Slab*   prev;
+    Slab*   next;
+    size_t  cursor;
+    size_t  highwater;
+    uint8_t buf[];
+  };
+
   SlabAlloc() {
     top_slab = new uint8_t[slab_size];
     slab_cursor = 0;
