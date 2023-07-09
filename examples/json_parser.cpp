@@ -99,7 +99,7 @@ struct JsonNode : public NodeBase {
 
   //----------------------------------------
 
-  void init(const char* a, const char* b, JsonNode* child_head, JsonNode* child_tail) {
+  void init(const char* a, const char* b, NodeBase* child_head, NodeBase* child_tail) {
     this->a = a;
     this->b = b;
 
@@ -109,12 +109,12 @@ struct JsonNode : public NodeBase {
     prev = nullptr;
     next = nullptr;
 
-    if (child_tail != child_head) {
-      if (child_head) {
-        // Attach all nodes after old_top_tail to the new node.
-        head = child_head->next;
-        tail = child_tail;
-      }
+    head = child_head;
+    tail = child_tail;
+
+    if (child_head) {
+      if (child_head->prev) child_head->prev->next = nullptr;
+      child_head->prev = nullptr;
     }
   }
 
@@ -132,20 +132,30 @@ struct Parser {
     JsonNode* new_node = (JsonNode*)slabs.alloc(sizeof(JsonNode));
     new(new_node) JsonNode();
 
-    new_node->init(a, b, old_top_tail, new_top_tail);
+    if (old_top_tail) {
+      if (new_top_tail != old_top_tail) {
+        new_node->init(a, b, old_top_tail->next, new_top_tail);
+      }
+      else {
+        new_node->init(a, b, nullptr, nullptr);
+      }
+    }
+    else {
+      if (new_top_tail != nullptr) {
+        new_node->init(a, b, top_head, new_top_tail);
+      }
+      else {
+        new_node->init(a, b, nullptr, nullptr);
+      }
+    }
 
     if (new_top_tail != old_top_tail) {
 
       if (old_top_tail) {
-        // Attach all nodes after old_top_tail to the new node.
-        old_top_tail->next->prev = nullptr;
-        old_top_tail->next = nullptr;
         top_tail = old_top_tail;
       }
       else {
         // We are the new top node, assimilate all the current nodes
-        new_node->head = top_head;
-        new_node->tail = top_tail;
         top_head = nullptr;
         top_tail = nullptr;
       }
