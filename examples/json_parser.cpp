@@ -26,8 +26,6 @@
 
 using namespace matcheroni;
 
-//#define FORCE_REWINDS
-
 //------------------------------------------------------------------------------
 
 void read(const char* path, char*& text_out, int& size_out) {
@@ -209,35 +207,82 @@ struct Parser {
   NodeBase* top_head = nullptr;
   NodeBase* top_tail = nullptr;
   NodeBase* top_dead = nullptr;
-};
 
-//------------------------------------------------------------------------------
-// To convert our pattern matches to parse nodes, we create a Factory<> matcher
-// that constructs a new NodeType() for a successful match, attaches any
-// sub-nodes to it, and places it on a node stack.
 
-// If this were a larger application, we would keep the node stack inside a
-// match context object passed in via 'ctx', but a global is fine for now.
-
-template<typename P>
-struct Factory {
-  static const char* match(void* ctx, const char* a, const char* b) {
+  // To convert our pattern matches to parse nodes, we create a Factory<> matcher
+  // that constructs a new NodeType() for a successful match, attaches any
+  // sub-nodes to it, and places it on a node list.
+  template<typename P>
+  const char* factory(const char* a, const char* b) {
     if (!a || a == b) return nullptr;
 
-    Parser<JsonNode>* parser = (Parser<JsonNode>*)ctx;
-
-    auto old_top_tail = parser->top_tail;
-    auto end = P::match(ctx, a, b);
-    auto new_top_tail = parser->top_tail;
+    auto old_top_tail = top_tail;
+    auto end = P::match(this, a, b);
+    auto new_top_tail = top_tail;
 
     if (!end) return nullptr;
 
-    auto new_node = parser->node_create(a, end, old_top_tail, new_top_tail);
-
-
+    auto new_node = node_create(a, end, old_top_tail, new_top_tail);
     return end;
   }
+
+
+  void rewind(const char* a) {
+    while(top_tail && top_tail->b > a) {
+      //printf("dead!\n");
+      auto dead = top_tail;
+      top_tail = top_tail->prev;
+      if (recycle_nodes) {
+        //static int count = 0;
+        //printf("recyclin' %d\n", ++count);
+        node_recycle(dead);
+      }
+    }
+  }
+
+  //----------------------------------------------------------------------------
+  // To debug our patterns, we create a Trace<> matcher that prints out a
+  // diagram of the current match context, the matchers being tried, and
+  // whether they succeeded.
+
+  // Example snippet:
+
+  // {(good|bad)\s+[a-z]*$} |  pos_set ?
+  // {(good|bad)\s+[a-z]*$} |  pos_set X
+  // {(good|bad)\s+[a-z]*$} |  group ?
+  // {good|bad)\s+[a-z]*$ } |  |  oneof ?
+  // {good|bad)\s+[a-z]*$ } |  |  |  text ?
+  // {good|bad)\s+[a-z]*$ } |  |  |  text OK
+
+  // Uncomment this to print a full trace of the regex matching process. Note -
+  // the trace will be _very_ long, even for small regexes.
+
+  inline static int trace_depth = 0;
+
+  template<StringParam type, typename P>
+  static void print_bar(const char* a, const char* b, const char* suffix) {
+    //printf("{%-20.20s}   ", a);
+    printf("|");
+    print_flat(a, b, 20);
+    printf("| ");
+    for (int i = 0; i < trace_depth; i++) printf("|  ");
+    printf("%s %s\n", type.str_val, suffix);
+  }
+
+  template<StringParam type, typename P>
+  const char* trace(const char* a, const char* b) {
+    if (!a || a == b) return nullptr;
+    print_bar<type, P>(a, b, "?");
+    trace_depth++;
+    auto end = P::match(this, a, b);
+    trace_depth--;
+    print_bar<type, P>(a, b, end ? "OK" : "X");
+    return end;
+  }
+
 };
+
+//------------------------------------------------------------------------------
 
 // There's one critical detail we need to make the factory work correctly - if
 // we get partway through a match and then fail for some reason, we must
@@ -251,65 +296,10 @@ struct Factory {
 template<>
 void matcheroni::parser_rewind(void* ctx, const char* a, const char* b) {
   Parser<JsonNode>* parser = (Parser<JsonNode>*)ctx;
-
-  if (!parser->top_tail) return;
-
-  while(parser->top_tail && parser->top_tail->b > a) {
-    //printf("dead!\n");
-    auto dead = parser->top_tail;
-    parser->top_tail = parser->top_tail->prev;
-    if (recycle_nodes) {
-      //static int count = 0;
-      //printf("recyclin' %d\n", ++count);
-      parser->node_recycle(dead);
-    }
-  }
+  parser->rewind(a);
 }
 
-//------------------------------------------------------------------------------
-// To debug our patterns, we create a Trace<> matcher that prints out a diagram
-// of the current match context, the matchers being tried, and whether they
-// succeeded.
 
-// Our trace depth is a global for convenience, same thing as node_stack above.
-
-// Example snippet:
-
-// {(good|bad)\s+[a-z]*$} |  pos_set ?
-// {(good|bad)\s+[a-z]*$} |  pos_set X
-// {(good|bad)\s+[a-z]*$} |  group ?
-// {good|bad)\s+[a-z]*$ } |  |  oneof ?
-// {good|bad)\s+[a-z]*$ } |  |  |  text ?
-// {good|bad)\s+[a-z]*$ } |  |  |  text OK
-
-// Uncomment this to print a full trace of the regex matching process. Note -
-// the trace will be _very_ long, even for small regexes.
-//#define TRACE
-
-static int trace_depth = 0;
-
-template<StringParam type, typename P>
-struct Trace {
-
-  static void print_bar(const char* a, const char* b, const char* suffix) {
-    //printf("{%-20.20s}   ", a);
-    printf("|");
-    print_flat(a, b, 20);
-    printf("| ");
-    for (int i = 0; i < trace_depth; i++) printf("|  ");
-    printf("%s %s\n", type.str_val, suffix);
-  }
-
-  static const char* match(void* ctx, const char* a, const char* b) {
-    if (!a || a == b) return nullptr;
-    print_bar(a, b, "?");
-    trace_depth++;
-    auto end = P::match(ctx, a, b);
-    trace_depth--;
-    print_bar(a, b, end ? "OK" : "X");
-    return end;
-  }
-};
 
 //------------------------------------------------------------------------------
 // To build a parse tree, we wrap the patterns we want to create nodes for
@@ -317,24 +307,32 @@ struct Trace {
 // them in a Trace<> matcher if we want to debug our patterns.
 
 template<StringParam type, typename P>
-struct Factory2 {
+struct FactoryWithType {
   static const char* match(void* ctx, const char* a, const char* b) {
-    if (!a || a == b) return nullptr;
-    if (auto end = Factory<P>::match(ctx, a, b)) {
+    using p = Ref<&Parser<JsonNode>::factory<P>>;
+    auto end = p::match(ctx, a, b);
+
+    if (end) {
       Parser<JsonNode>* parser = (Parser<JsonNode>*)ctx;
       parser->top_tail->type = type.str_val;
       return end;
     }
-    return nullptr;
+
+    return end;
   }
 };
 
 #ifdef TRACE
+
+template<StringParam type, typename P>
+using Trace = Ref<&Parser<JsonNode>::trace<type, P>>,
+
 template<StringParam type, typename P>
 using Capture = Factory<type, Trace<type, P>, node_create<JsonNode>>;
+
 #else
 template<StringParam type, typename P>
-using Capture = Factory2<type, P>;
+using Capture = FactoryWithType<type, P>;
 #endif
 
 //------------------------------------------------------------------------------
@@ -372,7 +370,8 @@ Seq<
 
 using array =
 Seq<
-  Atom<'['>, ws,
+  Atom<'['>,
+  ws,
   Opt<comma_separated<value>>, ws,
   Atom<']'>
 >;
