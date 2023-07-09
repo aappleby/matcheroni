@@ -66,7 +66,7 @@ inline int atom_cmp(void* ctx, atom1* a, atom2 b) {
 // Matcheroni will call that instead.
 
 template<typename atom>
-inline void atom_rewind(void* ctx, atom* a, atom* b) {
+inline void parser_rewind(void* ctx, atom* a, atom* b) {
 }
 
 //------------------------------------------------------------------------------
@@ -172,7 +172,7 @@ struct Oneof {
       return c;
     }
     else {
-      /*+*/atom_rewind(ctx, a, b);
+      /*+*/parser_rewind(ctx, a, b);
       return Oneof<rest...>::match(ctx, a, b);
     }
   }
@@ -202,7 +202,7 @@ struct Opt {
       return c;
     }
     else {
-      /*+*/atom_rewind(ctx, a, b);
+      /*+*/parser_rewind(ctx, a, b);
       return a;
     }
   }
@@ -230,7 +230,7 @@ struct Any {
         a = c;
       }
       else {
-        /*+*/atom_rewind(ctx, a, b);
+        /*+*/parser_rewind(ctx, a, b);
         break;
       }
     }
@@ -279,7 +279,7 @@ struct And {
   static atom* match(void* ctx, atom* a, atom* b) {
     if (!a) return nullptr;
     auto c = P::match(ctx, a, b);
-    /*+*/atom_rewind(ctx, a, b);
+    /*+*/parser_rewind(ctx, a, b);
     return c ? a : nullptr;
   }
 };
@@ -296,7 +296,7 @@ struct Not {
   static atom* match(void* ctx, atom* a, atom* b) {
     if (!a) return nullptr;
     auto c = P::match(ctx, a, b);
-    /*+*/atom_rewind(ctx, a, b);
+    /*+*/parser_rewind(ctx, a, b);
     return c ? nullptr : a;
   }
 };
@@ -480,7 +480,7 @@ struct Until {
     atom* c = a;
     while(c < b) {
       if (auto end = P::match(ctx, c, b)) {
-        atom_rewind(ctx, c, b);
+        parser_rewind(ctx, c, b);
         return c;
       }
       c++;
@@ -808,11 +808,11 @@ struct Map {
   template<typename atom>
   static atom* match(void* ctx, atom* a, atom* b) {
     if (P::match_key(a, b)) {
-      atom_rewind(ctx, a, b);
+      parser_rewind(ctx, a, b);
       return P::match(ctx, a, b);
     }
     else {
-      atom_rewind(ctx, a, b);
+      parser_rewind(ctx, a, b);
       return Map<rest...>::match(ctx, a, b);
     }
   }

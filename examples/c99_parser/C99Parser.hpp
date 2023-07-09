@@ -341,7 +341,7 @@ class C99Parser {
   int atom_cmp(Token* a, const char& b);
   int atom_cmp(Token* a, const char* b);
   int atom_cmp(Token* a, const Token* b);
-  void atom_rewind(Token* a, Token* b);
+  void parser_rewind(Token* a, Token* b);
 
   template<int N>
   inline int atom_cmp(Token* a, const StringParam<N>& b) {
@@ -393,8 +393,8 @@ inline int matcheroni::atom_cmp(void* ctx, Token* a, const Token* b) {
 }
 
 template<>
-inline void matcheroni::atom_rewind(void* ctx, Token* a, Token* b) {
-  ((C99Parser*)ctx)->atom_rewind(a, b);
+inline void matcheroni::parser_rewind(void* ctx, Token* a, Token* b) {
+  ((C99Parser*)ctx)->parser_rewind(a, b);
 }
 
 //------------------------------------------------------------------------------

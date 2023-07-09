@@ -95,7 +95,7 @@ int C99Parser::atom_cmp(Token* a, const Token* b) {
   return result;
 }
 
-void C99Parser::atom_rewind(Token* a, Token* b) {
+void C99Parser::parser_rewind(Token* a, Token* b) {
   printf("rewind to %20.20s\n", a->debug_span_a());
 
   /*

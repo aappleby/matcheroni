@@ -107,7 +107,7 @@ struct Factory {
 // specialized version of it Matcheroni will call it as needed.
 
 template<>
-void matcheroni::atom_rewind(void* ctx, const char* a, const char* b) {
+void matcheroni::parser_rewind(void* ctx, const char* a, const char* b) {
   while(node_stack.size() && node_stack.back()->b > a) {
     delete node_stack.back();
     node_stack.pop_back();

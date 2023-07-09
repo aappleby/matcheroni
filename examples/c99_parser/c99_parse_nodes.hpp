@@ -67,7 +67,7 @@ struct Keyword {
   static atom* match(void* ctx, atom* a, atom* b) {
     if (!a || a == b) return nullptr;
     if (atom_cmp(ctx, a, LEX_KEYWORD)) return nullptr;
-    /*+*/ atom_rewind(ctx, a, b);
+    /*+*/ parser_rewind(ctx, a, b);
     if (atom_cmp(ctx, a, lit)) return nullptr;
     return a + 1;
   }
@@ -428,7 +428,7 @@ struct NodeExpression : public ParseNode {
     if (atom_cmp(ctx, a, LEX_PUNCT)) {
       return nullptr;
     }
-    /*+*/ atom_rewind(ctx, a, b);
+    /*+*/ parser_rewind(ctx, a, b);
 
     switch (a->unsafe_span_a()[0]) {
       case '+':

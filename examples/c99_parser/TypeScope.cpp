@@ -15,7 +15,7 @@ bool TypeScope::has_type(void* ctx, Token* a, Token* b, token_list& types) {
   if(atom_cmp(ctx, a, LEX_IDENTIFIER)) {
     return false;
   }
-  /*+*/atom_rewind(ctx, a, b);
+  /*+*/parser_rewind(ctx, a, b);
 
   for (const auto c : types) {
     if (atom_cmp(ctx, a, c) == 0) {
