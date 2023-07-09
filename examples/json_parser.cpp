@@ -20,8 +20,6 @@
 
 using namespace matcheroni;
 
-#define PARSERONI_LINEAR_ALLOCATOR
-
 //------------------------------------------------------------------------------
 
 void read(const char* path, char*& text_out, int& size_out) {
@@ -57,7 +55,6 @@ double timestamp_ms() {
 
 //------------------------------------------------------------------------------
 
-#ifdef PARSERONI_LINEAR_ALLOCATOR
 struct SlabAlloc {
 
   SlabAlloc() {
@@ -123,7 +120,6 @@ struct SlabAlloc {
 };
 
 SlabAlloc slabs;
-#endif
 
 //------------------------------------------------------------------------------
 
@@ -445,8 +441,15 @@ int main(int argc, char** argv) {
   double byte_accum = 0;
   double time_accum = 0;
 
-  const int reps = 100;
-  for (int rep = 0; rep < reps; rep++) {
+  const int warmup = 10;
+  const int reps = 10;
+
+  for (int rep = 0; rep < (warmup + reps); rep++) {
+    if (rep == warmup) {
+      byte_accum = 0;
+      time_accum = 0;
+    }
+
     for (auto path : paths) {
 
       //printf("//----------------------------------------\n");
@@ -463,9 +466,7 @@ int main(int argc, char** argv) {
 
       top_head = top_tail = nullptr;
 
-#ifdef PARSERONI_LINEAR_ALLOCATOR
       slabs.reset();
-#endif
 
       double time = -timestamp_ms();
       constructor_calls = 0;
@@ -520,14 +521,10 @@ int main(int argc, char** argv) {
   printf("Rep time   %f\n", time_accum / reps);
   printf("\n");
 
-
-
-#ifdef PARSERONI_LINEAR_ALLOCATOR
   printf("Slab current %ld\n", slabs.current_size);
   printf("Slab max     %ld\n", slabs.max_size);
   printf("Slab nodes   %ld\n", slabs.current_size / sizeof(Node));
   slabs.destroy();
-#endif
 
   return 0;
 }
