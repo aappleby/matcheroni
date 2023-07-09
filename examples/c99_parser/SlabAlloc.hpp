@@ -25,7 +25,7 @@ struct SlabAlloc {
     current_size = 0;
   }
 
-  void* bump(size_t size) {
+  void* alloc(size_t size) {
     if (slab_cursor + size > slab_size) {
       old_slabs.push_back(top_slab);
       if (new_slabs.empty()) {

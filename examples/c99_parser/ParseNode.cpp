@@ -7,8 +7,8 @@
 
 SlabAlloc ParseNode::slabs;
 
-void* ParseNode::operator new(std::size_t size)   { return slabs.bump(size); }
-void* ParseNode::operator new[](std::size_t size) { return slabs.bump(size); }
+void* ParseNode::operator new(std::size_t size)   { return slabs.alloc(size); }
+void* ParseNode::operator new[](std::size_t size) { return slabs.alloc(size); }
 void  ParseNode::operator delete(void*)           { }
 void  ParseNode::operator delete[](void*)         { }
 

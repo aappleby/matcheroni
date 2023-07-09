@@ -20,6 +20,8 @@
 
 using namespace matcheroni;
 
+#define PARSERONI_LINEAR_ALLOCATOR
+
 //------------------------------------------------------------------------------
 
 void read(const char* path, char*& text_out, int& size_out) {
@@ -55,6 +57,7 @@ double timestamp_ms() {
 
 //------------------------------------------------------------------------------
 
+#ifdef PARSERONI_LINEAR_ALLOCATOR
 struct SlabAlloc {
 
   SlabAlloc() {
@@ -64,7 +67,7 @@ struct SlabAlloc {
     max_size = 0;
   }
 
-  void free() {
+  void destroy() {
     for (int i = 0; i < old_slab_count; i++) delete [] old_slabs[i];
     for (int i = 0; i < new_slab_count; i++) delete [] new_slabs[i];
     delete [] top_slab;
@@ -78,7 +81,7 @@ struct SlabAlloc {
     current_size = 0;
   }
 
-  void* bump(size_t size) {
+  void* alloc(size_t size) {
     if (slab_cursor + size > slab_size) {
       old_slabs[old_slab_count++] = top_slab;
       if (new_slab_count == 0) {
@@ -99,8 +102,14 @@ struct SlabAlloc {
     return result;
   }
 
+  void free(void* p, size_t size) {
+    auto offset = (uint8_t*)p - top_slab;
+    //assert(offset + size == slab_cursor);
+    slab_cursor -= size;
+  }
+
   // slab size is 1 hugepage. seems to work ok.
-  static constexpr size_t slab_size = 2*1024*1024;
+  static constexpr size_t slab_size = 512*1024*1024;
 
   uint8_t* old_slabs[1024];
   int old_slab_count = 0;
@@ -114,13 +123,9 @@ struct SlabAlloc {
 };
 
 SlabAlloc slabs;
+#endif
 
 //------------------------------------------------------------------------------
-
-
-// Uncomment this to print a full trace of the regex matching process. Note -
-// the trace will be _very_ long, even for small regexes.
-//#define TRACE
 
 void print_flat(const char* a, const char* b, int max_len) {
   int len = b - a;
@@ -142,12 +147,36 @@ void print_flat(const char* a, const char* b, int max_len) {
 // Our parse node for this example is pretty trivial - a type name, the
 // endpoints of the matched text, and a list of child nodes.
 
+size_t constructor_calls = 0;
+size_t destructor_calls = 0;
+
 struct Node {
 
-  static void* operator new(std::size_t size)   { return slabs.bump(size); }
-  static void* operator new[](std::size_t size) { return slabs.bump(size); }
-  static void  operator delete(void*)           { }
-  static void  operator delete[](void*)         { }
+  static void* operator new(std::size_t size) {
+#ifdef PARSERONI_LINEAR_ALLOCATOR
+    auto result = slabs.alloc(size);
+#else
+    auto result = malloc(size);
+#endif
+    return result;
+  }
+
+  static void* operator new[](std::size_t size) {
+#ifdef PARSERONI_LINEAR_ALLOCATOR
+    auto result = slabs.alloc(size);
+#else
+    auto result = malloc(size);
+#endif
+    return result;
+  }
+
+  static void operator delete(void* p, std::size_t size) {
+    assert(false);
+  }
+
+  static void operator delete[](void* p, std::size_t size) {
+    //assert(false);
+  }
 
   Node() {
     type = nullptr;
@@ -159,7 +188,21 @@ struct Node {
 
     head = nullptr;
     tail = nullptr;
+    constructor_calls++;
   }
+
+  static void recycle(Node* n) {
+    auto old_head = n->head;
+    auto old_tail = n->tail;
+    delete n;
+    auto c = old_tail;
+    while(c) {
+      auto prev = c->prev;
+      recycle(c);
+      c = prev;
+    }
+  }
+
 
   const char* type;
   const char* a;
@@ -186,6 +229,17 @@ struct Node {
     printf("%s\n", type);
     for (auto c = head; c; c = c->next) c->print_tree(depth+1);
   }
+
+  size_t node_count() {
+    size_t accum = 1;
+    for (auto c = head; c; c = c->next) accum += c->node_count();
+    return accum;
+  }
+
+private:
+  ~Node() {
+    destructor_calls++;
+  }
 };
 
 //------------------------------------------------------------------------------
@@ -196,8 +250,9 @@ struct Node {
 // If this were a larger application, we would keep the node stack inside a
 // match context object passed in via 'ctx', but a global is fine for now.
 
-Node* top_head;
-Node* top_tail;
+Node* top_head = nullptr;
+Node* top_tail = nullptr;
+Node* top_dead = nullptr;
 
 template<StringParam type, typename P, typename NodeType>
 struct Factory {
@@ -209,6 +264,8 @@ struct Factory {
     auto new_top_tail = top_tail;
 
     if (!end) return nullptr;
+
+    //printf("creating %s\n", type.str_val);
 
     auto new_node = new NodeType();
     new_node->type = type.str_val;
@@ -249,12 +306,6 @@ struct Factory {
       top_tail = new_node;
     }
 
-    /*
-    printf("========================================\n");
-    for (auto c = top_head; c; c = c->next) c->print_tree();
-    printf("\n");
-    */
-
     return end;
   }
 };
@@ -270,10 +321,13 @@ struct Factory {
 
 template<>
 void matcheroni::atom_rewind(void* ctx, const char* a, const char* b) {
+  if (!top_tail) return;
+
   while(top_tail && top_tail->b > a) {
+    //printf("dead!\n");
     auto dead = top_tail;
     top_tail = top_tail->prev;
-    delete dead;
+    Node::recycle(dead);
   }
 }
 
@@ -292,6 +346,10 @@ void matcheroni::atom_rewind(void* ctx, const char* a, const char* b) {
 // {good|bad)\s+[a-z]*$ } |  |  oneof ?
 // {good|bad)\s+[a-z]*$ } |  |  |  text ?
 // {good|bad)\s+[a-z]*$ } |  |  |  text OK
+
+// Uncomment this to print a full trace of the regex matching process. Note -
+// the trace will be _very_ long, even for small regexes.
+//#define TRACE
 
 static int trace_depth = 0;
 
@@ -352,12 +410,7 @@ using number   = Seq<integer, Opt<fraction>, Opt<exponent>>;
 const char* match_value(void* ctx, const char* a, const char* b);
 using value = Ref<match_value>;
 
-using member =
-Seq<
-  Capture<"key", string>, ws,
-  Atom<':'>, ws,
-  Capture<"value", value>
->;
+using member = Seq<Capture<"key", string>, ws, Atom<':'>, ws, Capture<"value", value>>;
 
 template<typename P>
 using comma_separated = Seq<P, Any<Seq<ws, Atom<','>, ws, P>>>;
@@ -376,13 +429,20 @@ Seq<
   Atom<']'>
 >;
 
+using test_rewind =
+Seq<
+  Capture<"blah", object>,
+  Lit<"thisisbad">
+>;
+
 const char* match_value(void* ctx, const char* a, const char* b) {
   using value =
   Oneof<
-    Capture<"object",  object>,
+    //Capture<"blee",    test_rewind>,
     Capture<"array",   array>,
-    Capture<"string",  string>,
     Capture<"number",  number>,
+    Capture<"object",  object>,
+    Capture<"string",  string>,
     Capture<"keyword", keyword>
   >;
   return value::match(ctx, a, b);
@@ -411,6 +471,7 @@ int main(int argc, char** argv) {
     "../nativejson-benchmark/data/twitter.json",
   };
 
+  double byte_accum = 0;
   double time_accum = 0;
 
   const int reps = 100;
@@ -423,15 +484,21 @@ int main(int argc, char** argv) {
       char* text = nullptr;
       int text_size = 0;
       read(path, text, text_size);
+      byte_accum += text_size;
       //printf("Read %d bytes\n", text_size);
-
-      assert(top_head == nullptr);
-      assert(top_tail == nullptr);
 
       const char* text_a = (const char*)text;
       const char* text_b = text_a + text_size;
 
+      top_head = top_tail = nullptr;
+
+#ifdef PARSERONI_LINEAR_ALLOCATOR
+      slabs.reset();
+#endif
+
       double time = -timestamp_ms();
+      constructor_calls = 0;
+      destructor_calls = 0;
       const char* end = json::match(nullptr, text_a, text_b);
       time += timestamp_ms();
       time_accum += time;
@@ -457,19 +524,36 @@ int main(int argc, char** argv) {
         }
       }
 
-      //printf("Slab current %ld\n", slabs.current_size);
-      //printf("Slab max     %ld\n", slabs.max_size);
-      //printf("Node count   %ld\n", slabs.current_size / sizeof(Node));
-      //printf("\n");
-
       delete [] text;
-      top_head = top_tail = nullptr;
-      slabs.reset();
+
+      //printf("Tree nodes        %ld\n", top_head->node_count());
+      //Node::recycle(top_head);
+      //assert(constructor_calls == destructor_calls);
     }
   }
 
-  printf("time_accum %f\n", time_accum);
-  slabs.free();
+  printf("Byte accum %f\n", byte_accum);
+  printf("Time accum %f\n", time_accum);
+  printf("Byte rate  %f\n", byte_accum / (time_accum / 1000.0));
+  printf("Rep time   %f\n", time_accum / reps);
+  printf("\n");
+
+  printf("Constructor calls %ld\n", constructor_calls);
+  printf("Destructor calls  %ld\n", destructor_calls);
+  printf("Live nodes        %ld\n", constructor_calls - destructor_calls);
+  printf("\n");
+
+  printf("Constructor calls %ld\n", constructor_calls);
+  printf("Destructor calls  %ld\n", destructor_calls);
+  printf("Live nodes        %ld\n", constructor_calls - destructor_calls);
+
+
+#ifdef PARSERONI_LINEAR_ALLOCATOR
+  printf("Slab current %ld\n", slabs.current_size);
+  printf("Slab max     %ld\n", slabs.max_size);
+  printf("Slab nodes   %ld\n", slabs.current_size / sizeof(Node));
+  slabs.destroy();
+#endif
 
   return 0;
 }
