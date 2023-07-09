@@ -175,26 +175,23 @@ struct Node {
   }
 
   static void operator delete[](void* p, std::size_t size) {
-    //assert(false);
+    assert(false);
   }
 
   Node() {
-    type = nullptr;
-    a = nullptr;
-    b = nullptr;
+  }
 
-    prev = nullptr;
-    next = nullptr;
-
-    head = nullptr;
-    tail = nullptr;
+  static Node* create() {
     constructor_calls++;
+    return new Node();
   }
 
   static void recycle(Node* n) {
     auto old_head = n->head;
     auto old_tail = n->tail;
-    delete n;
+    //delete n;
+    destructor_calls++;
+    slabs.free(n, sizeof(Node));
     auto c = old_tail;
     while(c) {
       auto prev = c->prev;
@@ -267,7 +264,8 @@ struct Factory {
 
     //printf("creating %s\n", type.str_val);
 
-    auto new_node = new NodeType();
+    //auto new_node = new NodeType();
+    auto new_node = Node::create();
     new_node->type = type.str_val;
     new_node->a = a;
     new_node->b = end;
@@ -527,8 +525,8 @@ int main(int argc, char** argv) {
       delete [] text;
 
       //printf("Tree nodes        %ld\n", top_head->node_count());
-      //Node::recycle(top_head);
-      //assert(constructor_calls == destructor_calls);
+      Node::recycle(top_head);
+      assert(constructor_calls == destructor_calls);
     }
   }
 
