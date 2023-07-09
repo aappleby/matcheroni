@@ -1,12 +1,12 @@
 #-------------------------------------------------------------------------------
 # Configuration
 
-#build_mode = -g -O0
+build_mode = -g -O0
 #build_mode = -g -Os
-build_mode = -g -O3
+#build_mode = -g -O3
 
 # -O3 needs LTO to maximize performance
-build_mode = ${build_mode} -flto -fdata-sections -ffunction-sections -Wl,--gc-sections -Wl,-s
+#build_mode = ${build_mode} -flto -fdata-sections -ffunction-sections -Wl,--gc-sections -Wl,-s
 
 # -Os needs stripping to minimize size
 #build_mode = ${build_mode} -fdata-sections -ffunction-sections -Wl,--gc-sections -Wl,-s

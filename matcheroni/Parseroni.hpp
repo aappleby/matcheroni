@@ -1,12 +1,13 @@
 #pragma once
 #include "matcheroni/Matcheroni.hpp"
 
-#include <stdlib.h>
+#define PARSERONI_USE_STDIO
 
-constexpr bool verbose       = false;
-constexpr bool count_nodes   = true;
-constexpr bool recycle_nodes = true;
-constexpr bool dump_tree     = false;
+#ifdef PARSERONI_USE_STDIO
+#include <stdio.h>
+#endif
+
+#include <stdlib.h> // for malloc/free
 
 //#define TRACE
 //#define FORCE_REWINDS
@@ -58,9 +59,6 @@ struct SlabAlloc {
     }
 
     static int count = 0;
-    if (verbose) {
-      //printf("add_slab %d\n", ++count);
-    }
     auto new_slab = (Slab*)malloc(header_size + slab_size);
     new_slab->prev = nullptr;
     new_slab->next = nullptr;
@@ -87,18 +85,16 @@ struct SlabAlloc {
   }
 
   void free(void* p, int size) {
-    if (recycle_nodes) {
-      auto offset = (char*)p - top_slab->buf;
-      //DCHECK(offset + size == top_slab->cursor);
-      top_slab->cursor -= size;
-      if (top_slab->cursor == 0) {
-        if (top_slab->prev) {
-          top_slab = top_slab->prev;
-        }
+    auto offset = (char*)p - top_slab->buf;
+    //DCHECK(offset + size == top_slab->cursor);
+    top_slab->cursor -= size;
+    if (top_slab->cursor == 0) {
+      if (top_slab->prev) {
+        top_slab = top_slab->prev;
       }
-      current_size -= size;
-      //printf("top_slab->cursor = %ld\n", top_slab->cursor);
     }
+    current_size -= size;
+    //printf("top_slab->cursor = %ld\n", top_slab->cursor);
   }
 
   Slab* top_slab;
@@ -110,35 +106,18 @@ struct SlabAlloc {
 
 struct NodeBase {
 
-  NodeBase(const char* a, const char* b) : a(a), b(b) {
-    if (count_nodes) NodeBase::constructor_calls++;
+  NodeBase(const char* a, const char* b) : match_a(a), match_b(b) {
+    constructor_calls++;
   }
 
   virtual ~NodeBase() {
-    if (count_nodes) NodeBase::destructor_calls++;
+    destructor_calls++;
   }
 
   static void* operator new(size_t s)               { return slabs.alloc(s); }
   static void* operator new[](size_t s)             { return slabs.alloc(s); }
   static void  operator delete(void* p, size_t s)   { slabs.free(p, s); }
   static void  operator delete[](void* p, size_t s) { slabs.free(p, s); }
-
-  //----------------------------------------
-
-  void init(const char* a, const char* b, NodeBase* child_head, NodeBase* child_tail) {
-    this->a = a;
-    this->b = b;
-
-    child_head = child_head;
-    child_tail = child_tail;
-    node_prev = nullptr;
-    node_next = nullptr;
-
-    if (child_head) {
-      if (child_head->node_prev) child_head->node_prev->node_next = nullptr;
-      child_head->node_prev = nullptr;
-    }
-  }
 
   //----------------------------------------
 
@@ -150,13 +129,12 @@ struct NodeBase {
 
   //----------------------------------------
 
+  inline static SlabAlloc slabs;
   inline static size_t constructor_calls = 0;
   inline static size_t destructor_calls = 0;
 
-  inline static SlabAlloc slabs;
-
-  const char* a;
-  const char* b;
+  const char* match_a;
+  const char* match_b;
 
   NodeBase* node_prev;
   NodeBase* node_next;
@@ -170,7 +148,35 @@ struct NodeBase {
 struct Parser {
 
   Parser() {}
-  virtual ~Parser() {}
+
+  virtual ~Parser() {
+    reset();
+    NodeBase::slabs.destroy();
+    //delete [] text;
+  }
+
+  void reset() {
+    //DCHECK(NodeBase::constructor_calls == NodeBase::destructor_calls);
+    //DCHECK(slabs.current_size == 0);
+
+    //delete [] text;
+    //text = nullptr;
+    //text_size = 0;
+
+    auto c = top_tail;
+    while (c) {
+      auto prev = c->node_prev;
+      recycle(c);
+      c = prev;
+    }
+
+    top_head = nullptr;
+    top_tail = nullptr;
+
+    NodeBase::slabs.reset();
+    NodeBase::constructor_calls = 0;
+    NodeBase::destructor_calls = 0;
+  }
 
   //----------------------------------------
 
@@ -229,22 +235,19 @@ struct Parser {
   // In practice, this means we must delete the "parent" node first and then
   // must delete the child nodes from tail to head.
 
-  void node_recycle(NodeBase* n) {
+  void recycle(NodeBase* n) {
+    if (n == nullptr) return;
+
     auto old_tail = n->child_tail;
     delete n;
 
     auto c = old_tail;
     while(c) {
       auto prev = c->node_prev;
-      node_recycle(c);
+      recycle(c);
       c = prev;
     }
   }
-
-  //----------------------------------------
-  // To convert our pattern matches to parse nodes, we create a Factory<>
-  // matcher that constructs a new NodeType() for a successful match, attaches
-  // any sub-nodes to it, and places it on a node list.
 
   //----------------------------------------
   // There's one critical detail we need to make the factory work correctly - if
@@ -254,20 +257,25 @@ struct Parser {
   // match.
 
   void rewind(const char* a) {
-    while(top_tail && top_tail->b > a) {
+    while(top_tail && top_tail->match_b > a) {
       auto dead = top_tail;
       top_tail = top_tail->node_prev;
-      if (recycle_nodes) {
-        node_recycle(dead);
-      }
+      recycle(dead);
     }
   }
 
+  //----------------------------------------
+
+  size_t node_count() {
+    size_t accum = 0;
+    for (auto c = top_head; c; c = c->node_next) accum += c->node_count();
+    return accum;
+  }
 
   //----------------------------------------
 
-  const char* text = nullptr;
-  int text_size = 0;
+  //const char* text = nullptr;
+  //int text_size = 0;
   NodeBase* top_head = nullptr;
   NodeBase* top_tail = nullptr;
 };
@@ -282,11 +290,14 @@ inline void matcheroni::parser_rewind(void* ctx, const char* a, const char* b) {
 }
 
 //------------------------------------------------------------------------------
+// To convert our pattern matches to parse nodes, we create a Factory<>
+// matcher that constructs a new NodeType() for a successful match, attaches
+// any sub-nodes to it, and places it on a node list.
 
-template<matcheroni::StringParam field_name, typename pattern, typename NodeType>
+template<matcheroni::StringParam matcher_name, typename pattern, typename NodeType>
 struct CaptureNode {
 
-  static const char* match(void* ctx, const char* a, const char* b) {
+  static const char* match2(void* ctx, const char* a, const char* b) {
     Parser* parser = (Parser*)ctx;
 
     auto old_tail = parser->top_tail;
@@ -294,15 +305,49 @@ struct CaptureNode {
 
     if (end) {
       auto new_node = new NodeType(a, b);
-      new_node->field_name = field_name.str_val;
       parser->enclose(new_node, old_tail);
+    }
+
+    return end;
+  }
+
+  static const char* match(void* ctx, const char* a, const char* b) {
+    auto end = match2(ctx, a, b);
+    if (end) {
+      Parser* parser = (Parser*)ctx;
+      NodeType* new_node = (NodeType*)parser->top_tail;
+      new_node->matcher_name = matcher_name.str_val;
     }
 
     return end;
   }
 };
 
-#if 0
+//------------------------------------------------------------------------------
+// Prints a fixed-width span of characters from the source span with all
+// whitespace replaced with ' ' and a '@' at EOF.
+
+#ifdef PARSERONI_USE_STDIO
+
+void print_flat(const char* a, const char* b, int max_len) {
+  int len = b - a;
+  int span_len = max_len;
+  if (len > max_len) span_len -= 3;
+
+  for (int i = 0; i < span_len; i++) {
+    if      (a + i == b)   putc('@',  stdout);
+    if      (a + i >  b)   putc(' ',  stdout);
+    else if (a[i] == '\n') putc(' ',  stdout);
+    else if (a[i] == '\r') putc(' ',  stdout);
+    else if (a[i] == '\t') putc(' ',  stdout);
+    else                   putc(a[i], stdout);
+  }
+
+  if (len > max_len) printf("...");
+}
+
+#endif
+
 //------------------------------------------------------------------------------
 // To debug our patterns, we create a Trace<> matcher that prints out a
 // diagram of the current match context, the matchers being tried, and
@@ -320,42 +365,32 @@ struct CaptureNode {
 // Uncomment this to print a full trace of the regex matching process. Note -
 // the trace will be _very_ long, even for small regexes.
 
-inline static int trace_depth = 0;
+#ifdef PARSERONI_USE_STDIO
 
-void print_flat(const char* a, const char* b, int max_len) {
-  int len = b - a;
-  int span_len = max_len;
-  if (len > max_len) span_len -= 3;
+template<matcheroni::StringParam matcher_name, typename P>
+struct Trace {
 
-  for (int i = 0; i < span_len; i++) {
-    if      (a + i >= b)   putc(' ',  stdout);
-    else if (a[i] == '\n') putc(' ',  stdout);
-    else if (a[i] == '\r') putc(' ',  stdout);
-    else if (a[i] == '\t') putc(' ',  stdout);
-    else                   putc(a[i], stdout);
+  inline static int trace_depth = 0;
+
+  void print_bar(const char* a, const char* b, const char* val, const char* suffix) {
+    printf("|");
+    print_flat(a, b, 20);
+    printf("| ");
+    for (int i = 0; i < trace_depth; i++) printf("|  ");
+    printf("%s %s\n", val, suffix);
   }
 
-  if (len > max_len) printf("...");
-}
-
-inline void print_bar(int depth, const char* a, const char* b, const char* val, const char* suffix) {
-  printf("|");
-  print_flat(a, b, 20);
-  printf("| ");
-  for (int i = 0; i < depth,; i++) printf("|  ");
-  printf("%s %s\n", val, suffix);
-}
-
-template<matcheroni::StringParam type, typename P>
-const char* trace(const char* a, const char* b) {
-  if (!a || a == b) return nullptr;
-  print_bar<type, P>(trace_depth, a, b, type.str_val, "?");
-  trace_depth++;
-  auto end = P::match(this, a, b);
-  trace_depth--;
-  print_bar<type, P>(trace_depth, a, b, type.str_val, end ? "OK" : "X");
-  return end;
-}
+  template<typename atom>
+  atom* trace(void* ctx, atom* a, atom* b) {
+    if (!a || a == b) return nullptr;
+    print_bar(a, b, matcher_name.str_val, "?");
+    trace_depth++;
+    auto end = P::match(this, a, b);
+    trace_depth--;
+    print_bar(a, b, matcher_name.str_val, end ? "OK" : "X");
+    return end;
+  }
+};
 
 #endif
 
