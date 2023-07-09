@@ -18,14 +18,20 @@
 #include <sys/stat.h>
 #include <chrono>
 
+#ifdef DEBUG
+#define DCHECK(A) assert(A)
+#else
+#define DCHECK(A)
+#endif
+
+#define RECYCLE_NODES
+#define COUNT_NODES
+
 using namespace matcheroni;
 
 //------------------------------------------------------------------------------
 
 void read(const char* path, char*& text_out, int& size_out) {
-  //auto size = std::filesystem::file_size(path);
-  //text.resize(size);
-
   struct stat statbuf;
   if (stat(path, &statbuf) != -1) {
     text_out = new char[statbuf.st_size + 1];
@@ -99,11 +105,13 @@ struct SlabAlloc {
     return result;
   }
 
+#ifdef RECYCLE_NODES
   void free(void* p, size_t size) {
     auto offset = (uint8_t*)p - top_slab;
-    //assert(offset + size == slab_cursor);
+    DCHECK(offset + size == slab_cursor);
     slab_cursor -= size;
   }
+#endif
 
   // slab size is 1 hugepage. seems to work ok.
   static constexpr size_t slab_size = 512*1024*1024;
@@ -143,8 +151,11 @@ void print_flat(const char* a, const char* b, int max_len) {
 // Our parse node for this example is pretty trivial - a type name, the
 // endpoints of the matched text, and a list of child nodes.
 
+
+#ifdef COUNT_NODES
 size_t constructor_calls = 0;
 size_t destructor_calls = 0;
+#endif
 
 struct Node {
 
@@ -152,15 +163,20 @@ struct Node {
   ~Node() = delete;
 
   static Node* create() {
+#ifdef COUNT_NODES
     constructor_calls++;
+#endif
     auto result = (Node*)slabs.alloc(sizeof(Node));
     return result;
   }
 
+#ifdef RECYCLE_NODES
   static void recycle(Node* n) {
     auto old_head = n->head;
     auto old_tail = n->tail;
+#ifdef COUNT_NODES
     destructor_calls++;
+#endif
     slabs.free(n, sizeof(Node));
     auto c = old_tail;
     while(c) {
@@ -169,7 +185,7 @@ struct Node {
       c = prev;
     }
   }
-
+#endif
 
   const char* type;
   const char* a;
@@ -294,7 +310,9 @@ void matcheroni::atom_rewind(void* ctx, const char* a, const char* b) {
     //printf("dead!\n");
     auto dead = top_tail;
     top_tail = top_tail->prev;
+#ifdef RECYCLE_NODES
     Node::recycle(dead);
+#endif
   }
 }
 
@@ -438,6 +456,8 @@ int main(int argc, char** argv) {
     "../nativejson-benchmark/data/twitter.json",
   };
 
+  constexpr bool verbose = false;
+
   double byte_accum = 0;
   double time_accum = 0;
 
@@ -469,8 +489,10 @@ int main(int argc, char** argv) {
       slabs.reset();
 
       double time = -timestamp_ms();
+#ifdef COUNT_NODES
       constructor_calls = 0;
       destructor_calls = 0;
+#endif
       const char* end = json::match(nullptr, text_a, text_b);
       time += timestamp_ms();
       time_accum += time;
@@ -498,20 +520,30 @@ int main(int argc, char** argv) {
 
       delete [] text;
 
-      //printf("Tree nodes        %ld\n", top_head->node_count());
+      if (verbose) {
+        printf("\n");
+        printf("----------------------------------------\n");
+        printf("Tree nodes        %ld\n", top_head->node_count());
+#ifdef COUNT_NODES
+        printf("Constructor calls %ld\n", constructor_calls);
+        printf("Destructor calls  %ld\n", destructor_calls);
+        printf("Live nodes        %ld\n", constructor_calls - destructor_calls);
+#endif
+      }
 
-      //printf("\n");
-      //printf("Constructor calls %ld\n", constructor_calls);
-      //printf("Destructor calls  %ld\n", destructor_calls);
-      //printf("Live nodes        %ld\n", constructor_calls - destructor_calls);
-
+#ifdef RECYCLE_NODES
       Node::recycle(top_head);
-
-      //printf("Constructor calls %ld\n", constructor_calls);
-      //printf("Destructor calls  %ld\n", destructor_calls);
-      //printf("Live nodes        %ld\n", constructor_calls - destructor_calls);
-
-      assert(constructor_calls == destructor_calls);
+      DCHECK(constructor_calls == destructor_calls);
+      if (verbose) {
+        printf("----------after recycle----------\n");
+        printf("Tree nodes        %ld\n", top_head->node_count());
+#ifdef COUNT_NODES
+        printf("Constructor calls %ld\n", constructor_calls);
+        printf("Destructor calls  %ld\n", destructor_calls);
+        printf("Live nodes        %ld\n", constructor_calls - destructor_calls);
+#endif
+      }
+#endif
     }
   }
 
