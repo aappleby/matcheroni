@@ -79,7 +79,21 @@ void print_flat(const char* a, const char* b, int max_len) {
 // Our parse node for this example is pretty trivial - a type name, the
 // endpoints of the matched text, and a list of child nodes.
 
-struct JsonNode {
+struct NodeBase {
+  inline static size_t constructor_calls = 0;
+  inline static size_t destructor_calls = 0;
+
+  const char* a;
+  const char* b;
+
+  NodeBase* prev;
+  NodeBase* next;
+
+  NodeBase* head;
+  NodeBase* tail;
+};
+
+struct JsonNode : public NodeBase {
 
   //JsonNode() = delete;
   //~JsonNode() = delete;
@@ -101,34 +115,22 @@ struct JsonNode {
     printf("   ");
     for (int i = 0; i < depth; i++) printf(i == depth-1 ? "|--" : "|  ");
     printf("%s\n", type);
-    for (auto c = head; c; c = c->next) c->print_tree(depth+1);
+    for (JsonNode* c = (JsonNode*)head; c; c = (JsonNode*)c->next) c->print_tree(depth+1);
   }
 
   size_t node_count() {
     size_t accum = 1;
-    for (auto c = head; c; c = c->next) accum += c->node_count();
+    for (JsonNode* c = (JsonNode*)head; c; c = (JsonNode*)c->next) accum += c->node_count();
     return accum;
   }
 
   //----------
 
-  inline static size_t constructor_calls = 0;
-  inline static size_t destructor_calls = 0;
-
   const char* type;
-  const char* a;
-  const char* b;
-
-  JsonNode* prev;
-  JsonNode* next;
-
-  JsonNode* head;
-  JsonNode* tail;
 };
 
 //------------------------------------------------------------------------------
 
-template<typename NodeBase>
 struct Parser {
 
   NodeBase* node_create(const char* a, const char* b, NodeBase* old_top_tail, NodeBase* new_top_tail) {
@@ -295,8 +297,7 @@ struct Parser {
 
 template<>
 void matcheroni::parser_rewind(void* ctx, const char* a, const char* b) {
-  Parser<JsonNode>* parser = (Parser<JsonNode>*)ctx;
-  parser->rewind(a);
+  ((Parser*)ctx)->rewind(a);
 }
 
 
@@ -309,12 +310,12 @@ void matcheroni::parser_rewind(void* ctx, const char* a, const char* b) {
 template<StringParam type, typename P>
 struct FactoryWithType {
   static const char* match(void* ctx, const char* a, const char* b) {
-    using p = Ref<&Parser<JsonNode>::factory<P>>;
+    using p = Ref<&Parser::factory<P>>;
     auto end = p::match(ctx, a, b);
 
     if (end) {
-      Parser<JsonNode>* parser = (Parser<JsonNode>*)ctx;
-      parser->top_tail->type = type.str_val;
+      Parser* parser = (Parser*)ctx;
+      ((JsonNode*)(parser->top_tail))->type = type.str_val;
       return end;
     }
 
@@ -325,7 +326,7 @@ struct FactoryWithType {
 #ifdef TRACE
 
 template<StringParam type, typename P>
-using Trace = Ref<&Parser<JsonNode>::trace<type, P>>,
+using Trace = Ref<&Parser::trace<type, P>>,
 
 template<StringParam type, typename P>
 using Capture = Factory<type, Trace<type, P>, node_create<JsonNode>>;
@@ -431,7 +432,7 @@ int main(int argc, char** argv) {
   const int warmup = 10;
   const int reps = 10;
 
-  Parser<JsonNode>* parser = new Parser<JsonNode>();
+  Parser* parser = new Parser();
 
   for (int rep = 0; rep < (warmup + reps); rep++) {
     if (rep == warmup) {
@@ -487,7 +488,7 @@ int main(int argc, char** argv) {
         if (dump_tree) {
           printf("Parse tree:\n");
           for (auto n = parser->top_head; n; n = n->next) {
-            n->print_tree();
+            ((JsonNode*)n)->print_tree();
           }
         }
 
@@ -502,7 +503,7 @@ int main(int argc, char** argv) {
       if (verbose) {
         printf("Slab current      %d\n", parser->slabs.current_size);
         printf("Slab max          %d\n", parser->slabs.max_size);
-        printf("Tree nodes        %ld\n", parser->top_head->node_count());
+        printf("Tree nodes        %ld\n", ((JsonNode*)parser->top_head)->node_count());
         if (count_nodes) {
           printf("Constructor calls %ld\n", JsonNode::constructor_calls);
           printf("Destructor calls  %ld\n", JsonNode::destructor_calls);
@@ -524,7 +525,7 @@ int main(int argc, char** argv) {
           printf("\n");
           printf("Slab current      %d\n", parser->slabs.current_size);
           printf("Slab max          %d\n", parser->slabs.max_size);
-          printf("Tree nodes        %ld\n", parser->top_head->node_count());
+          printf("Tree nodes        %ld\n", ((JsonNode*)parser->top_head)->node_count());
           if (count_nodes) {
             printf("Constructor calls %ld\n", JsonNode::constructor_calls);
             printf("Destructor calls  %ld\n", JsonNode::destructor_calls);
