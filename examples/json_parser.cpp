@@ -94,7 +94,7 @@ struct JsonNode : public NodeBase {
     printf("   ");
     for (int i = 0; i < depth; i++) printf(i == depth-1 ? "|--" : "|  ");
     printf("%s\n", field_name);
-    for (JsonNode* c = (JsonNode*)child_head; c; c = (JsonNode*)c->next) c->print_tree(depth+1);
+    for (JsonNode* c = (JsonNode*)child_head; c; c = (JsonNode*)c->node_next) c->print_tree(depth+1);
   }
 
   //----------------------------------------
@@ -111,44 +111,44 @@ struct Parser {
 
   //----------------------------------------
 
-  void link_node(NodeBase* new_node, const char* a, const char* b, NodeBase* old_top_tail) {
+  void link_node(NodeBase* new_node, const char* a, const char* b, NodeBase* old_tail) {
     new_node->a = a;
     new_node->b = b;
 
-    auto child_head = old_top_tail ? old_top_tail->next : top_head;
+    auto child_head = old_tail ? old_tail->node_next : top_head;
     auto child_tail = top_tail;
 
     new_node->child_head = child_head;
     new_node->child_tail = child_tail;
 
-    if (!old_top_tail && top_tail) {
+    if (!old_tail && top_tail) {
       // We are the new top node, enclose all the top nodes.
-      new_node->prev = nullptr;
-      new_node->next = nullptr;
+      new_node->node_prev = nullptr;
+      new_node->node_next = nullptr;
 
       top_head = new_node;
     }
-    else if (top_tail != old_top_tail) {
-      // Enclose the nodes after old_top_tail.
+    else if (top_tail != old_tail) {
+      // Enclose the nodes after old_tail.
 
-      child_head->prev = nullptr;
-      child_tail->next = nullptr;
+      child_head->node_prev = nullptr;
+      child_tail->node_next = nullptr;
 
-      new_node->prev = old_top_tail;
-      new_node->next = nullptr;
+      new_node->node_prev = old_tail;
+      new_node->node_next = nullptr;
 
-      old_top_tail->next = new_node;
+      old_tail->node_next = new_node;
     }
     else {
       // Nothing to enclose.
       new_node->child_head = nullptr;
       new_node->child_tail = nullptr;
-      new_node->prev = nullptr;
-      new_node->next = nullptr;
+      new_node->node_prev = nullptr;
+      new_node->node_next = nullptr;
 
       if (top_tail) {
-        new_node->prev = top_tail;
-        top_tail->next = new_node;
+        new_node->node_prev = top_tail;
+        top_tail->node_next = new_node;
       }
     }
 
@@ -167,7 +167,7 @@ struct Parser {
 
     auto c = old_tail;
     while(c) {
-      auto prev = c->prev;
+      auto prev = c->node_prev;
       node_recycle(c);
       c = prev;
     }
@@ -180,12 +180,12 @@ struct Parser {
 
   template<typename NodeType, typename P>
   NodeType* node_factory(const char* a, const char* b) {
-    auto old_top_tail = top_tail;
+    auto old_tail = top_tail;
     auto end = P::match(this, a, b);
     if (!end) return nullptr;
 
     auto new_node = new NodeType();
-    link_node(new_node, a, end, old_top_tail);
+    link_node(new_node, a, end, old_tail);
     return new_node;
   }
 
@@ -199,7 +199,7 @@ struct Parser {
   void rewind(const char* a) {
     while(top_tail && top_tail->b > a) {
       auto dead = top_tail;
-      top_tail = (JsonNode*)top_tail->prev;
+      top_tail = top_tail->node_prev;
       if (recycle_nodes) {
         node_recycle(dead);
       }
@@ -253,6 +253,24 @@ struct Parser {
 };
 
 //------------------------------------------------------------------------------
+
+template<StringParam field_name, typename pattern, typename NodeType>
+struct CaptureNode {
+
+  static const char* match(void* ctx, const char* a, const char* b) {
+    Parser* parser = (Parser*)ctx;
+
+    if (auto n = parser->node_factory<NodeType, pattern>(a, b)) {
+      n->field_name = field_name.str_val;
+      return n->b;
+    }
+    else {
+      return nullptr;
+    }
+  }
+};
+
+//------------------------------------------------------------------------------
 // Matcheroni's default rewind callback does nothing, but if we provide a
 // specialized version of it Matcheroni will call it as needed.
 
@@ -275,22 +293,6 @@ template<StringParam type, typename P>
 using Capture = JsonNodeFactory<type, Trace<type, P>>;
 
 #else
-
-template<StringParam field_name, typename pattern, typename NodeType>
-struct CaptureNode {
-
-  static const char* match(void* ctx, const char* a, const char* b) {
-    Parser* parser = (Parser*)ctx;
-
-    if (auto n = parser->node_factory<NodeType, pattern>(a, b)) {
-      n->field_name = field_name.str_val;
-      return n->b;
-    }
-    else {
-      return nullptr;
-    }
-  }
-};
 
 template<StringParam field_name, typename P>
 using Capture = CaptureNode<field_name, P, JsonNode>;
@@ -449,7 +451,7 @@ int main(int argc, char** argv) {
       else {
         if (dump_tree) {
           printf("Parse tree:\n");
-          for (JsonNode* n = (JsonNode*)parser->top_head; n; n = (JsonNode*)n->next) {
+          for (JsonNode* n = (JsonNode*)parser->top_head; n; n = (JsonNode*)n->node_next) {
             n->print_tree();
           }
         }

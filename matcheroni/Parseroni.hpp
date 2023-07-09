@@ -142,12 +142,12 @@ struct NodeBase {
 
     child_head = child_head;
     child_tail = child_tail;
-    prev = nullptr;
-    next = nullptr;
+    node_prev = nullptr;
+    node_next = nullptr;
 
     if (child_head) {
-      if (child_head->prev) child_head->prev->next = nullptr;
-      child_head->prev = nullptr;
+      if (child_head->node_prev) child_head->node_prev->node_next = nullptr;
+      child_head->node_prev = nullptr;
     }
   }
 
@@ -155,7 +155,7 @@ struct NodeBase {
 
   size_t node_count() {
     size_t accum = 1;
-    for (auto c = child_head; c; c = c->next) accum += c->node_count();
+    for (auto c = child_head; c; c = c->node_next) accum += c->node_count();
     return accum;
   }
 
@@ -169,8 +169,8 @@ struct NodeBase {
   const char* a;
   const char* b;
 
-  NodeBase* prev;
-  NodeBase* next;
+  NodeBase* node_prev;
+  NodeBase* node_next;
 
   NodeBase* child_head;
   NodeBase* child_tail;
