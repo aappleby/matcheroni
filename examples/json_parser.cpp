@@ -152,44 +152,18 @@ size_t destructor_calls = 0;
 
 struct Node {
 
-  static void* operator new(std::size_t size) {
-#ifdef PARSERONI_LINEAR_ALLOCATOR
-    auto result = slabs.alloc(size);
-#else
-    auto result = malloc(size);
-#endif
-    return result;
-  }
-
-  static void* operator new[](std::size_t size) {
-#ifdef PARSERONI_LINEAR_ALLOCATOR
-    auto result = slabs.alloc(size);
-#else
-    auto result = malloc(size);
-#endif
-    return result;
-  }
-
-  static void operator delete(void* p, std::size_t size) {
-    assert(false);
-  }
-
-  static void operator delete[](void* p, std::size_t size) {
-    assert(false);
-  }
-
-  Node() {
-  }
+  Node() = delete;
+  ~Node() = delete;
 
   static Node* create() {
     constructor_calls++;
-    return new Node();
+    auto result = (Node*)slabs.alloc(sizeof(Node));
+    return result;
   }
 
   static void recycle(Node* n) {
     auto old_head = n->head;
     auto old_tail = n->tail;
-    //delete n;
     destructor_calls++;
     slabs.free(n, sizeof(Node));
     auto c = old_tail;
@@ -205,11 +179,11 @@ struct Node {
   const char* a;
   const char* b;
 
-  Node* prev = nullptr;
-  Node* next = nullptr;
+  Node* prev;
+  Node* next;
 
-  Node* head = nullptr;
-  Node* tail = nullptr;
+  Node* head;
+  Node* tail;
 
   // Prints a text representation of the parse tree.
   void print_tree(int depth = 0) {
@@ -231,11 +205,6 @@ struct Node {
     size_t accum = 1;
     for (auto c = head; c; c = c->next) accum += c->node_count();
     return accum;
-  }
-
-private:
-  ~Node() {
-    destructor_calls++;
   }
 };
 
@@ -287,6 +256,10 @@ struct Factory {
         top_head = nullptr;
         top_tail = nullptr;
       }
+    }
+    else {
+      new_node->head = nullptr;
+      new_node->tail = nullptr;
     }
 
     if (top_tail) {
@@ -525,7 +498,18 @@ int main(int argc, char** argv) {
       delete [] text;
 
       //printf("Tree nodes        %ld\n", top_head->node_count());
+
+      //printf("\n");
+      //printf("Constructor calls %ld\n", constructor_calls);
+      //printf("Destructor calls  %ld\n", destructor_calls);
+      //printf("Live nodes        %ld\n", constructor_calls - destructor_calls);
+
       Node::recycle(top_head);
+
+      //printf("Constructor calls %ld\n", constructor_calls);
+      //printf("Destructor calls  %ld\n", destructor_calls);
+      //printf("Live nodes        %ld\n", constructor_calls - destructor_calls);
+
       assert(constructor_calls == destructor_calls);
     }
   }
@@ -536,14 +520,6 @@ int main(int argc, char** argv) {
   printf("Rep time   %f\n", time_accum / reps);
   printf("\n");
 
-  printf("Constructor calls %ld\n", constructor_calls);
-  printf("Destructor calls  %ld\n", destructor_calls);
-  printf("Live nodes        %ld\n", constructor_calls - destructor_calls);
-  printf("\n");
-
-  printf("Constructor calls %ld\n", constructor_calls);
-  printf("Destructor calls  %ld\n", destructor_calls);
-  printf("Live nodes        %ld\n", constructor_calls - destructor_calls);
 
 
 #ifdef PARSERONI_LINEAR_ALLOCATOR
