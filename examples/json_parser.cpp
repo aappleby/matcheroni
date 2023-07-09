@@ -14,7 +14,7 @@
 #include <vector>
 #include <stdint.h>
 #include <memory.h>
-#include "matcheroni/Matcheroni.hpp"
+#include "matcheroni/Parseroni.hpp"
 #include <sys/stat.h>
 #include <chrono>
 
@@ -25,10 +25,6 @@
 #endif
 
 using namespace matcheroni;
-
-constexpr bool verbose       = false;
-constexpr bool count_nodes   = true;
-constexpr bool recycle_nodes = true;
 
 //#define FORCE_REWINDS
 
@@ -62,100 +58,6 @@ double timestamp_ms() {
   return (now_nanos - origin) * 1.0e-6;
 }
 
-//------------------------------------------------------------------------------
-
-struct SlabAlloc {
-
-  struct Slab {
-    Slab*   prev;
-    Slab*   next;
-    size_t  cursor;
-    size_t  highwater;
-    uint8_t buf[];
-  };
-
-  // slab size is 1 hugepage. seems to work ok.
-  static constexpr size_t header_size = sizeof(Slab);
-  static constexpr size_t slab_size = 2*1024*1024 - header_size;
-
-  SlabAlloc() {
-    add_slab();
-  }
-
-  void destroy() {
-    reset();
-    auto c = top_slab;
-    while(c) {
-      auto next = c->next;
-      ::free((void*)c);
-      c = next;
-    }
-    top_slab = nullptr;
-  }
-
-  void reset() {
-    while(top_slab->prev) top_slab = top_slab->prev;
-    for (auto c = top_slab; c; c = c->next) {
-      c->cursor = 0;
-    }
-    current_size = 0;
-  }
-
-  void add_slab() {
-    if (top_slab && top_slab->next) {
-      top_slab = top_slab->next;
-      DCHECK(top_slab->cursor == 0);
-      return;
-    }
-
-    static int count = 0;
-    if (verbose) {
-      printf("add_slab %d\n", ++count);
-    }
-    auto new_slab = (Slab*)malloc(header_size + slab_size);
-    new_slab->prev = nullptr;
-    new_slab->next = nullptr;
-    new_slab->cursor = 0;
-    new_slab->highwater = 0;
-
-    if (top_slab) top_slab->next = new_slab;
-    new_slab->prev = top_slab;
-    top_slab = new_slab;
-  }
-
-  void* alloc(size_t size) {
-    if (top_slab->cursor + size > slab_size) {
-      add_slab();
-    }
-
-    auto result = top_slab->buf + top_slab->cursor;
-    top_slab->cursor += size;
-
-    current_size += size;
-    if (current_size > max_size) max_size = current_size;
-
-    return result;
-  }
-
-  void free(void* p, size_t size) {
-    if (recycle_nodes) {
-      auto offset = (uint8_t*)p - top_slab->buf;
-      DCHECK(offset + size == top_slab->);
-      top_slab->cursor -= size;
-      if (top_slab->cursor == 0) {
-        if (top_slab->prev) {
-          top_slab = top_slab->prev;
-        }
-      }
-      current_size -= size;
-      //printf("top_slab->cursor = %ld\n", top_slab->cursor);
-    }
-  }
-
-  Slab*  top_slab;
-  size_t current_size;
-  size_t max_size;
-};
 
 SlabAlloc slabs;
 
@@ -181,47 +83,16 @@ void print_flat(const char* a, const char* b, int max_len) {
 // Our parse node for this example is pretty trivial - a type name, the
 // endpoints of the matched text, and a list of child nodes.
 
+struct JsonNode {
 
-size_t constructor_calls = 0;
-size_t destructor_calls = 0;
+  //JsonNode() = delete;
+  //~JsonNode() = delete;
 
-struct Node {
+  //----------
 
-  Node() = delete;
-  ~Node() = delete;
-
-  static Node* create() {
-    if (count_nodes) constructor_calls++;
-    auto result = (Node*)slabs.alloc(sizeof(Node));
-    return result;
-  }
-
-  static void recycle(Node* n) {
-    if (recycle_nodes) {
-      auto old_head = n->head;
-      auto old_tail = n->tail;
-      if (count_nodes) destructor_calls++;
-      slabs.free(n, sizeof(Node));
-      auto c = old_tail;
-      while(c) {
-        auto prev = c->prev;
-        recycle(c);
-        c = prev;
-      }
-    }
-  }
-
-  const char* type;
-  const char* a;
-  const char* b;
-
-  Node* prev;
-  Node* next;
-
-  Node* head;
-  Node* tail;
-
+  //----------
   // Prints a text representation of the parse tree.
+
   void print_tree(int depth = 0) {
     //if (depth > 3) return;
 
@@ -242,6 +113,65 @@ struct Node {
     for (auto c = head; c; c = c->next) accum += c->node_count();
     return accum;
   }
+
+  //----------
+
+  inline static size_t constructor_calls = 0;
+  inline static size_t destructor_calls = 0;
+
+  const char* type;
+  const char* a;
+  const char* b;
+
+  JsonNode* prev;
+  JsonNode* next;
+
+  JsonNode* head;
+  JsonNode* tail;
+};
+
+//------------------------------------------------------------------------------
+
+template<typename Node>
+Node* node_create() {
+  if (count_nodes) Node::constructor_calls++;
+  auto result = slabs.alloc(sizeof(Node));
+  if (construct_destruct) {
+    Node* n = new(result) Node();
+    return n;
+  }
+  else {
+    return (Node*)result;
+  }
+}
+
+//----------
+
+template<typename Node>
+void node_recycle(Node* n) {
+  if (recycle_nodes) {
+    auto old_head = n->head;
+    auto old_tail = n->tail;
+    if (count_nodes) Node::destructor_calls++;
+    if (construct_destruct) {
+      n->~Node();
+    }
+    slabs.free(n, sizeof(Node));
+    auto c = old_tail;
+    while(c) {
+      auto prev = c->prev;
+      node_recycle(c);
+      c = prev;
+    }
+  }
+}
+
+//------------------------------------------------------------------------------
+
+struct Parser {
+  JsonNode* top_head = nullptr;
+  JsonNode* top_tail = nullptr;
+  JsonNode* top_dead = nullptr;
 };
 
 //------------------------------------------------------------------------------
@@ -252,26 +182,21 @@ struct Node {
 // If this were a larger application, we would keep the node stack inside a
 // match context object passed in via 'ctx', but a global is fine for now.
 
-Node* top_head = nullptr;
-Node* top_tail = nullptr;
-Node* top_dead = nullptr;
 
-template<StringParam type, typename P, typename NodeType>
+template<typename P, auto node_factory>
 struct Factory {
   static const char* match(void* ctx, const char* a, const char* b) {
     if (!a || a == b) return nullptr;
 
-    auto old_top_tail = top_tail;
+    Parser* parser = (Parser*)ctx;
+
+    auto old_top_tail = parser->top_tail;
     auto end = P::match(ctx, a, b);
-    auto new_top_tail = top_tail;
+    auto new_top_tail = parser->top_tail;
 
     if (!end) return nullptr;
 
-    //printf("creating %s\n", type.str_val);
-
-    //auto new_node = new NodeType();
-    auto new_node = Node::create();
-    new_node->type = type.str_val;
+    auto new_node = node_factory();
     new_node->a = a;
     new_node->b = end;
 
@@ -283,14 +208,14 @@ struct Factory {
         new_node->tail = new_top_tail;
         old_top_tail->next->prev = nullptr;
         old_top_tail->next = nullptr;
-        top_tail = old_top_tail;
+        parser->top_tail = old_top_tail;
       }
       else {
         // We are the new top node, assimilate all the current nodes
-        new_node->head = top_head;
-        new_node->tail = top_tail;
-        top_head = nullptr;
-        top_tail = nullptr;
+        new_node->head = parser->top_head;
+        new_node->tail = parser->top_tail;
+        parser->top_head = nullptr;
+        parser->top_tail = nullptr;
       }
     }
     else {
@@ -298,22 +223,35 @@ struct Factory {
       new_node->tail = nullptr;
     }
 
-    if (top_tail) {
-      top_tail->next = new_node;
-      new_node->prev = top_tail;
+    if (parser->top_tail) {
+      parser->top_tail->next = new_node;
+      new_node->prev = parser->top_tail;
       new_node->next = nullptr;
 
-      top_tail = new_node;
+      parser->top_tail = new_node;
     }
     else {
       new_node->prev = nullptr;
       new_node->next = nullptr;
 
-      top_head = new_node;
-      top_tail = new_node;
+      parser->top_head = new_node;
+      parser->top_tail = new_node;
     }
 
     return end;
+  }
+};
+
+template<StringParam type, typename P, auto node_factory>
+struct Factory2 {
+  static const char* match(void* ctx, const char* a, const char* b) {
+    if (!a || a == b) return nullptr;
+    if (auto end = Factory<P, node_factory>::match(ctx, a, b)) {
+      Parser* parser = (Parser*)ctx;
+      parser->top_tail->type = type.str_val;
+      return end;
+    }
+    return nullptr;
   }
 };
 
@@ -328,16 +266,18 @@ struct Factory {
 
 template<>
 void matcheroni::atom_rewind(void* ctx, const char* a, const char* b) {
-  if (!top_tail) return;
+  Parser* parser = (Parser*)ctx;
 
-  while(top_tail && top_tail->b > a) {
+  if (!parser->top_tail) return;
+
+  while(parser->top_tail && parser->top_tail->b > a) {
     //printf("dead!\n");
-    auto dead = top_tail;
-    top_tail = top_tail->prev;
+    auto dead = parser->top_tail;
+    parser->top_tail = parser->top_tail->prev;
     if (recycle_nodes) {
       //static int count = 0;
       //printf("recyclin' %d\n", ++count);
-      Node::recycle(dead);
+      node_recycle(dead);
     }
   }
 }
@@ -394,10 +334,10 @@ struct Trace {
 
 #ifdef TRACE
 template<StringParam type, typename P>
-using Capture = Factory<type, Trace<type, P>, Node>;
+using Capture = Factory<type, Trace<type, P>, node_create<JsonNode>>;
 #else
 template<StringParam type, typename P>
-using Capture = Factory<type, P, Node>;
+using Capture = Factory2<type, P, node_create<JsonNode>>;
 #endif
 
 //------------------------------------------------------------------------------
@@ -495,6 +435,8 @@ int main(int argc, char** argv) {
   const int warmup = 10;
   const int reps = 10;
 
+  Parser* parser = new Parser();
+
   for (int rep = 0; rep < (warmup + reps); rep++) {
     if (rep == warmup) {
       byte_accum = 0;
@@ -519,23 +461,22 @@ int main(int argc, char** argv) {
       const char* text_a = (const char*)text;
       const char* text_b = text_a + text_size;
 
-      top_head = top_tail = nullptr;
+      parser->top_head = parser->top_tail = nullptr;
 
       slabs.reset();
 
       double time = -timestamp_ms();
-      constructor_calls = 0;
-      destructor_calls = 0;
-      const char* end = match_json(nullptr, text_a, text_b);
+      JsonNode::constructor_calls = 0;
+      JsonNode::destructor_calls = 0;
+
+      const char* end = match_json(parser, text_a, text_b);
       time += timestamp_ms();
       time_accum += time;
 
       if (verbose) {
-        printf("Parse done\n");
+        printf("Parse done in %f msec\n", time);
         printf("\n");
       }
-
-      //printf("Matching took %f msec\n", time);
 
       // If everything went well, our node stack should now have a sequence of
       // parse nodes in it.
@@ -543,14 +484,16 @@ int main(int argc, char** argv) {
       if (!end) {
         printf("Our matcher could not match anything!\n");
       }
-      else if (top_head == nullptr) {
+      else if (parser->top_head == nullptr) {
         printf("No parse nodes created!\n");
       }
       else {
-        //printf("Parse tree:\n");
-        //for (auto n = top_head; n; n = n->next) {
-        //  n->print_tree();
-        //}
+        if (dump_tree) {
+          printf("Parse tree:\n");
+          for (auto n = parser->top_head; n; n = n->next) {
+            n->print_tree();
+          }
+        }
 
         if (*end != 0) {
           printf("Leftover text: |%s|\n", end);
@@ -561,13 +504,13 @@ int main(int argc, char** argv) {
 
 
       if (verbose) {
-        printf("Slab current      %ld\n", slabs.current_size);
-        printf("Slab max          %ld\n", slabs.max_size);
-        printf("Tree nodes        %ld\n", top_head->node_count());
+        printf("Slab current      %d\n", slabs.current_size);
+        printf("Slab max          %d\n", slabs.max_size);
+        printf("Tree nodes        %ld\n", parser->top_head->node_count());
         if (count_nodes) {
-          printf("Constructor calls %ld\n", constructor_calls);
-          printf("Destructor calls  %ld\n", destructor_calls);
-          printf("Live nodes        %ld\n", constructor_calls - destructor_calls);
+          printf("Constructor calls %ld\n", JsonNode::constructor_calls);
+          printf("Destructor calls  %ld\n", JsonNode::destructor_calls);
+          printf("Live nodes        %ld\n", JsonNode::constructor_calls - JsonNode::destructor_calls);
         }
       }
 
@@ -577,19 +520,19 @@ int main(int argc, char** argv) {
           printf("----------recycle start----------\n");
         }
 
-        Node::recycle(top_head);
+        node_recycle(parser->top_head);
         DCHECK(constructor_calls == destructor_calls);
 
         if (verbose) {
           printf("----------recycle done----------\n");
           printf("\n");
-          printf("Slab current      %ld\n", slabs.current_size);
-          printf("Slab max          %ld\n", slabs.max_size);
-          printf("Tree nodes        %ld\n", top_head->node_count());
+          printf("Slab current      %d\n", slabs.current_size);
+          printf("Slab max          %d\n", slabs.max_size);
+          printf("Tree nodes        %ld\n", parser->top_head->node_count());
           if (count_nodes) {
-            printf("Constructor calls %ld\n", constructor_calls);
-            printf("Destructor calls  %ld\n", destructor_calls);
-            printf("Live nodes        %ld\n", constructor_calls - destructor_calls);
+            printf("Constructor calls %ld\n", JsonNode::constructor_calls);
+            printf("Destructor calls  %ld\n", JsonNode::destructor_calls);
+            printf("Live nodes        %ld\n", JsonNode::constructor_calls - JsonNode::destructor_calls);
           }
         }
 
@@ -606,6 +549,7 @@ int main(int argc, char** argv) {
   printf("Rep time   %f\n", time_accum / reps);
   printf("\n");
 
+  delete parser;
   slabs.destroy();
 
   return 0;
