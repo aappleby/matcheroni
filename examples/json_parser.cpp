@@ -147,7 +147,7 @@ struct Parser {
   template<typename NodeType>
   NodeType* node_create(const char* a, const char* b, NodeBase* old_top_tail) {
     if (count_nodes) NodeBase::constructor_calls++;
-    auto new_node = new (slabs.alloc(sizeof(NodeType))) NodeType();
+    auto new_node = new NodeType();
 
     link_node(new_node, a, b, old_top_tail);
 
@@ -161,8 +161,11 @@ struct Parser {
       auto old_head = n->head;
       auto old_tail = n->tail;
       if (count_nodes) NodeBase::destructor_calls++;
-      n->~NodeBase();
-      slabs.free(n, sizeof(JsonNode));
+
+      //n->~NodeBase();
+      //NodeBase::slabs.free(n, sizeof(JsonNode));
+      delete n;
+
       auto c = old_tail;
       while(c) {
         auto prev = c->prev;
@@ -171,8 +174,6 @@ struct Parser {
       }
     }
   }
-
-  SlabAlloc slabs;
 
   NodeBase* top_head = nullptr;
   NodeBase* top_tail = nullptr;
@@ -424,7 +425,7 @@ int main(int argc, char** argv) {
 
       parser->top_head = parser->top_tail = nullptr;
 
-      parser->slabs.reset();
+      NodeBase::slabs.reset();
 
       double time = -timestamp_ms();
       JsonNode::constructor_calls = 0;
@@ -465,8 +466,8 @@ int main(int argc, char** argv) {
 
 
       if (verbose) {
-        printf("Slab current      %d\n", parser->slabs.current_size);
-        printf("Slab max          %d\n", parser->slabs.max_size);
+        printf("Slab current      %d\n", NodeBase::slabs.current_size);
+        printf("Slab max          %d\n", NodeBase::slabs.max_size);
         printf("Tree nodes        %ld\n", ((JsonNode*)parser->top_head)->node_count());
         if (count_nodes) {
           printf("Constructor calls %ld\n", JsonNode::constructor_calls);
@@ -487,8 +488,8 @@ int main(int argc, char** argv) {
         if (verbose) {
           printf("----------recycle done----------\n");
           printf("\n");
-          printf("Slab current      %d\n", parser->slabs.current_size);
-          printf("Slab max          %d\n", parser->slabs.max_size);
+          printf("Slab current      %d\n", NodeBase::slabs.current_size);
+          printf("Slab max          %d\n", NodeBase::slabs.max_size);
           printf("Tree nodes        %ld\n", ((JsonNode*)parser->top_head)->node_count());
           if (count_nodes) {
             printf("Constructor calls %ld\n", JsonNode::constructor_calls);
@@ -510,7 +511,7 @@ int main(int argc, char** argv) {
   printf("Rep time   %f\n", time_accum / reps);
   printf("\n");
 
-  parser->slabs.destroy();
+  NodeBase::slabs.destroy();
   delete parser;
 
   return 0;

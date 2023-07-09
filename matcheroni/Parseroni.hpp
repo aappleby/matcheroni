@@ -110,6 +110,22 @@ struct SlabAlloc {
 
 struct NodeBase {
 
+  static void* operator new(size_t s) {
+    return NodeBase::slabs.alloc(s);
+  }
+
+  static void* operator new[](size_t s) {
+    return NodeBase::slabs.alloc(s);
+  }
+
+  static void operator delete(void* p, size_t s) {
+    NodeBase::slabs.free(p, s);
+  }
+
+  static void operator delete[](void* p, size_t s) {
+    NodeBase::slabs.free(p, s);
+  }
+
   virtual ~NodeBase() {}
 
   //----------------------------------------
@@ -141,6 +157,8 @@ struct NodeBase {
 
   inline static size_t constructor_calls = 0;
   inline static size_t destructor_calls = 0;
+
+  inline static SlabAlloc slabs;
 
   const char* a;
   const char* b;
