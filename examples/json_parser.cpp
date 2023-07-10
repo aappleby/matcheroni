@@ -19,6 +19,8 @@
 
 using namespace matcheroni;
 
+//#define TRACE
+
 constexpr bool verbose   = false;
 constexpr bool dump_tree = false;
 
@@ -33,31 +35,27 @@ const int reps = 10;
 double timestamp_ms() {
   timespec t;
   clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &t);
-  return  double(t.tv_sec) * 1e3 + double(t.tv_nsec) * 1e-6;
+  return double(t.tv_sec) * 1e3 + double(t.tv_nsec) * 1e-6;
 }
 
 //------------------------------------------------------------------------------
 
 struct JsonNode : public NodeBase {
   using NodeBase::NodeBase;
-  const char* matcher_name;
 };
 
 //------------------------------------------------------------------------------
 // Prints a text representation of the parse tree.
 
 void print_tree(JsonNode* node, int depth = 0) {
-  //if (depth > 3) return;
-
   // Print the node's matched text, with a "..." if it doesn't fit in 20
   // characters.
   print_flat(node->match_a, node->match_b, 20);
 
   // Print out the name of the type name of the node with indentation.
-
   printf("   ");
   for (int i = 0; i < depth; i++) printf(i == depth-1 ? "|--" : "|  ");
-  printf("%s\n", node->matcher_name);
+  printf("%s\n", node->match_name);
   for (JsonNode* c = (JsonNode*)node->child_head; c; c = (JsonNode*)c->node_next) {
     print_tree(c, depth+1);
   }
@@ -70,13 +68,13 @@ void print_tree(JsonNode* node, int depth = 0) {
 
 #ifdef TRACE
 
-template<StringParam matcher_name, typename P>
-using Capture = CaptureNode<matcher_name, Trace<matcher_name, P>, JsonNode>;
+template<StringParam match_name, typename P>
+using Capture = CaptureNamed<match_name, Trace<match_name, P>, JsonNode>;
 
 #else
 
-template<StringParam matcher_name, typename P>
-using Capture = CaptureNode<matcher_name, P, JsonNode>;
+template<StringParam match_name, typename P>
+using Capture = CaptureNamed<match_name, P, JsonNode>;
 
 #endif
 

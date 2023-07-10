@@ -106,7 +106,8 @@ struct SlabAlloc {
 
 struct NodeBase {
 
-  NodeBase(const char* a, const char* b) : match_a(a), match_b(b) {
+  NodeBase(const char* match_name, const char* a, const char* b)
+  : match_name(match_name), match_a(a), match_b(b) {
     constructor_calls++;
   }
 
@@ -133,6 +134,7 @@ struct NodeBase {
   inline static size_t constructor_calls = 0;
   inline static size_t destructor_calls = 0;
 
+  const char* match_name;
   const char* match_a;
   const char* match_b;
 
@@ -208,10 +210,13 @@ struct Parser {
   }
 
   //----------------------------------------
-  // Move all nodes in (old_tail,new_tail] to be children of new_node and
-  // append new_node to the node list.
 
-  void enclose(NodeBase* new_node, NodeBase* old_tail) {
+  template<typename NodeType>
+  NodeType* create(const char* match_name, const char* a, const char* b, NodeBase* old_tail) {
+    auto new_node = new NodeType(match_name, a, b);
+
+    // Move all nodes in (old_tail,new_tail] to be children of new_node and
+    // append new_node to the node list.
     if (old_tail == top_tail) {
       append(new_node);
     }
@@ -220,6 +225,8 @@ struct Parser {
       auto child_tail = top_tail;
       splice(new_node, child_head, child_tail);
     }
+
+    return new_node;
   }
 
   //----------------------------------------
@@ -232,7 +239,6 @@ struct Parser {
 
     auto head = node->child_head;
     auto tail = node->child_tail;
-
     delete node;
 
     while(tail) {
@@ -269,6 +275,7 @@ struct Parser {
 
   NodeBase* top_head = nullptr;
   NodeBase* top_tail = nullptr;
+  int trace_depth = 0;
 };
 
 //------------------------------------------------------------------------------
@@ -285,29 +292,16 @@ inline void matcheroni::parser_rewind(void* ctx, const char* a, const char* b) {
 // matcher that constructs a new NodeType() for a successful match, attaches
 // any sub-nodes to it, and places it on a node list.
 
-template<matcheroni::StringParam matcher_name, typename pattern, typename NodeType>
-struct CaptureNode {
+template<matcheroni::StringParam match_name, typename pattern, typename NodeType>
+struct CaptureNamed {
 
-  static const char* match2(void* ctx, const char* a, const char* b) {
+  static const char* match(void* ctx, const char* a, const char* b) {
     Parser* parser = (Parser*)ctx;
-
     auto old_tail = parser->top_tail;
     auto end = pattern::match(parser, a, b);
 
     if (end) {
-      auto new_node = new NodeType(a, end);
-      parser->enclose(new_node, old_tail);
-    }
-
-    return end;
-  }
-
-  static const char* match(void* ctx, const char* a, const char* b) {
-    auto end = match2(ctx, a, b);
-    if (end) {
-      Parser* parser = (Parser*)ctx;
-      NodeType* new_node = (NodeType*)parser->top_tail;
-      new_node->matcher_name = matcher_name.str_val;
+      parser->create<NodeType>(match_name.str_val, a, end, old_tail);
     }
 
     return end;
@@ -357,27 +351,26 @@ void print_flat(const char* a, const char* b, int max_len) {
 
 #ifdef PARSERONI_USE_STDIO
 
-template<matcheroni::StringParam matcher_name, typename P>
+template<matcheroni::StringParam match_name, typename P>
 struct Trace {
 
-  inline static int trace_depth = 0;
-
-  void print_bar(const char* a, const char* b, const char* val, const char* suffix) {
+  static void print_bar(int trace_depth, const char* a, const char* b, const char* val, const char* suffix) {
     printf("|");
     print_flat(a, b, 20);
     printf("| ");
     for (int i = 0; i < trace_depth; i++) printf("|  ");
-    printf("%s %s\n", val, suffix);
+    printf("%s %s", val, suffix);
+    printf(" %d ", trace_depth);
+    printf("\n");
   }
 
-  template<typename atom>
-  atom* trace(void* ctx, atom* a, atom* b) {
+  static const char* match(void* ctx, const char* a, const char* b) {
     if (!a || a == b) return nullptr;
-    print_bar(a, b, matcher_name.str_val, "?");
-    trace_depth++;
-    auto end = P::match(this, a, b);
-    trace_depth--;
-    print_bar(a, b, matcher_name.str_val, end ? "OK" : "X");
+    auto parser = (Parser*)ctx;
+
+    print_bar(parser->trace_depth++, a, b, match_name.str_val, "?");
+    auto end = P::match(ctx, a, b);
+    print_bar(--parser->trace_depth, a, b, match_name.str_val, end ? "OK" : "X");
     return end;
   }
 };
