@@ -4,7 +4,7 @@
 
 # Matcheroni
 
-Matcheroni is a minimal, zero-dependency (not even stdlib), single-file header library for building pattern-matchers, [lexers](matcheroni/C99Lexer.cpp), and [parsers](matcheroni/C99Parser.h) out of trees of C++20 templates.
+Matcheroni is a minimal, zero-dependency (not even stdlib), single-file header library for building pattern-matchers, [lexers](examples/c99_parser/C99Lexer.cpp), and [parsers](examples/c99_parser/C99Parser.hpp) out of trees of C++20 templates.
 
 Matcheroni is a generalization of [Parsing Expression Grammars](https://en.wikipedia.org/wiki/Parsing_expression_grammar) and can be used in place of regular expressions in many cases.
 
@@ -12,7 +12,7 @@ Matcheroni generates tiny code - 100s of bytes for moderately-sized patterns ver
 
 Matcheroni generates fast code - often 10x faster than std::regex.
 
-Matcheroni matchers are more readable and more modular than regexes - you can build [large matchers](matcheroni/C99Lexer.cpp#L158) out of small simple matchers without affecting performance.
+Matcheroni matchers are more readable and more modular than regexes - you can build [large matchers](examples/c99_parser/C99Lexer.cpp#L158) out of small simple matchers without affecting performance.
 
 Matcheroni allows you to freely intermingle C++ code with your matcher templates so that you can build parse trees, log stats, or do whatever else you need to do while processing your data.
 
@@ -93,7 +93,7 @@ Matcheroni is based on two fundamental primitives -
 
 Matching functions should return a pointer in the range ```[a, b]``` to indicate success or failure - returning ```a``` means the match succeded but did not consume any input, returning ```b``` means the match consumed all the input, returning ```nullptr``` means the match failed, and any other pointer in the range indicates that the match succeeded and consumed some amount of the input.
 
-Matcheroni includes [built-in matchers for most regex-like tasks](matcheroni/Matcheroni.h#L54), but writing your own is straightforward. Matchers can be templated and can do basically whatever they like inside ```match()```. For example, if we wanted to print a message whenever some pattern matches, we could do this:
+Matcheroni includes [built-in matchers for most regex-like tasks](matcheroni/Matcheroni.hpp#L54), but writing your own is straightforward. Matchers can be templated and can do basically whatever they like inside ```match()```. For example, if we wanted to print a message whenever some pattern matches, we could do this:
 
 ```cpp
 template<typename P>
@@ -168,7 +168,7 @@ So, if you need to do some customized pattern-matching on something like an embe
 
 # A Small Demo - Parsing Regular Expressions
 
-There is a full working example of using Matcheroni to parse a subset of regular expression syntax, build a syntax tree, print the tree, and (optionally) trace the matching process in [regex_parser.cpp](matcheroni/regex_parser.cpp).
+There is a full working example of using Matcheroni to parse a subset of regular expression syntax, build a syntax tree, print the tree, and (optionally) trace the matching process in [regex_parser.cpp](examples/regex_parser.cpp).
 
 ```
 ~/Matcheroni$ bin/regex_parser "[a-zA-Z]*(foobarbaz|glom.*)?"
