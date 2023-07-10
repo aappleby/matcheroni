@@ -17,16 +17,10 @@
 #include <time.h>
 #include <stdlib.h>
 
-#ifdef DEBUG
-#define DCHECK(A) assert(A)
-#else
-#define DCHECK(A)
-#endif
-
 using namespace matcheroni;
 
-constexpr bool verbose       = false;
-constexpr bool dump_tree     = true;
+constexpr bool verbose   = false;
+constexpr bool dump_tree = false;
 
 double byte_accum = 0;
 double time_accum = 0;
@@ -57,7 +51,7 @@ void print_tree(JsonNode* node, int depth = 0) {
 
   // Print the node's matched text, with a "..." if it doesn't fit in 20
   // characters.
-  //print_flat(node->a, node->b, 20);
+  print_flat(node->match_a, node->match_b, 20);
 
   // Print out the name of the type name of the node with indentation.
 
@@ -95,14 +89,14 @@ using keyword   = Oneof<Lit<"true">, Lit<"false">, Lit<"null">>;
 using character = Oneof< NotAtom<'"','\\'>, Seq<Atom<'\\'>, escape> >;
 using string    = Seq<Atom<'"'>, Any<character>, Atom<'"'>>;
 
-using sign     = Atom<'+','-'>;
-using digit    = Range<'0','9'>;
-using onenine  = Range<'1','9'>;
-using digits   = Some<digit>;
-using fraction = Seq<Atom<'.'>, digits>;
-using exponent = Seq<Atom<'e','E'>, Opt<sign>, digits>;
-using integer  = Seq< Opt<Atom<'-'>>, Oneof<Seq<onenine,digits>,digit> >;
-using number   = Seq<integer, Opt<fraction>, Opt<exponent>>;
+using sign      = Atom<'+','-'>;
+using digit     = Range<'0','9'>;
+using onenine   = Range<'1','9'>;
+using digits    = Some<digit>;
+using fraction  = Seq<Atom<'.'>, digits>;
+using exponent  = Seq<Atom<'e','E'>, Opt<sign>, digits>;
+using integer   = Seq< Opt<Atom<'-'>>, Oneof<Seq<onenine,digits>,digit> >;
+using number    = Seq<integer, Opt<fraction>, Opt<exponent>>;
 
 const char* match_value(void* ctx, const char* a, const char* b);
 using value = Ref<match_value>;
@@ -149,44 +143,7 @@ const char* match_value(void* ctx, const char* a, const char* b) {
   return value::match(ctx, a, b);
 }
 
-const char* match_json(void* ctx, const char* a, const char* b) {
-  return Seq<ws, value, ws>::match(ctx, a, b);
-}
-
-//------------------------------------------------------------------------------
-
-int test_parser(Parser* parser, const char* text_a, const char* text_b) {
-  parser->reset();
-
-  double time = -timestamp_ms();
-  const char* end = match_json(parser, text_a, text_b);
-  time += timestamp_ms();
-  time_accum += time;
-
-  int result = 0;
-
-  if (verbose) {
-    printf("Parse done in %f msec\n", time);
-    printf("\n");
-  }
-
-  if (!end) {
-    printf("Parser could not match anything\n");
-    result = -1;
-  }
-
-  if (*end != 0) {
-    printf("Leftover text: |%s|\n", end);
-    result = -1;
-  }
-
-  if (parser->top_head == nullptr) {
-    printf("No parse nodes created\n");
-    result = -1;
-  }
-
-  return result;
-}
+using json = Seq<ws, value, ws>;
 
 //------------------------------------------------------------------------------
 
@@ -237,8 +194,6 @@ int main(int argc, char** argv) {
       buf[statbuf.st_size] = 0;
       fclose(f);
 
-      //parser->text = buf;
-      //parser->text_size = statbuf.st_size;
       byte_accum += statbuf.st_size;
 
       const char* text_a = buf;
@@ -246,7 +201,33 @@ int main(int argc, char** argv) {
 
       for (auto c = text_a; c < text_b; c++) if (*c == '\n') line_accum++;
 
-      test_parser(parser, text_a, text_b);
+      //----------------------------------------
+
+      parser->reset();
+
+      double time = -timestamp_ms();
+      const char* end = json::match(parser, text_a, text_b);
+      time += timestamp_ms();
+      time_accum += time;
+
+      if (!end) {
+        printf("Parser could not match anything\n");
+      }
+
+      if (end && *end != 0) {
+        printf("Leftover text: |%s|\n", end);
+      }
+
+      if (parser->top_head == nullptr) {
+        printf("No parse nodes created\n");
+      }
+
+      //----------------------------------------
+
+      if (verbose) {
+        printf("Parse done in %f msec\n", time);
+        printf("\n");
+      }
 
       if (dump_tree) {
         printf("Parse tree:\n");
@@ -266,7 +247,6 @@ int main(int argc, char** argv) {
       delete [] buf;
     }
   }
-
 
   printf("\n");
   printf("----------------------------------------\n");

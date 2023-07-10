@@ -230,7 +230,7 @@ struct Any {
         a = c;
       }
       else {
-        /*+*/parser_rewind(ctx, a, b);
+        /*+ - Fixme Does this _really_ need a rewind? */parser_rewind(ctx, a, b);
         break;
       }
     }

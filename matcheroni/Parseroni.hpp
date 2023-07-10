@@ -152,17 +152,9 @@ struct Parser {
   virtual ~Parser() {
     reset();
     NodeBase::slabs.destroy();
-    //delete [] text;
   }
 
   void reset() {
-    //DCHECK(NodeBase::constructor_calls == NodeBase::destructor_calls);
-    //DCHECK(slabs.current_size == 0);
-
-    //delete [] text;
-    //text = nullptr;
-    //text_size = 0;
-
     auto c = top_tail;
     while (c) {
       auto prev = c->node_prev;
@@ -235,17 +227,18 @@ struct Parser {
   // In practice, this means we must delete the "parent" node first and then
   // must delete the child nodes from tail to head.
 
-  void recycle(NodeBase* n) {
-    if (n == nullptr) return;
+  void recycle(NodeBase* node) {
+    if (node == nullptr) return;
 
-    auto old_tail = n->child_tail;
-    delete n;
+    auto head = node->child_head;
+    auto tail = node->child_tail;
 
-    auto c = old_tail;
-    while(c) {
-      auto prev = c->node_prev;
-      recycle(c);
-      c = prev;
+    delete node;
+
+    while(tail) {
+      auto prev = tail->node_prev;
+      recycle(tail);
+      tail = prev;
     }
   }
 
@@ -274,8 +267,6 @@ struct Parser {
 
   //----------------------------------------
 
-  //const char* text = nullptr;
-  //int text_size = 0;
   NodeBase* top_head = nullptr;
   NodeBase* top_tail = nullptr;
 };
@@ -304,7 +295,7 @@ struct CaptureNode {
     auto end = pattern::match(parser, a, b);
 
     if (end) {
-      auto new_node = new NodeType(a, b);
+      auto new_node = new NodeType(a, end);
       parser->enclose(new_node, old_tail);
     }
 
@@ -325,7 +316,7 @@ struct CaptureNode {
 
 //------------------------------------------------------------------------------
 // Prints a fixed-width span of characters from the source span with all
-// whitespace replaced with ' ' and a '@' at EOF.
+// whitespace replaced with ' '.
 
 #ifdef PARSERONI_USE_STDIO
 
@@ -335,8 +326,7 @@ void print_flat(const char* a, const char* b, int max_len) {
   if (len > max_len) span_len -= 3;
 
   for (int i = 0; i < span_len; i++) {
-    if      (a + i == b)   putc('@',  stdout);
-    if      (a + i >  b)   putc(' ',  stdout);
+    if      (a + i >= b)   putc(' ',  stdout);
     else if (a[i] == '\n') putc(' ',  stdout);
     else if (a[i] == '\r') putc(' ',  stdout);
     else if (a[i] == '\t') putc(' ',  stdout);
