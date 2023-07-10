@@ -17,15 +17,17 @@ namespace matcheroni {
 template<typename atom>
 struct Result {
 
-  Result(atom* p) : ptr(p), flags(0) {}
+  Result()                     : ptr(nullptr), end(nullptr) {}
+  Result(atom* p)              : ptr(p), end(nullptr) {}
+  Result(atom* ptr, atom* end) : ptr(ptr), end(end) {}
 
   operator atom*() const { return ptr; }
   operator bool() const { return ptr != nullptr; }
 
   atom* ptr = 0;
-  int   flags = 0;
+  atom* end = 0;
 
-  inline static Result null = 0;
+  //inline static Result null = 0;
 };
 
 
@@ -99,9 +101,9 @@ template <auto C, auto... rest>
 struct Atom<C, rest...> {
   template<typename atom>
   static Result<atom> match(void* ctx, atom* a, atom* b) {
-    if (!a || a == b) return nullptr;
+    if (!a || a == b) return {nullptr, a};
     if (atom_cmp(ctx, a, C) == 0) {
-      return a + 1;
+      return {a + 1, a};
     } else {
       return Atom<rest...>::match(ctx, a, b);
     }
@@ -112,11 +114,11 @@ template <auto C>
 struct Atom<C> {
   template<typename atom>
   static Result<atom> match(void* ctx, atom* a, atom* b) {
-    if (!a || a == b) return nullptr;
+    if (!a || a == b) return {nullptr, a};
     if (atom_cmp(ctx, a, C) == 0) {
-      return a + 1;
+      return {a + 1, a};
     } else {
-      return nullptr;
+      return {nullptr, a};
     }
   }
 };
@@ -127,8 +129,8 @@ struct Atom<C> {
 struct AnyAtom {
   template<typename atom>
   static Result<atom> match(void* ctx, atom* a, atom* b) {
-    if (!a || a == b) return nullptr;
-    return a + 1;
+    if (!a || a == b) return {nullptr, a};
+    return {a + 1, a};
   }
 };
 
@@ -143,7 +145,7 @@ struct Seq {
   template<typename atom>
   static Result<atom> match(void* ctx, atom* a, atom* b) {
     // Do NOT use this here, we MUST be able to match Any<> at EOF
-    //if (!a || a == b) return nullptr;
+    //if (!a || a == b) return {nullptr, a};
     Result<atom> c = P::match(ctx, a, b);
     if (c) {
       Result<atom> d = Seq<rest...>::match(ctx, c.ptr, b);
@@ -151,11 +153,11 @@ struct Seq {
         return d;
       }
       else {
-        return nullptr;
+        return {nullptr, a};
       }
     }
     else {
-      return nullptr;
+      return {nullptr, a};
     }
   }
 };
@@ -165,7 +167,7 @@ struct Seq<P> {
   template<typename atom>
   static Result<atom> match(void* ctx, atom* a, atom* b) {
     // Do NOT use this here, we MUST be able to match Any<> at EOF
-    //if (!a || a == b) return nullptr;
+    //if (!a || a == b) return {nullptr, a};
     return P::match(ctx, a, b);
   }
 };
@@ -182,7 +184,7 @@ template <typename P, typename... rest>
 struct Oneof {
   template<typename atom>
   static Result<atom> match(void* ctx, atom* a, atom* b) {
-    auto c = P::match(ctx, a, b);
+    Result<atom> c = P::match(ctx, a, b);
     if (c) {
       return c;
     }
@@ -211,14 +213,14 @@ template<typename... rest>
 struct Opt {
   template<typename atom>
   static Result<atom> match(void* ctx, atom* a, atom* b) {
-    if (a == b) return a;
+    if (a == b) return {a, a};
     auto c = Oneof<rest...>::match(ctx, a, b);
     if (c) {
       return c;
     }
     else {
       /*+*/parser_rewind(ctx, a, b);
-      return a;
+      return {a, a};
     }
   }
 };
@@ -237,8 +239,8 @@ template <typename... rest>
 struct Any {
   template<typename atom>
   static Result<atom> match(void* ctx, atom* a, atom* b) {
-    if (!a) return nullptr;
-    if (a == b) return a;
+    if (!a) return {nullptr, a};
+    if (a == b) return {a, a};
     while(1) {
       auto c = Oneof<rest...>::match(ctx, a, b);
       if (c) {
@@ -249,7 +251,7 @@ struct Any {
         break;
       }
     }
-    return a;
+    return {a, a};
   }
 };
 
@@ -270,10 +272,10 @@ template<typename...rest>
 struct Some {
   template<typename atom>
   static Result<atom> match(void* ctx, atom* a, atom* b) {
-    if (!a || a == b) return nullptr;
+    if (!a || a == b) return {nullptr, a};
     auto c = Any<rest...>::match(ctx, a, b);
     if (c == a) {
-      return nullptr;
+      return {nullptr, a};
     }
     else {
       return c;
@@ -292,10 +294,10 @@ template<typename P>
 struct And {
   template<typename atom>
   static Result<atom> match(void* ctx, atom* a, atom* b) {
-    if (!a) return nullptr;
+    if (!a) return {nullptr, a};
     auto c = P::match(ctx, a, b);
     /*+*/parser_rewind(ctx, a, b);
-    return c ? a : nullptr;
+    return c ? Result<atom>{a, a} : Result<atom>{nullptr, a};
   }
 };
 
@@ -309,10 +311,10 @@ template<typename P>
 struct Not {
   template<typename atom>
   static Result<atom> match(void* ctx, atom* a, atom* b) {
-    if (!a) return Result<atom>::null;
+    if (!a) return {nullptr, a};
     Result<atom> c = P::match(ctx, a, b);
     /*+*/parser_rewind(ctx, a, b);
-    return c ? Result<atom>::null : Result(a);
+    return c ? Result<atom>{nullptr, a} : Result<atom>{a, a};
   }
 };
 
@@ -327,7 +329,7 @@ template<typename P, typename... rest>
 struct SeqOpt {
   template<typename atom>
   static Result<atom> match(void* ctx, atom* a, atom* b) {
-    if (!a) return nullptr;
+    if (!a) return {nullptr, a};
     if (a == b) return a;
     auto c = Opt<P>::match(ctx, a, b);
     if (c == a) {
@@ -343,7 +345,7 @@ template<typename P>
 struct SeqOpt<P> {
   template<typename atom>
   static Result<atom> match(void* ctx, atom* a, atom* b) {
-    if (!a) return nullptr;
+    if (!a) return {nullptr, a};
     if (a == b) return a;
     return Opt<P>::match(ctx, a, b);
   }
@@ -361,10 +363,10 @@ template<typename... rest>
 struct NotEmpty {
   template<typename atom>
   static Result<atom> match(void* ctx, atom* a, atom* b) {
-    if (!a) return nullptr;
+    if (!a) return {nullptr, a};
     auto end = Seq<rest...>::match(ctx, a, b);
     if (end == a) {
-      return nullptr;
+      return {nullptr, a};
     }
     else {
       return end;
@@ -385,10 +387,10 @@ struct Rep {
       if (!c) break;
     }
     if (c) {
-      return c;
+      return {c, a};
     }
     else {
-      return nullptr;
+      return {nullptr, a};
     }
   }
 };
@@ -400,18 +402,16 @@ template<int M, int N, typename P>
 struct RepRange {
   template<typename atom>
   static Result<atom> match(void* ctx, atom* a, atom* b) {
-    atom* c = a;
+    Result<atom> c = a;
     for(auto i = 0; i < M; i++) {
-      c = P::match(ctx, a, b);
-      if (!c) {
-        return nullptr;
-      }
+      auto end = P::match(ctx, c, b);
+      if (!end) return end;
+      c = end;
     }
     for(auto i = 0; i < (N-M); i++) {
-      auto d = P::match(ctx, a, b);
-      if (!d) {
-        return c;
-      }
+      auto end = P::match(ctx, c, b);
+      if (!end) return c;
+      c = end;
     }
     return c;
   }
@@ -425,9 +425,9 @@ template <auto C, auto... rest>
 struct NotAtom {
   template<typename atom>
   static Result<atom> match(void* ctx, atom* a, atom* b) {
-    if (!a || a == b) return nullptr;
+    if (!a || a == b) return {nullptr, a};
     if (atom_cmp(ctx, a, C) == 0) {
-      return nullptr;
+      return {nullptr, a};
     }
     else {
       return NotAtom<rest...>::match(ctx, a, b);
@@ -439,12 +439,12 @@ template <auto C>
 struct NotAtom<C> {
   template<typename atom>
   static Result<atom> match(void* ctx, atom* a, atom* b) {
-    if (!a || a == b) return nullptr;
+    if (!a || a == b) return {nullptr, a};
     if (atom_cmp(ctx, a, C) == 0) {
-      return nullptr;
+      return {nullptr, a};
     }
     else {
-      return a + 1;
+      return {a + 1, a};
     }
   }
 };
@@ -456,14 +456,14 @@ template<auto RA, decltype(RA) RB>
 struct Range {
   template<typename atom>
   static Result<atom> match(void* ctx, atom* a, atom* b) {
-    if (!a || a == b) return nullptr;
+    if (!a || a == b) return {nullptr, a};
     if (atom_cmp(ctx, a, RA) < 0) {
-      return nullptr;
+      return {nullptr, a};
     }
     if (atom_cmp(ctx, a, RB) > 0) {
-      return nullptr;
+      return {nullptr, a};
     }
-    return a + 1;
+    return {a + 1, a};
   }
 };
 
@@ -475,10 +475,10 @@ template<auto RA, decltype(RA) RB>
 struct NotRange {
   template<typename atom>
   static Result<atom> match(void* ctx, atom* a, atom* b) {
-    if (!a || a == b) return nullptr;
-    if (atom_cmp(ctx, a, RA) < 0) return a + 1;
-    if (atom_cmp(ctx, a, RB) > 0) return a + 1;
-    return nullptr;
+    if (!a || a == b) return {nullptr, a};
+    if (atom_cmp(ctx, a, RA) < 0) return {a + 1, a};
+    if (atom_cmp(ctx, a, RB) > 0) return {a + 1, a};
+    return {nullptr, a};
   }
 };
 
@@ -492,15 +492,15 @@ template<typename P>
 struct Until {
   template<typename atom>
   static Result<atom> match(void* ctx, atom* a, atom* b) {
-    atom* c = a;
+    Result<atom> c = a;
     while(c < b) {
       if (auto end = P::match(ctx, c, b)) {
         parser_rewind(ctx, c, b);
         return c;
       }
-      c++;
+      c.ptr++;
     }
-    return nullptr;
+    return {nullptr, a};
   }
 };
 
@@ -528,10 +528,10 @@ struct AnyUntil {
         a = end;
       }
       else {
-        return nullptr;
+        return {nullptr, a};
       }
     }
-    return nullptr;
+    return {nullptr, a};
   }
 };
 
@@ -541,7 +541,7 @@ struct SomeUnless {
   template<typename atom>
   static atom* match(void* ctx, atom* a, atom* b) {
     auto c = AnyUnless<P,T>::match(ctx, a, b);
-    return c == a ? nullptr : c;
+    return c == a ? {nullptr, a} : {c, a};
   }
 };
 
@@ -556,10 +556,10 @@ struct AnyUnless {
         a = end;
       }
       else {
-        return a;
+        return {a, a};
       }
     }
-    return nullptr;
+    return {nullptr, a};
   }
 };
 #endif
@@ -593,8 +593,7 @@ struct Ref<F> {
 };
 
 template <typename T, typename atom, Result<atom> (T::*F)(atom* a, atom* b)>
-struct Ref<F>
-{
+struct Ref<F> {
   static Result<atom> match(void* ctx, atom* a, atom* b) {
     return (((T*)ctx)->*F)(a, b);
   }
@@ -616,9 +615,9 @@ struct StoreBackref {
   template<typename atom>
   static Result<atom> match(void* ctx, atom* a, atom* b) {
     auto c = P::match(ctx, a, b);
-    if (!c) return nullptr;
+    if (!c) return {nullptr, a};
     start = a;
-    size = int(c - a);
+    size = int(c.ptr - a);
     return c;
   }
 };
@@ -627,14 +626,14 @@ template<typename P>
 struct MatchBackref {
   template<typename atom>
   static Result<atom> match(void* ctx, atom* a, atom* b) {
-    if (!a || a == b) return nullptr;
+    if (!a || a == b) return {nullptr, a};
     atom* start = (atom*)(StoreBackref<P>::start);
     int size = StoreBackref<P>::size;
-    if (a + size > b) return nullptr;
+    if (a + size > b) return {nullptr, a};
     for (int i = 0; i < size; i++) {
-      if(atom_cmp(ctx, a + i, start[i]) != 0) return nullptr;
+      if(atom_cmp(ctx, a + i, start[i]) != 0) return {nullptr, a};
     }
-    return a + size;
+    return {a + size, a};
   }
 };
 
@@ -646,21 +645,19 @@ template<typename ldelim, typename body, typename rdelim>
 struct DelimitedBlock {
   template<typename atom>
   static Result<atom> match(void* ctx, atom* a, atom* b) {
-    if (!a || a == b) return nullptr;
+    if (!a || a == b) return {nullptr, a};
     auto c = ldelim::match(ctx, a, b);
-    if (!c) {
-      return c;
-    }
+    if (!c) return c;
 
     while(1) {
       if (auto end = rdelim::match(ctx, c, b)) {
-        return end;
+        return {end, a};
       }
       else if (auto end = body::match(ctx, c, b)) {
         c = end;
       }
       else {
-        return nullptr;
+        return {nullptr, a};
       }
     }
   }
@@ -677,7 +674,7 @@ struct DelimitedList {
 
   template<typename atom>
   static Result<atom> match(void* ctx, atom* a, atom* b) {
-    if (!a || a == b) return nullptr;
+    if (!a || a == b) return {nullptr, a};
     auto c = ldelim::match(ctx, a, b);
     if (!c) {
       return c;
@@ -689,7 +686,7 @@ struct DelimitedList {
       if (auto end = rdelim::match(ctx, c, b)) return end;
       c = separator::match(ctx, c, b);
     }
-    return nullptr;
+    return {nullptr, a};
   }
 
 };
@@ -700,10 +697,10 @@ struct DelimitedList {
 struct EOL {
   template<typename atom>
   static Result<atom> match(void* ctx, atom* a, atom* b) {
-    if (!a) return nullptr;
+    if (!a) return {nullptr, a};
     if (a == b) return a;
     if (*a == atom('\n')) return a;
-    return nullptr;
+    return {nullptr, a};
   }
 };
 
@@ -730,15 +727,15 @@ template<StringParam lit>
 struct Lit {
   template<typename atom>
   static Result<atom> match(void* ctx, atom* a, atom* b) {
-    if (!a || a == b) return nullptr;
-    if (a + lit.str_len > b) return nullptr;
+    if (!a || a == b) return {nullptr, a};
+    if (a + lit.str_len > b) return {nullptr, a};
 
     for (int i = 0; i < lit.str_len; i++) {
       if (atom_cmp(ctx, a + i, lit.str_val[i])) {
-        return nullptr;
+        return {nullptr, a};
       }
     }
-    return a + lit.str_len;
+    return {a + lit.str_len, a};
   }
 };
 
@@ -781,13 +778,13 @@ template<StringParam chars>
 struct Charset {
   template<typename atom>
   static Result<atom> match(void* ctx, atom* a, atom* b) {
-    if (!a || a == b) return nullptr;
+    if (!a || a == b) return {nullptr, a};
     for (auto i = 0; i < chars.str_len; i++) {
       if (*a == chars.str_val[i]) {
-        return a + 1;
+        return {a + 1, a};
       }
     }
-    return nullptr;
+    return {nullptr, a};
   }
 };
 

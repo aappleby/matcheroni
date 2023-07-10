@@ -213,7 +213,7 @@ int main(int argc, char** argv) {
 
     const char* text_a = buf;
     const char* text_b = buf + statbuf.st_size;
-    CResult parse_end = nullptr;
+    CResult parse_end;
 
     //----------------------------------------
 

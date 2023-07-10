@@ -289,7 +289,7 @@ inline void matcheroni::parser_rewind(void* ctx, const char* a, const char* b) {
 template<matcheroni::StringParam match_name, typename pattern, typename NodeType>
 struct CaptureNamed {
 
-  static const char* match(void* ctx, const char* a, const char* b) {
+  static matcheroni::Result<const char> match(void* ctx, const char* a, const char* b) {
     Parser* parser = (Parser*)ctx;
     auto old_tail = parser->top_tail;
     auto end = pattern::match(parser, a, b);
@@ -351,8 +351,8 @@ struct Trace {
     printf("\n");
   }
 
-  static const char* match(void* ctx, const char* a, const char* b) {
-    if (!a || a == b) return nullptr;
+  static matcheroni::Result<const char> match(void* ctx, const char* a, const char* b) {
+    if (!a || a == b) return {nullptr, a};
     auto parser = (Parser*)ctx;
 
     print_bar(parser->trace_depth++, a, b, match_name.str_val, "?");
