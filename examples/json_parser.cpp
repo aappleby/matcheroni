@@ -8,25 +8,22 @@
 // SPDX-FileCopyrightText:  2023 Austin Appleby <aappleby@gmail.com>
 // SPDX-License-Identifier: MIT License
 
+#include "matcheroni/Matcheroni.hpp"
 #include "matcheroni/Parseroni.hpp"
 
 #include <stdio.h>
-#include <stdint.h>
-#include <memory.h>
 #include <sys/stat.h>
 #include <time.h>
-#include <stdlib.h>
 
 using namespace matcheroni;
 
 //#define TRACE
+//#define TRACE
+//#define FORCE_REWINDS
 
 constexpr bool verbose   = false;
 constexpr bool dump_tree = false;
 
-double byte_accum = 0;
-double time_accum = 0;
-double line_accum = 0;
 const int warmup = 10;
 const int reps = 10;
 
@@ -46,6 +43,22 @@ struct JsonNode : public NodeBase {
 
 //------------------------------------------------------------------------------
 // Prints a text representation of the parse tree.
+
+void print_flat(const char* a, const char* b, int max_len) {
+  int len = b - a;
+  int span_len = max_len;
+  if (len > max_len) span_len -= 3;
+
+  for (int i = 0; i < span_len; i++) {
+    if      (a + i >= b)   putc(' ',  stdout);
+    else if (a[i] == '\n') putc(' ',  stdout);
+    else if (a[i] == '\r') putc(' ',  stdout);
+    else if (a[i] == '\t') putc(' ',  stdout);
+    else                   putc(a[i], stdout);
+  }
+
+  if (len > max_len) printf("...");
+}
 
 void print_tree(JsonNode* node, int depth = 0) {
   // Print the node's matched text, with a "..." if it doesn't fit in 20
@@ -99,7 +112,7 @@ using number    = Seq<integer, Opt<fraction>, Opt<exponent>>;
 const char* match_value(void* ctx, const char* a, const char* b);
 using value = Ref<match_value>;
 
-using member =
+using pair =
 Seq<
   Capture<"key", string>,
   ws,
@@ -114,7 +127,7 @@ using comma_separated = Seq<P, Any<Seq<ws, Atom<','>, ws, P>>>;
 using object =
 Seq<
   Atom<'{'>, ws,
-  Opt<comma_separated<Capture<"member", member>>>, ws,
+  Opt<comma_separated<Capture<"member", pair>>>, ws,
   Atom<'}'>
 >;
 
@@ -159,91 +172,89 @@ int main(int argc, char** argv) {
 
   const char* paths[] = {
     //"data/test.json",
+
+    // 4609770.000000
     "../nativejson-benchmark/data/canada.json",
     "../nativejson-benchmark/data/citm_catalog.json",
     "../nativejson-benchmark/data/twitter.json",
   };
 
+  double byte_accum = 0;
+  double time_accum = 0;
+  double line_accum = 0;
+
   Parser* parser = new Parser();
 
-  for (int rep = 0; rep < (warmup + reps); rep++) {
-    if (rep == warmup) {
-      byte_accum = 0;
-      time_accum = 0;
-      line_accum = 0;
+  for (auto path : paths) {
+    if (verbose) {
+      printf("\n\n----------------------------------------\n");
+      printf("Parsing %s\n", path);
     }
 
-    for (auto path : paths) {
-      if (verbose) {
-        printf("\n\n----------------------------------------\n");
-        printf("Parsing %s\n", path);
-      }
+    struct stat statbuf;
+    int stat_result = stat(path, &statbuf);
+    if (stat_result == -1) {
+      printf("Could not open %s\n", path);
+      continue;
+    }
 
-      struct stat statbuf;
-      int stat_result = stat(path, &statbuf);
-      if (stat_result == -1) {
-        printf("Could not open %s\n", path);
-        return -1;
-      }
+    auto buf = new char[statbuf.st_size + 1];
+    FILE* f = fopen(path, "rb");
+    auto _ = fread(buf, statbuf.st_size, 1, f);
+    buf[statbuf.st_size] = 0;
+    fclose(f);
 
-      auto buf = new char[statbuf.st_size + 1];
-      FILE* f = fopen(path, "rb");
-      auto _ = fread(buf, statbuf.st_size, 1, f);
-      buf[statbuf.st_size] = 0;
-      fclose(f);
+    byte_accum += statbuf.st_size;
+    for (int i = 0; i < statbuf.st_size; i++) if (buf[i] == '\n') line_accum++;
 
-      byte_accum += statbuf.st_size;
+    const char* text_a = buf;
+    const char* text_b = buf + statbuf.st_size;
+    const char* parse_end = nullptr;
 
-      const char* text_a = buf;
-      const char* text_b = buf + statbuf.st_size;
+    //----------------------------------------
 
-      for (auto c = text_a; c < text_b; c++) if (*c == '\n') line_accum++;
+    double path_time_accum = 0;
 
-      //----------------------------------------
-
+    for (int rep = 0; rep < (warmup + reps); rep++) {
       parser->reset();
 
-      double time = -timestamp_ms();
-      const char* end = json::match(parser, text_a, text_b);
-      time += timestamp_ms();
-      time_accum += time;
+      double time_a = timestamp_ms();
+      parse_end = json::match(parser, text_a, text_b);
+      double time_b = timestamp_ms();
 
-      if (!end) {
-        printf("Parser could not match anything\n");
-      }
-
-      if (end && *end != 0) {
-        printf("Leftover text: |%s|\n", end);
-      }
-
-      if (parser->top_head == nullptr) {
-        printf("No parse nodes created\n");
-      }
-
-      //----------------------------------------
-
-      if (verbose) {
-        printf("Parse done in %f msec\n", time);
-        printf("\n");
-      }
-
-      if (dump_tree) {
-        printf("Parse tree:\n");
-        for (auto n = parser->top_head; n; n = n->node_next) {
-          print_tree((JsonNode*)n);
-        }
-      }
-
-      if (verbose) {
-        printf("Slab current      %d\n",  NodeBase::slabs.current_size);
-        printf("Slab max          %d\n",  NodeBase::slabs.max_size);
-        printf("Tree nodes        %ld\n", parser->node_count());
-        printf("Constructor calls %ld\n", NodeBase::constructor_calls);
-        printf("Destructor calls  %ld\n", NodeBase::destructor_calls);
-      }
-
-      delete [] buf;
+      if (rep >= warmup) path_time_accum += time_b - time_a;
     }
+
+    time_accum += path_time_accum;
+
+    //----------------------------------------
+
+    if (parse_end < text_b) {
+      printf("Parse failed!\n");
+      continue;
+    }
+
+    if (verbose) {
+      printf("Parsed %d reps in %f msec\n", reps, path_time_accum);
+      printf("\n");
+    }
+
+    if (dump_tree) {
+      printf("Parse tree:\n");
+      for (auto n = parser->top_head; n; n = n->node_next) {
+        print_tree((JsonNode*)n);
+      }
+    }
+
+    if (verbose) {
+      printf("Slab current      %d\n",  NodeBase::slabs.current_size);
+      printf("Slab max          %d\n",  NodeBase::slabs.max_size);
+      printf("Tree nodes        %ld\n", parser->node_count());
+      printf("Constructor calls %ld\n", NodeBase::constructor_calls);
+      printf("Destructor calls  %ld\n", NodeBase::destructor_calls);
+    }
+
+    delete [] buf;
   }
 
   printf("\n");

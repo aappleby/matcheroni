@@ -1,16 +1,8 @@
 #pragma once
 #include "matcheroni/Matcheroni.hpp"
 
-#define PARSERONI_USE_STDIO
-
-#ifdef PARSERONI_USE_STDIO
 #include <stdio.h>
-#endif
-
 #include <stdlib.h> // for malloc/free
-
-//#define TRACE
-//#define FORCE_REWINDS
 
 //------------------------------------------------------------------------------
 
@@ -309,30 +301,6 @@ struct CaptureNamed {
 };
 
 //------------------------------------------------------------------------------
-// Prints a fixed-width span of characters from the source span with all
-// whitespace replaced with ' '.
-
-#ifdef PARSERONI_USE_STDIO
-
-void print_flat(const char* a, const char* b, int max_len) {
-  int len = b - a;
-  int span_len = max_len;
-  if (len > max_len) span_len -= 3;
-
-  for (int i = 0; i < span_len; i++) {
-    if      (a + i >= b)   putc(' ',  stdout);
-    else if (a[i] == '\n') putc(' ',  stdout);
-    else if (a[i] == '\r') putc(' ',  stdout);
-    else if (a[i] == '\t') putc(' ',  stdout);
-    else                   putc(a[i], stdout);
-  }
-
-  if (len > max_len) printf("...");
-}
-
-#endif
-
-//------------------------------------------------------------------------------
 // To debug our patterns, we create a Trace<> matcher that prints out a
 // diagram of the current match context, the matchers being tried, and
 // whether they succeeded.
@@ -349,10 +317,27 @@ void print_flat(const char* a, const char* b, int max_len) {
 // Uncomment this to print a full trace of the regex matching process. Note -
 // the trace will be _very_ long, even for small regexes.
 
-#ifdef PARSERONI_USE_STDIO
-
 template<matcheroni::StringParam match_name, typename P>
 struct Trace {
+
+  // Prints a fixed-width span of characters from the source span with all
+  // whitespace replaced with ' '.
+
+  static void print_flat(const char* a, const char* b, int max_len) {
+    int len = b - a;
+    int span_len = max_len;
+    if (len > max_len) span_len -= 3;
+
+    for (int i = 0; i < span_len; i++) {
+      if      (a + i >= b)   putc(' ',  stdout);
+      else if (a[i] == '\n') putc(' ',  stdout);
+      else if (a[i] == '\r') putc(' ',  stdout);
+      else if (a[i] == '\t') putc(' ',  stdout);
+      else                   putc(a[i], stdout);
+    }
+
+    if (len > max_len) printf("...");
+  }
 
   static void print_bar(int trace_depth, const char* a, const char* b, const char* val, const char* suffix) {
     printf("|");
@@ -374,7 +359,5 @@ struct Trace {
     return end;
   }
 };
-
-#endif
 
 //------------------------------------------------------------------------------
