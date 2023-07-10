@@ -1,5 +1,5 @@
 ------
-### TL;DR - Copy-paste [Matcheroni.hpp](matcheroni/Matcheroni.hpp) into your C++20 project and you can build simple [parsers](matcheroni/regex_parser.cpp) without needing a parser generator or a regex library.
+### TL;DR - Copy-paste [Matcheroni.hpp](matcheroni/Matcheroni.hpp) into your C++20 project and you can build simple [parsers](examples/regex_parser.cpp) without needing a parser generator or a regex library.
 ------
 
 # Matcheroni
