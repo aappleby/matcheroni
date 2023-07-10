@@ -17,7 +17,7 @@
 
 using namespace matcheroni;
 
-typedef Result<const char> CResult;
+typedef Span<const char> CResult;
 
 //------------------------------------------------------------------------------
 // To build a parse tree, we wrap the patterns we want to create nodes for
@@ -181,8 +181,8 @@ int main(int argc, char** argv) {
   // get a non-null endpoint for the match.
   auto parse_end = regex::match(parser, regex, regex + strlen(regex));
 
-  printf("Parse end: %p\n", parse_end.ptr);
-  printf("Parse leftovers: `%s`\n", parse_end.ptr);
+  printf("Parse end: %p\n", parse_end.a);
+  printf("Parse leftovers: `%s`\n", parse_end.a);
   printf("\n");
 
   printf("Parse tree:\n");

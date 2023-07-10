@@ -18,7 +18,7 @@
 
 using namespace matcheroni;
 
-using CResult = Result<const char>;
+using CResult = Span<const char>;
 
 //#define TRACE
 //#define TRACE
@@ -213,7 +213,7 @@ int main(int argc, char** argv) {
 
     const char* text_a = buf;
     const char* text_b = buf + statbuf.st_size;
-    CResult parse_end;
+    CResult parse_end = {nullptr, nullptr};
 
     //----------------------------------------
 
