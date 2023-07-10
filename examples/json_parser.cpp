@@ -14,8 +14,11 @@
 #include <stdio.h>
 #include <sys/stat.h>
 #include <time.h>
+#include <string.h>
 
 using namespace matcheroni;
+
+using CResult = Result<const char>;
 
 //#define TRACE
 //#define TRACE
@@ -109,7 +112,7 @@ using exponent  = Seq<Atom<'e','E'>, Opt<sign>, digits>;
 using integer   = Seq< Opt<Atom<'-'>>, Oneof<Seq<onenine,digits>,digit> >;
 using number    = Seq<integer, Opt<fraction>, Opt<exponent>>;
 
-const char* match_value(void* ctx, const char* a, const char* b);
+CResult match_value(void* ctx, const char* a, const char* b);
 using value = Ref<match_value>;
 
 using pair =
@@ -139,7 +142,7 @@ Seq<
   Atom<']'>
 >;
 
-const char* match_value(void* ctx, const char* a, const char* b) {
+CResult match_value(void* ctx, const char* a, const char* b) {
   using value =
   Oneof<
     Capture<"array",   array>,
@@ -159,6 +162,7 @@ using json = Seq<ws, value, ws>;
 //------------------------------------------------------------------------------
 
 int main(int argc, char** argv) {
+
   /*
   if (argc < 2) {
     printf("Usage: json_parser <filename>\n");
@@ -209,7 +213,7 @@ int main(int argc, char** argv) {
 
     const char* text_a = buf;
     const char* text_b = buf + statbuf.st_size;
-    const char* parse_end = nullptr;
+    CResult parse_end = nullptr;
 
     //----------------------------------------
 

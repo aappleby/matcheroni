@@ -276,7 +276,9 @@ struct Parser {
 
 template<>
 inline void matcheroni::parser_rewind(void* ctx, const char* a, const char* b) {
-  ((Parser*)ctx)->rewind(a);
+  if (ctx) {
+    ((Parser*)ctx)->rewind(a);
+  }
 }
 
 //------------------------------------------------------------------------------
