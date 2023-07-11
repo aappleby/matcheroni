@@ -140,6 +140,47 @@ struct NodeBase {
 
 //------------------------------------------------------------------------------
 
+struct ParseNodeIterator {
+  ParseNodeIterator(NodeBase* cursor) : n(cursor) {}
+  ParseNodeIterator& operator++() {
+    n = n->node_next;
+    return *this;
+  }
+  bool operator!=(ParseNodeIterator& b) const { return n != b.n; }
+  NodeBase* operator*() const { return n; }
+  NodeBase* n;
+};
+
+inline ParseNodeIterator begin(NodeBase* parent) {
+  return ParseNodeIterator(parent->child_head);
+}
+
+inline ParseNodeIterator end(NodeBase* parent) {
+  return ParseNodeIterator(nullptr);
+}
+
+struct ConstParseNodeIterator {
+  ConstParseNodeIterator(const NodeBase* cursor) : n(cursor) {}
+  ConstParseNodeIterator& operator++() {
+    n = n->node_next;
+    return *this;
+  }
+  bool operator!=(const ConstParseNodeIterator& b) const { return n != b.n; }
+  const NodeBase* operator*() const { return n; }
+  const NodeBase* n;
+};
+
+inline ConstParseNodeIterator begin(const NodeBase* parent) {
+  return ConstParseNodeIterator(parent->child_head);
+}
+
+inline ConstParseNodeIterator end(const NodeBase* parent) {
+  return ConstParseNodeIterator(nullptr);
+}
+
+
+//------------------------------------------------------------------------------
+
 struct Parser {
 
   Parser() {}

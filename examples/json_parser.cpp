@@ -20,14 +20,22 @@ using namespace matcheroni;
 
 using CResult = Span<const char>;
 
-#define TRACE
-//#define FORCE_REWINDS
+#if 0
 
+#define TRACE
 constexpr bool verbose   = true;
 constexpr bool dump_tree = true;
-
 const int warmup = 0;
 const int reps = 1;
+
+#else
+
+constexpr bool verbose   = false;
+constexpr bool dump_tree = false;
+const int warmup = 10;
+const int reps = 10;
+
+#endif
 
 //------------------------------------------------------------------------------
 
@@ -41,7 +49,23 @@ double timestamp_ms() {
 
 struct JsonNode : public NodeBase {
   using NodeBase::NodeBase;
+
+  void print_num() {
+    if (strcmp(match_name, "number") == 0) {
+      double x = atof(span.a);
+      printf("%e\n", x);
+    }
+  }
 };
+
+//------------------------------------------------------------------------------
+
+void print_numbers(JsonNode* n) {
+  n->print_num();
+  for (auto c = n->child_head; c; c = c->node_next) {
+    print_numbers((JsonNode*)c);
+  }
+}
 
 //------------------------------------------------------------------------------
 // Prints a text representation of the parse tree.
@@ -249,6 +273,11 @@ int main(int argc, char** argv) {
         print_tree(n);
       }
     }
+
+    for (auto n = parser->top_head; n; n = n->node_next) {
+      print_numbers((JsonNode*)n);
+    }
+
 
     if (verbose) {
       printf("Slab current      %d\n",  NodeBase::slabs.current_size);
