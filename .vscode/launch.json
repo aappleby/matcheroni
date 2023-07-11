@@ -4,6 +4,16 @@
   // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
   "version": "0.2.0",
   "configurations": [
+    //--------------------------------------------------------------------------
+    {
+      "name": "matcheroni_test",
+      "preLaunchTask": "build_matcheroni",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/bin/matcheroni_test",
+      "cwd": "${workspaceFolder}",
+    },
+    //--------------------------------------------------------------------------
     {
       "name": "c_parser_test",
       "preLaunchTask": "build_matcheroni",
@@ -33,6 +43,7 @@
       "cwd": "${workspaceFolder}",
       "args" : ["\"(^\\d+\\s+(very)?\\s+(good|bad)\\s+[a-z]*$)\""],
     },
+    //--------------------------------------------------------------------------
     {
       "name": "json_parser",
       "preLaunchTask": "build_matcheroni",
@@ -41,6 +52,34 @@
       "program": "${workspaceFolder}/bin/json_parser",
       "cwd": "${workspaceFolder}",
       "args" : ["data/test.json"],
-    }
+    },
+    //--------------------------------------------------------------------------
+    {
+      "name": "json_tut1a",
+      "preLaunchTask": "build_matcheroni",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/bin/json_tut1a",
+      "cwd": "${workspaceFolder}",
+    },
+    //--------------------------------------------------------------------------
+    {
+      "name": "json_tut1b",
+      "preLaunchTask": "build_matcheroni",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/bin/json_tut1b",
+      "cwd": "${workspaceFolder}",
+    },
+    //--------------------------------------------------------------------------
+    {
+      "name": "json_tut1c",
+      "preLaunchTask": "build_matcheroni",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/bin/json_tut1c",
+      "cwd": "${workspaceFolder}",
+    },
+    //--------------------------------------------------------------------------
   ]
 }

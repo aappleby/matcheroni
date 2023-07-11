@@ -1,24 +1,25 @@
 #-------------------------------------------------------------------------------
 # Configuration
 
-#build_mode = -g -O0
-#build_mode = -g -Os
-build_mode = -g -O3
+# DEBUG enables DCHECK()
+# Turning tracing on will generate _ton_ of spam in the C99 demo.
+# Turning EXTRA_DEBUG on will generate even more spam.
 
-# -O3 needs LTO to maximize performance
-build_mode = ${build_mode} -flto -fdata-sections -ffunction-sections -Wl,--gc-sections
+build_mode = -g -O0
+defs = ${defs} -DDEBUG
+defs = ${defs} -DMATCHERONI_ENABLE_TRACE
+defs = ${defs} -DEXTRA_DEBUG
 
 # -Os needs stripping to minimize size
+#build_mode = -g -Os
 #build_mode = ${build_mode} -fdata-sections -ffunction-sections -Wl,--gc-sections -Wl,-s
 
-# DEBUG enables DCHECK()
-#defs = ${defs} -DDEBUG
+# -O3 needs LTO to maximize performance
+#build_mode = -g -O3
+#defs = ${defs} -DRELEASE
+#build_mode = ${build_mode} -flto -fdata-sections -ffunction-sections -Wl,--gc-sections
 
-# Turning tracing on will generate _ton_ of spam in the C99 demo.
-#defs = ${defs} -DMATCHERONI_ENABLE_TRACE
 
-# Turning EXTRA_DEBUG on will generate even more spam.
-#defs = ${defs} -DEXTRA_DEBUG
 
 # These are the various regex libraries that Matcheroni can be benchmarked
 # against. CTRE and SRELL require that you copy their header into matcheroni/.
@@ -56,11 +57,30 @@ rule compile_c
 rule link
   command = g++ ${build_mode} ${in} -lboost_system -lboost_regex -o ${out}
 
-#-------------------------------------------------------------------------------
-# Targets
+rule run_test
+  command = ${in} | grep "All tests pass" && touch ${out}
 
+#-------------------------------------------------------------------------------
 # Utility functions
+
 build obj/utils.o : compile_cpp examples/utils.cpp
+
+#-------------------------------------------------------------------------------
+# Tests
+
+build obj/matcheroni_test.o : compile_cpp test/matcheroni_test.cpp
+build bin/matcheroni_test   : link obj/matcheroni_test.o
+
+build bin/matcheroni_test_pass : run_test bin/matcheroni_test
+
+#-------------------------------------------------------------------------------
+# Benchmark
+
+#build obj/benchmark.o    : compile_cpp examples/benchmark.cpp
+#build bin/benchmark      : link obj/utils.o obj/benchmark.o
+
+#-------------------------------------------------------------------------------
+# Examples
 
 # Regex parser example
 build obj/regex_parser.o : compile_cpp examples/regex_parser.cpp
@@ -70,9 +90,21 @@ build bin/regex_parser   : link obj/utils.o obj/regex_parser.o
 build obj/json_parser.o  : compile_cpp examples/json_parser.cpp
 build bin/json_parser    : link obj/json_parser.o
 
-# Trivial benchmark
-#build obj/benchmark.o    : compile_cpp examples/benchmark.cpp
-#build bin/benchmark      : link obj/utils.o obj/benchmark.o
+#-------------------------------------------------------------------------------
+# Tutorial examples
+
+build obj/json_tut1a.o    : compile_cpp examples/json_tut1a.cpp
+build obj/json_tut1b.o    : compile_cpp examples/json_tut1b.cpp
+build obj/json_tut1c.o    : compile_cpp examples/json_tut1c.cpp
+
+build bin/json_tut1a      : link obj/json_tut1a.o
+build bin/json_tut1b      : link obj/json_tut1b.o
+build bin/json_tut1c      : link obj/json_tut1c.o
+
+build obj/json_tutorial.o : compile_cpp examples/json_tutorial.cpp
+build bin/json_tutorial   : link obj/json_tutorial.o
+
+#-------------------------------------------------------------------------------
 
 # C99 lexer/parser example (not finished)
 #build obj/c99_parser/c99_parser_test.o : compile_cpp examples/c99_parser/c99_parser_test.cpp

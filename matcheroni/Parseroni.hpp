@@ -200,6 +200,7 @@ struct Parser {
 
     top_head = nullptr;
     top_tail = nullptr;
+    highwater = nullptr;
 
     NodeBase::slabs.reset();
     NodeBase::constructor_calls = 0;
@@ -248,6 +249,8 @@ struct Parser {
   template<typename NodeType>
   NodeType* create(const char* match_name, cspan s, NodeBase* old_tail) {
     auto new_node = new NodeType(match_name, s);
+
+    highwater = s.b;
 
     // Move all nodes in (old_tail,new_tail] to be children of new_node and
     // append new_node to the node list.
@@ -309,6 +312,7 @@ struct Parser {
 
   NodeBase* top_head = nullptr;
   NodeBase* top_tail = nullptr;
+  const char* highwater = nullptr;
   int trace_depth = 0;
 };
 
@@ -336,7 +340,7 @@ struct CaptureNamed {
     auto old_tail = parser->top_tail;
     auto end = pattern::match(parser, s);
 
-    if (end) {
+    if (end.valid()) {
       cspan node_span = { s.a, end.a };
       parser->create<NodeType>(match_name.str_val, node_span, old_tail);
     }

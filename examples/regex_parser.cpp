@@ -176,17 +176,33 @@ int main(int argc, char** argv) {
 
   // Bash will un-quote the regex on the command line for us, so we don't need
   // to do any processing here.
-  cspan regex = {argv[1], argv[1] + strlen(argv[1])};
+  const char* text = argv[1];
+  text = "(a|+b)";
+  cspan span = {text, text + strlen(text)};
 
-  printf("Parsing regex `%s`\n", regex.a);
+  printf("Parsing regex `%s`\n", span.a);
   Parser* parser = new Parser();
 
   // Invoke our regex matcher against the input text. If it matches, we will
   // get a non-null endpoint for the match.
-  auto parse_end = regex::match(parser, regex);
 
-  printf("Parse end: %p\n", parse_end.a);
-  printf("Parse leftovers: `%s`\n", parse_end.a);
+  printf("Parsing regex `%s`\n", span.a);
+  auto parse_end = regex::match(parser, span);
+
+  //using pattern = Seq<Some<Atom<'a'>>, Atom<'c'>>;
+  //const char* text = "aaaaaaaaaabbbbsdfsfds";
+  //cspan span = {text, text + strlen(text)};
+  //auto parse_end = pattern::match(parser, s);
+
+
+  if (parse_end.a == nullptr) {
+    printf("Parse fail at  : %ld\n", parse_end.b - span.a);
+    printf("Parse context  : `%-20.20s`\n", parse_end.b);
+  }
+  else {
+    printf("Parse tail len : %ld\n", parse_end.b - parse_end.a);
+    printf("Parse tail     : `%s`\n", parse_end.a);
+  }
   printf("\n");
 
   printf("Parse tree:\n");

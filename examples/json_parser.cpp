@@ -18,10 +18,10 @@
 
 using namespace matcheroni;
 
-using CResult = Span<const char>;
+//#define FORCE_REWINDS
 
 #if 0
-
+// Tracing config
 #define TRACE
 constexpr bool verbose   = true;
 constexpr bool dump_tree = true;
@@ -29,7 +29,7 @@ const int warmup = 0;
 const int reps = 1;
 
 #else
-
+// Benchmark config
 constexpr bool verbose   = false;
 constexpr bool dump_tree = false;
 const int warmup = 10;
@@ -200,7 +200,8 @@ int main(int argc, char** argv) {
   */
 
   const char* paths[] = {
-    "data/test.json",
+    //"data/test.json",
+    "data/invalid.json",
 
     // 4609770.000000
     //"../nativejson-benchmark/data/canada.json",
@@ -259,6 +260,10 @@ int main(int argc, char** argv) {
 
     if (parse_end.a < text.b) {
       printf("Parse failed!\n");
+      printf("Failure near `");
+      //`%-20.20s`\n", parser->highwater);
+      print_flat(parser->highwater, text.b, 20);
+      printf("`\n");
       continue;
     }
 
@@ -274,9 +279,11 @@ int main(int argc, char** argv) {
       }
     }
 
+    /*
     for (auto n = parser->top_head; n; n = n->node_next) {
       print_numbers((JsonNode*)n);
     }
+    */
 
 
     if (verbose) {
