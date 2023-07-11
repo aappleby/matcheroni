@@ -20,15 +20,14 @@ using namespace matcheroni;
 
 using CResult = Span<const char>;
 
-//#define TRACE
-//#define TRACE
+#define TRACE
 //#define FORCE_REWINDS
 
-constexpr bool verbose   = false;
-constexpr bool dump_tree = false;
+constexpr bool verbose   = true;
+constexpr bool dump_tree = true;
 
-const int warmup = 10;
-const int reps = 10;
+const int warmup = 0;
+const int reps = 1;
 
 //------------------------------------------------------------------------------
 
@@ -63,7 +62,9 @@ void print_flat(const char* a, const char* b, int max_len) {
   if (len > max_len) printf("...");
 }
 
-void print_tree(JsonNode* node, int depth = 0) {
+void print_tree(NodeBase* node, int max_depth = 0, int depth = 0) {
+  if (max_depth && depth == max_depth) return;
+
   // Print the node's matched text, with a "..." if it doesn't fit in 20
   // characters.
   print_flat(node->span.a, node->span.b, 20);
@@ -72,8 +73,8 @@ void print_tree(JsonNode* node, int depth = 0) {
   printf("   ");
   for (int i = 0; i < depth; i++) printf(i == depth-1 ? "|--" : "|  ");
   printf("%s\n", node->match_name);
-  for (JsonNode* c = (JsonNode*)node->child_head; c; c = (JsonNode*)c->node_next) {
-    print_tree(c, depth+1);
+  for (auto c = node->child_head; c; c = c->node_next) {
+    print_tree(c, max_depth, depth+1);
   }
 }
 
@@ -175,12 +176,12 @@ int main(int argc, char** argv) {
   */
 
   const char* paths[] = {
-    //"data/test.json",
+    "data/test.json",
 
     // 4609770.000000
-    "../nativejson-benchmark/data/canada.json",
-    "../nativejson-benchmark/data/citm_catalog.json",
-    "../nativejson-benchmark/data/twitter.json",
+    //"../nativejson-benchmark/data/canada.json",
+    //"../nativejson-benchmark/data/citm_catalog.json",
+    //"../nativejson-benchmark/data/twitter.json",
   };
 
   double byte_accum = 0;
@@ -245,7 +246,7 @@ int main(int argc, char** argv) {
     if (dump_tree) {
       printf("Parse tree:\n");
       for (auto n = parser->top_head; n; n = n->node_next) {
-        print_tree((JsonNode*)n);
+        print_tree(n);
       }
     }
 

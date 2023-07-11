@@ -323,6 +323,7 @@ struct CaptureNamed {
 
 template<matcheroni::StringParam match_name, typename P>
 struct Trace {
+  using cspan = matcheroni::Span<const char>;
 
   // Prints a fixed-width span of characters from the source span with all
   // whitespace replaced with ' '.
@@ -353,13 +354,15 @@ struct Trace {
     printf("\n");
   }
 
-  static matcheroni::Span<const char> match(void* ctx, const char* a, const char* b) {
-    if (!a || a == b) return {nullptr, a};
-    auto parser = (Parser*)ctx;
+  static cspan match(void* ctx, cspan s) {
+    assert(s.valid());
+    if (s.empty()) return s.fail();
 
-    print_bar(parser->trace_depth++, a, b, match_name.str_val, "?");
-    auto end = P::match(ctx, a, b);
-    print_bar(--parser->trace_depth, a, b, match_name.str_val, end ? "OK" : "X");
+    auto parser = (Parser*)ctx;
+    print_bar(parser->trace_depth++, s.a, s.b, match_name.str_val, "?");
+    auto end = P::match(ctx, s);
+    print_bar(--parser->trace_depth, s.a, s.b, match_name.str_val, end ? "OK" : "X");
+
     return end;
   }
 };
