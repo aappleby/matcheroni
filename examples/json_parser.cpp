@@ -66,7 +66,7 @@ void print_flat(const char* a, const char* b, int max_len) {
 void print_tree(JsonNode* node, int depth = 0) {
   // Print the node's matched text, with a "..." if it doesn't fit in 20
   // characters.
-  print_flat(node->match_a, node->match_b, 20);
+  print_flat(node->span.a, node->span.b, 20);
 
   // Print out the name of the type name of the node with indentation.
   printf("   ");
@@ -112,7 +112,7 @@ using exponent  = Seq<Atom<'e','E'>, Opt<sign>, digits>;
 using integer   = Seq< Opt<Atom<'-'>>, Oneof<Seq<onenine,digits>,digit> >;
 using number    = Seq<integer, Opt<fraction>, Opt<exponent>>;
 
-CResult match_value(void* ctx, const char* a, const char* b);
+cspan match_value(void* ctx, cspan s);
 using value = Ref<match_value>;
 
 using pair =
@@ -142,7 +142,7 @@ Seq<
   Atom<']'>
 >;
 
-CResult match_value(void* ctx, const char* a, const char* b) {
+cspan match_value(void* ctx, cspan s) {
   using value =
   Oneof<
     Capture<"array",   array>,
@@ -154,7 +154,7 @@ CResult match_value(void* ctx, const char* a, const char* b) {
     Capture<"string",  string>,
     Capture<"keyword", keyword>
   >;
-  return value::match(ctx, a, b);
+  return value::match(ctx, s);
 }
 
 using json = Seq<ws, value, ws>;
@@ -211,9 +211,8 @@ int main(int argc, char** argv) {
     byte_accum += statbuf.st_size;
     for (int i = 0; i < statbuf.st_size; i++) if (buf[i] == '\n') line_accum++;
 
-    const char* text_a = buf;
-    const char* text_b = buf + statbuf.st_size;
-    CResult parse_end = {nullptr, nullptr};
+    cspan text = {buf, buf + statbuf.st_size};
+    cspan parse_end = text;
 
     //----------------------------------------
 
@@ -223,7 +222,7 @@ int main(int argc, char** argv) {
       parser->reset();
 
       double time_a = timestamp_ms();
-      parse_end = json::match(parser, text_a, text_b);
+      parse_end = json::match(parser, text);
       double time_b = timestamp_ms();
 
       if (rep >= warmup) path_time_accum += time_b - time_a;
@@ -233,7 +232,7 @@ int main(int argc, char** argv) {
 
     //----------------------------------------
 
-    if (parse_end < text_b) {
+    if (parse_end.a < text.b) {
       printf("Parse failed!\n");
       continue;
     }
