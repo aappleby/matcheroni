@@ -4,6 +4,8 @@
 #include <stdio.h>
 #include <stdlib.h> // for malloc/free
 
+typedef matcheroni::Span<const char> cspan;
+
 //------------------------------------------------------------------------------
 
 struct SlabAlloc {
@@ -98,8 +100,8 @@ struct SlabAlloc {
 
 struct NodeBase {
 
-  NodeBase(const char* match_name, const char* a, const char* b)
-  : match_name(match_name), match_a(a), match_b(b) {
+  NodeBase(const char* match_name, cspan span)
+  : match_name(match_name), span(span) {
     constructor_calls++;
   }
 
@@ -127,8 +129,7 @@ struct NodeBase {
   inline static size_t destructor_calls = 0;
 
   const char* match_name;
-  const char* match_a;
-  const char* match_b;
+  cspan span;
 
   NodeBase* node_prev;
   NodeBase* node_next;
@@ -204,8 +205,8 @@ struct Parser {
   //----------------------------------------
 
   template<typename NodeType>
-  NodeType* create(const char* match_name, const char* a, const char* b, NodeBase* old_tail) {
-    auto new_node = new NodeType(match_name, a, b);
+  NodeType* create(const char* match_name, cspan s, NodeBase* old_tail) {
+    auto new_node = new NodeType(match_name, s);
 
     // Move all nodes in (old_tail,new_tail] to be children of new_node and
     // append new_node to the node list.
@@ -247,8 +248,8 @@ struct Parser {
   // we must also throw away any parse nodes that were created during the failed
   // match.
 
-  void rewind(const char* a) {
-    while(top_tail && top_tail->match_b > a) {
+  void rewind(cspan s) {
+    while(top_tail && top_tail->span.b > s.a) {
       auto dead = top_tail;
       top_tail = top_tail->node_prev;
       recycle(dead);
@@ -275,9 +276,9 @@ struct Parser {
 // specialized version of it Matcheroni will call it as needed.
 
 template<>
-inline void matcheroni::parser_rewind(void* ctx, const char* a, const char* b) {
+inline void matcheroni::parser_rewind(void* ctx, Span<const char> s) {
   if (ctx) {
-    ((Parser*)ctx)->rewind(a);
+    ((Parser*)ctx)->rewind(s);
   }
 }
 
@@ -289,13 +290,14 @@ inline void matcheroni::parser_rewind(void* ctx, const char* a, const char* b) {
 template<matcheroni::StringParam match_name, typename pattern, typename NodeType>
 struct CaptureNamed {
 
-  static matcheroni::Span<const char> match(void* ctx, const char* a, const char* b) {
+  static matcheroni::Span<const char> match(void* ctx, cspan s) {
     Parser* parser = (Parser*)ctx;
     auto old_tail = parser->top_tail;
-    auto end = pattern::match(parser, a, b);
+    auto end = pattern::match(parser, s);
 
     if (end) {
-      parser->create<NodeType>(match_name.str_val, a, end, old_tail);
+      cspan node_span = { s.a, end.a };
+      parser->create<NodeType>(match_name.str_val, node_span, old_tail);
     }
 
     return end;

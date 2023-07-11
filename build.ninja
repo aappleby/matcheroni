@@ -1,12 +1,12 @@
 #-------------------------------------------------------------------------------
 # Configuration
 
-#build_mode = -g -O0
+build_mode = -g -O0
 #build_mode = -g -Os
-build_mode = -g -O3
+#build_mode = -g -O3
 
 # -O3 needs LTO to maximize performance
-build_mode = ${build_mode} -flto -fdata-sections -ffunction-sections -Wl,--gc-sections
+#build_mode = ${build_mode} -flto -fdata-sections -ffunction-sections -Wl,--gc-sections
 
 # -Os needs stripping to minimize size
 #build_mode = ${build_mode} -fdata-sections -ffunction-sections -Wl,--gc-sections -Wl,-s
@@ -67,8 +67,8 @@ build obj/regex_parser.o : compile_cpp examples/regex_parser.cpp
 build bin/regex_parser   : link obj/utils.o obj/regex_parser.o
 
 # JSON parser example
-build obj/json_parser.o  : compile_cpp examples/json_parser.cpp
-build bin/json_parser    : link obj/json_parser.o
+#build obj/json_parser.o  : compile_cpp examples/json_parser.cpp
+#build bin/json_parser    : link obj/json_parser.o
 
 # Trivial benchmark
 #build obj/benchmark.o    : compile_cpp examples/benchmark.cpp

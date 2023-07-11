@@ -17,8 +17,6 @@
 
 using namespace matcheroni;
 
-typedef Span<const char> CResult;
-
 //------------------------------------------------------------------------------
 // To build a parse tree, we wrap the patterns we want to create nodes for
 // in a Capture<> matcher that will invoke our node factory. We can also wrap
@@ -42,7 +40,7 @@ using Capture = CaptureNamed<match_name, P, NodeBase>;
 // Regexes can be recursive, so to handle recursion we forward-declare a
 // top-level matcher that we'll define later.
 
-CResult match_regex(void* ctx, const char* a, const char* b);
+Span<const char> match_regex(void* ctx, Span<const char> s);
 using regex = Ref<match_regex>;
 
 // Our 'control' characters consist of all atoms with special regex meanings.
@@ -55,7 +53,11 @@ using pchar = Seq<Not<cchar>, AnyAtom>;
 
 // Plain text is any span of plain characters not followed by an operator.
 
-using text = Some<Seq<pchar, Not<Atom<'*', '+', '?'>>>>;
+cspan match_text(void* ctx, cspan s) {
+  using pattern = Some<Seq<pchar, Not<Atom<'*', '+', '?'>>>>;
+  return pattern::match(ctx, s);
+}
+using text = Ref<match_text>;
 
 // Our 'meta' characters are anything after a backslash.
 
@@ -96,16 +98,19 @@ Oneof<
 // A 'simple' regex is text, line end markers, a unit w/ operator, or a bare
 // unit.
 
-using simple =
-Some<
-  Capture<"text", text>,
-  Capture<"BOL",  Atom<'^'>>,
-  Capture<"EOL",  Atom<'$'>>,
-  Capture<"any",  Seq<unit, Atom<'*'>>>,
-  Capture<"some", Seq<unit, Atom<'+'>>>,
-  Capture<"opt",  Seq<unit, Atom<'?'>>>,
-  unit
->;
+cspan match_simple(void* ctx, cspan s) {
+  return Some<
+    Capture<"text", text>,
+    Capture<"BOL",  Atom<'^'>>,
+    Capture<"EOL",  Atom<'$'>>,
+    Capture<"any",  Seq<unit, Atom<'*'>>>,
+    Capture<"some", Seq<unit, Atom<'+'>>>,
+    Capture<"opt",  Seq<unit, Atom<'?'>>>,
+    unit
+  >::match(ctx, s);
+}
+using simple = Ref<match_simple>;
+
 
 // A 'one-of' regex is a list of simple regexes separated by '|'.
 
@@ -128,16 +133,16 @@ Oneof<
 
 // And lastly we implement the full-regex matcher we declared earlier.
 
-CResult match_regex(void* ctx, const char* a, const char* b) {
-  return regex_top::match(ctx, a, b);
+cspan match_regex(void* ctx, cspan s) {
+  return regex_top::match(ctx, s);
 }
 
 //------------------------------------------------------------------------------
 // Prints a text representation of the parse tree.
 
 void print_tree(NodeBase* node, int depth = 0) {
-  auto a = node->match_a;
-  auto b = node->match_b;
+  auto a = node->span.a;
+  auto b = node->span.b;
 
   putc('`', stdout);
   for (int i = 0; i < 20; i++) {
@@ -166,20 +171,19 @@ int main(int argc, char** argv) {
     return 1;
   }
 
-  printf("argv[0] = %s\n", argv[0]);
-  printf("argv[1] = %s\n", argv[1]);
+  for (int i = 0; i < argc; i++) printf("argv[%d] = %s\n", i, argv[i]);
   printf("\n");
 
   // Bash will un-quote the regex on the command line for us, so we don't need
   // to do any processing here.
-  auto regex = argv[1];
+  cspan regex = {argv[1], argv[1] + strlen(argv[1])};
 
-  printf("Parsing regex `%s`\n", regex);
+  printf("Parsing regex `%s`\n", regex.a);
   Parser* parser = new Parser();
 
   // Invoke our regex matcher against the input text. If it matches, we will
   // get a non-null endpoint for the match.
-  auto parse_end = regex::match(parser, regex, regex + strlen(regex));
+  auto parse_end = regex::match(parser, regex);
 
   printf("Parse end: %p\n", parse_end.a);
   printf("Parse leftovers: `%s`\n", parse_end.a);
