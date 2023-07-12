@@ -10,6 +10,16 @@
       "problemMatcher": "$gcc",
       "group": {
         "kind": "build",
+        "isDefault": true
+      },
+    },
+    {
+      "type": "shell",
+      "label": "build_matcheroni_test",
+      "command": "ninja bin/matcheroni_test",
+      "problemMatcher": "$gcc",
+      "group": {
+        "kind": "build",
         "isDefault": false
       },
     },

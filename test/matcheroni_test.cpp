@@ -7,21 +7,24 @@
 
 #include <string>
 
+using namespace matcheroni;
+using cspan = Span<const char>;
+
+//------------------------------------------------------------------------------
+
 static int fail_count = 0;
 
-#define CHECK(A, ...)                                                         \
-  if (!(A)) {                                                                 \
-    fail_count++;                                                             \
-    fprintf(stderr, "\n");                                                    \
-    fprintf(stderr, "CHECK(" #A ") fail: @ %s/%s:%d", __FILE__, __FUNCTION__, \
-            __LINE__);                                                        \
-    fprintf(stderr, "\n  " __VA_ARGS__);                                      \
-    fprintf(stderr, "\n");                                                    \
+#define CHECK(A, ...)                                                \
+  if (!(A)) {                                                        \
+    fail_count++;                                                    \
+    printf("\n");                                                    \
+    printf("CHECK(" #A ") fail: @ %s/%s:%d", __FILE__, __FUNCTION__, \
+           __LINE__);                                                \
+    printf("\n  " __VA_ARGS__);                                      \
+    printf("\n");                                                    \
   }
 
-using namespace matcheroni;
-
-using cspan = Span<const char>;
+//------------------------------------------------------------------------------
 
 cspan to_span(const char* text) { return cspan(text, text + strlen(text)); }
 
@@ -98,6 +101,33 @@ void test_atom() {
 
 //------------------------------------------------------------------------------
 
+void test_notatom() {
+  cspan text;
+  cspan tail;
+
+  text = to_span("");
+  tail = NotAtom<'a'>::match(nullptr, text);
+  CHECK(!tail.valid() && tail == "");
+
+  text = to_span("abc");
+  tail = NotAtom<'a'>::match(nullptr, text);
+  CHECK(!tail.valid() && tail == "abc");
+
+  text = to_span("abc");
+  tail = NotAtom<'z'>::match(nullptr, text);
+  CHECK(tail.valid() && tail == "bc");
+
+  text = to_span("abc");
+  tail = NotAtom<'b', 'a'>::match(nullptr, text);
+  CHECK(!tail.valid() && tail == "abc");
+
+  text = to_span("abc");
+  tail = NotAtom<'z', 'y'>::match(nullptr, text);
+  CHECK(tail.valid() && tail == "bc");
+};
+
+//------------------------------------------------------------------------------
+
 void test_range() {
   cspan text;
   cspan tail;
@@ -113,6 +143,14 @@ void test_range() {
   text = to_span("01");
   tail = Range<'a', 'z'>::match(nullptr, text);
   CHECK(!tail.valid() && tail == "01");
+
+  text = to_span("ab");
+  tail = NotRange<'a', 'z'>::match(nullptr, text);
+  CHECK(!tail.valid() && tail == "ab");
+
+  text = to_span("ab");
+  tail = NotRange<'m', 'z'>::match(nullptr, text);
+  CHECK(tail.valid() && tail == "b");
 }
 
 //------------------------------------------------------------------------------
@@ -192,21 +230,363 @@ void test_oneof() {
 
 //------------------------------------------------------------------------------
 
+void test_opt() {
+  cspan text;
+  cspan tail;
+
+  text = to_span("abcd");
+  tail = Opt<Atom<'a'>>::match(nullptr, text);
+  CHECK(tail.valid() && tail == "bcd");
+
+  text = to_span("abcd");
+  tail = Opt<Atom<'b'>>::match(nullptr, text);
+  CHECK(tail.valid() && tail == "abcd");
+}
+
+//------------------------------------------------------------------------------
+
+void test_any() {
+  cspan text;
+  cspan tail;
+
+  text = to_span("");
+  tail = Any<Atom<'a'>>::match(nullptr, text);
+  CHECK(tail.valid() && tail == "");
+
+  text = to_span("aaaabbbb");
+  tail = Any<Atom<'a'>>::match(nullptr, text);
+  CHECK(tail.valid() && tail == "bbbb");
+
+  text = to_span("aaaabbbb");
+  tail = Any<Atom<'b'>>::match(nullptr, text);
+  CHECK(tail.valid() && tail == "aaaabbbb");
+}
+
+//------------------------------------------------------------------------------
+
+void test_some() {
+  cspan text;
+  cspan tail;
+
+  text = to_span("");
+  tail = Some<Atom<'a'>>::match(nullptr, text);
+  CHECK(!tail.valid() && tail == "");
+
+  text = to_span("aaaabbbb");
+  tail = Some<Atom<'a'>>::match(nullptr, text);
+  CHECK(tail.valid() && tail == "bbbb");
+
+  text = to_span("aaaabbbb");
+  tail = Some<Atom<'b'>>::match(nullptr, text);
+  CHECK(!tail.valid() && tail == "aaaabbbb");
+}
+
+//------------------------------------------------------------------------------
+
+void test_and() {
+  cspan text;
+  cspan tail;
+
+  text = to_span("");
+  tail = And<Atom<'a'>>::match(nullptr, text);
+  CHECK(!tail.valid() && tail == "");
+
+  text = to_span("aaaabbbb");
+  tail = And<Atom<'a'>>::match(nullptr, text);
+  CHECK(tail.valid() && tail == "aaaabbbb");
+
+  text = to_span("aaaabbbb");
+  tail = And<Atom<'b'>>::match(nullptr, text);
+  CHECK(!tail.valid() && tail == "aaaabbbb");
+}
+
+//------------------------------------------------------------------------------
+
+void test_not() {
+  cspan text;
+  cspan tail;
+
+  text = to_span("");
+  tail = Not<Atom<'a'>>::match(nullptr, text);
+  CHECK(tail.valid() && tail == "");
+
+  text = to_span("aaaabbbb");
+  tail = Not<Atom<'a'>>::match(nullptr, text);
+  CHECK(!tail.valid() && tail == "aaaabbbb");
+
+  text = to_span("aaaabbbb");
+  tail = Not<Atom<'b'>>::match(nullptr, text);
+  CHECK(tail.valid() && tail == "aaaabbbb");
+}
+
+//------------------------------------------------------------------------------
+
+void test_rep() {
+  cspan text;
+  cspan tail;
+
+  text = to_span("");
+  tail = Rep<3, Atom<'a'>>::match(nullptr, text);
+  CHECK(!tail.valid() && tail == "");
+
+  text = to_span("aabbbb");
+  tail = Rep<3, Atom<'a'>>::match(nullptr, text);
+  CHECK(!tail.valid() && tail == "bbbb");
+
+  text = to_span("aaabbbb");
+  tail = Rep<3, Atom<'a'>>::match(nullptr, text);
+  CHECK(tail.valid() && tail == "bbbb");
+
+  text = to_span("aaaabbbb");
+  tail = Rep<3, Atom<'a'>>::match(nullptr, text);
+  CHECK(tail.valid() && tail == "abbbb");
+}
+
+//------------------------------------------------------------------------------
+
+void test_reprange() {
+  cspan text;
+  cspan tail;
+
+  text = to_span("");
+  tail = RepRange<2, 3, Atom<'a'>>::match(nullptr, text);
+  CHECK(!tail.valid() && tail == "");
+
+  text = to_span("abbbb");
+  tail = RepRange<2, 3, Atom<'a'>>::match(nullptr, text);
+  CHECK(!tail.valid() && tail == "bbbb");
+
+  text = to_span("aabbbb");
+  tail = RepRange<2, 3, Atom<'a'>>::match(nullptr, text);
+  CHECK(tail.valid() && tail == "bbbb");
+
+  text = to_span("aaabbbb");
+  tail = RepRange<2, 3, Atom<'a'>>::match(nullptr, text);
+  CHECK(tail.valid() && tail == "bbbb");
+
+  text = to_span("aaaabbbb");
+  tail = RepRange<2, 3, Atom<'a'>>::match(nullptr, text);
+  CHECK(tail.valid() && tail == "abbbb");
+}
+
+//------------------------------------------------------------------------------
+
+cspan test_matcher(void* ctx, cspan s) {
+  assert(s.valid());
+  if (s.empty()) return s.fail();
+  return s.a[0] == 'a' ? s.advance(1) : s.fail();
+}
+
+void test_ref() {
+  cspan text;
+  cspan tail;
+
+  text = to_span("");
+  tail = Ref<test_matcher>::match(nullptr, text);
+  CHECK(!tail.valid() && tail == "");
+
+  text = to_span("abc");
+  tail = Ref<test_matcher>::match(nullptr, text);
+  CHECK(tail.valid() && tail == "bc");
+
+  text = to_span("xyz");
+  tail = Ref<test_matcher>::match(nullptr, text);
+  CHECK(!tail.valid() && tail == "xyz");
+}
+
+//------------------------------------------------------------------------------
+
+void test_backref() {
+  cspan text;
+  cspan tail;
+
+  using pattern1 =
+      Seq<StoreBackref<const char, Rep<4, Range<'a', 'z'>>>, Atom<'-'>,
+          MatchBackref<const char, Rep<4, Range<'a', 'z'>>>>;
+
+  text = to_span("abcd-abcd!");
+  tail = pattern1::match(nullptr, text);
+  CHECK(tail.valid() && tail == "!");
+
+  text = to_span("zyxw-zyxw!");
+  tail = pattern1::match(nullptr, text);
+  CHECK(tail.valid() && tail == "!");
+
+  text = to_span("abcd-abqd!");
+  tail = pattern1::match(nullptr, text);
+  CHECK(!tail.valid() && tail == "qd!");
+
+  text = to_span("abcd-abc");
+  tail = pattern1::match(nullptr, text);
+  CHECK(!tail.valid() && tail == "");
+
+  text = to_span("ab01-ab01!");
+  tail = pattern1::match(nullptr, text);
+  CHECK(!tail.valid() && tail == "01-ab01!");
+}
+
+//------------------------------------------------------------------------------
+
+void test_delimited_block() {
+  cspan text;
+  cspan tail;
+
+  using pattern = DelimitedBlock<Atom<'{'>, Atom<'a'>, Atom<'}'>>;
+
+  text = to_span("{}bbbb");
+  tail = pattern::match(nullptr, text);
+  CHECK(tail.valid() && tail == "bbbb");
+
+  text = to_span("{a}bbbb");
+  tail = pattern::match(nullptr, text);
+  CHECK(tail.valid() && tail == "bbbb");
+
+  text = to_span("{aa}bbbb");
+  tail = pattern::match(nullptr, text);
+  CHECK(tail.valid() && tail == "bbbb");
+
+  text = to_span("{bb}aaaa");
+  tail = pattern::match(nullptr, text);
+  CHECK(!tail.valid() && tail == "bb}aaaa");
+
+  text = to_span("{aabb}bbbb");
+  tail = pattern::match(nullptr, text);
+  CHECK(!tail.valid() && tail == "bb}bbbb");
+
+  text = to_span("{aaaa");
+  tail = pattern::match(nullptr, text);
+  CHECK(!tail.valid() && tail == "");
+}
+
+//------------------------------------------------------------------------------
+
+void test_delimited_list() {
+  cspan text;
+  cspan tail;
+
+  using pattern = DelimitedList<Atom<'{'>, Atom<'a'>, Atom<','>, Atom<'}'>>;
+
+  // Zero items
+  text = to_span("{}bbbb");
+  tail = pattern::match(nullptr, text);
+  CHECK(tail.valid() && tail == "bbbb");
+
+  // One item
+  text = to_span("{a}bbbb");
+  tail = pattern::match(nullptr, text);
+  CHECK(tail.valid() && tail == "bbbb");
+
+  // Two items
+  text = to_span("{a,a}bbbb");
+  tail = pattern::match(nullptr, text);
+  CHECK(tail.valid() && tail == "bbbb");
+
+  // Two items + trailing comma
+  text = to_span("{a,a,}bbbb");
+  tail = pattern::match(nullptr, text);
+  CHECK(tail.valid() && tail == "bbbb");
+
+  // Ldelim missing
+  text = to_span("a,a}bbbb");
+  tail = pattern::match(nullptr, text);
+  CHECK(!tail.valid() && tail == "a,a}bbbb");
+
+  // Item missing
+  text = to_span("{,a}bbbb");
+  tail = pattern::match(nullptr, text);
+  CHECK(!tail.valid() && tail == ",a}bbbb");
+
+  // Separator missing
+  text = to_span("{aa}bbbb");
+  tail = pattern::match(nullptr, text);
+  CHECK(!tail.valid() && tail == "a}bbbb");
+
+  // Rdelim missing
+  text = to_span("{a,abbbb");
+  tail = pattern::match(nullptr, text);
+  CHECK(!tail.valid() && tail == "bbbb");
+
+  // Wrong separator
+  text = to_span("{a;a}bbbb");
+  tail = pattern::match(nullptr, text);
+  CHECK(!tail.valid() && tail == ";a}bbbb");
+
+  // Wrong item
+  text = to_span("{a,b}bbbb");
+  tail = pattern::match(nullptr, text);
+  CHECK(!tail.valid() && tail == "b}bbbb");
+}
+
+//------------------------------------------------------------------------------
+
+void test_eol() {
+  cspan text;
+  cspan tail;
+
+  text = to_span("aaaa");
+  tail = Seq<Some<Atom<'a'>>, EOL>::match(nullptr, text);
+  CHECK(tail.valid() & tail == "");
+
+  text = to_span("aaaabbbb");
+  tail = Seq<Some<Atom<'a'>>, EOL>::match(nullptr, text);
+  CHECK(!tail.valid() & tail == "bbbb");
+
+  text = to_span("aaaa\nbbbb");
+  tail = Seq<Some<Atom<'a'>>, EOL>::match(nullptr, text);
+  CHECK(tail.valid() & tail == "\nbbbb");
+}
+
+//------------------------------------------------------------------------------
+
+void test_charset() {
+  cspan text;
+  cspan tail;
+
+  text = to_span("dcbaxxxx");
+  tail = Some<Charset<"abcd">>::match(nullptr, text);
+  CHECK(tail.valid() && tail == "xxxx");
+
+  text = to_span("xxxxabcd");
+  tail = Some<Charset<"abcd">>::match(nullptr, text);
+  CHECK(!tail.valid() && tail == "xxxxabcd");
+
+  text = to_span("ddccxxxxbbaa");
+  tail = Some<Charset<"abcd">>::match(nullptr, text);
+  CHECK(tail.valid() && tail == "xxxxbbaa");
+}
+
+//------------------------------------------------------------------------------
+
 int main(int argc, char** argv) {
   printf("Matcheroni tests\n");
 
   test_span();
   test_atom();
+  test_notatom();
   test_range();
   test_lit();
   test_seq();
   test_oneof();
+  test_opt();
+  test_any();
+  test_some();
+  test_and();
+  test_rep();
+  test_reprange();
+  test_ref();
+  test_backref();
+  test_delimited_block();
+  test_delimited_list();
+  test_eol();
+  test_charset();
 
   if (!fail_count) {
     printf("All tests pass!\n");
+    return 0;
   } else {
     printf("Failed %d tests!\n", fail_count);
+    return -1;
   }
-
-  return 0;
 }
+
+//------------------------------------------------------------------------------

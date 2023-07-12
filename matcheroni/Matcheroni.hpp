@@ -14,11 +14,11 @@
 
 // FIXME figure out the right way to do asserts
 
-// #ifdef RELEASE
+ #ifdef RELEASE
 #define assert(a)
-// #else
-// #include <assert.h>
-// #endif
+ #else
+ #include <assert.h>
+ #endif
 
 #include "stdio.h"
 
@@ -46,10 +46,10 @@ struct Span {
     return {a + offset, b};
   }
 
-  Span operator-(Span b) const {
-    assert(a <= b.a);
-    assert(b == b.b);
-    return Span(a, b.a);
+  Span operator-(Span s) const {
+    assert(a <= s.a);
+    assert(b == s.b);
+    return Span(a, s.a);
   }
 
   bool operator==(const Span& c) { return a == c.a && b == c.b; }
@@ -58,8 +58,7 @@ struct Span {
   bool valid() const { return a; }
 
   Span fail() const {
-    assert(a != nullptr);
-    return Span(nullptr, a);
+    return a ? Span(nullptr, a) : Span(a, b);
   }
 
   int len() const {
@@ -162,6 +161,39 @@ struct Atom<C> {
       return s.advance(1);
     } else {
       return s.fail();
+    }
+  }
+};
+
+//------------------------------------------------------------------------------
+// 'NotAtom' matches any atom that is _not_ in its argument list, which is a
+// bit faster than using Seq<Not<Atom<...>>, AnyAtom>
+
+template <auto C, auto... rest>
+struct NotAtom {
+  template <typename atom>
+  static Span<atom> match(void* ctx, Span<atom> s) {
+    assert(s.valid());
+    if (s.empty()) return s.fail();
+
+    if (atom_cmp(ctx, s.a, C) == 0) {
+      return s.fail();
+    }
+    return NotAtom<rest...>::match(ctx, s);
+  }
+};
+
+template <auto C>
+struct NotAtom<C> {
+  template <typename atom>
+  static Span<atom> match(void* ctx, Span<atom> s) {
+    assert(s.valid());
+    if (s.empty()) return s.fail();
+
+    if (atom_cmp(ctx, s.a, C) == 0) {
+      return s.fail();
+    } else {
+      return s.advance(1);
     }
   }
 };
@@ -328,7 +360,7 @@ struct Opt {
       return c;
     } else {
       /*+*/ parser_rewind(ctx, s);
-      return c;
+      return s;
     }
   }
 };
@@ -501,44 +533,15 @@ struct RepRange {
   static Span<atom> match(void* ctx, Span<atom> s) {
     assert(s.valid());
     s = Rep<M, P>::match(ctx, s);
-    if (!s) return s;
+    if (!s.valid()) return s;
 
     for (auto i = 0; i < N - M; i++) {
       auto c = P::match(ctx, s);
-      if (!c) break;
+      if (!c.valid()) break;
       s = c;
     }
 
     return s;
-  }
-};
-
-//------------------------------------------------------------------------------
-// 'NotAtom' matches any atom that is _not_ in its argument list, which is a
-// bit faster than using Seq<Not<Atom<...>>, AnyAtom>
-
-template <auto C, auto... rest>
-struct NotAtom {
-  template <typename atom>
-  static Span<atom> match(void* ctx, Span<atom> s) {
-    assert(s.valid());
-    if (atom_cmp(ctx, s.a, C) == 0) {
-      return s.fail();
-    }
-    return NotAtom<rest...>::match(ctx, s);
-  }
-};
-
-template <auto C>
-struct NotAtom<C> {
-  template <typename atom>
-  static Span<atom> match(void* ctx, Span<atom> s) {
-    assert(s.valid());
-    if (atom_cmp(ctx, s.a, C) == 0) {
-      return s.fail();
-    } else {
-      return s.advance(1);
-    }
   }
 };
 
@@ -671,12 +674,15 @@ struct Ref<F> {
 
 template <typename atom, typename P>
 struct StoreBackref {
-  static Span<atom> ref;
+  inline static Span<atom> ref;
 
   static Span<atom> match(void* ctx, Span<atom> s) {
     assert(s.valid());
     auto c = P::match(ctx, s);
-    if (!c) return s.fail();
+    if (!c.valid()) {
+      ref = Span<atom>();
+      return c;
+    }
     ref = {s.a, c.a};
     return c;
   }
@@ -688,15 +694,15 @@ struct MatchBackref {
     assert(s.valid());
 
     auto ref = StoreBackref<atom, P>::ref;
-
-    if (ref.len() > s.len()) return s.fail();
+    if (!ref.valid() || ref.empty()) return s.fail();
 
     for (int i = 0; i < ref.len(); i++) {
-      if (atom_cmp(ctx, &s.a[i], ref.a[i]) != 0) {
-        return s.fail();
-      }
+      if (s.empty()) return s.fail();
+      if (atom_cmp(ctx, s.a, ref.a[i]) != 0) return s.fail();
+      s = s.advance(1);
     }
-    return s.advance(ref.len());
+
+    return s;
   }
 };
 
@@ -711,12 +717,13 @@ struct DelimitedBlock {
     assert(s.valid());
 
     s = ldelim::match(ctx, s);
-    if (!s) return s;
+    if (!s.valid()) return s;
 
     while (1) {
-      if (auto end = rdelim::match(ctx, s)) return end;
+      auto end = rdelim::match(ctx, s);
+      if (end.valid()) return end;
       s = body::match(ctx, s);
-      if (!s) break;
+      if (!s.valid()) break;
     }
     return s;
   }
@@ -735,16 +742,18 @@ struct DelimitedList {
     assert(s.valid());
 
     s = ldelim::match(ctx, s);
-    if (!s) return s;
+    if (!s.valid()) return s;
 
     while (1) {
-      if (auto end = rdelim::match(ctx, s)) return end;
+      auto end1 = rdelim::match(ctx, s);
+      if (end1.valid()) return end1;
       s = item::match(ctx, s);
-      if (!s) break;
+      if (!s.valid()) break;
 
-      if (auto end = rdelim::match(ctx, s)) return end;
+      auto end2 = rdelim::match(ctx, s);
+      if (end2.valid()) return end2;
       s = separator::match(ctx, s);
-      if (!s) break;
+      if (!s.valid()) break;
     }
     return s;
   }

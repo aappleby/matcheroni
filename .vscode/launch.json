@@ -7,7 +7,7 @@
     //--------------------------------------------------------------------------
     {
       "name": "matcheroni_test",
-      "preLaunchTask": "build_matcheroni",
+      "preLaunchTask": "build_matcheroni_test",
       "type": "cppdbg",
       "request": "launch",
       "program": "${workspaceFolder}/bin/matcheroni_test",

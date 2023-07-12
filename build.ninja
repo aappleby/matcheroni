@@ -58,7 +58,7 @@ rule link
   command = g++ ${build_mode} ${in} -lboost_system -lboost_regex -o ${out}
 
 rule run_test
-  command = ${in} | grep "All tests pass" && touch ${out}
+  command = ${in} && touch ${out}
 
 #-------------------------------------------------------------------------------
 # Utility functions
