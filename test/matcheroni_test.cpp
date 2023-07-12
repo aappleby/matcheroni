@@ -371,6 +371,25 @@ void test_reprange() {
 
 //------------------------------------------------------------------------------
 
+void test_until() {
+  cspan text;
+  cspan tail;
+
+  text = to_span("");
+  tail = Until<Atom<'b'>>::match(nullptr, text);
+  CHECK(tail.valid() && tail == "");
+
+  text = to_span("aaaa");
+  tail = Until<Atom<'b'>>::match(nullptr, text);
+  CHECK(tail.valid() && tail == "");
+
+  text = to_span("aaaabbbb");
+  tail = Until<Atom<'b'>>::match(nullptr, text);
+  CHECK(tail.valid() && tail == "bbbb");
+}
+
+//------------------------------------------------------------------------------
+
 cspan test_matcher(void* ctx, cspan s) {
   assert(s.valid());
   if (s.empty()) return s.fail();
@@ -573,6 +592,7 @@ int main(int argc, char** argv) {
   test_and();
   test_rep();
   test_reprange();
+  test_until();
   test_ref();
   test_backref();
   test_delimited_block();

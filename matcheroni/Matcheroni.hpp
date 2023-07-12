@@ -20,7 +20,7 @@
  #include <assert.h>
  #endif
 
-#include "stdio.h"
+#include <stdio.h>
 
 namespace matcheroni {
 
@@ -72,14 +72,13 @@ struct Span {
 
 //------------------------------------------------------------------------------
 // Matcheroni is based on building trees of "matcher" functions. A matcher
-// function takes a range of "atoms" (could be characters, could be some
-// application-specific type) as input and returns either the endpoint of the
-// match if found, or nullptr if a match was not found.
+// function takes a span of "atoms" (could be characters, could be some
+// application-specific type) as input and returns either a span containing the
+// remaining text if a match was found, or a span containing a nullptr and the
+// point at which the match failed.
 
 // Matcher functions accept an opaque context pointer 'ctx', which can be used
 // to pass in a pointer to application-specific state.
-
-// Matcher functions must always handle null pointers and empty ranges.
 
 template <typename atom>
 using matcher_function = Span<atom> (*)(void* ctx, Span<atom> s);
@@ -324,10 +323,10 @@ struct Oneof {
     /*+*/ parser_rewind(ctx, s);
     auto d = Oneof<rest...>::match(ctx, s);
 
-    // Both attempts failed, return whichever match got farther before failing.
     if (d.valid()) {
       return d;
     } else {
+      // Both attempts failed, return whichever match got farther.
       return c.b > d.b ? c : d;
     }
   }
@@ -551,24 +550,25 @@ struct RepRange {
 
 // Equivalent to Any<Seq<Not<M>,AnyAtom>>
 
-#if 0
 
 template<typename P>
 struct Until {
   template<typename atom>
   static Span<atom> match(void* ctx, Span<atom> s) {
     assert(s.valid());
-    while(!s.empty()) {
-      if (auto end = P::match(ctx, s)) {
+    while(1) {
+      if (s.empty()) return s;
+      auto end = P::match(ctx, s);
+      if (end.valid()) {
         parser_rewind(ctx, s);
         return s;
       }
       s = s.advance(1);
     }
-    return s.fail();
   }
 };
 
+#if 0
 // These patterns need better names and explanations...
 
 // Match some P until we see T. No T = no match.

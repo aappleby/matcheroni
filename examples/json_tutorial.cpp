@@ -20,39 +20,6 @@ using namespace matcheroni;
 using cspan = Span<const char>;
 
 //------------------------------------------------------------------------------
-// Prints a text representation of the parse tree.
-
-void print_flat(const char* a, const char* b, int max_len) {
-  int len = b - a;
-  int span_len = max_len;
-  if (len > max_len) span_len -= 3;
-
-  for (int i = 0; i < span_len; i++) {
-    if      (a + i >= b)   putc(' ',  stdout);
-    else if (a[i] == '\n') putc(' ',  stdout);
-    else if (a[i] == '\r') putc(' ',  stdout);
-    else if (a[i] == '\t') putc(' ',  stdout);
-    else                   putc(a[i], stdout);
-  }
-
-  if (len > max_len) printf("...");
-}
-
-void print_tree(NodeBase* node, int depth = 0) {
-  // Print the node's matched text, with a "..." if it doesn't fit in 20
-  // characters.
-  print_flat(node->span.a, node->span.b, 20);
-
-  // Print out the name of the type name of the node with indentation.
-  printf("   ");
-  for (int i = 0; i < depth; i++) printf(i == depth-1 ? "|--" : "|  ");
-  printf("%s\n", node->match_name);
-  for (auto c = node->child_head; c; c = c->node_next) {
-    print_tree(c, depth+1);
-  }
-}
-
-//------------------------------------------------------------------------------
 // To build a parse tree, we wrap the patterns we want to create nodes for
 // in a Capture<> matcher that will invoke our node factory. We can also wrap
 // them in a Trace<> matcher if we want to debug our patterns.

@@ -51,8 +51,11 @@ build obj/utils.o : compile_cpp examples/utils.cpp
 
 build obj/matcheroni_test.o : compile_cpp test/matcheroni_test.cpp
 build bin/matcheroni_test   : link obj/matcheroni_test.o
-
 build bin/matcheroni_test_pass : run_test bin/matcheroni_test
+
+build obj/parseroni_test.o : compile_cpp test/parseroni_test.cpp
+build bin/parseroni_test   : link obj/parseroni_test.o
+build bin/parseroni_test_pass : run_test bin/parseroni_test
 
 #-------------------------------------------------------------------------------
 # Benchmark

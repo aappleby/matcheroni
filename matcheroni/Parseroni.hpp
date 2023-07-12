@@ -1,35 +1,33 @@
 #pragma once
-#include "matcheroni/Matcheroni.hpp"
-
+#include <stdint.h>
 #include <stdio.h>
-#include <stdlib.h> // for malloc/free
+#include <stdlib.h>  // for malloc/free
+
+#include "matcheroni/Matcheroni.hpp"
 
 typedef matcheroni::Span<const char> cspan;
 
 //------------------------------------------------------------------------------
 
 struct SlabAlloc {
-
   struct Slab {
-    Slab*   prev;
-    Slab*   next;
-    int     cursor;
-    int     highwater;
-    char    buf[];
+    Slab* prev;
+    Slab* next;
+    int cursor;
+    int highwater;
+    char buf[];
   };
 
   // slab size is 1 hugepage. seems to work ok.
   static constexpr int header_size = sizeof(Slab);
-  static constexpr int slab_size = 2*1024*1024 - header_size;
+  static constexpr int slab_size = 2 * 1024 * 1024 - header_size;
 
-  SlabAlloc() {
-    add_slab();
-  }
+  SlabAlloc() { add_slab(); }
 
   void destroy() {
     reset();
     auto c = top_slab;
-    while(c) {
+    while (c) {
       auto next = c->next;
       ::free((void*)c);
       c = next;
@@ -38,7 +36,7 @@ struct SlabAlloc {
   }
 
   void reset() {
-    while(top_slab->prev) top_slab = top_slab->prev;
+    while (top_slab->prev) top_slab = top_slab->prev;
     for (auto c = top_slab; c; c = c->next) {
       c->cursor = 0;
     }
@@ -48,7 +46,7 @@ struct SlabAlloc {
   void add_slab() {
     if (top_slab && top_slab->next) {
       top_slab = top_slab->next;
-      //DCHECK(top_slab->cursor == 0);
+      // DCHECK(top_slab->cursor == 0);
       return;
     }
 
@@ -80,7 +78,7 @@ struct SlabAlloc {
 
   void free(void* p, int size) {
     auto offset = (char*)p - top_slab->buf;
-    //DCHECK(offset + size == top_slab->cursor);
+    // DCHECK(offset + size == top_slab->cursor);
     top_slab->cursor -= size;
     if (top_slab->cursor == 0) {
       if (top_slab->prev) {
@@ -88,31 +86,28 @@ struct SlabAlloc {
       }
     }
     current_size -= size;
-    //printf("top_slab->cursor = %ld\n", top_slab->cursor);
+    // printf("top_slab->cursor = %ld\n", top_slab->cursor);
   }
 
   Slab* top_slab;
-  int   current_size;
-  int   max_size;
+  int current_size;
+  int max_size;
 };
 
 //------------------------------------------------------------------------------
 
 struct NodeBase {
-
   NodeBase(const char* match_name, cspan span)
-  : match_name(match_name), span(span) {
+      : match_name(match_name), span(span) {
     constructor_calls++;
   }
 
-  virtual ~NodeBase() {
-    destructor_calls++;
-  }
+  virtual ~NodeBase() { destructor_calls++; }
 
-  static void* operator new(size_t s)               { return slabs.alloc(s); }
-  static void* operator new[](size_t s)             { return slabs.alloc(s); }
-  static void  operator delete(void* p, size_t s)   { slabs.free(p, s); }
-  static void  operator delete[](void* p, size_t s) { slabs.free(p, s); }
+  static void* operator new(size_t s) { return slabs.alloc(s); }
+  static void* operator new[](size_t s) { return slabs.alloc(s); }
+  static void operator delete(void* p, size_t s) { slabs.free(p, s); }
+  static void operator delete[](void* p, size_t s) { slabs.free(p, s); }
 
   //----------------------------------------
 
@@ -120,6 +115,28 @@ struct NodeBase {
     size_t accum = 1;
     for (auto c = child_head; c; c = c->node_next) accum += c->node_count();
     return accum;
+  }
+
+  //----------------------------------------
+
+  uint64_t hash() {
+    uint64_t h = 1;
+
+    for (auto c = match_name; *c; c++) {
+      h = (h * 975313579) ^ *c;
+    }
+
+    if (!child_head) {
+      for (auto c = span.a; c < span.b; c++) {
+        h = (h * 123456789) ^ *c;
+      }
+    }
+
+    for (auto c = child_head; c; c = c->node_next) {
+      h = (h * 987654321) ^ c->hash();
+    }
+
+    return h;
   }
 
   //----------------------------------------
@@ -178,11 +195,59 @@ inline ConstParseNodeIterator end(const NodeBase* parent) {
   return ConstParseNodeIterator(nullptr);
 }
 
+//------------------------------------------------------------------------------
+
+inline void print_flat(const char* a, const char* b, int max_len) {
+  int len = b - a;
+  int span_len = max_len;
+  if (len > max_len) span_len -= 3;
+
+  for (int i = 0; i < span_len; i++) {
+    if (a + i >= b)
+      putc(' ', stdout);
+    else if (a[i] == '\n')
+      putc(' ', stdout);
+    else if (a[i] == '\r')
+      putc(' ', stdout);
+    else if (a[i] == '\t')
+      putc(' ', stdout);
+    else
+      putc(a[i], stdout);
+  }
+
+  if (len > max_len) printf("...");
+}
+
+//------------------------------------------------------------------------------
+
+inline void print_bar(int depth, const char* a, const char* b, const char* val,
+                      const char* suffix) {
+  printf("|");
+  print_flat(a, b, 20);
+  printf("|");
+
+  printf(depth == 0 ? "  *" : "   ");
+  for (int i = 0; i < depth; i++) {
+    printf(i == depth - 1 ? "|--" : "|  ");
+  }
+
+  printf("%s %s", val, suffix);
+  printf("\n");
+}
+
+//------------------------------------------------------------------------------
+// Prints a text representation of the parse tree.
+
+inline void print_tree(NodeBase* node, int depth = 0) {
+  print_bar(depth, node->span.a, node->span.b, node->match_name, "");
+  for (auto c = node->child_head; c; c = c->node_next) {
+    print_tree(c, depth + 1);
+  }
+}
 
 //------------------------------------------------------------------------------
 
 struct Parser {
-
   Parser() {}
 
   virtual ~Parser() {
@@ -210,8 +275,8 @@ struct Parser {
   //----------------------------------------
 
   void append(NodeBase* new_node) {
-    new_node->node_prev  = nullptr;
-    new_node->node_next  = nullptr;
+    new_node->node_prev = nullptr;
+    new_node->node_next = nullptr;
     new_node->child_head = nullptr;
     new_node->child_tail = nullptr;
 
@@ -219,8 +284,7 @@ struct Parser {
       new_node->node_prev = top_tail;
       top_tail->node_next = new_node;
       top_tail = new_node;
-    }
-    else {
+    } else {
       top_head = new_node;
       top_tail = new_node;
     }
@@ -229,8 +293,8 @@ struct Parser {
   //----------------------------------------
 
   void splice(NodeBase* new_node, NodeBase* child_head, NodeBase* child_tail) {
-    new_node->node_prev  = child_head->node_prev;
-    new_node->node_next  = child_tail->node_next;
+    new_node->node_prev = child_head->node_prev;
+    new_node->node_next = child_tail->node_next;
     new_node->child_head = child_head;
     new_node->child_tail = child_tail;
 
@@ -246,7 +310,7 @@ struct Parser {
 
   //----------------------------------------
 
-  template<typename NodeType>
+  template <typename NodeType>
   NodeType* create(const char* match_name, cspan s, NodeBase* old_tail) {
     auto new_node = new NodeType(match_name, s);
 
@@ -256,8 +320,7 @@ struct Parser {
     // append new_node to the node list.
     if (old_tail == top_tail) {
       append(new_node);
-    }
-    else {
+    } else {
       auto child_head = old_tail ? old_tail->node_next : top_head;
       auto child_tail = top_tail;
       splice(new_node, child_head, child_tail);
@@ -278,7 +341,7 @@ struct Parser {
     auto tail = node->child_tail;
     delete node;
 
-    while(tail) {
+    while (tail) {
       auto prev = tail->node_prev;
       recycle(tail);
       tail = prev;
@@ -293,7 +356,7 @@ struct Parser {
   // match.
 
   void rewind(cspan s) {
-    while(top_tail && top_tail->span.b > s.a) {
+    while (top_tail && top_tail->span.b > s.a) {
       auto dead = top_tail;
       top_tail = top_tail->node_prev;
       recycle(dead);
@@ -320,7 +383,7 @@ struct Parser {
 // Matcheroni's default rewind callback does nothing, but if we provide a
 // specialized version of it Matcheroni will call it as needed.
 
-template<>
+template <>
 inline void matcheroni::parser_rewind(void* ctx, Span<const char> s) {
   if (ctx) {
     ((Parser*)ctx)->rewind(s);
@@ -332,16 +395,16 @@ inline void matcheroni::parser_rewind(void* ctx, Span<const char> s) {
 // matcher that constructs a new NodeType() for a successful match, attaches
 // any sub-nodes to it, and places it on a node list.
 
-template<matcheroni::StringParam match_name, typename pattern, typename NodeType>
+template <matcheroni::StringParam match_name, typename pattern,
+          typename NodeType>
 struct CaptureNamed {
-
   static matcheroni::Span<const char> match(void* ctx, cspan s) {
     Parser* parser = (Parser*)ctx;
     auto old_tail = parser->top_tail;
     auto end = pattern::match(parser, s);
 
     if (end.valid()) {
-      cspan node_span = { s.a, end.a };
+      cspan node_span = {s.a, end.a};
       parser->create<NodeType>(match_name.str_val, node_span, old_tail);
     }
 
@@ -366,38 +429,9 @@ struct CaptureNamed {
 // Uncomment this to print a full trace of the regex matching process. Note -
 // the trace will be _very_ long, even for small regexes.
 
-template<matcheroni::StringParam match_name, typename P>
+template <matcheroni::StringParam match_name, typename P>
 struct Trace {
   using cspan = matcheroni::Span<const char>;
-
-  // Prints a fixed-width span of characters from the source span with all
-  // whitespace replaced with ' '.
-
-  static void print_flat(const char* a, const char* b, int max_len) {
-    int len = b - a;
-    int span_len = max_len;
-    if (len > max_len) span_len -= 3;
-
-    for (int i = 0; i < span_len; i++) {
-      if      (a + i >= b)   putc(' ',  stdout);
-      else if (a[i] == '\n') putc(' ',  stdout);
-      else if (a[i] == '\r') putc(' ',  stdout);
-      else if (a[i] == '\t') putc(' ',  stdout);
-      else                   putc(a[i], stdout);
-    }
-
-    if (len > max_len) printf("...");
-  }
-
-  static void print_bar(int trace_depth, const char* a, const char* b, const char* val, const char* suffix) {
-    printf("|");
-    print_flat(a, b, 20);
-    printf("| ");
-    for (int i = 0; i < trace_depth; i++) printf("|  ");
-    printf("%s %s", val, suffix);
-    printf(" %d ", trace_depth);
-    printf("\n");
-  }
 
   static cspan match(void* ctx, cspan s) {
     assert(s.valid());
@@ -406,7 +440,8 @@ struct Trace {
     auto parser = (Parser*)ctx;
     print_bar(parser->trace_depth++, s.a, s.b, match_name.str_val, "?");
     auto end = P::match(ctx, s);
-    print_bar(--parser->trace_depth, s.a, s.b, match_name.str_val, end ? "OK" : "X");
+    print_bar(--parser->trace_depth, s.a, s.b, match_name.str_val,
+              end ? "OK" : "X");
 
     return end;
   }

@@ -138,29 +138,6 @@ cspan match_regex(void* ctx, cspan s) {
 }
 
 //------------------------------------------------------------------------------
-// Prints a text representation of the parse tree.
-
-void print_tree(NodeBase* node, int depth = 0) {
-  auto a = node->span.a;
-  auto b = node->span.b;
-
-  putc('`', stdout);
-  for (int i = 0; i < 20; i++) {
-    if      (i >= b - a)   putc(' ',  stdout);
-    else if (a[i] == '\n') putc(' ',  stdout);
-    else if (a[i] == '\r') putc(' ',  stdout);
-    else if (a[i] == '\t') putc(' ',  stdout);
-    else                   putc(a[i], stdout);
-  }
-  putc('`', stdout);
-
-  printf(depth == 0 ? "  *" : "   ");
-  for (int i = 0; i < depth; i++) printf(i == depth-1 ? "|--" : "|  ");
-  printf("%s\n", node->match_name);
-  for (auto c = node->child_head; c; c = c->node_next) print_tree(c, depth+1);
-}
-
-//------------------------------------------------------------------------------
 // The demo app accepts a quoted regex as its first command line argument,
 // attempts to parse it, and then prints out the resulting parse tree.
 
