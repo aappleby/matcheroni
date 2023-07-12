@@ -5,20 +5,21 @@
 # Turning tracing on will generate _ton_ of spam in the C99 demo.
 # Turning EXTRA_DEBUG on will generate even more spam.
 
-build_mode = -g -O0
-defs = ${defs} -DDEBUG
-defs = ${defs} -DMATCHERONI_ENABLE_TRACE
-defs = ${defs} -DEXTRA_DEBUG
+#build_mode = -g -O0
+#defs = ${defs} -DDEBUG
+#defs = ${defs} -DMATCHERONI_ENABLE_TRACE
+#defs = ${defs} -DEXTRA_DEBUG
 
 # -Os needs stripping to minimize size
 #build_mode = -g -Os
-#build_mode = ${build_mode} -flto -fdata-sections -ffunction-sections -Wl,--gc-sections
+#build_mode = ${build_mode} -fdata-sections -ffunction-sections -Wl,--gc-sections
 #build_mode = ${build_mode} -Wl,-s
 
 # -O3 needs LTO to maximize performance
-#build_mode = -g -O3
-#defs = ${defs} -DRELEASE
-#build_mode = ${build_mode} -flto -fdata-sections -ffunction-sections -Wl,--gc-sections
+build_mode = -g -O3
+defs = ${defs} -DRELEASE
+build_mode = ${build_mode} -flto -fdata-sections -ffunction-sections -Wl,--gc-sections
+build_mode = ${build_mode} -Wl,-s
 
 includes = -I.
 
@@ -51,10 +52,11 @@ build obj/utils.o : compile_cpp examples/utils.cpp
 
 build obj/matcheroni_test.o : compile_cpp test/matcheroni_test.cpp
 build bin/matcheroni_test   : link obj/matcheroni_test.o
-build bin/matcheroni_test_pass : run_test bin/matcheroni_test
 
 build obj/parseroni_test.o : compile_cpp test/parseroni_test.cpp
 build bin/parseroni_test   : link obj/parseroni_test.o
+
+build bin/matcheroni_test_pass : run_test bin/matcheroni_test
 build bin/parseroni_test_pass : run_test bin/parseroni_test
 
 #-------------------------------------------------------------------------------
