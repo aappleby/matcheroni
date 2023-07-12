@@ -12,32 +12,13 @@ defs = ${defs} -DEXTRA_DEBUG
 
 # -Os needs stripping to minimize size
 #build_mode = -g -Os
-#build_mode = ${build_mode} -fdata-sections -ffunction-sections -Wl,--gc-sections -Wl,-s
+#build_mode = ${build_mode} -flto -fdata-sections -ffunction-sections -Wl,--gc-sections
+#build_mode = ${build_mode} -Wl,-s
 
 # -O3 needs LTO to maximize performance
 #build_mode = -g -O3
 #defs = ${defs} -DRELEASE
 #build_mode = ${build_mode} -flto -fdata-sections -ffunction-sections -Wl,--gc-sections
-
-
-
-# These are the various regex libraries that Matcheroni can be benchmarked
-# against. CTRE and SRELL require that you copy their header into matcheroni/.
-
-defs = ${defs} -DBENCHMARK_BASELINE
-defs = ${defs} -DBENCHMARK_MATCHERONI
-#defs = ${defs} -DBENCHMARK_CTRE
-#defs = ${defs} -DBENCHMARK_BOOST
-defs = ${defs} -DBENCHMARK_STD_REGEX
-#defs = ${defs} -DBENCHMARK_SRELL
-
-# These defines are required to reduce the compiled size of the SRELL library used in the benchmark.
-#defs = ${defs} -DSRELL_NO_UNICODE_ICASE -DSRELL_NO_UNICODE_PROPERTY -DSRELL_NO_UNICODE_DATA -DSRELL_NO_NAMEDCAPTURE -DSRELL_NO_VMODE
-
-# This SRELL define seems to break things
-#defs = ${defs} -DSRELL_NO_APIEXT
-
-#includes = -Imatcheroni -Iexamples
 
 includes = -I.
 
@@ -76,8 +57,32 @@ build bin/matcheroni_test_pass : run_test bin/matcheroni_test
 #-------------------------------------------------------------------------------
 # Benchmark
 
+# These are the various regex libraries that Matcheroni can be benchmarked
+# against. CTRE and SRELL require that you copy their header into matcheroni/.
+
+benchmark_defs = ${defs}
+benchmark_defs = ${benchmark_defs} -DBENCHMARK_BASELINE
+benchmark_defs = ${benchmark_defs} -DBENCHMARK_MATCHERONI
+#benchmark_defs = ${benchmark_defs} -DBENCHMARK_CTRE
+benchmark_defs = ${benchmark_defs} -DBENCHMARK_BOOST
+benchmark_defs = ${benchmark_defs} -DBENCHMARK_STD_REGEX
+#benchmark_defs = ${benchmark_defs} -DBENCHMARK_SRELL
+
+# These defines are required to reduce the compiled size of the SRELL library used in the benchmark.
+#benchmark_defs = ${benchmark_defs} -DSRELL_NO_UNICODE_ICASE -DSRELL_NO_UNICODE_PROPERTY -DSRELL_NO_UNICODE_DATA -DSRELL_NO_NAMEDCAPTURE -DSRELL_NO_VMODE
+
+# This SRELL define seems to break things
+#benchmark_defs = ${benchmark_defs} -DSRELL_NO_APIEXT
+
 #build obj/benchmark.o    : compile_cpp examples/benchmark.cpp
+#  defs = ${benchmark_defs}
 #build bin/benchmark      : link obj/utils.o obj/benchmark.o
+
+#rule derp
+#  command = echo ${defs}
+#
+#build bin/blerp : derp
+#  defs = ${benchmark_defs}
 
 #-------------------------------------------------------------------------------
 # Examples
