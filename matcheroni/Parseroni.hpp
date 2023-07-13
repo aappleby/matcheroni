@@ -8,6 +8,11 @@
 
 #include "matcheroni/Matcheroni.hpp"
 
+#define PARSERONI_NO_RECYCLE
+#define PARSERONI_NO_CONSTRUCTORS
+#define PARSERONI_NO_DESTRUCTORS
+#define PARSERONI_NO_REWIND
+
 //------------------------------------------------------------------------------
 
 using cspan = matcheroni::Span<const char>;
@@ -51,6 +56,26 @@ struct SlabAlloc {
     char buf[];
   };
 
+  struct SlabState {
+    Slab* top_slab;
+    int   top_cursor;
+    int   current_size;
+  };
+
+  SlabState save_state() {
+    return {
+      top_slab,
+      top_slab->cursor,
+      current_size
+    };
+  }
+
+  void restore_state(SlabState s) {
+    top_slab = s.top_slab;
+    top_slab->cursor = s.top_cursor;
+    current_size = s.current_size;
+  }
+
   // slab size is 1 hugepage. seems to work ok.
   static constexpr int header_size = sizeof(Slab);
   static constexpr int slab_size = 2 * 1024 * 1024 - header_size;
@@ -69,6 +94,7 @@ struct SlabAlloc {
   }
 
   void reset() {
+    if (!top_slab) add_slab();
     while (top_slab->prev) top_slab = top_slab->prev;
     for (auto c = top_slab; c; c = c->next) {
       c->cursor = 0;
@@ -135,7 +161,15 @@ struct NodeBase {
     constructor_calls++;
   }
 
-  virtual ~NodeBase() { destructor_calls++; }
+#ifndef PARSERONI_NO_DESTRUCTORS
+  virtual ~NodeBase() {
+    destructor_calls++;
+  }
+#endif
+
+#ifdef PARSERONI_NO_DESTRUCTORS
+  ~NodeBase();
+#endif
 
   static void* operator new(size_t s) { return slabs.alloc(s); }
   static void* operator new[](size_t s) { return slabs.alloc(s); }
@@ -230,33 +264,46 @@ inline ConstParseNodeIterator end(const NodeBase* parent) {
 
 //------------------------------------------------------------------------------
 
-inline void print_flat(const char* a, const char* b, int max_len) {
-  int len = b - a;
-  int span_len = max_len;
-  if (len > max_len) span_len -= 3;
+inline void print_flat(cspan s, int max_len = 0) {
+  if (max_len == 0) max_len = s.len();
 
-  for (int i = 0; i < span_len; i++) {
-    if (a + i >= b)
-      putc(' ', stdout);
-    else if (a[i] == '\n')
-      putc(' ', stdout);
-    else if (a[i] == '\r')
-      putc(' ', stdout);
-    else if (a[i] == '\t')
-      putc(' ', stdout);
-    else
-      putc(a[i], stdout);
+  if (!s.is_valid()) {
+    printf("<invalid>");
+    for (int i = 0; i < max_len - strlen("<invalid>"); i++) putc(' ', stdout);
+    return;
   }
 
-  if (len > max_len) printf("...");
+  if (s.is_empty()) {
+    printf("<empty>");
+    for (int i = 0; i < max_len - strlen("<empty>"); i++) putc(' ', stdout);
+    return;
+  }
+
+  int span_len = max_len;
+  if (s.len() > max_len) span_len -= 3;
+
+  for (int i = 0; i < span_len; i++) {
+    if (i >= s.len())
+      putc(' ', stdout);
+    else if (s.a[i] == '\n')
+      putc(' ', stdout);
+    else if (s.a[i] == '\r')
+      putc(' ', stdout);
+    else if (s.a[i] == '\t')
+      putc(' ', stdout);
+    else
+      putc(s.a[i], stdout);
+  }
+
+  if (s.len() > max_len) printf("...");
 }
 
 //------------------------------------------------------------------------------
 
-inline void print_bar(int depth, const char* a, const char* b, const char* val,
+inline void print_bar(int depth, cspan s, const char* val,
                       const char* suffix) {
   printf("|");
-  print_flat(a, b, 20);
+  print_flat(s, 20);
   printf("|");
 
   printf(depth == 0 ? "  *" : "   ");
@@ -272,7 +319,7 @@ inline void print_bar(int depth, const char* a, const char* b, const char* val,
 // Prints a text representation of the parse tree.
 
 inline void print_tree(NodeBase* node, int depth = 0) {
-  print_bar(depth, node->span.a, node->span.b, node->match_name, "");
+  print_bar(depth, node->span, node->match_name, "");
   for (auto c = node->child_head; c; c = c->node_next) {
     print_tree(c, depth + 1);
   }
@@ -280,10 +327,41 @@ inline void print_tree(NodeBase* node, int depth = 0) {
 
 //------------------------------------------------------------------------------
 
-struct Parser {
-  Parser() {}
+inline void print_match(cspan text, cspan match) {
+  printf("Match found:\n");
+  print_flat(text);
+  printf("\n");
 
-  virtual ~Parser() {
+  auto prefix_len = match.a - text.a;
+  auto suffix_len = text.b - match.b;
+
+  for (auto i = 0; i < prefix_len;  i++) putc('_', stdout);
+  for (auto i = 0; i < match.len(); i++) putc('^', stdout);
+  for (auto i = 0; i < suffix_len;  i++) putc('_', stdout);
+  printf("\n");
+}
+
+//------------------------------------------------------------------------------
+
+inline void print_fail(cspan text, cspan tail) {
+  printf("Match failed here:\n");
+  print_flat(text);
+  printf("\n");
+
+  auto fail_pos = tail.b - text.a;
+  auto suffix_len = text.b - tail.b;
+
+  for (int i = 0; i < fail_pos;   i++) putc('_', stdout);
+  for (int i = 0; i < suffix_len; i++) putc('^', stdout);
+  printf("\n");
+}
+
+//------------------------------------------------------------------------------
+
+struct Context {
+  Context() {}
+
+  virtual ~Context() {
     reset();
     NodeBase::slabs.destroy();
   }
@@ -368,10 +446,12 @@ struct Parser {
   // must delete the child nodes from tail to head.
 
   void recycle(NodeBase* node) {
+#ifndef PARSERONI_NO_DESTRUCTORS
     if (node == nullptr) return;
 
     auto head = node->child_head;
     auto tail = node->child_tail;
+
     delete node;
 
     while (tail) {
@@ -379,6 +459,7 @@ struct Parser {
       recycle(tail);
       tail = prev;
     }
+#endif
   }
 
   //----------------------------------------
@@ -388,13 +469,17 @@ struct Parser {
   // we must also throw away any parse nodes that were created during the failed
   // match.
 
+#ifndef PARSERONI_NO_REWIND
   void rewind(cspan s) {
     while (top_tail && top_tail->span.b > s.a) {
       auto dead = top_tail;
       top_tail = top_tail->node_prev;
+#ifndef PARSERONI_NO_RECYCLE
       recycle(dead);
+#endif
     }
   }
+#endif
 
   //----------------------------------------
 
@@ -416,29 +501,44 @@ struct Parser {
 // Matcheroni's default rewind callback does nothing, but if we provide a
 // specialized version of it Matcheroni will call it as needed.
 
+#ifndef PARSERONI_NO_REWIND
 template <>
 inline void matcheroni::parser_rewind(void* ctx, cspan s) {
   if (ctx) {
     ((Parser*)ctx)->rewind(s);
   }
 }
+#endif
 
 //------------------------------------------------------------------------------
 // To convert our pattern matches to parse nodes, we create a Factory<>
 // matcher that constructs a new NodeType() for a successful match, attaches
 // any sub-nodes to it, and places it on a node list.
 
+inline static int capture_count = 0;
+inline static int create_count = 0;
+
 template <matcheroni::StringParam match_name, typename pattern,
           typename NodeType>
 struct CaptureNamed {
   static cspan match(void* ctx, cspan s) {
-    Parser* parser = (Parser*)ctx;
-    auto old_tail = parser->top_tail;
-    auto end = pattern::match(parser, s);
+    //printf("capture count %d\n", ++capture_count);
 
-    if (end.valid()) {
+    Context* context = (Context*)ctx;
+    auto old_tail = context->top_tail;
+    auto old_state = NodeBase::slabs.save_state();
+
+    auto end = pattern::match(context, s);
+
+    if (end.is_valid()) {
+      //printf("create count %d\n", ++create_count);
       cspan node_span = {s.a, end.a};
-      parser->create<NodeType>(match_name.str_val, node_span, old_tail);
+      context->create<NodeType>(match_name.str_val, node_span, old_tail);
+    }
+    else {
+      //assert(parser->top_tail == old_tail);
+      context->top_tail = old_tail;
+      NodeBase::slabs.restore_state(old_state);
     }
 
     return end;
@@ -455,9 +555,9 @@ struct CaptureNamed {
 
 // using pattern =
 // Oneof<
-//   Capture<"star",  Seq<expensive_pattern, Atom<'*'>>>,
-//   Capture<"plus",  Seq<expensive_pattern, Atom<'+'>>>,
-//   Capture<"minus", Seq<expensive_pattern, Atom<'-'>>>,
+//   Capture<"star",  Seq<expensive_pattern, Atom<'*'>>, NodeBase>,
+//   Capture<"plus",  Seq<expensive_pattern, Atom<'+'>>, NodeBase>,
+//   Capture<"minus", Seq<expensive_pattern, Atom<'-'>>, NodeBase>,
 // >;
 
 // to become this
@@ -466,24 +566,38 @@ struct CaptureNamed {
 // Seq<
 //   expensive_pattern,
 //   Oneof<
-//     BackCap<1, "star",  Atom<'*'>>,
-//     BackCap<1, "plus",  Atom<'+'>>,
-//     BackCap<1, "minus", Atom<'-'>>,
+//     BackCap<1, "star",  Atom<'*'>, NodeBase>,
+//     BackCap<1, "plus",  Atom<'+'>, NodeBase>,
+//     BackCap<1, "minus", Atom<'-'>, NodeBase>,
 //   >
 // >;
+
+struct SetMark {
+  static cspan match(void* ctx, cspan s) {
+    return s;
+  }
+};
 
 template <int N, matcheroni::StringParam match_name, typename pattern,
           typename NodeType>
 struct BackCap {
   static cspan match(void* ctx, cspan s) {
-    Parser* parser = (Parser*)ctx;
-    auto old_tail = parser->top_tail;
-    auto end = pattern::match(parser, s);
+    Context* context = (Context*)ctx;
+    auto old_tail = context->top_tail;
 
-    if (end.valid()) {
-      for (int i = 0; i < N; i++) old_tail = old_tail->node_prev;
+    //auto state = NodeBase::slabs.save_state();
+    auto end = pattern::match(context, s);
+
+    if (end.is_valid()) {
       cspan node_span = {s.a, end.a};
-      parser->create<NodeType>(match_name.str_val, node_span, old_tail);
+      for (int i = 0; i < N; i++) {
+        node_span.a = old_tail->span.a;
+        old_tail = old_tail->node_prev;
+      }
+      context->create<NodeType>(match_name.str_val, node_span, old_tail);
+    }
+    else {
+      //NodeBase::slabs.restore_state(state);
     }
 
     return end;
@@ -510,14 +624,14 @@ struct BackCap {
 template <matcheroni::StringParam match_name, typename P>
 struct Trace {
   static cspan match(void* ctx, cspan s) {
-    assert(s.valid());
-    if (s.empty()) return s.fail();
+    assert(s.is_valid());
+    if (s.is_empty()) return s.fail();
 
-    auto parser = (Parser*)ctx;
-    print_bar(parser->trace_depth++, s.a, s.b, match_name.str_val, "?");
+    auto parser = (Context*)ctx;
+    print_bar(parser->trace_depth++, s, match_name.str_val, "?");
     auto end = P::match(ctx, s);
-    print_bar(--parser->trace_depth, s.a, s.b, match_name.str_val,
-              end ? "OK" : "X");
+    print_bar(--parser->trace_depth, s, match_name.str_val,
+              end.is_valid() ? "OK" : "X");
 
     return end;
   }

@@ -23,5 +23,15 @@
         "isDefault": false
       },
     },
+    {
+      "type": "shell",
+      "label": "build_parseroni_test",
+      "command": "ninja bin/parseroni_test",
+      "problemMatcher": "$gcc",
+      "group": {
+        "kind": "build",
+        "isDefault": false
+      },
+    },
   ]
 }

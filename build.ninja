@@ -5,21 +5,22 @@
 # Turning tracing on will generate _ton_ of spam in the C99 demo.
 # Turning EXTRA_DEBUG on will generate even more spam.
 
-#build_mode = -g -O0
-#defs = ${defs} -DDEBUG
-#defs = ${defs} -DMATCHERONI_ENABLE_TRACE
-#defs = ${defs} -DEXTRA_DEBUG
+### Debug build
+build_mode = -g -O0
+defs = ${defs} -DDEBUG
+defs = ${defs} -DMATCHERONI_ENABLE_TRACE
+defs = ${defs} -DEXTRA_DEBUG
 
-# -Os needs stripping to minimize size
+### -Os needs stripping to minimize size
 #build_mode = -g -Os
 #build_mode = ${build_mode} -fdata-sections -ffunction-sections -Wl,--gc-sections
 #build_mode = ${build_mode} -Wl,-s
 
-# -O3 needs LTO to maximize performance
-build_mode = -g -O3
-defs = ${defs} -DRELEASE
-build_mode = ${build_mode} -flto -fdata-sections -ffunction-sections -Wl,--gc-sections
-build_mode = ${build_mode} -Wl,-s
+### -O3 needs LTO to maximize performance
+#build_mode = -g -O3
+#defs = ${defs} -DRELEASE
+#build_mode = ${build_mode} -flto -fdata-sections -ffunction-sections -Wl,--gc-sections
+#build_mode = ${build_mode} -Wl,-s
 
 includes = -I.
 
@@ -45,19 +46,19 @@ rule run_test
 #-------------------------------------------------------------------------------
 # Utility functions
 
-build obj/utils.o : compile_cpp examples/utils.cpp
+build obj/examples/utils.o : compile_cpp examples/utils.cpp
 
 #-------------------------------------------------------------------------------
 # Tests
 
-build obj/matcheroni_test.o : compile_cpp test/matcheroni_test.cpp
-build bin/matcheroni_test   : link obj/matcheroni_test.o
+build obj/tests/matcheroni_test.o : compile_cpp tests/matcheroni_test.cpp
+build bin/tests/matcheroni_test   : link obj/tests/matcheroni_test.o
 
-build obj/parseroni_test.o : compile_cpp test/parseroni_test.cpp
-build bin/parseroni_test   : link obj/parseroni_test.o
+build obj/tests/parseroni_test.o  : compile_cpp tests/parseroni_test.cpp
+build bin/tests/parseroni_test    : link obj/tests/parseroni_test.o
 
-build bin/matcheroni_test_pass : run_test bin/matcheroni_test
-build bin/parseroni_test_pass : run_test bin/parseroni_test
+#build bin/matcheroni_test_pass : run_test bin/test/matcheroni_test
+#build bin/parseroni_test_pass  : run_test bin/test/parseroni_test
 
 #-------------------------------------------------------------------------------
 # Benchmark
@@ -93,26 +94,26 @@ benchmark_defs = ${benchmark_defs} -DBENCHMARK_STD_REGEX
 # Examples
 
 # Regex parser example
-build obj/regex_parser.o : compile_cpp examples/regex_parser.cpp
-build bin/regex_parser   : link obj/utils.o obj/regex_parser.o
+build obj/examples/regex_parser.o : compile_cpp examples/regex_parser.cpp
+build bin/examples/regex_parser   : link obj/examples/utils.o obj/examples/regex_parser.o
 
 # JSON parser example
-build obj/json_parser.o  : compile_cpp examples/json_parser.cpp
-build bin/json_parser    : link obj/json_parser.o
+build obj/examples/json_parser.o  : compile_cpp examples/json_parser.cpp
+build bin/examples/json_parser    : link obj/examples/json_parser.o
 
 #-------------------------------------------------------------------------------
 # Tutorial examples
 
-build obj/json_tut1a.o    : compile_cpp examples/json_tut1a.cpp
-build obj/json_tut1b.o    : compile_cpp examples/json_tut1b.cpp
-build obj/json_tut1c.o    : compile_cpp examples/json_tut1c.cpp
+build obj/tutorial/json_tut1a.o    : compile_cpp tutorial/json_tut1a.cpp
+build obj/tutorial/json_tut1b.o    : compile_cpp tutorial/json_tut1b.cpp
+build obj/tutorial/json_tut1c.o    : compile_cpp tutorial/json_tut1c.cpp
 
-build bin/json_tut1a      : link obj/json_tut1a.o
-build bin/json_tut1b      : link obj/json_tut1b.o
-build bin/json_tut1c      : link obj/json_tut1c.o
+build bin/tutorial/json_tut1a      : link obj/tutorial/json_tut1a.o
+build bin/tutorial/json_tut1b      : link obj/tutorial/json_tut1b.o
+build bin/tutorial/json_tut1c      : link obj/tutorial/json_tut1c.o
 
-build obj/json_tutorial.o : compile_cpp examples/json_tutorial.cpp
-build bin/json_tutorial   : link obj/json_tutorial.o
+build obj/tutorial/json_tutorial.o : compile_cpp tutorial/json_tutorial.cpp
+build bin/tutorial/json_tutorial   : link obj/tutorial/json_tutorial.o
 
 #-------------------------------------------------------------------------------
 

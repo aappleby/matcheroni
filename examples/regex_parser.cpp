@@ -158,13 +158,13 @@ int main(int argc, char** argv) {
   cspan span = {text, text + strlen(text)};
 
   printf("Parsing regex `%s`\n", span.a);
-  Parser* parser = new Parser();
+  Context* context = new Context();
 
   // Invoke our regex matcher against the input text. If it matches, we will
   // get a non-null endpoint for the match.
 
   printf("Parsing regex `%s`\n", span.a);
-  auto parse_end = regex::match(parser, span);
+  auto parse_end = regex::match(context, span);
 
   //using pattern = Seq<Some<Atom<'a'>>, Atom<'c'>>;
   //const char* text = "aaaaaaaaaabbbbsdfsfds";
@@ -184,7 +184,7 @@ int main(int argc, char** argv) {
 
   printf("Parse tree:\n");
   printf("----------------------------------------\n");
-  for (auto n = parser->top_head; n; n = n->node_next) {
+  for (auto n = context->top_head; n; n = n->node_next) {
     print_tree(n);
   }
   printf("----------------------------------------\n");

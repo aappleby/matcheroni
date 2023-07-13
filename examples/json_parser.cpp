@@ -178,7 +178,7 @@ int main(int argc, char** argv) {
   double time_accum = 0;
   double line_accum = 0;
 
-  Parser* parser = new Parser();
+  Context* context = new Context();
 
   for (auto path : paths) {
     if (verbose) {
@@ -210,10 +210,10 @@ int main(int argc, char** argv) {
     double path_time_accum = 0;
 
     for (int rep = 0; rep < (warmup + reps); rep++) {
-      parser->reset();
+      context->reset();
 
       double time_a = timestamp_ms();
-      parse_end = json::match(parser, text);
+      parse_end = json::match(context, text);
       double time_b = timestamp_ms();
 
       if (rep >= warmup) path_time_accum += time_b - time_a;
@@ -226,8 +226,7 @@ int main(int argc, char** argv) {
     if (parse_end.a < text.b) {
       printf("Parse failed!\n");
       printf("Failure near `");
-      //`%-20.20s`\n", parser->highwater);
-      print_flat(parser->highwater, text.b, 20);
+      print_flat(cspan(context->highwater, text.b), 20);
       printf("`\n");
       continue;
     }
@@ -239,7 +238,7 @@ int main(int argc, char** argv) {
 
     if (dump_tree) {
       printf("Parse tree:\n");
-      for (auto n = parser->top_head; n; n = n->node_next) {
+      for (auto n = context->top_head; n; n = n->node_next) {
         print_tree(n);
       }
     }
@@ -254,7 +253,7 @@ int main(int argc, char** argv) {
     if (verbose) {
       printf("Slab current      %d\n",  NodeBase::slabs.current_size);
       printf("Slab max          %d\n",  NodeBase::slabs.max_size);
-      printf("Tree nodes        %ld\n", parser->node_count());
+      printf("Tree nodes        %ld\n", context->node_count());
       printf("Constructor calls %ld\n", NodeBase::constructor_calls);
       printf("Destructor calls  %ld\n", NodeBase::destructor_calls);
     }
@@ -272,7 +271,7 @@ int main(int argc, char** argv) {
   printf("Rep time   %f\n", time_accum / reps);
   printf("\n");
 
-  delete parser;
+  delete context;
 
   return 0;
 }

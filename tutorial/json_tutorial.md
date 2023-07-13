@@ -165,7 +165,7 @@ int main(int argc, char** argv) {
 
   printf("Parsing %s\n", path);
 
-  Parser* parser = new Parser();
+  Context* context = new Parser();
 
   const char* text_a = buf;
   const char* text_b = buf + statbuf.st_size;
