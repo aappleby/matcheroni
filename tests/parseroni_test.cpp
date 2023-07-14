@@ -8,6 +8,8 @@
 #include <string>
 
 #include "matcheroni/Matcheroni.hpp"
+#include "matcheroni/Parseroni.hpp"
+#include "matcheroni/Utilities.hpp"
 
 using namespace matcheroni;
 
@@ -34,11 +36,11 @@ struct TestNode : public NodeBase {
 
 static int fail_count = 0;
 
-#define CHECK(A, ...)                                                \
+#define TEST(A, ...)                                                \
   if (!(A)) {                                                        \
     fail_count++;                                                    \
     printf("\n");                                                    \
-    printf("CHECK(" #A ") fail: @ %s/%s:%d", __FILE__, __FUNCTION__, \
+    printf("TEST(" #A ") fail: @ %s/%s:%d", __FILE__, __FUNCTION__, \
            __LINE__);                                                \
     printf("\n  " __VA_ARGS__);                                      \
     printf("\n");                                                    \
@@ -58,14 +60,14 @@ struct BeginEndTest {
   CaptureBegin<
     P,
     Opt<
-      Seq<Atom<'+'>,  CaptureEnd<"plus",  TestNode>>,
-      Seq<Atom<'*'>,  CaptureEnd<"star",  TestNode>>,
-      Seq<Atom<'?'>,  CaptureEnd<"opt",   TestNode>>
+      CaptureEnd<"plus", Atom<'+'>, TestNode>,
+      CaptureEnd<"star", Atom<'*'>, TestNode>,
+      CaptureEnd<"opt",  Atom<'?'>, TestNode>
     >
   >;
 
   using atom =
-  suffixed<CaptureNamed<
+  suffixed<Capture<
     "atom",
     Some<Range<'a','z'>, Range<'A','Z'>, Range<'0','9'>>,
     TestNode
@@ -75,7 +77,7 @@ struct BeginEndTest {
   using cdr = Any<Seq<ws, Atom<','>, ws, Ref<match>>>;
 
   using list =
-  suffixed<CaptureNamed<
+  suffixed<Capture<
     "list",
     Seq<Atom<'['>, ws, car, cdr, ws, Atom<']'>>,
     TestNode
@@ -98,6 +100,13 @@ void test_begin_end() {
     printf("invalid\n");
   }
 
+  printf("sizeof(TestNode) %ld\n", sizeof(TestNode));
+  printf("node count %ld\n", c.top_head->node_count());
+  printf("constructor calls %ld\n", NodeBase::constructor_calls);
+  printf("destructor calls %ld\n", NodeBase::destructor_calls);
+  printf("max size %d\n", NodeBase::slabs.max_size);
+  printf("current size %d\n", NodeBase::slabs.current_size);
+
   printf("test_begin_end() done\n");
   printf("\n");
 }
@@ -112,14 +121,14 @@ struct Pathological {
 
   using pattern =
   Oneof<
-    CaptureNamed<"plus",  Seq<Atom<'['>, Ref<match>, Atom<']'>, Atom<'+'>>, TestNode>,
-    CaptureNamed<"minus", Seq<Atom<'['>, Ref<match>, Atom<']'>, Atom<'-'>>, TestNode>,
-    CaptureNamed<"star",  Seq<Atom<'['>, Ref<match>, Atom<']'>, Atom<'*'>>, TestNode>,
-    CaptureNamed<"slash", Seq<Atom<'['>, Ref<match>, Atom<']'>, Atom<'/'>>, TestNode>,
-    CaptureNamed<"opt",   Seq<Atom<'['>, Ref<match>, Atom<']'>, Atom<'?'>>, TestNode>,
-    CaptureNamed<"eq",    Seq<Atom<'['>, Ref<match>, Atom<']'>, Atom<'='>>, TestNode>,
-    CaptureNamed<"none",  Seq<Atom<'['>, Ref<match>, Atom<']'>>, TestNode>,
-    CaptureNamed<"atom",  Range<'a','z'>, TestNode>
+    Capture<"plus",  Seq<Atom<'['>, Ref<match>, Atom<']'>, Atom<'+'>>, TestNode>,
+    Capture<"minus", Seq<Atom<'['>, Ref<match>, Atom<']'>, Atom<'-'>>, TestNode>,
+    Capture<"star",  Seq<Atom<'['>, Ref<match>, Atom<']'>, Atom<'*'>>, TestNode>,
+    Capture<"slash", Seq<Atom<'['>, Ref<match>, Atom<']'>, Atom<'/'>>, TestNode>,
+    Capture<"opt",   Seq<Atom<'['>, Ref<match>, Atom<']'>, Atom<'?'>>, TestNode>,
+    Capture<"eq",    Seq<Atom<'['>, Ref<match>, Atom<']'>, Atom<'='>>, TestNode>,
+    Capture<"none",  Seq<Atom<'['>, Ref<match>, Atom<']'>>, TestNode>,
+    Capture<"atom",  Range<'a','z'>, TestNode>
   >;
 };
 
@@ -142,7 +151,7 @@ void test_pathological() {
   c.reset();
   span = to_span(text);
   tail = Pathological::match(&c, span);
-  CHECK(tail.is_valid(), "pathological tree invalid");
+  TEST(tail.is_valid(), "pathological tree invalid");
   print_tree(c.top_head);
   printf("sizeof(TestNode) %ld\n", sizeof(TestNode));
   printf("node count %ld\n", c.top_head->node_count());
@@ -159,8 +168,8 @@ void test_pathological() {
 struct TinyLisp {
   static cspan match(void* ctx, cspan s) {
     return Oneof<
-      CaptureNamed<"atom", atom, TestNode>,
-      CaptureNamed<"list", list, TestNode>
+      Capture<"atom", atom, TestNode>,
+      Capture<"list", list, TestNode>
     >::match(ctx, s);
   }
 
@@ -184,26 +193,26 @@ void test_basic() {
     c.reset();
     span = to_span(text);
     tail = TinyLisp::match(&c, span);
-    CHECK(tail.is_valid() && tail == "");
+    TEST(tail.is_valid() && tail == "");
     std::string dump;
     ((TestNode*)c.top_head)->dump_tree(dump);
-    CHECK(text == dump, "Round trip s-expression");
+    TEST(text == dump, "Round trip s-expression");
   }
 
   c.reset();
   span = to_span("((((a))))");
   tail = TinyLisp::match(&c, span);
-  CHECK(tail.is_valid() && tail == "");
+  TEST(tail.is_valid() && tail == "");
 
   c.reset();
   span = to_span("(((())))");
   tail = TinyLisp::match(&c, span);
-  CHECK(tail.is_valid() && tail == "");
+  TEST(tail.is_valid() && tail == "");
 
   c.reset();
   span = to_span("(((()))(");
   tail = TinyLisp::match(&c, span);
-  CHECK(!tail.is_valid() && tail == "(");
+  TEST(!tail.is_valid() && tail == "(");
 }
 
 //------------------------------------------------------------------------------

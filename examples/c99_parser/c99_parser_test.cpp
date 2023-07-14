@@ -3,7 +3,7 @@
 
 #include <filesystem>
 
-#include "examples/utils.hpp"
+#include "matcheroni/Utilities.hpp"
 
 #include "examples/c99_parser/C99Lexer.hpp"
 #include "examples/c99_parser/C99Parser.hpp"

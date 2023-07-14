@@ -1,3 +1,7 @@
+// To build a parse tree, we wrap the patterns we want to create nodes for
+// in a Capture<> matcher that will invoke our node factory. We can also wrap
+// them in a Trace<> matcher if we want to debug our patterns.
+
 #if 0
 # Comparisons of Matcheroni's JSON parser against...
 

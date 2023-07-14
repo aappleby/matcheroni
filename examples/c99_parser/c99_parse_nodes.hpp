@@ -4,7 +4,7 @@
 #pragma once
 
 #include "matcheroni/Matcheroni.hpp"
-#include "examples/utils.hpp"
+#include "matcheroni/Utilities.hpp"
 
 #include "examples/c99_parser/ParseNode.hpp"
 #include "examples/c99_parser/Lexeme.hpp"
@@ -166,8 +166,19 @@ struct NodeBuiltinType : public ParseNode, public LeafMaker<NodeBuiltinType> {
   using match_base = Ref<&C99Parser::match_builtin_type_base>;
   using match_suffix = Ref<&C99Parser::match_builtin_type_suffix>;
 
-  using pattern = Seq<Any<Seq<match_prefix, And<match_base>>>, match_base,
-                      Opt<match_suffix>>;
+  // clang-format off
+  using pattern =
+  Seq<
+    Any<
+      Seq<
+        match_prefix,
+        And<match_base>
+      >
+    >,
+    match_base,
+    Opt<match_suffix>
+  >;
+  // clang-format on
 };
 
 struct NodeTypedefType : public ParseNode, public LeafMaker<NodeTypedefType> {
@@ -183,7 +194,11 @@ struct NodeTypedefType : public ParseNode, public LeafMaker<NodeTypedefType> {
 
 struct NodeIdentifier : public ParseNode, public LeafMaker<NodeIdentifier> {
   using pattern =
-      Seq<Not<NodeBuiltinType>, Not<NodeTypedefType>, Atom<LEX_IDENTIFIER>>;
+  Seq<
+    Not<NodeBuiltinType>,
+    Not<NodeTypedefType>,
+    Atom<LEX_IDENTIFIER>
+  >;
 };
 
 //------------------------------------------------------------------------------
@@ -195,8 +210,13 @@ struct NodePreproc : public ParseNode, public LeafMaker<NodePreproc> {
 //------------------------------------------------------------------------------
 
 struct NodeConstant : public ParseNode, public LeafMaker<NodeConstant> {
-  using pattern = Oneof<Atom<LEX_FLOAT>, Atom<LEX_INT>, Atom<LEX_CHAR>,
-                        Some<Atom<LEX_STRING>>>;
+  using pattern =
+  Oneof<
+    Atom<LEX_FLOAT>,
+    Atom<LEX_INT>,
+    Atom<LEX_CHAR>,
+    Some<Atom<LEX_STRING>>
+  >;
 };
 
 //------------------------------------------------------------------------------
@@ -263,7 +283,13 @@ struct NodeAsmSuffix : public ParseNode, public NodeMaker<NodeAsmSuffix> {
 struct NodeAccessSpecifier : public ParseNode,
                              public LeafMaker<NodeAccessSpecifier> {
   using pattern =
-      Seq<Oneof<Literal2<"public">, Literal2<"private">>, Atom<':'>>;
+  Seq<
+    Oneof<
+      Literal2<"public">,
+      Literal2<"private">
+    >,
+    Atom<':'>
+  >;
 };
 
 //------------------------------------------------------------------------------
@@ -382,32 +408,69 @@ struct NodePrefixKeyword : public ParseNode,
   using pattern = Keyword<lit>;
 };
 
+// clang-format off
 using ExpressionPrefixOp =
-    Oneof<NodePrefixCast, NodePrefixKeyword<"__extension__">,
-          NodePrefixKeyword<"__real">, NodePrefixKeyword<"__real__">,
-          NodePrefixKeyword<"__imag">, NodePrefixKeyword<"__imag__">,
-          NodePrefixOp<"++">, NodePrefixOp<"--">, NodePrefixOp<"+">,
-          NodePrefixOp<"-">, NodePrefixOp<"!">, NodePrefixOp<"~">,
-          NodePrefixOp<"*">, NodePrefixOp<"&">>;
+Oneof<
+  NodePrefixCast,
+  NodePrefixKeyword<"__extension__">,
+  NodePrefixKeyword<"__real">,
+  NodePrefixKeyword<"__real__">,
+  NodePrefixKeyword<"__imag">,
+  NodePrefixKeyword<"__imag__">,
+  NodePrefixOp<"++">,
+  NodePrefixOp<"--">,
+  NodePrefixOp<"+">,
+  NodePrefixOp<"-">,
+  NodePrefixOp<"!">,
+  NodePrefixOp<"~">,
+  NodePrefixOp<"*">,
+  NodePrefixOp<"&">
+>;
+// clang-format on
 
 //----------------------------------------
 
+// clang-format off
 using ExpressionCore =
-    Oneof<NodeExpressionSizeof, NodeExpressionAlignof, NodeExpressionOffsetof,
-          NodeExpressionGccCompound, NodeExpressionParen, NodeInitializerList,
-          NodeExpressionBraces, NodeIdentifier, NodeConstant>;
+Oneof<
+  NodeExpressionSizeof,
+  NodeExpressionAlignof,
+  NodeExpressionOffsetof,
+  NodeExpressionGccCompound,
+  NodeExpressionParen,
+  NodeInitializerList,
+  NodeExpressionBraces,
+  NodeIdentifier,
+  NodeConstant
+>;
+// clang-format on
 
 //----------------------------------------
 
+// clang-format off
 using ExpressionSuffixOp =
-    Oneof<NodeSuffixInitializerList,  // must be before NodeSuffixBraces
-          NodeSuffixBraces, NodeSuffixParen, NodeSuffixSubscript,
-          NodeSuffixOp<"++">, NodeSuffixOp<"--">>;
+Oneof<
+  NodeSuffixInitializerList,  // must be before NodeSuffixBraces
+  NodeSuffixBraces,
+  NodeSuffixParen,
+  NodeSuffixSubscript,
+  NodeSuffixOp<"++">,
+  NodeSuffixOp<"--">
+>;
+// clang-format on
 
 //----------------------------------------
 
+// clang-format off
 using unit_pattern =
-    Seq<Any<ExpressionPrefixOp>, ExpressionCore, Any<ExpressionSuffixOp>>;
+Seq<
+  Any<ExpressionPrefixOp>,
+  ExpressionCore,
+  Any<ExpressionSuffixOp>
+>;
+// clang-format on
+
+//----------------------------------------
 
 struct NodeTernaryOp : public ParseNode, public NodeMaker<NodeTernaryOp> {
   NodeTernaryOp() {
@@ -430,12 +493,12 @@ struct NodeExpression : public ParseNode {
     }
     /*+*/ parser_rewind(ctx, a, b);
 
+    // clang-format off
     switch (a->unsafe_span_a()[0]) {
       case '+':
         return Oneof<NodeBinaryOp<"+=">, NodeBinaryOp<"+">>::match(ctx, a, b);
       case '-':
-        return Oneof<NodeBinaryOp<"->*">, NodeBinaryOp<"->">,
-                     NodeBinaryOp<"-=">, NodeBinaryOp<"-">>::match(ctx, a, b);
+        return Oneof<NodeBinaryOp<"->*">, NodeBinaryOp<"->">, NodeBinaryOp<"-=">, NodeBinaryOp<"-">>::match(ctx, a, b);
       case '*':
         return Oneof<NodeBinaryOp<"*=">, NodeBinaryOp<"*">>::match(ctx, a, b);
       case '/':
@@ -443,20 +506,15 @@ struct NodeExpression : public ParseNode {
       case '=':
         return Oneof<NodeBinaryOp<"==">, NodeBinaryOp<"=">>::match(ctx, a, b);
       case '<':
-        return Oneof<NodeBinaryOp<"<<=">, NodeBinaryOp<"<=>">,
-                     NodeBinaryOp<"<=">, NodeBinaryOp<"<<">,
-                     NodeBinaryOp<"<">>::match(ctx, a, b);
+        return Oneof<NodeBinaryOp<"<<=">, NodeBinaryOp<"<=>">, NodeBinaryOp<"<=">, NodeBinaryOp<"<<">, NodeBinaryOp<"<">>::match(ctx, a, b);
       case '>':
-        return Oneof<NodeBinaryOp<">>=">, NodeBinaryOp<">=">,
-                     NodeBinaryOp<">>">, NodeBinaryOp<">">>::match(ctx, a, b);
+        return Oneof<NodeBinaryOp<">>=">, NodeBinaryOp<">=">, NodeBinaryOp<">>">, NodeBinaryOp<">">>::match(ctx, a, b);
       case '!':
         return NodeBinaryOp<"!=">::match(ctx, a, b);
       case '&':
-        return Oneof<NodeBinaryOp<"&&">, NodeBinaryOp<"&=">,
-                     NodeBinaryOp<"&">>::match(ctx, a, b);
+        return Oneof<NodeBinaryOp<"&&">, NodeBinaryOp<"&=">, NodeBinaryOp<"&">>::match(ctx, a, b);
       case '|':
-        return Oneof<NodeBinaryOp<"||">, NodeBinaryOp<"|=">,
-                     NodeBinaryOp<"|">>::match(ctx, a, b);
+        return Oneof<NodeBinaryOp<"||">, NodeBinaryOp<"|=">, NodeBinaryOp<"|">>::match(ctx, a, b);
       case '^':
         return Oneof<NodeBinaryOp<"^=">, NodeBinaryOp<"^">>::match(ctx, a, b);
       case '%':
@@ -470,6 +528,7 @@ struct NodeExpression : public ParseNode {
         // case ':': return NodeBinaryOp<"::">::match(ctx, a, b);
         // default:  return nullptr;
     }
+    // clang-format on
 
     return nullptr;
   }
@@ -486,18 +545,6 @@ struct NodeExpression : public ParseNode {
   */
 
   static Token* match2(void* ctx, Token* a, Token* b) {
-    // Token* cursor = a;
-    // cursor = NodeExpressionUnit::match(ctx, a, b);
-    /*
-    cursor = unit_pattern::match(ctx, a, b);
-    if (!cursor) return nullptr;
-
-    using binary_pattern = Seq<Ref<match_binary_op>, unit_pattern>;
-
-    while (auto end = binary_pattern::match(ctx, cursor, b)) {
-      cursor = end;
-    }
-    */
 
     using pattern =
         Seq<unit_pattern, Any<Seq<Ref<match_binary_op>, unit_pattern>>>;
@@ -536,12 +583,6 @@ struct NodeExpression : public ParseNode {
           continue;
         }
       }
-
-      /*
-      auto r = c->step_right();
-      if (r && r < tok_b) {
-      }
-      */
 
       break;
     }
@@ -672,24 +713,49 @@ struct NodeExpression : public ParseNode {
 // 20010911-1.c - Attribute can be empty
 
 struct NodeAttribute : public ParseNode, public NodeMaker<NodeAttribute> {
-  using pattern = Seq<Oneof<Keyword<"__attribute__">, Keyword<"__attribute">>,
-                      DelimitedList<Seq<Atom<'('>, Atom<'('>>,
-                                    Oneof<NodeExpression, Atom<LEX_KEYWORD>>,
-                                    Atom<','>, Seq<Atom<')'>, Atom<')'>>>>;
+  // clang-format off
+  using pattern =
+  Seq<
+    Oneof<
+      Keyword<"__attribute__">,
+      Keyword<"__attribute">
+    >,
+    DelimitedList<
+      Seq<Atom<'('>, Atom<'('>>,
+      Oneof<NodeExpression, Atom<LEX_KEYWORD>>,
+      Atom<','>,
+      Seq<Atom<')'>, Atom<')'>>
+    >
+  >;
+  // clang-format on
 };
 
 //------------------------------------------------------------------------------
 
 struct NodeAlignas : public ParseNode, public NodeMaker<NodeAlignas> {
-  using pattern = Seq<Keyword<"_Alignas">, Atom<'('>,
-                      Oneof<NodeTypeDecl, NodeConstant>, Atom<')'>>;
+  // clang-format off
+  using pattern =
+  Seq<
+    Keyword<"_Alignas">,
+    Atom<'('>,
+    Oneof<NodeTypeDecl, NodeConstant>,
+    Atom<')'>
+  >;
+  // clang-format on
 };
 
 //------------------------------------------------------------------------------
 
 struct NodeDeclspec : public ParseNode, public NodeMaker<NodeDeclspec> {
+  // clang-format off
   using pattern =
-      Seq<Keyword<"__declspec">, Atom<'('>, NodeIdentifier, Atom<')'>>;
+  Seq<
+    Keyword<"__declspec">,
+    Atom<'('>,
+    NodeIdentifier,
+    Atom<')'>
+  >;
+  // clang-format on
 };
 
 //------------------------------------------------------------------------------
@@ -737,13 +803,15 @@ struct NodeParamList : public ParseNode, public NodeMaker<NodeParamList> {
 //------------------------------------------------------------------------------
 
 struct NodeArraySuffix : public ParseNode, public NodeMaker<NodeArraySuffix> {
+  // clang-format off
   using pattern =
-      Oneof<Seq<Atom<'['>, Any<NodeModifier>, Opt<NodeExpression>, Atom<']'>>,
-            Seq<Atom<'['>, NodeKeyword<"static">, Any<NodeModifier>,
-                NodeExpression, Atom<']'>>,
-            Seq<Atom<'['>, Any<NodeModifier>, NodeKeyword<"static">,
-                NodeExpression, Atom<']'>>,
-            Seq<Atom<'['>, Any<NodeModifier>, Literal2<"*">, Atom<']'>>>;
+  Oneof<
+    Seq<Atom<'['>, Any<NodeModifier>, Opt<NodeExpression>, Atom<']'>>,
+    Seq<Atom<'['>, NodeKeyword<"static">, Any<NodeModifier>, NodeExpression, Atom<']'>>,
+    Seq<Atom<'['>, Any<NodeModifier>, NodeKeyword<"static">, NodeExpression, Atom<']'>>,
+    Seq<Atom<'['>, Any<NodeModifier>, Literal2<"*">, Atom<']'>>
+  >;
+  // clang-format on
 };
 
 //------------------------------------------------------------------------------
@@ -762,28 +830,42 @@ struct NodeAtomicType : public ParseNode, public NodeMaker<NodeAtomicType> {
 //------------------------------------------------------------------------------
 
 struct NodeSpecifier : public ParseNode, public NodeMaker<NodeSpecifier> {
+  // clang-format off
   using pattern =
-      Seq<Oneof<
-              // These have to be NodeIdentifier because "void foo(struct S);"
-              // is valid even without the definition of S.
-              Seq<NodeLiteral<"class">, Oneof<NodeIdentifier, NodeTypedefType>>,
-              Seq<Keyword<"union">, Oneof<NodeIdentifier, NodeTypedefType>>,
-              Seq<Keyword<"struct">, Oneof<NodeIdentifier, NodeTypedefType>>,
-              Seq<Keyword<"enum">, Oneof<NodeIdentifier, NodeTypedefType>>,
+  Seq<
+    Oneof<
+      // These have to be NodeIdentifier because "void foo(struct S);"
+      // is valid even without the definition of S.
+      Seq<NodeLiteral<"class">, Oneof<NodeIdentifier, NodeTypedefType>>,
+      Seq<Keyword<"union">,     Oneof<NodeIdentifier, NodeTypedefType>>,
+      Seq<Keyword<"struct">,    Oneof<NodeIdentifier, NodeTypedefType>>,
+      Seq<Keyword<"enum">,      Oneof<NodeIdentifier, NodeTypedefType>>,
 
-              /*
-              // If this was C++, we would also need to match these directly
-              BaseClassType,
-              BaseStructType,
-              NodeUnionType,
-              NodeEnumType,
-              */
+      /*
+      // If this was C++, we would also need to match these directly
+      BaseClassType,
+      BaseStructType,
+      NodeUnionType,
+      NodeEnumType,
+      */
 
-              NodeBuiltinType, NodeTypedefType, NodeAtomicType,
-              Seq<Oneof<Keyword<"__typeof__">, Keyword<"__typeof">,
-                        Keyword<"typeof">>,
-                  Atom<'('>, NodeExpression, Atom<')'>>>,
-          Opt<NodeTemplateArgs>>;
+      NodeBuiltinType,
+      NodeTypedefType,
+      NodeAtomicType,
+      Seq<
+        Oneof<
+          Keyword<"__typeof__">,
+          Keyword<"__typeof">,
+          Keyword<"typeof">
+        >,
+        Atom<'('>,
+        NodeExpression,
+        Atom<')'>
+      >
+    >,
+    Opt<NodeTemplateArgs>
+  >;
+  // clang-format on
 };
 
 //------------------------------------------------------------------------------
@@ -830,17 +912,46 @@ struct NodeDeclarator : public ParseNode, public NodeMaker<NodeDeclarator> {
 
 struct NodeDeclaratorList : public ParseNode,
                             public NodeMaker<NodeDeclaratorList> {
-  using pattern = comma_separated<
-      Seq<Oneof<Seq<NodeDeclarator, Opt<NodeBitSuffix>>, NodeBitSuffix>,
-          Opt<Seq<Atom<'='>, NodeInitializer>>>>;
+  // clang-format off
+  using pattern =
+  comma_separated<
+    Seq<
+      Oneof<
+        Seq<
+          NodeDeclarator,
+          Opt<NodeBitSuffix>
+        >,
+        NodeBitSuffix
+      >,
+      Opt<
+        Seq<
+          Atom<'='>,
+          NodeInitializer
+        >
+      >
+    >
+  >;
+  // clang-format on
 };
 
 //------------------------------------------------------------------------------
 
 struct NodeField : public PatternWrapper<NodeField> {
-  using pattern = Oneof<Atom<';'>, NodeAccessSpecifier, NodeConstructor,
-                        NodeFunctionDefinition, NodeStruct, NodeUnion,
-                        NodeTemplate, NodeClass, NodeEnum, NodeDeclaration>;
+  // clang-format off
+  using pattern =
+  Oneof<
+    Atom<';'>,
+    NodeAccessSpecifier,
+    NodeConstructor,
+    NodeFunctionDefinition,
+    NodeStruct,
+    NodeUnion,
+    NodeTemplate,
+    NodeClass,
+    NodeEnum,
+    NodeDeclaration
+  >;
+  // clang-format on
 };
 
 struct NodeFieldList : public ParseNode, public NodeMaker<NodeFieldList> {
@@ -875,11 +986,18 @@ struct NodeStructTypeAdder : public NodeIdentifier {
 };
 
 struct NodeStruct : public ParseNode, public NodeMaker<NodeStruct> {
-  using pattern = Seq<Any<NodeModifier>, Keyword<"struct">,
-                      Any<NodeAttribute>,  // This has to be here, there are a
-                                           // lot of struct __attrib__() foo {};
-                      Opt<NodeStructTypeAdder>, Opt<NodeFieldList>,
-                      Any<NodeAttribute>, Opt<NodeDeclaratorList>>;
+  // clang-format off
+  using pattern =
+  Seq<
+    Any<NodeModifier>,
+    Keyword<"struct">,
+    Any<NodeAttribute>,  // This has to be here, there are a lot of struct __attrib__() foo {};
+    Opt<NodeStructTypeAdder>,
+    Opt<NodeFieldList>,
+    Any<NodeAttribute>,
+    Opt<NodeDeclaratorList>
+  >;
+  // clang-format on
 };
 
 //------------------------------------------------------------------------------
@@ -911,9 +1029,18 @@ struct NodeUnionTypeAdder : public NodeIdentifier {
 };
 
 struct NodeUnion : public ParseNode, public NodeMaker<NodeUnion> {
-  using pattern = Seq<Any<NodeModifier>, Keyword<"union">, Any<NodeAttribute>,
-                      Opt<NodeUnionTypeAdder>, Opt<NodeFieldList>,
-                      Any<NodeAttribute>, Opt<NodeDeclaratorList>>;
+  // clang-format off
+  using pattern =
+  Seq<
+    Any<NodeModifier>,
+    Keyword<"union">,
+    Any<NodeAttribute>,
+    Opt<NodeUnionTypeAdder>,
+    Opt<NodeFieldList>,
+    Any<NodeAttribute>,
+    Opt<NodeDeclaratorList>
+  >;
+  // clang-format on
 };
 
 //------------------------------------------------------------------------------
@@ -937,10 +1064,18 @@ struct NodeClassTypeAdder : public NodeIdentifier {
 };
 
 struct NodeClass : public ParseNode, public NodeMaker<NodeClass> {
+  // clang-format off
   using pattern =
-      Seq<Any<NodeModifier>, NodeLiteral<"class">, Any<NodeAttribute>,
-          Opt<NodeClassTypeAdder>, Opt<NodeFieldList>, Any<NodeAttribute>,
-          Opt<NodeDeclaratorList>>;
+  Seq<
+    Any<NodeModifier>,
+    NodeLiteral<"class">,
+    Any<NodeAttribute>,
+    Opt<NodeClassTypeAdder>,
+    Opt<NodeFieldList>,
+    Any<NodeAttribute>,
+    Opt<NodeDeclaratorList>
+  >;
+  // clang-format on
 };
 
 //------------------------------------------------------------------------------
@@ -986,22 +1121,33 @@ struct NodeEnumerators : public ParseNode, public NodeMaker<NodeEnumerators> {
 };
 
 struct NodeEnum : public ParseNode, public NodeMaker<NodeEnum> {
+  // clang-format off
   using pattern =
-      Seq<Any<NodeModifier>, Keyword<"enum">, Opt<NodeLiteral<"class">>,
-          Opt<NodeEnumTypeAdder>, Opt<Seq<Atom<':'>, NodeTypeDecl>>,
-          Opt<NodeEnumerators>, Opt<NodeDeclaratorList>>;
+  Seq<
+    Any<NodeModifier>,
+    Keyword<"enum">,
+    Opt<NodeLiteral<"class">>,
+    Opt<NodeEnumTypeAdder>,
+    Opt<Seq<Atom<':'>, NodeTypeDecl>>,
+    Opt<NodeEnumerators>,
+    Opt<NodeDeclaratorList>
+  >;
 };
 
 //------------------------------------------------------------------------------
 
 struct NodeDesignation : public ParseNode, public NodeMaker<NodeDesignation> {
-  using pattern = Some<Seq<Atom<'['>, NodeConstant, Atom<']'>>,
-                       Seq<Atom<'['>, NodeIdentifier, Atom<']'>>,
-                       Seq<Atom<'.'>, NodeIdentifier>>;
+  // clang-format off
+  using pattern =
+  Some<
+    Seq<Atom<'['>, NodeConstant, Atom<']'>>,
+    Seq<Atom<'['>, NodeIdentifier, Atom<']'>>,
+    Seq<Atom<'.'>, NodeIdentifier>
+  >;
+  // clang-format on
 };
 
-struct NodeInitializerList : public ParseNode,
-                             public NodeMaker<NodeInitializerList> {
+struct NodeInitializerList : public ParseNode, public NodeMaker<NodeInitializerList> {
   using pattern = DelimitedList<
       Atom<'{'>,
       Seq<Opt<Seq<NodeDesignation, Atom<'='>>,
@@ -1012,21 +1158,27 @@ struct NodeInitializerList : public ParseNode,
       Atom<','>, Atom<'}'>>;
 };
 
-struct NodeSuffixInitializerList : public ParseNode,
-                                   public NodeMaker<NodeSuffixInitializerList> {
+struct NodeSuffixInitializerList : public ParseNode, public NodeMaker<NodeSuffixInitializerList> {
   NodeSuffixInitializerList() {
     precedence = 2;
     assoc = 2;
   }
 
-  using pattern = DelimitedList<
-      Atom<'{'>,
-      Seq<Opt<Seq<NodeDesignation, Atom<'='>>,
-              Seq<NodeIdentifier, Atom<':'>>  // This isn't in the C grammar but
-                                              // compndlit-1.c uses it?
-              >,
-          NodeInitializer>,
-      Atom<','>, Atom<'}'>>;
+  // clang-format off
+  using pattern =
+  DelimitedList<
+    Atom<'{'>,
+    Seq<
+      Opt<
+        Seq<NodeDesignation, Atom<'='>>,
+        Seq<NodeIdentifier, Atom<':'>>  // This isn't in the C grammar but compndlit-1.c uses it?
+      >,
+      NodeInitializer
+    >,
+    Atom<','>,
+    Atom<'}'>
+  >;
+  // clang-format on
 };
 
 struct NodeInitializer : public ParseNode, public NodeMaker<NodeInitializer> {
@@ -1037,9 +1189,16 @@ struct NodeInitializer : public ParseNode, public NodeMaker<NodeInitializer> {
 
 struct NodeFunctionIdentifier : public ParseNode,
                                 public NodeMaker<NodeFunctionIdentifier> {
-  using pattern = Seq<
-      Any<NodeAttribute, NodePointer>,
-      Oneof<NodeIdentifier, Seq<Atom<'('>, NodeFunctionIdentifier, Atom<')'>>>>;
+  // clang-format off
+  using pattern =
+  Seq<
+    Any<NodeAttribute, NodePointer>,
+    Oneof<
+      NodeIdentifier,
+      Seq<Atom<'('>, NodeFunctionIdentifier, Atom<')'>>
+    >
+  >;
+  // clang-format on
 };
 
 // function-definition:
@@ -1047,32 +1206,62 @@ struct NodeFunctionIdentifier : public ParseNode,
 
 struct NodeFunctionDefinition : public ParseNode,
                                 public NodeMaker<NodeFunctionDefinition> {
+  // clang-format off
   using pattern =
-      Seq<Any<NodeModifier>, Opt<NodeSpecifier>, Any<NodeModifier>,
-          NodeFunctionIdentifier, NodeParamList, Any<NodeModifier>,
-          Opt<NodeAsmSuffix>, Opt<NodeKeyword<"const">>,
-          // This is old-style declarations after param list
-          Opt<Some<Seq<NodeDeclaration, Atom<';'>>>>, NodeStatementCompound>;
+  Seq<
+    Any<NodeModifier>,
+    Opt<NodeSpecifier>,
+    Any<NodeModifier>,
+    NodeFunctionIdentifier,
+    NodeParamList,
+    Any<NodeModifier>,
+    Opt<NodeAsmSuffix>,
+    Opt<NodeKeyword<"const">>,
+    // This is old-style declarations after param list
+    Opt<Some<Seq<NodeDeclaration, Atom<';'>>>>,
+    NodeStatementCompound
+  >;
+  // clang-format on
 };
 
 //------------------------------------------------------------------------------
 
 struct NodeConstructor : public ParseNode, public NodeMaker<NodeConstructor> {
-  using pattern = Seq<NodeClassType, NodeParamList,
-                      Oneof<Atom<';'>, NodeStatementCompound>>;
+  // clang-format off
+  using pattern =
+  Seq<
+    NodeClassType,
+    NodeParamList,
+    Oneof<
+      Atom<';'>,
+      NodeStatementCompound
+    >
+  >;
+  // clang-format om
 };
 
 //------------------------------------------------------------------------------
 // FIXME this is messy
 
 struct NodeDeclaration : public ParseNode, public NodeMaker<NodeDeclaration> {
+  // clang-format off
   using pattern =
-      Seq<Any<NodeAttribute, NodeModifier>,
-
-          Oneof<Seq<NodeSpecifier, Any<NodeAttribute, NodeModifier>,
-                    Opt<NodeDeclaratorList>>,
-                Seq<Opt<NodeSpecifier>, Any<NodeAttribute, NodeModifier>,
-                    NodeDeclaratorList>>>;
+  Seq<
+    Any<NodeAttribute, NodeModifier>,
+    Oneof<
+      Seq<
+        NodeSpecifier,
+        Any<NodeAttribute, NodeModifier>,
+        Opt<NodeDeclaratorList>
+      >,
+      Seq<
+        Opt<NodeSpecifier>,
+        Any<NodeAttribute, NodeModifier>,
+        NodeDeclaratorList
+      >
+    >
+  >;
+  // clang-format on
 };
 
 //------------------------------------------------------------------------------
@@ -1090,8 +1279,7 @@ struct PushPopScope {
   }
 };
 
-struct NodeStatementCompound : public ParseNode,
-                               public NodeMaker<NodeStatementCompound> {
+struct NodeStatementCompound : public ParseNode, public NodeMaker<NodeStatementCompound> {
   using pattern =
       PushPopScope<DelimitedBlock<Atom<'{'>, NodeStatement, Atom<'}'>>>;
 };
@@ -1099,6 +1287,7 @@ struct NodeStatementCompound : public ParseNode,
 //------------------------------------------------------------------------------
 
 struct NodeStatementFor : public ParseNode, public NodeMaker<NodeStatementFor> {
+  // clang-format off
   using pattern =
   Seq<
     Keyword<"for">,
@@ -1116,12 +1305,12 @@ struct NodeStatementFor : public ParseNode, public NodeMaker<NodeStatementFor> {
     Atom<')'>,
     Oneof<NodeStatementCompound, NodeStatement>
   >;
+  // clang-format on
 };
 
 //------------------------------------------------------------------------------
 
-struct NodeStatementElse : public ParseNode,
-                           public NodeMaker<NodeStatementElse> {
+struct NodeStatementElse : public ParseNode, public NodeMaker<NodeStatementElse> {
   using pattern = Seq<Keyword<"else">, NodeStatement>;
 };
 
@@ -1136,81 +1325,122 @@ struct NodeStatementIf : public ParseNode, public NodeMaker<NodeStatementIf> {
 
 //------------------------------------------------------------------------------
 
-struct NodeStatementReturn : public ParseNode,
-                             public NodeMaker<NodeStatementReturn> {
+struct NodeStatementReturn : public ParseNode, public NodeMaker<NodeStatementReturn> {
   using pattern = Seq<Keyword<"return">, Opt<NodeExpression>, Atom<';'>>;
 };
 
 //------------------------------------------------------------------------------
 
-struct NodeStatementCase : public ParseNode,
-                           public NodeMaker<NodeStatementCase> {
-  using pattern = Seq<
-      Keyword<"case">, NodeExpression,
-      Opt<Seq<
-          // case 1...2: - this is supported by GCC?
-          NodeEllipsis, NodeExpression>>,
-      Atom<':'>,
-      Any<Seq<Not<Keyword<"case">>, Not<Keyword<"default">>, NodeStatement>>>;
+struct NodeStatementCase : public ParseNode, public NodeMaker<NodeStatementCase> {
+  // clang-format off
+  using pattern =
+  Seq<
+    Keyword<"case">,
+    NodeExpression,
+    // case 1...2: - this is supported by GCC?
+    Opt<Seq<NodeEllipsis, NodeExpression>>,
+    Atom<':'>,
+    Any<
+      Seq<
+        Not<Keyword<"case">>,
+        Not<Keyword<"default">>,
+        NodeStatement
+      >
+    >
+  >;
+  // clang-format on
 };
 
-struct NodeStatementDefault : public ParseNode,
-                              public NodeMaker<NodeStatementDefault> {
-  using pattern = Seq<
-      Keyword<"default">, Atom<':'>,
-      Any<Seq<Not<Keyword<"case">>, Not<Keyword<"default">>, NodeStatement>>>;
+struct NodeStatementDefault : public ParseNode, public NodeMaker<NodeStatementDefault> {
+  // clang-format off
+  using pattern =
+  Seq<
+    Keyword<"default">,
+    Atom<':'>,
+    Any<
+      Seq<
+        Not<Keyword<"case">>,
+        Not<Keyword<"default">>,
+        NodeStatement
+      >
+    >
+  >;
+  // clang-format on
 };
 
-struct NodeStatementSwitch : public ParseNode,
-                             public NodeMaker<NodeStatementSwitch> {
-  using pattern = Seq<Keyword<"switch">, NodeExpression, Atom<'{'>,
-                      Any<NodeStatementCase, NodeStatementDefault>, Atom<'}'>>;
+struct NodeStatementSwitch : public ParseNode, public NodeMaker<NodeStatementSwitch> {
+  // clang-format off
+  using pattern =
+  Seq<
+    Keyword<"switch">,
+    NodeExpression,
+    Atom<'{'>,
+    Any<NodeStatementCase, NodeStatementDefault>,
+    Atom<'}'>
+  >;
+  // clang-format on
 };
 
 //------------------------------------------------------------------------------
 
 struct NodeStatementWhile : public ParseNode,
                             public NodeMaker<NodeStatementWhile> {
+  // clang-format on
   using pattern =
-      Seq<Keyword<"while">,
-          DelimitedList<Atom<'('>, NodeExpression, Atom<','>, Atom<')'>>,
-          NodeStatement>;
+  Seq<
+    Keyword<"while">,
+    DelimitedList<Atom<'('>, NodeExpression, Atom<','>, Atom<')'>>,
+    NodeStatement
+  >;
+  // clang-format off
 };
 
 //------------------------------------------------------------------------------
 
 struct NodeStatementDoWhile : public ParseNode,
                               public NodeMaker<NodeStatementDoWhile> {
+  // clang-format off
   using pattern =
-      Seq<Keyword<"do">, NodeStatement, Keyword<"while">,
-          DelimitedList<Atom<'('>, NodeExpression, Atom<','>, Atom<')'>>,
-          Atom<';'>>;
+  Seq<
+    Keyword<"do">,
+    NodeStatement,
+    Keyword<"while">,
+    DelimitedList<Atom<'('>, NodeExpression, Atom<','>, Atom<')'>>,
+    Atom<';'>
+  >;
+  // clang-format on
 };
 
 //------------------------------------------------------------------------------
 
-struct NodeStatementLabel : public ParseNode,
-                            public NodeMaker<NodeStatementLabel> {
+struct NodeStatementLabel : public ParseNode, public NodeMaker<NodeStatementLabel> {
   using pattern = Seq<NodeIdentifier, Atom<':'>, Opt<Atom<';'>>>;
 };
 
 //------------------------------------------------------------------------------
 
-struct NodeStatementBreak : public ParseNode,
-                            public NodeMaker<NodeStatementBreak> {
+struct NodeStatementBreak : public ParseNode, public NodeMaker<NodeStatementBreak> {
   using pattern = Seq<Keyword<"break">, Atom<';'>>;
 };
 
-struct NodeStatementContinue : public ParseNode,
-                               public NodeMaker<NodeStatementContinue> {
+struct NodeStatementContinue : public ParseNode, public NodeMaker<NodeStatementContinue> {
   using pattern = Seq<Keyword<"continue">, Atom<';'>>;
 };
 
 //------------------------------------------------------------------------------
 
 struct NodeAsmRef : public ParseNode, public NodeMaker<NodeAsmRef> {
+  // clang-format off
   using pattern =
-      Seq<NodeAtom<LEX_STRING>, Opt<Seq<Atom<'('>, NodeExpression, Atom<')'>>>>;
+  Seq<
+    NodeAtom<LEX_STRING>,
+    Opt<Seq<
+      Atom<'('>,
+      NodeExpression,
+      Atom<')'>
+    >>
+  >;
+  // clang-format on
 };
 
 struct NodeAsmRefs : public ParseNode, public NodeMaker<NodeAsmRefs> {
@@ -1219,38 +1449,68 @@ struct NodeAsmRefs : public ParseNode, public NodeMaker<NodeAsmRefs> {
 
 //------------------------------------------------------------------------------
 
-struct NodeAsmQualifiers : public ParseNode,
-                           public NodeMaker<NodeAsmQualifiers> {
-  using pattern = Some<NodeKeyword<"volatile">, NodeKeyword<"__volatile">,
-                       NodeKeyword<"__volatile__">, NodeKeyword<"inline">,
-                       NodeKeyword<"goto">>;
+struct NodeAsmQualifiers : public ParseNode, public NodeMaker<NodeAsmQualifiers> {
+  // clang-format off
+  using pattern =
+  Some<
+    NodeKeyword<"volatile">,
+    NodeKeyword<"__volatile">,
+    NodeKeyword<"__volatile__">,
+    NodeKeyword<"inline">,
+    NodeKeyword<"goto">
+  >;
+  // clang-format on
 };
 
 //------------------------------------------------------------------------------
 
 struct NodeStatementAsm : public ParseNode, public NodeMaker<NodeStatementAsm> {
+  // clang-format off
   using pattern =
-      Seq<Oneof<Keyword<"asm">, Keyword<"__asm">, Keyword<"__asm__">>,
-          Opt<NodeAsmQualifiers>, Atom<'('>,
-          NodeAtom<LEX_STRING>,  // assembly code
-          SeqOpt<
-              // output operands
-              Seq<Atom<':'>, Opt<NodeAsmRefs>>,
-              // input operands
-              Seq<Atom<':'>, Opt<NodeAsmRefs>>,
-              // clobbers
-              Seq<Atom<':'>, Opt<NodeAsmRefs>>,
-              // GotoLabels
-              Seq<Atom<':'>, Opt<comma_separated<NodeIdentifier>>>>,
-          Atom<')'>, Atom<';'>>;
+  Seq<
+    Oneof<
+      Keyword<"asm">,
+      Keyword<"__asm">,
+      Keyword<"__asm__">
+    >,
+    Opt<NodeAsmQualifiers>,
+    Atom<'('>,
+    NodeAtom<LEX_STRING>,  // assembly code
+    SeqOpt<
+      // output operands
+      Seq<Atom<':'>, Opt<NodeAsmRefs>>,
+      // input operands
+      Seq<Atom<':'>, Opt<NodeAsmRefs>>,
+      // clobbers
+      Seq<Atom<':'>, Opt<NodeAsmRefs>>,
+      // GotoLabels
+      Seq<Atom<':'>, Opt<comma_separated<NodeIdentifier>>>
+    >,
+    Atom<')'>,
+    Atom<';'>
+  >;
+  // clang-format on
 };
 
 //------------------------------------------------------------------------------
 
 struct NodeTypedef : public ParseNode, public NodeMaker<NodeTypedef> {
+  // clang-format off
   using pattern =
-      Seq<Opt<Keyword<"__extension__">>, Keyword<"typedef">,
-          Oneof<NodeStruct, NodeUnion, NodeClass, NodeEnum, NodeDeclaration>>;
+  Seq<
+    Opt<
+      Keyword<"__extension__">
+    >,
+    Keyword<"typedef">,
+    Oneof<
+      NodeStruct,
+      NodeUnion,
+      NodeClass,
+      NodeEnum,
+      NodeDeclaration
+    >
+  >;
+  // clang-format on
 
   static void extract_declarator(void* ctx, NodeDeclarator* decl) {
     if (auto id = decl->child<NodeIdentifier>()) {
@@ -1315,8 +1575,7 @@ struct NodeTypedef : public ParseNode, public NodeMaker<NodeTypedef> {
 
 //------------------------------------------------------------------------------
 
-struct NodeStatementGoto : public ParseNode,
-                           public NodeMaker<NodeStatementGoto> {
+struct NodeStatementGoto : public ParseNode, public NodeMaker<NodeStatementGoto> {
   // pr21356.c - Spec says goto should be an identifier, GCC allows expressions
   using pattern = Seq<Keyword<"goto">, NodeExpression, Atom<';'>>;
 };
@@ -1324,39 +1583,63 @@ struct NodeStatementGoto : public ParseNode,
 //------------------------------------------------------------------------------
 
 struct NodeStatement : public PatternWrapper<NodeStatement> {
-  using pattern = Oneof<
-      // All of these have keywords or something first
-      Seq<NodeClass, Atom<';'>>, Seq<NodeStruct, Atom<';'>>,
-      Seq<NodeUnion, Atom<';'>>, Seq<NodeEnum, Atom<';'>>,
-      Seq<NodeTypedef, Atom<';'>>,
+  // clang-format off
+  using pattern =
+  Oneof<
+    // All of these have keywords or something first
+    Seq<NodeClass,   Atom<';'>>,
+    Seq<NodeStruct,  Atom<';'>>,
+    Seq<NodeUnion,   Atom<';'>>,
+    Seq<NodeEnum,    Atom<';'>>,
+    Seq<NodeTypedef, Atom<';'>>,
 
-      NodeStatementFor, NodeStatementIf, NodeStatementReturn,
-      NodeStatementSwitch, NodeStatementDoWhile, NodeStatementWhile,
-      NodeStatementGoto, NodeStatementAsm, NodeStatementCompound,
-      NodeStatementBreak, NodeStatementContinue,
+    NodeStatementFor,
+    NodeStatementIf,
+    NodeStatementReturn,
+    NodeStatementSwitch,
+    NodeStatementDoWhile,
+    NodeStatementWhile,
+    NodeStatementGoto,
+    NodeStatementAsm,
+    NodeStatementCompound,
+    NodeStatementBreak,
+    NodeStatementContinue,
 
-      // These don't - but they might confuse a keyword with an identifier...
-      NodeStatementLabel, NodeFunctionDefinition,
+    // These don't - but they might confuse a keyword with an identifier...
+    NodeStatementLabel,
+    NodeFunctionDefinition,
 
-      // If declaration is before expression, we parse "x = 1;" as a declaration
-      // because it matches a declarator (bare identifier) + initializer list :/
-      Seq<comma_separated<NodeExpression>, Atom<';'>>,
-      Seq<NodeDeclaration, Atom<';'>>,
+    // If declaration is before expression, we parse "x = 1;" as a declaration
+    // because it matches a declarator (bare identifier) + initializer list :/
+    Seq<comma_separated<NodeExpression>, Atom<';'>>,
+    Seq<NodeDeclaration, Atom<';'>>,
 
-      // Extra semicolons
-      Atom<';'>>;
+    // Extra semicolons
+    Atom<';'>
+  >;
+  // clang-format on
 };
 
 //------------------------------------------------------------------------------
 
-struct NodeTranslationUnit : public ParseNode,
-                             public NodeMaker<NodeTranslationUnit> {
-  using pattern = Any<
-      Oneof<Seq<NodeClass, Atom<';'>>, Seq<NodeStruct, Atom<';'>>,
-            Seq<NodeUnion, Atom<';'>>, Seq<NodeEnum, Atom<';'>>, NodeTypedef,
-
-            NodePreproc, Seq<NodeTemplate, Atom<';'>>, NodeFunctionDefinition,
-            Seq<NodeDeclaration, Atom<';'>>, Atom<';'>>>;
+struct NodeTranslationUnit : public ParseNode, public NodeMaker<NodeTranslationUnit> {
+  // clang-format off
+  using pattern =
+  Any<
+    Oneof<
+      Seq<NodeClass,  Atom<';'>>,
+      Seq<NodeStruct, Atom<';'>>,
+      Seq<NodeUnion,  Atom<';'>>,
+      Seq<NodeEnum,   Atom<';'>>,
+      NodeTypedef,
+      NodePreproc,
+      Seq<NodeTemplate, Atom<';'>>,
+      NodeFunctionDefinition,
+      Seq<NodeDeclaration, Atom<';'>>,
+      Atom<';'>
+    >
+  >;
+  // clang-format on
 };
 
 //------------------------------------------------------------------------------

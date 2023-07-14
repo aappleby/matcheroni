@@ -10,6 +10,7 @@
 
 #include "matcheroni/Matcheroni.hpp"
 #include "matcheroni/Parseroni.hpp"
+#include "matcheroni/Utilities.hpp"
 
 using namespace matcheroni;
 

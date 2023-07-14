@@ -1,10 +1,5 @@
 #pragma once
-#include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>  // for malloc/free
-#include <string.h>
-
-#include <string>
 
 #include "matcheroni/Matcheroni.hpp"
 
@@ -13,37 +8,9 @@
 //#define PARSERONI_NO_DESTRUCTORS
 //#define PARSERONI_NO_REWIND
 
-//------------------------------------------------------------------------------
+namespace matcheroni {
 
-using cspan = matcheroni::Span<const char>;
-
-inline cspan to_span(const char* text) {
-  return cspan(text, text + strlen(text));
-}
-
-inline cspan to_span(const std::string& s) {
-  return cspan(s.data(), s.data() + s.size());
-}
-
-inline std::string to_string(cspan s) {
-  return s.a ? std::string(s.a, s.b) : std::string(s.b);
-}
-
-inline bool operator==(cspan a, const std::string& b) {
-  return to_string(a) == b;
-}
-
-inline bool operator==(const std::string& a, cspan b) {
-  return a == to_string(b);
-}
-
-inline bool operator!=(cspan a, const std::string& b) {
-  return to_string(a) != b;
-}
-
-inline bool operator!=(const std::string& a, cspan b) {
-  return a != to_string(b);
-}
+using cspan = Span<const char>;
 
 //------------------------------------------------------------------------------
 
@@ -180,6 +147,7 @@ struct NodeBase {
 
   //----------------------------------------
 
+  /*
   uint64_t hash() {
     uint64_t h = 1;
 
@@ -199,6 +167,7 @@ struct NodeBase {
 
     return h;
   }
+  */
 
   //----------------------------------------
 
@@ -215,142 +184,9 @@ struct NodeBase {
   NodeBase* child_head;
   NodeBase* child_tail;
 
-  uint64_t flags;
+  int flags;
 };
 
-//------------------------------------------------------------------------------
-
-struct ParseNodeIterator {
-  ParseNodeIterator(NodeBase* cursor) : n(cursor) {}
-  ParseNodeIterator& operator++() {
-    n = n->node_next;
-    return *this;
-  }
-  bool operator!=(ParseNodeIterator& b) const { return n != b.n; }
-  NodeBase* operator*() const { return n; }
-  NodeBase* n;
-};
-
-inline ParseNodeIterator begin(NodeBase* parent) {
-  return ParseNodeIterator(parent->child_head);
-}
-
-inline ParseNodeIterator end(NodeBase* parent) {
-  return ParseNodeIterator(nullptr);
-}
-
-struct ConstParseNodeIterator {
-  ConstParseNodeIterator(const NodeBase* cursor) : n(cursor) {}
-  ConstParseNodeIterator& operator++() {
-    n = n->node_next;
-    return *this;
-  }
-  bool operator!=(const ConstParseNodeIterator& b) const { return n != b.n; }
-  const NodeBase* operator*() const { return n; }
-  const NodeBase* n;
-};
-
-inline ConstParseNodeIterator begin(const NodeBase* parent) {
-  return ConstParseNodeIterator(parent->child_head);
-}
-
-inline ConstParseNodeIterator end(const NodeBase* parent) {
-  return ConstParseNodeIterator(nullptr);
-}
-
-//------------------------------------------------------------------------------
-
-inline void print_flat(cspan s, int max_len = 0) {
-  if (max_len == 0) max_len = s.len();
-
-  if (!s.is_valid()) {
-    printf("<invalid>");
-    for (int i = 0; i < max_len - strlen("<invalid>"); i++) putc(' ', stdout);
-    return;
-  }
-
-  if (s.is_empty()) {
-    printf("<empty>");
-    for (int i = 0; i < max_len - strlen("<empty>"); i++) putc(' ', stdout);
-    return;
-  }
-
-  int span_len = max_len;
-  if (s.len() > max_len) span_len -= 3;
-
-  for (int i = 0; i < span_len; i++) {
-    if (i >= s.len())
-      putc(' ', stdout);
-    else if (s.a[i] == '\n')
-      putc(' ', stdout);
-    else if (s.a[i] == '\r')
-      putc(' ', stdout);
-    else if (s.a[i] == '\t')
-      putc(' ', stdout);
-    else
-      putc(s.a[i], stdout);
-  }
-
-  if (s.len() > max_len) printf("...");
-}
-
-//------------------------------------------------------------------------------
-
-inline void print_bar(int depth, cspan s, const char* val,
-                      const char* suffix) {
-  printf("|");
-  print_flat(s, 20);
-  printf("|");
-
-  printf(depth == 0 ? "  *" : "   ");
-  for (int i = 0; i < depth; i++) {
-    printf(i == depth - 1 ? "|--" : "|  ");
-  }
-
-  printf("%s %s", val, suffix);
-  printf("\n");
-}
-
-//------------------------------------------------------------------------------
-// Prints a text representation of the parse tree.
-
-inline void print_tree(NodeBase* node, int depth = 0) {
-  print_bar(depth, node->span, node->match_name, "");
-  for (auto c = node->child_head; c; c = c->node_next) {
-    print_tree(c, depth + 1);
-  }
-}
-
-//------------------------------------------------------------------------------
-
-inline void print_match(cspan text, cspan match) {
-  printf("Match found:\n");
-  print_flat(text);
-  printf("\n");
-
-  auto prefix_len = match.a - text.a;
-  auto suffix_len = text.b - match.b;
-
-  for (auto i = 0; i < prefix_len;  i++) putc('_', stdout);
-  for (auto i = 0; i < match.len(); i++) putc('^', stdout);
-  for (auto i = 0; i < suffix_len;  i++) putc('_', stdout);
-  printf("\n");
-}
-
-//------------------------------------------------------------------------------
-
-inline void print_fail(cspan text, cspan tail) {
-  printf("Match failed here:\n");
-  print_flat(text);
-  printf("\n");
-
-  auto fail_pos = tail.b - text.a;
-  auto suffix_len = text.b - tail.b;
-
-  for (int i = 0; i < fail_pos;   i++) putc('_', stdout);
-  for (int i = 0; i < suffix_len; i++) putc('^', stdout);
-  printf("\n");
-}
 
 //------------------------------------------------------------------------------
 
@@ -510,7 +346,7 @@ struct Context {
 // specialized version of it Matcheroni will call it as needed.
 
 template <>
-inline void matcheroni::parser_rewind(void* ctx, cspan s) {
+inline void parser_rewind(void* ctx, cspan s) {
   if (ctx) {
     ((Context*)ctx)->rewind(s);
   }
@@ -521,15 +357,9 @@ inline void matcheroni::parser_rewind(void* ctx, cspan s) {
 // matcher that constructs a new NodeType() for a successful match, attaches
 // any sub-nodes to it, and places it on a node list.
 
-inline static int capture_count = 0;
-inline static int create_count = 0;
-
-template <matcheroni::StringParam match_name, typename pattern,
-          typename NodeType>
-struct CaptureNamed {
+template <StringParam match_name, typename pattern, typename NodeType>
+struct Capture {
   static cspan match(void* ctx, cspan s) {
-    //printf("capture count %d\n", ++capture_count);
-
     Context* context = (Context*)ctx;
     auto old_tail = context->top_tail;
 #ifdef PARSERONI_FAST_MODE
@@ -539,12 +369,10 @@ struct CaptureNamed {
     auto end = pattern::match(context, s);
 
     if (end.is_valid()) {
-      //printf("create count %d\n", ++create_count);
       cspan node_span = {s.a, end.a};
       context->create<NodeType>(match_name.str_val, node_span, old_tail);
     }
     else {
-      //assert(parser->top_tail == old_tail);
       context->top_tail = old_tail;
 #ifdef PARSERONI_FAST_MODE
       NodeBase::slabs.restore_state(old_state);
@@ -584,7 +412,7 @@ struct CaptureBegin {
     auto old_state = NodeBase::slabs.save_state();
 #endif
 
-    auto end = matcheroni::Seq<rest...>::match(context, s);
+    auto end = Seq<rest...>::match(context, s);
 
     if (!end.is_valid()) {
       context->top_tail = old_tail;
@@ -608,11 +436,15 @@ struct CaptureBegin {
       return end;
     }
 
+    //----------------------------------------
     // Resize the bookmark's span and clear its bookmark flag
+
     c->span.a = s.a;
     c->flags &= ~1;
 
+    //----------------------------------------
     // Enclose its children
+
     if (c->node_prev != old_tail) {
       auto child_head = old_tail ? old_tail->node_next : context->top_head;
       auto child_tail = c->node_prev;
@@ -626,15 +458,21 @@ struct CaptureBegin {
 
 //----------------------------------------
 
-template<matcheroni::StringParam match_name, typename NodeType>
+template<StringParam match_name, typename P, typename NodeType>
 struct CaptureEnd {
   static cspan match(void* ctx, cspan s) {
-    //print_indent(); printf("CaptureEnd %s @ %-10.10s\n", match_name.str_val, s.a);
     Context* context = (Context*)ctx;
-    cspan new_span(s.a, s.a);
-    auto n = context->create<NodeType>(match_name.str_val, new_span, context->top_tail);
-    n->flags |= 1;
-    return s;
+
+    auto end = P::match(ctx, s);
+    if (end.is_valid()) {
+      cspan new_span(end.a, end.a);
+      auto n = context->create<NodeType>(match_name.str_val, new_span, context->top_tail);
+      n->flags |= 1;
+      return end;
+    }
+    else {
+      return end.fail();
+    }
   }
 };
 
@@ -655,7 +493,7 @@ struct CaptureEnd {
 // Uncomment this to print a full trace of the regex matching process. Note -
 // the trace will be _very_ long, even for small regexes.
 
-template <matcheroni::StringParam match_name, typename P>
+template <StringParam match_name, typename P>
 struct Trace {
   static cspan match(void* ctx, cspan s) {
     assert(s.is_valid());
@@ -672,3 +510,5 @@ struct Trace {
 };
 
 //------------------------------------------------------------------------------
+
+}; // namespace matcheroni

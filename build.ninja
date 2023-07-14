@@ -6,10 +6,10 @@
 # Turning EXTRA_DEBUG on will generate even more spam.
 
 ### Debug build
-build_mode = -g -O0
-defs = ${defs} -DDEBUG
-defs = ${defs} -DMATCHERONI_ENABLE_TRACE
-defs = ${defs} -DEXTRA_DEBUG
+#build_mode = -g -O0
+#defs = ${defs} -DDEBUG
+#defs = ${defs} -DMATCHERONI_ENABLE_TRACE
+#defs = ${defs} -DEXTRA_DEBUG
 
 ### -Os needs stripping to minimize size
 #build_mode = -g -Os
@@ -17,10 +17,11 @@ defs = ${defs} -DEXTRA_DEBUG
 #build_mode = ${build_mode} -Wl,-s
 
 ### -O3 needs LTO to maximize performance
-#build_mode = -g -O3
-#defs = ${defs} -DRELEASE
-#build_mode = ${build_mode} -flto -fdata-sections -ffunction-sections -Wl,--gc-sections
-#build_mode = ${build_mode} -Wl,-s
+### LTO breaks "size obj/examples/json_parser.o"
+build_mode = -O3 -Wl,-s
+defs = ${defs} -DRELEASE
+#build_mode = ${build_mode}
+#build_mode = ${build_mode}
 
 includes = -I.
 
@@ -42,11 +43,6 @@ rule link
 
 rule run_test
   command = ${in} && touch ${out}
-
-#-------------------------------------------------------------------------------
-# Utility functions
-
-build obj/examples/utils.o : compile_cpp examples/utils.cpp
 
 #-------------------------------------------------------------------------------
 # Tests
@@ -82,7 +78,7 @@ benchmark_defs = ${benchmark_defs} -DBENCHMARK_STD_REGEX
 
 #build obj/benchmark.o    : compile_cpp examples/benchmark.cpp
 #  defs = ${benchmark_defs}
-#build bin/benchmark      : link obj/utils.o obj/benchmark.o
+#build bin/benchmark      : link obj/benchmark.o
 
 #rule derp
 #  command = echo ${defs}
@@ -94,12 +90,14 @@ benchmark_defs = ${benchmark_defs} -DBENCHMARK_STD_REGEX
 # Examples
 
 # Regex parser example
-build obj/examples/regex_parser.o : compile_cpp examples/regex_parser.cpp
-build bin/examples/regex_parser   : link obj/examples/utils.o obj/examples/regex_parser.o
+build obj/examples/regex_parser.o      : compile_cpp examples/regex_parser.cpp
+build obj/examples/regex_parser_main.o : compile_cpp examples/regex_parser_main.cpp
+build bin/examples/regex_parser        : link obj/examples/regex_parser.o obj/examples/regex_parser_main.o
 
 # JSON parser example
-build obj/examples/json_parser.o  : compile_cpp examples/json_parser.cpp
-build bin/examples/json_parser    : link obj/examples/json_parser.o
+build obj/examples/json_parser.o      : compile_cpp examples/json_parser.cpp
+build obj/examples/json_parser_main.o : compile_cpp examples/json_parser_main.cpp
+build bin/examples/json_parser        : link obj/examples/json_parser.o obj/examples/json_parser_main.o
 
 #-------------------------------------------------------------------------------
 # Tutorial examples
@@ -133,8 +131,8 @@ build bin/tutorial/json_tutorial   : link obj/tutorial/json_tutorial.o
 #  obj/c99_parser/Lexeme.o $
 #  obj/c99_parser/ParseNode.o $
 #  obj/c99_parser/Token.o $
-#  obj/c99_parser/TypeScope.o $
-#  obj/utils.o
+#  obj/c99_parser/TypeScope.o
+
 
 
 #build obj/c99_parser/c_reference_hax.o : compile_cpp examples/c99_parser/c_reference_hax.cpp

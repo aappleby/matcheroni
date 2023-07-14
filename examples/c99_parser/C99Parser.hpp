@@ -8,11 +8,14 @@
 #include <vector>
 #include <array>
 
-#include "examples/utils.hpp"
+#include "matcheroni/Matcheroni.hpp"
+#include "matcheroni/Parseroni.hpp"
+#include "matcheroni/Utilities.hpp"
+
 #include "examples/c99_parser/SlabAlloc.hpp"
 #include "examples/c99_parser/c_constants.hpp"
 #include "examples/c99_parser/SST.hpp"
-#include "matcheroni/Matcheroni.hpp"
+
 using namespace matcheroni;
 
 struct C99Parser;
@@ -231,46 +234,6 @@ struct ParseNode {
   Token* _tok_a = nullptr;  // First token, inclusivve
   Token* _tok_b = nullptr;  // Last token, inclusive
 };
-
-//------------------------------------------------------------------------------
-
-struct ParseNodeIterator {
-  ParseNodeIterator(ParseNode* cursor) : n(cursor) {}
-  ParseNodeIterator& operator++() {
-    n = n->next;
-    return *this;
-  }
-  bool operator!=(ParseNodeIterator& b) const { return n != b.n; }
-  ParseNode* operator*() const { return n; }
-  ParseNode* n;
-};
-
-inline ParseNodeIterator begin(ParseNode* parent) {
-  return ParseNodeIterator(parent->head);
-}
-
-inline ParseNodeIterator end(ParseNode* parent) {
-  return ParseNodeIterator(nullptr);
-}
-
-struct ConstParseNodeIterator {
-  ConstParseNodeIterator(const ParseNode* cursor) : n(cursor) {}
-  ConstParseNodeIterator& operator++() {
-    n = n->next;
-    return *this;
-  }
-  bool operator!=(const ConstParseNodeIterator& b) const { return n != b.n; }
-  const ParseNode* operator*() const { return n; }
-  const ParseNode* n;
-};
-
-inline ConstParseNodeIterator begin(const ParseNode* parent) {
-  return ConstParseNodeIterator(parent->head);
-}
-
-inline ConstParseNodeIterator end(const ParseNode* parent) {
-  return ConstParseNodeIterator(nullptr);
-}
 
 //------------------------------------------------------------------------------
 

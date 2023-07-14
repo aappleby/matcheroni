@@ -10,6 +10,7 @@
 
 #include "matcheroni/Matcheroni.hpp"
 #include "matcheroni/Parseroni.hpp"
+#include "matcheroni/Utilities.hpp"
 
 #include <stdio.h>
 #include <sys/stat.h>
@@ -47,11 +48,11 @@ struct JsonParser {
   static cspan value(void* ctx, cspan s) {
     using value =
     Oneof<
-      CaptureNamed<"array",   array,   NodeBase>,
-      CaptureNamed<"number",  number,  NodeBase>,
-      CaptureNamed<"object",  object,  NodeBase>,
-      CaptureNamed<"string",  string,  NodeBase>,
-      CaptureNamed<"keyword", keyword, NodeBase>
+      Capture<"array",   array,   NodeBase>,
+      Capture<"number",  number,  NodeBase>,
+      Capture<"object",  object,  NodeBase>,
+      Capture<"string",  string,  NodeBase>,
+      Capture<"keyword", keyword, NodeBase>
     >;
     return value::match(ctx, s);
   }
@@ -67,18 +68,18 @@ struct JsonParser {
 
   using pair =
   Seq<
-    CaptureNamed<"key", string, NodeBase>,
+    Capture<"key", string, NodeBase>,
     ws,
     Atom<':'>,
     ws,
-    CaptureNamed<"value", Ref<value>, NodeBase>
+    Capture<"value", Ref<value>, NodeBase>
   >;
 
   using object =
   Seq<
     Atom<'{'>,
     ws,
-    list<CaptureNamed<"pair", pair, NodeBase>>,
+    list<Capture<"pair", pair, NodeBase>>,
     ws,
     Atom<'}'>
   >;

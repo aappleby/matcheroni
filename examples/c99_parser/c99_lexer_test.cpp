@@ -2,10 +2,10 @@
 // SPDX-License-Identifier: MIT License
 
 #include "matcheroni/Matcheroni.hpp"
+#include "matcheroni/Utilities.hpp"
+
 #include "examples/c99_parser/C99Lexer.hpp"
 #include "examples/c99_parser/Lexeme.hpp"
-
-#include "examples/utils.hpp"
 
 #include <filesystem>
 #include <stdint.h>    // for uint8_t

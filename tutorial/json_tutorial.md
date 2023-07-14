@@ -53,23 +53,6 @@ void print_tree(NodeBase* node, int depth = 0) {
 }
 
 //------------------------------------------------------------------------------
-// To build a parse tree, we wrap the patterns we want to create nodes for
-// in a Capture<> matcher that will invoke our node factory. We can also wrap
-// them in a Trace<> matcher if we want to debug our patterns.
-
-#ifdef TRACE
-
-template<StringParam match_name, typename P>
-using Capture = CaptureNamed<match_name, Trace<match_name, P>, NodeBase>;
-
-#else
-
-template<StringParam match_name, typename P>
-using Capture = CaptureNamed<match_name, P, NodeBase>;
-
-#endif
-
-//------------------------------------------------------------------------------
 
 using sign      = Atom<'+','-'>;
 using digit     = Range<'0','9'>;
