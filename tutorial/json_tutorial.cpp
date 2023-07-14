@@ -13,8 +13,6 @@
 #include "matcheroni/Utilities.hpp"
 
 #include <stdio.h>
-#include <sys/stat.h>
-#include <time.h>
 
 using namespace matcheroni;
 
@@ -103,29 +101,15 @@ int main(int argc, char** argv) {
   auto path = argv[1];
 
   printf("Loading %s\n", path);
-
-  struct stat statbuf;
-  int stat_result = stat(path, &statbuf);
-  if (stat_result == -1) {
-    printf("Could not open %s\n", path);
-    return -1;
-  }
-
-  auto buf = new char[statbuf.st_size + 1];
-  FILE* f = fopen(path, "rb");
-  auto _ = fread(buf, statbuf.st_size, 1, f);
-  buf[statbuf.st_size] = 0;
-  fclose(f);
-
+  char* buf = nullptr;
+  size_t size = 0;
+  read(path, buf, size);
 
   printf("Parsing %s\n", path);
-
   Context* context = new Context();
-
-
-  cspan text = {buf, buf + statbuf.st_size};
-
+  cspan text = {buf, buf + size};
   auto parse_end = JsonParser::match(context, text);
+
   if (parse_end.is_valid()) {
     printf("Parse tree:\n");
     for (auto n = context->top_head; n; n = n->node_next) {

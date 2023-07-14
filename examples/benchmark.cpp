@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT License
 
 #include <stdio.h>
-#include "matcheroni/Utilities.hpp"
 
 #ifdef BENCHMARK_SRELL
 #include "srell.hpp"

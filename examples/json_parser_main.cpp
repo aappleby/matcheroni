@@ -13,9 +13,6 @@
 #include "matcheroni/Utilities.hpp"
 
 #include <stdio.h>
-#include <sys/stat.h>
-#include <time.h>
-#include <string.h>
 
 using namespace matcheroni;
 
@@ -73,7 +70,7 @@ int main(int argc, char** argv) {
     }
 
     char* buf = nullptr;
-    int size = 0;
+    size_t size = 0;
     read(path, buf, size);
     if (size == 0) {
       printf("Could not load %s\n", path);
@@ -81,7 +78,7 @@ int main(int argc, char** argv) {
     }
 
     byte_accum += size;
-    for (int i = 0; i < size; i++) if (buf[i] == '\n') line_accum++;
+    for (size_t i = 0; i < size; i++) if (buf[i] == '\n') line_accum++;
 
     cspan text = {buf, buf + size};
     cspan parse_end = text;

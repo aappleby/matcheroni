@@ -2,15 +2,16 @@
 // SPDX-License-Identifier: MIT License
 
 #pragma once
+#include "matcheroni/Matcheroni.hpp"  // for Span
 #include "matcheroni/Parseroni.hpp"
 
-#include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>    // for exit
 #include <string.h>
 #include <string>
 #include <sys/stat.h>
+#include <time.h>      // for clock_gettime, CLOCK_PROCESS_CP...
 #include <typeinfo>    // for type_info
 
 namespace matcheroni {
@@ -89,25 +90,25 @@ inline ConstParseNodeIterator end(const NodeBase* parent) {
 
 //------------------------------------------------------------------------------
 
-inline void print_flat(cspan s, int max_len = 0) {
+inline void print_flat(cspan s, size_t max_len = 0) {
   if (max_len == 0) max_len = s.len();
 
   if (!s.is_valid()) {
     printf("<invalid>");
-    for (int i = 0; i < max_len - strlen("<invalid>"); i++) putc(' ', stdout);
+    for (size_t i = 0; i < max_len - strlen("<invalid>"); i++) putc(' ', stdout);
     return;
   }
 
   if (s.is_empty()) {
     printf("<empty>");
-    for (int i = 0; i < max_len - strlen("<empty>"); i++) putc(' ', stdout);
+    for (size_t i = 0; i < max_len - strlen("<empty>"); i++) putc(' ', stdout);
     return;
   }
 
-  int span_len = max_len;
+  size_t span_len = max_len;
   if (s.len() > max_len) span_len -= 3;
 
-  for (int i = 0; i < span_len; i++) {
+  for (size_t i = 0; i < span_len; i++) {
     if (i >= s.len())
       putc(' ', stdout);
     else if (s.a[i] == '\n')
@@ -157,12 +158,12 @@ inline void print_match(cspan text, cspan match) {
   print_flat(text);
   printf("\n");
 
-  auto prefix_len = match.a - text.a;
-  auto suffix_len = text.b - match.b;
+  size_t prefix_len = match.a - text.a;
+  size_t suffix_len = text.b - match.b;
 
-  for (auto i = 0; i < prefix_len;  i++) putc('_', stdout);
-  for (auto i = 0; i < match.len(); i++) putc('^', stdout);
-  for (auto i = 0; i < suffix_len;  i++) putc('_', stdout);
+  for (size_t i = 0; i < prefix_len;  i++) putc('_', stdout);
+  for (size_t i = 0; i < match.len(); i++) putc('^', stdout);
+  for (size_t i = 0; i < suffix_len;  i++) putc('_', stdout);
   printf("\n");
 }
 
@@ -173,11 +174,11 @@ inline void print_fail(cspan text, cspan tail) {
   print_flat(text);
   printf("\n");
 
-  auto fail_pos = tail.b - text.a;
-  auto suffix_len = text.b - tail.b;
+  size_t fail_pos = tail.b - text.a;
+  size_t suffix_len = text.b - tail.b;
 
-  for (int i = 0; i < fail_pos;   i++) putc('_', stdout);
-  for (int i = 0; i < suffix_len; i++) putc('^', stdout);
+  for (size_t i = 0; i < fail_pos;   i++) putc('_', stdout);
+  for (size_t i = 0; i < suffix_len; i++) putc('^', stdout);
   printf("\n");
 }
 
@@ -255,7 +256,7 @@ inline std::string read(const char* path) {
   buf.resize(statbuf.st_size);
 
   FILE* f = fopen(path, "rb");
-  auto _ = fread(buf.data(), statbuf.st_size, 1, f);
+  (void)fread(buf.data(), statbuf.st_size, 1, f);
   fclose(f);
 
   return buf;
@@ -268,11 +269,11 @@ inline void read(const char* path, std::string& text) {
   text.resize(statbuf.st_size);
 
   FILE* f = fopen(path, "rb");
-  auto _ = fread(text.data(), statbuf.st_size, 1, f);
+  (void)fread(text.data(), statbuf.st_size, 1, f);
   fclose(f);
 }
 
-inline void read(const char* path, char*& text_out, int& size_out) {
+inline void read(const char* path, char*& text_out, size_t& size_out) {
   struct stat statbuf;
   if (stat(path, &statbuf) == -1) return;
 
@@ -280,7 +281,7 @@ inline void read(const char* path, char*& text_out, int& size_out) {
   size_out = statbuf.st_size;
 
   FILE* f = fopen(path, "rb");
-  auto _ = fread(text_out, size_out, 1, f);
+  (void)fread(text_out, statbuf.st_size, 1, f);
   fclose(f);
 }
 

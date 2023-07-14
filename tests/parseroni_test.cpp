@@ -1,15 +1,11 @@
-#include "matcheroni/Parseroni.hpp"
-
-#include <assert.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
-#include <string>
-
 #include "matcheroni/Matcheroni.hpp"
 #include "matcheroni/Parseroni.hpp"
 #include "matcheroni/Utilities.hpp"
+
+#include <assert.h>
+#include <stdio.h>
+#include <string.h>
+#include <string>
 
 using namespace matcheroni;
 

@@ -13,10 +13,6 @@
 #include "matcheroni/Parseroni.hpp"
 #include "matcheroni/Utilities.hpp"
 
-#include <stdio.h>
-#include <string.h>
-#include <vector>
-
 using namespace matcheroni;
 
 //------------------------------------------------------------------------------

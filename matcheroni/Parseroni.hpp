@@ -76,7 +76,6 @@ struct SlabAlloc {
       return;
     }
 
-    static int count = 0;
     auto new_slab = (Slab*)malloc(header_size + slab_size);
     new_slab->prev = nullptr;
     new_slab->next = nullptr;
@@ -103,8 +102,6 @@ struct SlabAlloc {
   }
 
   void free(void* p, int size) {
-    auto offset = (char*)p - top_slab->buf;
-    // DCHECK(offset + size == top_slab->cursor);
     top_slab->cursor -= size;
     if (top_slab->cursor == 0) {
       if (top_slab->prev) {
@@ -112,12 +109,11 @@ struct SlabAlloc {
       }
     }
     current_size -= size;
-    // printf("top_slab->cursor = %ld\n", top_slab->cursor);
   }
 
-  Slab* top_slab;
-  int current_size;
-  int max_size;
+  Slab* top_slab = nullptr;
+  int current_size = 0;
+  int max_size = 0;
 };
 
 //------------------------------------------------------------------------------
@@ -297,7 +293,6 @@ struct Context {
   void recycle(NodeBase* node) {
     if (node == nullptr) return;
 
-    auto head = node->child_head;
     auto tail = node->child_tail;
 
     delete node;
@@ -496,7 +491,7 @@ struct CaptureEnd {
 template <StringParam match_name, typename P>
 struct Trace {
   static cspan match(void* ctx, cspan s) {
-    assert(s.is_valid());
+    CHECK(s.is_valid());
     if (s.is_empty()) return s.fail();
 
     auto parser = (Context*)ctx;

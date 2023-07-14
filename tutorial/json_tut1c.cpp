@@ -4,10 +4,6 @@
 // SPDX-FileCopyrightText:  2023 Austin Appleby <aappleby@gmail.com>
 // SPDX-License-Identifier: MIT License
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
 #include "matcheroni/Matcheroni.hpp"
 #include "matcheroni/Parseroni.hpp"
 #include "matcheroni/Utilities.hpp"

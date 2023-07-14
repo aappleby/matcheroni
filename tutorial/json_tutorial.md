@@ -132,20 +132,6 @@ int main(int argc, char** argv) {
 
   printf("Loading %s\n", path);
 
-  struct stat statbuf;
-  int stat_result = stat(path, &statbuf);
-  if (stat_result == -1) {
-    printf("Could not open %s\n", path);
-    return -1;
-  }
-
-  auto buf = new char[statbuf.st_size + 1];
-  FILE* f = fopen(path, "rb");
-  auto _ = fread(buf, statbuf.st_size, 1, f);
-  buf[statbuf.st_size] = 0;
-  fclose(f);
-
-
   printf("Parsing %s\n", path);
 
   Context* context = new Parser();
