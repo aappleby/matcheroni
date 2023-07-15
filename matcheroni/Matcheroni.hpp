@@ -13,9 +13,10 @@
 #define MATCHERONI_H_
 
 #include <stdio.h>
+#include <assert.h>
 
-#define CHECK(...)
-#define DCHECK(...)
+#define CHECK(A)   assert(A)
+#define DCHECK(A)  assert(A)
 
 namespace matcheroni {
 
@@ -408,6 +409,7 @@ struct Any {
 struct Nothing {
   template <typename atom>
   static Span<atom> match(void* ctx, Span<atom> s) {
+    CHECK(s.is_valid());
     return s;
   }
 };

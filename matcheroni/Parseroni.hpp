@@ -333,7 +333,6 @@ struct ContextBase {
 
   NodeBase* _top_head = nullptr;
   NodeBase* _top_tail = nullptr;
-  //const char* highwater = nullptr;
   int trace_depth = 0;
 };
 

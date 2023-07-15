@@ -9,18 +9,17 @@
 
 using namespace matcheroni;
 
-/*
-struct TestNode : public Nod eB ase {
-  using Nod eB ase::Nod eB ase;
+struct ParseNode : public TextNode {
+  using TextNode::TextNode;
 
   void dump_tree(std::string& out) {
     if (strcmp(match_name, "atom") == 0) {
       for (auto c = span.a; c < span.b; c++) out.push_back(*c);
     } else if (strcmp(match_name, "list") == 0) {
       out.push_back('(');
-      for (auto c = (TestNode*)child_head; c; c = (TestNode*)c->node_next) {
-        c->dump_tree(out);
-        if (c->node_next) out.push_back(',');
+      for (auto c = child_head(); c; c = c->node_next()) {
+        ((ParseNode*)c)->dump_tree(out);
+        if (c->node_next()) out.push_back(',');
       }
       out.push_back(')');
     } else {
@@ -28,7 +27,6 @@ struct TestNode : public Nod eB ase {
     }
   }
 };
-*/
 
 //------------------------------------------------------------------------------
 
@@ -50,8 +48,8 @@ static int fail_count = 0;
 struct TinyLisp {
   static cspan match(void* ctx, cspan s) {
     return Oneof<
-      Capture<"atom", atom, TextNode>,
-      Capture<"list", list, TextNode>
+      Capture<"atom", atom, ParseNode>,
+      Capture<"list", list, ParseNode>
     >::match(ctx, s);
   }
 
@@ -66,7 +64,7 @@ struct TinyLisp {
 
 void test_basic() {
   printf("test_basic()\n");
-  Context<TextNode> c;
+  Context<ParseNode> c;
   cspan span;
   cspan tail;
 
@@ -77,10 +75,16 @@ void test_basic() {
     span = to_span(text);
     tail = TinyLisp::match(&c, span);
     TEST(tail.is_valid() && tail == "");
+
+    printf("Round-trip s-expression:\n");
     std::string dump;
-    //((TestNode*)c.top_head)->dump_tree(dump);
-    print_tree((TextNode*)c.top_head());
-    TEST(text == dump, "Round trip s-expression");
+    c.top_head()->dump_tree(dump);
+    printf("Old : %s\n", text.c_str());
+    printf("New : %s\n", dump.c_str());
+    TEST(text == dump, "Mismatch!");
+    printf("\n");
+
+    print_tree(c.top_head());
   }
 
   c.reset();
@@ -96,9 +100,9 @@ void test_basic() {
   c.reset();
   span = to_span("(((()))(");
   tail = TinyLisp::match(&c, span);
-  TEST(!tail.is_valid() && tail == "(");
+  TEST(!tail.is_valid() && std::string(tail.b) == "(");
 
-  printf("test_basic() fail count %d\n\n", fail_count);
+  printf("test_basic() end, fail count %d\n\n", fail_count);
 }
 
 //------------------------------------------------------------------------------
@@ -115,9 +119,9 @@ struct BeginEndTest {
   CaptureBegin<
     P,
     Opt<
-      CaptureEnd<"plus", Atom<'+'>, TextNode>,
-      CaptureEnd<"star", Atom<'*'>, TextNode>,
-      CaptureEnd<"opt",  Atom<'?'>, TextNode>
+      CaptureEnd<"plus", Atom<'+'>, ParseNode>,
+      CaptureEnd<"star", Atom<'*'>, ParseNode>,
+      CaptureEnd<"opt",  Atom<'?'>, ParseNode>
     >
   >;
 
@@ -125,7 +129,7 @@ struct BeginEndTest {
   suffixed<Capture<
     "atom",
     Some<Range<'a','z'>, Range<'A','Z'>, Range<'0','9'>>,
-    TextNode
+    ParseNode
   >>;
 
   using car = Opt<Ref<match>>;
@@ -135,7 +139,7 @@ struct BeginEndTest {
   suffixed<Capture<
     "list",
     Seq<Atom<'['>, ws, car, cdr, ws, Atom<']'>>,
-    TextNode
+    ParseNode
   >>;
 };
 
@@ -144,7 +148,7 @@ void test_begin_end() {
 
   auto text = to_span("[ [abc,ab?,cdb+] , [a,b,c*,d,e,f] ]");
 
-  Context<TextNode> c;
+  Context<ParseNode> c;
   auto tail = BeginEndTest::match(&c, text);
 
   if (tail.is_valid()) {
@@ -155,14 +159,14 @@ void test_begin_end() {
     printf("invalid\n");
   }
 
-  printf("sizeof(TestNode) %ld\n", sizeof(TextNode));
+  printf("sizeof(ParseNode) %ld\n", sizeof(ParseNode));
   printf("node count %ld\n", c.top_head()->node_count());
   printf("constructor calls %ld\n", NodeBase::constructor_calls);
   printf("destructor calls %ld\n", NodeBase::destructor_calls);
   printf("max size %d\n", SlabAlloc::slabs().max_size);
   printf("current size %d\n", SlabAlloc::slabs().current_size);
 
-  printf("test_begin_end() done\n\n");
+  printf("test_begin_end() end, fail count %d\n\n", fail_count);
 }
 
 //------------------------------------------------------------------------------
@@ -174,20 +178,20 @@ struct Pathological {
 
   using pattern =
   Oneof<
-    Capture<"plus",  Seq<Atom<'['>, Ref<match>, Atom<']'>, Atom<'+'>>, TextNode>,
-    Capture<"minus", Seq<Atom<'['>, Ref<match>, Atom<']'>, Atom<'-'>>, TextNode>,
-    Capture<"star",  Seq<Atom<'['>, Ref<match>, Atom<']'>, Atom<'*'>>, TextNode>,
-    Capture<"slash", Seq<Atom<'['>, Ref<match>, Atom<']'>, Atom<'/'>>, TextNode>,
-    Capture<"opt",   Seq<Atom<'['>, Ref<match>, Atom<']'>, Atom<'?'>>, TextNode>,
-    Capture<"eq",    Seq<Atom<'['>, Ref<match>, Atom<']'>, Atom<'='>>, TextNode>,
-    Capture<"none",  Seq<Atom<'['>, Ref<match>, Atom<']'>>, TextNode>,
-    Capture<"atom",  Range<'a','z'>, TextNode>
+    Capture<"plus",  Seq<Atom<'['>, Ref<match>, Atom<']'>, Atom<'+'>>, ParseNode>,
+    Capture<"minus", Seq<Atom<'['>, Ref<match>, Atom<']'>, Atom<'-'>>, ParseNode>,
+    Capture<"star",  Seq<Atom<'['>, Ref<match>, Atom<']'>, Atom<'*'>>, ParseNode>,
+    Capture<"slash", Seq<Atom<'['>, Ref<match>, Atom<']'>, Atom<'/'>>, ParseNode>,
+    Capture<"opt",   Seq<Atom<'['>, Ref<match>, Atom<']'>, Atom<'?'>>, ParseNode>,
+    Capture<"eq",    Seq<Atom<'['>, Ref<match>, Atom<']'>, Atom<'='>>, ParseNode>,
+    Capture<"none",  Seq<Atom<'['>, Ref<match>, Atom<']'>>, ParseNode>,
+    Capture<"atom",  Range<'a','z'>, ParseNode>
   >;
 };
 
 void test_pathological() {
   printf("test_pathological()\n");
-  Context<TextNode> c;
+  Context<ParseNode> c;
   cspan span;
   cspan tail;
 
@@ -206,13 +210,13 @@ void test_pathological() {
   tail = Pathological::match(&c, span);
   TEST(tail.is_valid(), "pathological tree invalid");
   print_tree(c.top_head());
-  printf("sizeof(TextNode) %ld\n", sizeof(TextNode));
+  printf("sizeof(ParseNode) %ld\n", sizeof(ParseNode));
   printf("node count %ld\n", c.top_head()->node_count());
   printf("constructor calls %ld\n", NodeBase::constructor_calls);
   printf("destructor calls %ld\n", NodeBase::destructor_calls);
   printf("max size %d\n", SlabAlloc::slabs().max_size);
   printf("current size %d\n", SlabAlloc::slabs().current_size);
-  printf("test_pathological() done\n\n");
+  printf("test_pathological() end, fail count %d\n\n", fail_count);
 }
 
 //------------------------------------------------------------------------------

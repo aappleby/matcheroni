@@ -112,6 +112,17 @@
       "cwd": "${workspaceFolder}",
     },
 
+    {
+      "name": "json_tut2a",
+      "preLaunchTask": "build_matcheroni",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/bin/tutorial/json_tut2a",
+      "cwd": "${workspaceFolder}",
+      "args" : ["data/json_demo.json"],
+    },
+
+
     //--------------------------------------------------------------------------
   ]
 }

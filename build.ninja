@@ -39,7 +39,7 @@ rule link
   command = g++ -Wall ${build_mode} ${in} -lboost_system -lboost_regex -o ${out}
 
 rule run_test
-  command = ${in} && touch ${out}
+  command = ${in} >> /dev/null && touch ${out}
 
 rule iwyu
   command = include-what-you-use -std=c++20 -I. ${in} && touch ${out} 2> /dev/null
@@ -57,8 +57,8 @@ build bin/tests/matcheroni_test   : link obj/tests/matcheroni_test.o
 build obj/tests/parseroni_test.o  : compile_cpp tests/parseroni_test.cpp
 build bin/tests/parseroni_test    : link obj/tests/parseroni_test.o
 
-#build bin/matcheroni_test_pass : run_test bin/test/matcheroni_test
-#build bin/parseroni_test_pass  : run_test bin/test/parseroni_test
+build bin/tests/matcheroni_test_pass : run_test bin/tests/matcheroni_test
+build bin/tests/parseroni_test_pass  : run_test bin/tests/parseroni_test
 
 #-------------------------------------------------------------------------------
 # Benchmark
