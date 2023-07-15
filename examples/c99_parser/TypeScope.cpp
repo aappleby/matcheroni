@@ -1,7 +1,10 @@
 // SPDX-FileCopyrightText:  2023 Austin Appleby <aappleby@gmail.com>
 // SPDX-License-Identifier: MIT License
 
-#include "examples/c99_parser/C99Parser.hpp"
+#include "examples/c99_parser/TypeScope.hpp"
+
+#include "examples/c99_parser/c_constants.hpp"
+#include "examples/c99_parser/Token.hpp"
 
 void TypeScope::clear() {
   class_types.clear();
@@ -11,14 +14,14 @@ void TypeScope::clear() {
   typedef_types.clear();
 }
 
-bool TypeScope::has_type(void* ctx, Token* a, Token* b, token_list& types) {
-  if(atom_cmp(ctx, a, LEX_IDENTIFIER)) {
+bool TypeScope::has_type(void* ctx, tspan s, token_list& types) {
+  if(matcheroni::atom_cmp(ctx, s.a, LEX_IDENTIFIER)) {
     return false;
   }
-  /*+*/parser_rewind(ctx, a, b);
+  /*+*/parser_rewind(ctx, s);
 
   for (const auto c : types) {
-    if (atom_cmp(ctx, a, c) == 0) {
+    if (matcheroni::atom_cmp(ctx, s.a, c) == 0) {
       return true;
     }
     else {
@@ -29,10 +32,10 @@ bool TypeScope::has_type(void* ctx, Token* a, Token* b, token_list& types) {
 }
 
 void TypeScope::add_type(Token* a, token_list& types) {
-  DCHECK(a->atom_cmp(LEX_IDENTIFIER) == 0);
+  DCHECK(matcheroni::atom_cmp(nullptr, a, LEX_IDENTIFIER) == 0);
 
   for (const auto& c : types) {
-    if (a->atom_cmp(c) == 0) return;
+    if (matcheroni::atom_cmp(nullptr, a, c) == 0) return;
   }
 
   types.push_back(a);
@@ -40,11 +43,11 @@ void TypeScope::add_type(Token* a, token_list& types) {
 
 //----------------------------------------
 
-bool TypeScope::has_class_type  (void* ctx, Token* a, Token* b) { if (has_type(ctx, a, b, class_types  )) return true; if (parent) return parent->has_class_type  (ctx, a, b); else return false; }
-bool TypeScope::has_struct_type (void* ctx, Token* a, Token* b) { if (has_type(ctx, a, b, struct_types )) return true; if (parent) return parent->has_struct_type (ctx, a, b); else return false; }
-bool TypeScope::has_union_type  (void* ctx, Token* a, Token* b) { if (has_type(ctx, a, b, union_types  )) return true; if (parent) return parent->has_union_type  (ctx, a, b); else return false; }
-bool TypeScope::has_enum_type   (void* ctx, Token* a, Token* b) { if (has_type(ctx, a, b, enum_types   )) return true; if (parent) return parent->has_enum_type   (ctx, a, b); else return false; }
-bool TypeScope::has_typedef_type(void* ctx, Token* a, Token* b) { if (has_type(ctx, a, b, typedef_types)) return true; if (parent) return parent->has_typedef_type(ctx, a, b); else return false; }
+bool TypeScope::has_class_type  (void* ctx, tspan s) { if (has_type(ctx, s, class_types  )) return true; if (parent) return parent->has_class_type  (ctx, s); else return false; }
+bool TypeScope::has_struct_type (void* ctx, tspan s) { if (has_type(ctx, s, struct_types )) return true; if (parent) return parent->has_struct_type (ctx, s); else return false; }
+bool TypeScope::has_union_type  (void* ctx, tspan s) { if (has_type(ctx, s, union_types  )) return true; if (parent) return parent->has_union_type  (ctx, s); else return false; }
+bool TypeScope::has_enum_type   (void* ctx, tspan s) { if (has_type(ctx, s, enum_types   )) return true; if (parent) return parent->has_enum_type   (ctx, s); else return false; }
+bool TypeScope::has_typedef_type(void* ctx, tspan s) { if (has_type(ctx, s, typedef_types)) return true; if (parent) return parent->has_typedef_type(ctx, s); else return false; }
 
 void TypeScope::add_class_type  (Token* a) { return add_type(a, class_types  ); }
 void TypeScope::add_struct_type (Token* a) { return add_type(a, struct_types ); }

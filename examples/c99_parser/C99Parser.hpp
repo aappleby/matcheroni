@@ -15,6 +15,10 @@
 #include "examples/c99_parser/c_constants.hpp"
 #include "examples/c99_parser/SST.hpp"
 #include "examples/c99_parser/Lexeme.hpp"
+#include "examples/c99_parser/C99Lexer.hpp"
+#include "examples/c99_parser/Token.hpp"
+#include "examples/c99_parser/ParseNode.hpp"
+#include "examples/c99_parser/TypeScope.hpp"
 
 using namespace matcheroni;
 
@@ -26,201 +30,6 @@ struct Token;
 struct TypeScope;
 
 typedef Span<Token> tspan;
-
-//------------------------------------------------------------------------------
-
-struct C99Lexer {
-  C99Lexer();
-  void reset();
-  bool lex(const std::string& text);
-  void dump_lexemes();
-
-  std::vector<Lexeme> lexemes;
-};
-
-//------------------------------------------------------------------------------
-// Tokens associate lexemes with parse nodes.
-// Tokens store bookkeeping data during parsing.
-
-struct Token {
-  Token(const Lexeme* lex);
-
-  //----------------------------------------
-  // These methods REMOVE THE SPAN FROM THE NODE - that's why they're not
-  // const. This is required to ensure that if an Opt<> matcher fails to match
-  // a branch, when it tries to match the next branch we will always pull the
-  // defunct nodes off the tokens.
-
-  int atom_cmp(const LexemeType& b);
-  int atom_cmp(const char& b);
-  int atom_cmp(const char* b);
-
-  template <int N>
-  int atom_cmp(const StringParam<N>& b) {
-    clear_span();
-    if (int c = lex->len() - b.str_len) return c;
-    for (auto i = 0; i < b.str_len; i++) {
-      if (auto c = lex->span.a[i] - b.str_val[i]) return c;
-    }
-    return 0;
-  }
-
-  int atom_cmp(const Token* b);
-  const char* unsafe_span_a();
-
-  //----------------------------------------
-
-  ParseNode* get_span();
-  const ParseNode* get_span() const;
-  void set_span(ParseNode* n);
-  void clear_span();
-  const char* type_to_str() const;
-  uint32_t type_to_color() const;
-  void dump_token() const;
-
-  Token* step_left();
-  Token* step_right();
-
-  //----------------------------------------
-
-  const char* debug_span_a() const;
-  const char* debug_span_b() const;
-  const Lexeme* get_lex_debug() const;
-
-  bool dirty = false;
-
-private:
-  ParseNode* span;
-  const Lexeme* lex;
-};
-
-//------------------------------------------------------------------------------
-
-struct ParseNode {
-
-  static void* operator new(std::size_t size);
-  static void* operator new[](std::size_t size);
-  static void operator delete(void*);
-  static void operator delete[](void*);
-
-  virtual ~ParseNode();
-
-  bool in_range(tspan s);
-  virtual void init_node(void* ctx, tspan s, ParseNode* node_a, ParseNode* node_b);
-  virtual void init_leaf(void* ctx, tspan s);
-  void attach_child(ParseNode* child);
-  int node_count() const;
-  ParseNode* left_neighbor();
-  ParseNode* right_neighbor();
-
-  //----------------------------------------
-
-  template <typename P>
-  bool is_a() const {
-    return typeid(*this) == typeid(P);
-  }
-
-  template <typename P>
-  P* child() {
-    for (auto cursor = head; cursor; cursor = cursor->next) {
-      if (cursor->is_a<P>()) {
-        return dynamic_cast<P*>(cursor);
-      }
-    }
-    return nullptr;
-  }
-
-  template <typename P>
-  const P* child() const {
-    for (auto cursor = head; cursor; cursor = cursor->next) {
-      if (cursor->is_a<P>()) {
-        return dynamic_cast<const P*>(cursor);
-      }
-    }
-    return nullptr;
-  }
-
-  template <typename P>
-  P* search() {
-    if (this->is_a<P>()) return this->as_a<P>();
-    for (auto cursor = head; cursor; cursor = cursor->next) {
-      if (auto c = cursor->search<P>()) {
-        return c;
-      }
-    }
-    return nullptr;
-  }
-
-  template <typename P>
-  P* as_a() {
-    return dynamic_cast<P*>(this);
-  }
-
-  template <typename P>
-  const P* as_a() const {
-    return dynamic_cast<const P*>(this);
-  }
-
-  //----------------------------------------
-
-  void print_class_name(int max_len = 0) const;
-  void check_sanity();
-
-  Token* tok_a();
-  Token* tok_b();
-  const Token* tok_a() const;
-  const Token* tok_b() const;
-
-  void dump_tree(int max_depth, int indentation);
-
-  //----------------------------------------
-
-  inline static int constructor_count = 0;
-
-  int precedence = 0;
-
-  // -2 = prefix, -1 = right-to-left, 0 = none, 1 = left-to-right, 2 = suffix
-  int assoc = 0;
-
-  ParseNode* prev = nullptr;
-  ParseNode* next = nullptr;
-  ParseNode* head = nullptr;
-  ParseNode* tail = nullptr;
-
- private:
-  Token* _tok_a = nullptr;  // First token, inclusivve
-  Token* _tok_b = nullptr;  // Last token, inclusive
-};
-
-//------------------------------------------------------------------------------
-
-struct TypeScope {
-
-  using token_list = std::vector<const Token*>;
-
-  void clear();
-  bool has_type(void* ctx, tspan s, token_list& types);
-  void add_type(Token* a, token_list& types);
-
-  bool has_class_type  (void* ctx, tspan s);
-  bool has_struct_type (void* ctx, tspan s);
-  bool has_union_type  (void* ctx, tspan s);
-  bool has_enum_type   (void* ctx, tspan s);
-  bool has_typedef_type(void* ctx, tspan s);
-
-  void add_class_type  (Token* a);
-  void add_struct_type (Token* a);
-  void add_union_type  (Token* a);
-  void add_enum_type   (Token* a);
-  void add_typedef_type(Token* a);
-
-  TypeScope* parent;
-  token_list class_types;
-  token_list struct_types;
-  token_list union_types;
-  token_list enum_types;
-  token_list typedef_types;
-};
 
 //------------------------------------------------------------------------------
 
@@ -257,20 +66,7 @@ class C99Parser {
   void dump_lexemes();
   void dump_tokens();
 
-  int atom_cmp(Token* a, const LexemeType& b);
-  int atom_cmp(Token* a, const char& b);
-  int atom_cmp(Token* a, const char* b);
-  int atom_cmp(Token* a, const Token* b);
-
   void parser_rewind(tspan s);
-
-  template<int N>
-  inline int atom_cmp(Token* a, const StringParam<N>& b) {
-    DCHECK(a == global_cursor);
-    auto result = a->atom_cmp(b);
-    if (result == 0) global_cursor++;
-    return result;
-  }
 
   //----------------------------------------
 

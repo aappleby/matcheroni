@@ -57,44 +57,6 @@ bool C99Parser::parse(std::vector<Lexeme>& lexemes) {
 
 //------------------------------------------------------------------------------
 
-int C99Parser::atom_cmp(Token* a, const LexemeType& b) {
-  DCHECK(a == global_cursor);
-  auto result = a->atom_cmp(b);
-  if (result == 0) global_cursor++;
-  return result;
-}
-
-int C99Parser::atom_cmp(Token* a, const char& b) {
-  DCHECK(a == global_cursor);
-  auto result = a->atom_cmp(b);
-  if (result == 0) global_cursor++;
-  return result;
-}
-
-int C99Parser::atom_cmp(Token* a, const char* b) {
-  DCHECK(a == global_cursor);
-  auto result = a->atom_cmp(b);
-  if (result == 0) global_cursor++;
-  return result;
-}
-
-/*
-template<int N>
-int C99Parser::atom_cmp(Token* a, const StringParam<N>& b) {
-  DCHECK(a == global_cursor);
-  auto result = a->atom_cmp(b);
-  if (result == 0) global_cursor++;
-  return result;
-}
-*/
-
-int C99Parser::atom_cmp(Token* a, const Token* b) {
-  DCHECK(a == global_cursor);
-  auto result = a->atom_cmp(b);
-  if (result == 0) global_cursor++;
-  return result;
-}
-
 void C99Parser::parser_rewind(Token* a, Token* b) {
   printf("rewind to %20.20s\n", a->debug_span_a());
 
