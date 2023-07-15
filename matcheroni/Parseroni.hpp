@@ -115,13 +115,18 @@ struct SlabAlloc {
 //------------------------------------------------------------------------------
 
 struct NodeBase {
-  NodeBase(const char* match_name, cspan span)
-      : match_name(match_name), span(span), flags(0) {
+  NodeBase() {
     constructor_calls++;
   }
 
   virtual ~NodeBase() {
     destructor_calls++;
+  }
+
+  void init(const char* match_name, cspan span) {
+    this->match_name = match_name;
+    this->span = span;
+    this->flags = 0;
   }
 
   static void* operator new(size_t s) { return slabs.alloc(s); }
@@ -250,7 +255,8 @@ struct Context {
 
   template <typename NodeType>
   NodeType* create(const char* match_name, cspan s, NodeBase* old_tail) {
-    auto new_node = new NodeType(match_name, s);
+    auto new_node = new NodeType();
+    new_node->init(match_name, s);
 
     highwater = s.b;
 

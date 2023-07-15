@@ -13,6 +13,8 @@
 #include "examples/c99_parser/c_constants.hpp"
 #include "examples/c99_parser/C99Parser.hpp"
 
+#include <assert.h>
+
 using namespace matcheroni;
 
 struct Token;
@@ -81,8 +83,10 @@ struct Literal2 {
   }
 };
 
-#if 0
 //------------------------------------------------------------------------------
+
+#if 0
+
 // Consumes spans from all tokens it matches with and creates a new node on top
 // of them.
 
@@ -119,48 +123,49 @@ struct LeafMaker {
     return end;
   }
 };
+#endif
 
 //------------------------------------------------------------------------------
 
 template <StringParam lit>
-inline Token* match_punct(void* ctx, Token* a, Token* b) {
-  if (!a || a == b) return nullptr;
-  if (a + lit.str_len > b) return nullptr;
+inline tspan match_punct(void* ctx, tspan s) {
+  if (!s) return s.fail();
+  if (s.len() < lit.str_len) return s.fail();
 
   for (auto i = 0; i < lit.str_len; i++) {
-    if (atom_cmp(ctx, a + i, LEX_PUNCT)) {
-      return nullptr;
+    if (atom_cmp(ctx, s.a, LEX_PUNCT)) {
+      return s.fail();
     }
-    if (atom_cmp(ctx, a->unsafe_span_a() + i, lit.str_val[i])) {
-      return nullptr;
+    if (atom_cmp(ctx, s.a->lex->span.a, lit.str_val[i])) {
+      return s.fail();
     }
+    s.advance(1);
   }
 
-  auto end = a + lit.str_len;
-  return end;
+  return s;
 }
 
 //------------------------------------------------------------------------------
 
 template <auto P>
-struct NodeAtom : public ParseNode, public LeafMaker<NodeAtom<P>> {
+struct NodeAtom : public ParseNode {
   using pattern = Atom<P>;
 };
 
 template <StringParam lit>
-struct NodeKeyword : public ParseNode, public LeafMaker<NodeKeyword<lit>> {
+struct NodeKeyword : public ParseNode {
   using pattern = Keyword<lit>;
 };
 
 template <StringParam lit>
-struct NodeLiteral : public ParseNode, public LeafMaker<NodeLiteral<lit>> {
+struct NodeLiteral : public ParseNode {
   using pattern = Literal2<lit>;
 };
 
 //------------------------------------------------------------------------------
 // Our builtin types are any sequence of prefixes followed by a builtin type
 
-struct NodeBuiltinType : public ParseNode, public LeafMaker<NodeBuiltinType> {
+struct NodeBuiltinType : public ParseNode {
   using match_prefix = Ref<&C99Parser::match_builtin_type_prefix>;
   using match_base = Ref<&C99Parser::match_builtin_type_base>;
   using match_suffix = Ref<&C99Parser::match_builtin_type_suffix>;
@@ -170,19 +175,20 @@ struct NodeBuiltinType : public ParseNode, public LeafMaker<NodeBuiltinType> {
   Seq<
     Any<
       Seq<
-        match_prefix,
+        Capture<"prefix", match_prefix, ParseNode>,
         And<match_base>
       >
     >,
-    match_base,
-    Opt<match_suffix>
+    Capture<"base", match_base, ParseNode>,
+    Opt<Capture<"suffix", match_suffix, ParseNode>>
   >;
   // clang-format on
 };
 
-struct NodeTypedefType : public ParseNode, public LeafMaker<NodeTypedefType> {
+struct NodeTypedefType : public ParseNode {
   using pattern = Ref<&C99Parser::match_typedef_type>;
 };
+
 
 //------------------------------------------------------------------------------
 // Excluding builtins and typedefs from being identifiers changes the total
@@ -191,7 +197,7 @@ struct NodeTypedefType : public ParseNode, public LeafMaker<NodeTypedefType> {
 // - Because "uint8_t *x = 5" gets misparsed as an expression if uint8_t matches
 // as an identifier
 
-struct NodeIdentifier : public ParseNode, public LeafMaker<NodeIdentifier> {
+struct NodeIdentifier : public ParseNode {
   using pattern =
   Seq<
     Not<NodeBuiltinType>,
@@ -202,26 +208,26 @@ struct NodeIdentifier : public ParseNode, public LeafMaker<NodeIdentifier> {
 
 //------------------------------------------------------------------------------
 
-struct NodePreproc : public ParseNode, public LeafMaker<NodePreproc> {
+struct NodePreproc : public ParseNode {
   using pattern = Atom<LEX_PREPROC>;
 };
 
 //------------------------------------------------------------------------------
 
-struct NodeConstant : public ParseNode, public LeafMaker<NodeConstant> {
+struct NodeConstant : public ParseNode {
   using pattern =
   Oneof<
-    Atom<LEX_FLOAT>,
-    Atom<LEX_INT>,
-    Atom<LEX_CHAR>,
-    Some<Atom<LEX_STRING>>
+    Capture<"float",  Atom<LEX_FLOAT>,        ParseNode>,
+    Capture<"int",    Atom<LEX_INT>,          ParseNode>,
+    Capture<"char",   Atom<LEX_CHAR>,         ParseNode>,
+    Capture<"string", Some<Atom<LEX_STRING>>, ParseNode>
   >;
 };
 
 //------------------------------------------------------------------------------
 
 template <StringParam lit>
-struct NodePrefixOp : public ParseNode, public LeafMaker<NodePrefixOp<lit>> {
+struct NodePrefixOp : public ParseNode {
   NodePrefixOp() {
     precedence = prefix_precedence(lit.str_val);
     assoc = prefix_assoc(lit.str_val);
@@ -233,7 +239,7 @@ struct NodePrefixOp : public ParseNode, public LeafMaker<NodePrefixOp<lit>> {
 //------------------------------------------------------------------------------
 
 template <StringParam lit>
-struct NodeBinaryOp : public ParseNode, public LeafMaker<NodeBinaryOp<lit>> {
+struct NodeBinaryOp : public ParseNode {
   NodeBinaryOp() {
     precedence = binary_precedence(lit.str_val);
     assoc = binary_assoc(lit.str_val);
@@ -245,7 +251,7 @@ struct NodeBinaryOp : public ParseNode, public LeafMaker<NodeBinaryOp<lit>> {
 //------------------------------------------------------------------------------
 
 template <StringParam lit>
-struct NodeSuffixOp : public ParseNode, public LeafMaker<NodeSuffixOp<lit>> {
+struct NodeSuffixOp : public ParseNode {
   NodeSuffixOp() {
     precedence = suffix_precedence(lit.str_val);
     assoc = suffix_assoc(lit.str_val);
@@ -254,30 +260,34 @@ struct NodeSuffixOp : public ParseNode, public LeafMaker<NodeSuffixOp<lit>> {
   using pattern = Ref<match_punct<lit>>;
 };
 
+
 //------------------------------------------------------------------------------
 
 struct NodeQualifier : public ParseNode {
-  static Token* match(void* ctx, Token* a, Token* b) {
-    if (!a || a == b) return nullptr;
-    if (SST<qualifiers>::match(ctx, a, b)) {
-      auto node = new NodeQualifier();
-      node->init_leaf(ctx, a, a);
-      return a + 1;
-    } else {
-      return nullptr;
+  static tspan match(void* ctx, tspan s) {
+    assert(s.is_valid());
+    auto span = s.a->lex->span;
+    if (SST<qualifiers>::match(span.a, span.b)) {
+      return s.advance(1);
+    }
+    else {
+      return s.fail();
     }
   }
 };
 
+
 //------------------------------------------------------------------------------
 
-struct NodeAsmSuffix : public ParseNode, public NodeMaker<NodeAsmSuffix> {
+struct NodeAsmSuffix : public ParseNode {
   using pattern =
       Seq<Oneof<Keyword<"asm">, Keyword<"__asm">, Keyword<"__asm__">>,
           Atom<'('>, Some<NodeAtom<LEX_STRING>>, Atom<')'>>;
 };
 
 //------------------------------------------------------------------------------
+
+#if 0
 
 struct NodeAccessSpecifier : public ParseNode,
                              public LeafMaker<NodeAccessSpecifier> {

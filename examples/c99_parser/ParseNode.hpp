@@ -14,6 +14,8 @@ typedef matcheroni::Span<Token> tspan;
 
 struct ParseNode : public matcheroni::NodeBase {
 
+  using matcheroni::NodeBase::NodeBase;
+
   //----------------------------------------
 #if 0
   template <typename P>
