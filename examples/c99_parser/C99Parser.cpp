@@ -3,7 +3,7 @@
 
 #include "examples/c99_parser/C99Parser.hpp"
 
-//#include "examples/c99_parser/c99_parse_nodes.hpp"
+#include "examples/c99_parser/c99_parse_nodes.hpp"
 
 using namespace matcheroni;
 

@@ -63,26 +63,25 @@ template <StringParam lit>
 struct Keyword {
   static_assert(SST<c99_keywords>::contains(lit.str_val));
 
-  template <typename atom>
-  static atom* match(void* ctx, atom* a, atom* b) {
-    if (!a || a == b) return nullptr;
-    if (atom_cmp(ctx, a, LEX_KEYWORD)) return nullptr;
-    /*+*/ parser_rewind(ctx, a, b);
-    if (atom_cmp(ctx, a, lit)) return nullptr;
-    return a + 1;
+  tspan match(void* ctx, tspan s) {
+    if (!s) return s.fail();
+    if (atom_cmp(ctx, s.a, LEX_KEYWORD)) return s.fail();
+    /*+*/ parser_rewind(ctx, s);
+    if (atom_cmp(ctx, s.a, lit)) return s.fail();
+    return s.advance(1);
   }
 };
 
 template <StringParam lit>
 struct Literal2 {
-  template <typename atom>
-  static atom* match(void* ctx, atom* a, atom* b) {
-    if (!a || a == b) return nullptr;
-    if (atom_cmp(ctx, a, lit)) return nullptr;
-    return a + 1;
+  static tspan match(void* ctx, tspan s) {
+    if (!s) return s.fail();
+    if (atom_cmp(ctx, s.a, lit)) return s.fail();
+    return s.advance(1);
   }
 };
 
+#if 0
 //------------------------------------------------------------------------------
 // Consumes spans from all tokens it matches with and creates a new node on top
 // of them.
@@ -1643,3 +1642,5 @@ struct NodeTranslationUnit : public ParseNode, public NodeMaker<NodeTranslationU
 };
 
 //------------------------------------------------------------------------------
+
+#endif
