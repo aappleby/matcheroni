@@ -418,8 +418,9 @@ void test_backref() {
   cspan tail;
 
   using pattern1 =
-      Seq<StoreBackref<const char, Rep<4, Range<'a', 'z'>>>, Atom<'-'>,
-          MatchBackref<const char, Rep<4, Range<'a', 'z'>>>>;
+      Seq<StoreBackref<"backref", const char, Rep<4, Range<'a', 'z'>>>,
+          Atom<'-'>,
+          MatchBackref<"backref", const char, Rep<4, Range<'a', 'z'>>>>;
 
   text = to_span("abcd-abcd!");
   tail = pattern1::match(nullptr, text);

@@ -3,6 +3,11 @@
 
 #include <stdio.h>
 
+#define BENCHMARK_BASELINE
+#define BENCHMARK_MATCHERONI
+#define BENCHMARK_BOOST
+#define BENCHMARK_STD_REGEX
+
 #ifdef BENCHMARK_SRELL
 #include "srell.hpp"
 #endif
@@ -17,6 +22,7 @@
 
 #ifdef BENCHMARK_MATCHERONI
 #include "matcheroni/Matcheroni.hpp"
+#include "matcheroni/Utilities.hpp"
 using namespace matcheroni;
 #endif
 
@@ -74,20 +80,19 @@ void benchmark_baseline(const char* path) {
 #ifdef BENCHMARK_MATCHERONI
 
 template<typename P>
-void benchmark_pattern(const char* span_a, const char* span_b) {
+void benchmark_pattern(cspan s) {
   int matches = 0;
   double time = 0;
 
   time -= timestamp_ms();
-  auto cursor = span_a;
-  while(cursor != span_b) {
-    auto end = P::match(nullptr, cursor, span_b);
-    if (end) {
+  while(s.a != s.b) {
+    auto end = P::match(nullptr, s);
+    if (end.is_valid()) {
       matches++;
-      cursor = end;
+      s.a = end.a;
     }
     else {
-      cursor++;
+      s.a++;
     }
   }
   time += timestamp_ms();
@@ -146,15 +151,16 @@ using matcheroni_ip4_pattern = Seq<
 
 void benchmark_matcheroni(const char* path) {
   std::string buf = read(path);
+  cspan s = to_span(buf);
 
   printf("Email: ");
-  benchmark_pattern<matcheroni_email_pattern>(buf.data(), buf.data() + buf.size());
+  benchmark_pattern<matcheroni_email_pattern>(s);
 
   printf("URL:   ");
-  benchmark_pattern<matcheroni_url_pattern>(buf.data(), buf.data() + buf.size());
+  benchmark_pattern<matcheroni_url_pattern>(s);
 
   printf("IP4:   ");
-  benchmark_pattern<matcheroni_ip4_pattern>(buf.data(), buf.data() + buf.size());
+  benchmark_pattern<matcheroni_ip4_pattern>(s);
 }
 #endif
 

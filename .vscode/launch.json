@@ -5,6 +5,8 @@
   "version": "0.2.0",
   "configurations": [
     //--------------------------------------------------------------------------
+    // Tests
+
     {
       "name": "matcheroni_test",
       "preLaunchTask": "build_matcheroni_test",
@@ -13,7 +15,7 @@
       "program": "${workspaceFolder}/bin/tests/matcheroni_test",
       "cwd": "${workspaceFolder}",
     },
-    //--------------------------------------------------------------------------
+
     {
       "name": "parseroni_test",
       "preLaunchTask": "build_parseroni_test",
@@ -22,7 +24,7 @@
       "program": "${workspaceFolder}/bin/tests/parseroni_test",
       "cwd": "${workspaceFolder}",
     },
-    //--------------------------------------------------------------------------
+
     {
       "name": "c_parser_test",
       "preLaunchTask": "build_matcheroni",
@@ -35,34 +37,54 @@
       //"args" : ["../gcc/gcc"],
       "args" : ["../gcc/gcc/testsuite/gcc.c-torture"],
     },
-    {
-      "name": "benchmark",
-      "preLaunchTask": "build_matcheroni",
-      "type": "cppdbg",
-      "request": "launch",
-      "program": "${workspaceFolder}/bin/examples/benchmark",
-      "cwd": "${workspaceFolder}",
-    },
-    {
-      "name": "regex_parser",
-      "preLaunchTask": "build_matcheroni",
-      "type": "cppdbg",
-      "request": "launch",
-      "program": "${workspaceFolder}/bin/examples/regex_parser",
-      "cwd": "${workspaceFolder}",
-      "args" : ["\"(^\\d+\\s+(very)?\\s+(good|bad)\\s+[a-z]*$)\""],
-    },
+
     //--------------------------------------------------------------------------
+    // Regex demo & benchmark
+
     {
-      "name": "json_parser",
+      "name": "regex_demo",
       "preLaunchTask": "build_matcheroni",
       "type": "cppdbg",
       "request": "launch",
-      "program": "${workspaceFolder}/bin/examples/json_parser",
+      "program": "${workspaceFolder}/bin/examples/regex_demo",
       "cwd": "${workspaceFolder}",
-      "args" : ["data/test.json"],
+      "args" : ["regex_demo.txt"],
     },
+
+    {
+      "name": "regex_benchmark",
+      "preLaunchTask": "build_matcheroni",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/bin/examples/regex_benchmark",
+      "cwd": "${workspaceFolder}",
+    },
+
     //--------------------------------------------------------------------------
+    // Json demo & benchmark
+
+    {
+      "name": "json_demo",
+      "preLaunchTask": "build_matcheroni",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/bin/examples/json_demo",
+      "cwd": "${workspaceFolder}",
+      "args" : ["data/json_demo.json"],
+    },
+
+    {
+      "name": "json_benchmark",
+      "preLaunchTask": "build_matcheroni",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/bin/examples/json_benchmark",
+      "cwd": "${workspaceFolder}",
+    },
+
+    //--------------------------------------------------------------------------
+    // Json tutorials
+
     {
       "name": "json_tut1a",
       "preLaunchTask": "build_matcheroni",
@@ -71,7 +93,7 @@
       "program": "${workspaceFolder}/bin/tutorial/json_tut1a",
       "cwd": "${workspaceFolder}",
     },
-    //--------------------------------------------------------------------------
+
     {
       "name": "json_tut1b",
       "preLaunchTask": "build_matcheroni",
@@ -80,7 +102,7 @@
       "program": "${workspaceFolder}/bin/tutorial/json_tut1b",
       "cwd": "${workspaceFolder}",
     },
-    //--------------------------------------------------------------------------
+
     {
       "name": "json_tut1c",
       "preLaunchTask": "build_matcheroni",
@@ -89,6 +111,7 @@
       "program": "${workspaceFolder}/bin/tutorial/json_tut1c",
       "cwd": "${workspaceFolder}",
     },
+
     //--------------------------------------------------------------------------
   ]
 }

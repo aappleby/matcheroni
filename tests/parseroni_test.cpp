@@ -43,6 +43,62 @@ static int fail_count = 0;
   }
 
 //------------------------------------------------------------------------------
+// A whole s-expression parser in ~10 lines of code. :D
+
+struct TinyLisp {
+  static cspan match(void* ctx, cspan s) {
+    return Oneof<
+      Capture<"atom", atom, TestNode>,
+      Capture<"list", list, TestNode>
+    >::match(ctx, s);
+  }
+
+  using ws = Any<Atom<' ', '\n', '\r', '\t'>>;
+  using atom = Some<NotAtom<'(', ')', ' ', '\n', '\r', '\t', ','>>;
+  using car = Opt<Ref<match>>;
+  using cdr = Any<Seq<ws, Atom<','>, ws, Ref<match>>>;
+  using list = Seq<Atom<'('>, ws, car, cdr, ws, Atom<')'>>;
+};
+
+//----------------------------------------
+
+void test_basic() {
+  printf("test_basic()\n");
+  Context c;
+  cspan span;
+  cspan tail;
+
+  {
+    // Check than we can round-trip a s-expression
+    std::string text = "(abcd,efgh,(ab),(a,(bc,de)),ghijk)";
+    c.reset();
+    span = to_span(text);
+    tail = TinyLisp::match(&c, span);
+    TEST(tail.is_valid() && tail == "");
+    std::string dump;
+    ((TestNode*)c.top_head)->dump_tree(dump);
+    TEST(text == dump, "Round trip s-expression");
+  }
+
+  c.reset();
+  span = to_span("((((a))))");
+  tail = TinyLisp::match(&c, span);
+  TEST(tail.is_valid() && tail == "");
+
+  c.reset();
+  span = to_span("(((())))");
+  tail = TinyLisp::match(&c, span);
+  TEST(tail.is_valid() && tail == "");
+
+  c.reset();
+  span = to_span("(((()))(");
+  tail = TinyLisp::match(&c, span);
+  TEST(!tail.is_valid() && tail == "(");
+
+  printf("test_basic() fail count %d\n\n", fail_count);
+}
+
+//------------------------------------------------------------------------------
 
 struct BeginEndTest {
   static cspan match(void* ctx, cspan s) {
@@ -103,13 +159,11 @@ void test_begin_end() {
   printf("max size %d\n", NodeBase::slabs.max_size);
   printf("current size %d\n", NodeBase::slabs.current_size);
 
-  printf("test_begin_end() done\n");
-  printf("\n");
+  printf("test_begin_end() done\n\n");
 }
 
 //------------------------------------------------------------------------------
 
-#if 0
 struct Pathological {
   static cspan match(void* ctx, cspan s) {
     return pattern::match(ctx, s);
@@ -129,6 +183,7 @@ struct Pathological {
 };
 
 void test_pathological() {
+  printf("test_pathological()\n");
   Context c;
   cspan span;
   cspan tail;
@@ -144,7 +199,6 @@ void test_pathological() {
   //std::string text = "[[[a]]]";
   std::string text = "[[[[[[a]]]]]]";
 
-  c.reset();
   span = to_span(text);
   tail = Pathological::match(&c, span);
   TEST(tail.is_valid(), "pathological tree invalid");
@@ -155,60 +209,7 @@ void test_pathological() {
   printf("destructor calls %ld\n", NodeBase::destructor_calls);
   printf("max size %d\n", NodeBase::slabs.max_size);
   printf("current size %d\n", NodeBase::slabs.current_size);
-}
-#endif
-
-//------------------------------------------------------------------------------
-// A whole s-expression parser in ~10 lines of code. :D
-
-struct TinyLisp {
-  static cspan match(void* ctx, cspan s) {
-    return Oneof<
-      Capture<"atom", atom, TestNode>,
-      Capture<"list", list, TestNode>
-    >::match(ctx, s);
-  }
-
-  using ws = Any<Atom<' ', '\n', '\r', '\t'>>;
-  using atom = Some<NotAtom<'(', ')', ' ', '\n', '\r', '\t', ','>>;
-  using car = Opt<Ref<match>>;
-  using cdr = Any<Seq<ws, Atom<','>, ws, Ref<match>>>;
-  using list = Seq<Atom<'('>, ws, car, cdr, ws, Atom<')'>>;
-};
-
-//------------------------------------------------------------------------------
-
-void test_basic() {
-  Context c;
-  cspan span;
-  cspan tail;
-
-  {
-    // Check than we can round-trip a s-expression
-    std::string text = "(abcd,efgh,(ab),(a,(bc,de)),ghijk)";
-    c.reset();
-    span = to_span(text);
-    tail = TinyLisp::match(&c, span);
-    TEST(tail.is_valid() && tail == "");
-    std::string dump;
-    ((TestNode*)c.top_head)->dump_tree(dump);
-    TEST(text == dump, "Round trip s-expression");
-  }
-
-  c.reset();
-  span = to_span("((((a))))");
-  tail = TinyLisp::match(&c, span);
-  TEST(tail.is_valid() && tail == "");
-
-  c.reset();
-  span = to_span("(((())))");
-  tail = TinyLisp::match(&c, span);
-  TEST(tail.is_valid() && tail == "");
-
-  c.reset();
-  span = to_span("(((()))(");
-  tail = TinyLisp::match(&c, span);
-  TEST(!tail.is_valid() && tail == "(");
+  printf("test_pathological() done\n\n");
 }
 
 //------------------------------------------------------------------------------
@@ -216,10 +217,9 @@ void test_basic() {
 int main(int argc, char** argv) {
   printf("Parseroni tests\n");
 
-  //test_basic();
+  test_basic();
   test_begin_end();
-  //test_backcap();
-  //test_pathological();
+  test_pathological();
 
   if (!fail_count) {
     printf("All tests pass!\n");

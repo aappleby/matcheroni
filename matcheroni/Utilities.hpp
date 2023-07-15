@@ -19,6 +19,39 @@ namespace matcheroni {
 using cspan = matcheroni::Span<const char>;
 
 //------------------------------------------------------------------------------
+// To debug our patterns, we create a Trace<> matcher that prints out a
+// diagram of the current match context, the matchers being tried, and
+// whether they succeeded.
+
+// Example snippet:
+
+// {(good|bad)\s+[a-z]*$} |  pos_set ?
+// {(good|bad)\s+[a-z]*$} |  pos_set X
+// {(good|bad)\s+[a-z]*$} |  group ?
+// {good|bad)\s+[a-z]*$ } |  |  oneof ?
+// {good|bad)\s+[a-z]*$ } |  |  |  text ?
+// {good|bad)\s+[a-z]*$ } |  |  |  text OK
+
+// Uncomment this to print a full trace of the regex matching process. Note -
+// the trace will be _very_ long, even for small regexes.
+
+template <StringParam match_name, typename P>
+struct Trace {
+  static cspan match(void* ctx, cspan s) {
+    CHECK(s.is_valid());
+    if (s.is_empty()) return s.fail();
+
+    auto parser = (Context*)ctx;
+    print_bar(parser->trace_depth++, s, match_name.str_val, "?");
+    auto end = P::match(ctx, s);
+    print_bar(--parser->trace_depth, s, match_name.str_val,
+              end.is_valid() ? "OK" : "X");
+
+    return end;
+  }
+};
+
+//------------------------------------------------------------------------------
 
 inline cspan to_span(const char* text) {
   return cspan(text, text + strlen(text));
@@ -256,7 +289,8 @@ inline std::string read(const char* path) {
   buf.resize(statbuf.st_size);
 
   FILE* f = fopen(path, "rb");
-  (void)fread(buf.data(), statbuf.st_size, 1, f);
+  auto size = fread(buf.data(), statbuf.st_size, 1, f);
+  (void)size;
   fclose(f);
 
   return buf;
@@ -269,7 +303,8 @@ inline void read(const char* path, std::string& text) {
   text.resize(statbuf.st_size);
 
   FILE* f = fopen(path, "rb");
-  (void)fread(text.data(), statbuf.st_size, 1, f);
+  auto size = fread(text.data(), statbuf.st_size, 1, f);
+  (void)size;
   fclose(f);
 }
 
@@ -281,8 +316,29 @@ inline void read(const char* path, char*& text_out, size_t& size_out) {
   size_out = statbuf.st_size;
 
   FILE* f = fopen(path, "rb");
-  (void)fread(text_out, statbuf.st_size, 1, f);
+  auto size = fread(text_out, statbuf.st_size, 1, f);
+  (void)size;
   fclose(f);
+}
+
+//------------------------------------------------------------------------------
+
+uint64_t hash_tree(NodeBase* node, int depth = 0) {
+  uint64_t h = 1 + depth * 0x87654321;
+
+  for (auto c = node->match_name; *c; c++) {
+    h = (h * 975313579) ^ *c;
+  }
+
+  for (auto c = node->span.a; c < node->span.b; c++) {
+    h = (h * 123456789) ^ *c;
+  }
+
+  for (auto c = node->child_head; c; c = c->node_next) {
+    h = (h * 987654321) ^ hash_tree(c, depth + 1);
+  }
+
+  return h;
 }
 
 //------------------------------------------------------------------------------

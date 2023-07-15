@@ -80,8 +80,8 @@ template <typename atom>
 using matcher_function = Span<atom> (*)(void* ctx, Span<atom> s);
 
 //------------------------------------------------------------------------------
-// Matchers will often need to compare ranges of atoms against null-delimited
-// strings ala strcmp(), so we provide this function for convenience.
+// Matchers will often need to compare spans against null-delimited strings ala
+// strcmp(), so we provide this function for convenience.
 
 inline int strcmp_span(Span<const char> s, const char* lit) {
   while (1) {
@@ -391,6 +391,7 @@ struct Any {
 };
 
 //------------------------------------------------------------------------------
+// Nothing always succeeds in matching nothing. Makes a good placeholder. :)
 
 struct Nothing {
   template <typename atom>
@@ -668,7 +669,9 @@ struct Ref<F> {
 // Note that the backreference is stored as a static pointer in the
 // StoreBackref template, so be careful of nesting as you could clobber it.
 
-template <typename atom, typename P>
+// FIXME this should create a temp node or something like the bookmarks
+
+template <StringParam name, typename atom, typename P>
 struct StoreBackref {
   inline static Span<atom> ref;
 
@@ -684,7 +687,7 @@ struct StoreBackref {
   }
 };
 
-template <typename atom, typename P>
+template <StringParam name, typename atom, typename P>
 struct MatchBackref {
   static Span<atom> match(void* ctx, Span<atom> s) {
     CHECK(s.is_valid());

@@ -422,11 +422,11 @@ const char* match_raw_string_literal(void* ctx, const char* a, const char* b) {
     Opt<encoding_prefix>,
     Atom<'R'>,
     Atom<'"'>,
-    StoreBackref<backref_type>,
+    StoreBackref<"raw_delim", const char, backref_type>,
     Atom<'('>,
     Opt<r_char_sequence>,
     Atom<')'>,
-    MatchBackref<backref_type>,
+    MatchBackref<"raw_delim", const char, backref_type>,
     Atom<'"'>
   >;
 

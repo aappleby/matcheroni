@@ -3,10 +3,7 @@
 
 #include "matcheroni/Matcheroni.hpp"
 
-//#define PARSERONI_NO_RECYCLE
-//#define PARSERONI_NO_CONSTRUCTORS
-//#define PARSERONI_NO_DESTRUCTORS
-//#define PARSERONI_NO_REWIND
+//#define PARSERONI_FAST_MODE
 
 namespace matcheroni {
 
@@ -49,6 +46,15 @@ struct SlabAlloc {
 
   SlabAlloc() { add_slab(); }
 
+  void reset() {
+    if (!top_slab) add_slab();
+    while (top_slab->prev) top_slab = top_slab->prev;
+    for (auto c = top_slab; c; c = c->next) {
+      c->cursor = 0;
+    }
+    current_size = 0;
+  }
+
   void destroy() {
     reset();
     auto c = top_slab;
@@ -58,15 +64,6 @@ struct SlabAlloc {
       c = next;
     }
     top_slab = nullptr;
-  }
-
-  void reset() {
-    if (!top_slab) add_slab();
-    while (top_slab->prev) top_slab = top_slab->prev;
-    for (auto c = top_slab; c; c = c->next) {
-      c->cursor = 0;
-    }
-    current_size = 0;
   }
 
   void add_slab() {
@@ -114,6 +111,7 @@ struct SlabAlloc {
   Slab* top_slab = nullptr;
   int current_size = 0;
   int max_size = 0;
+  int refcount = 0;
 };
 
 //------------------------------------------------------------------------------
@@ -143,30 +141,6 @@ struct NodeBase {
 
   //----------------------------------------
 
-  /*
-  uint64_t hash() {
-    uint64_t h = 1;
-
-    for (auto c = match_name; *c; c++) {
-      h = (h * 975313579) ^ *c;
-    }
-
-    if (!child_head) {
-      for (auto c = span.a; c < span.b; c++) {
-        h = (h * 123456789) ^ *c;
-      }
-    }
-
-    for (auto c = child_head; c; c = c->node_next) {
-      h = (h * 987654321) ^ c->hash();
-    }
-
-    return h;
-  }
-  */
-
-  //----------------------------------------
-
   inline static SlabAlloc slabs;
   inline static size_t constructor_calls = 0;
   inline static size_t destructor_calls = 0;
@@ -187,7 +161,9 @@ struct NodeBase {
 //------------------------------------------------------------------------------
 
 struct Context {
-  Context() {}
+  Context() {
+    NodeBase::slabs.reset();
+  }
 
   virtual ~Context() {
     reset();
@@ -290,6 +266,7 @@ struct Context {
   // In practice, this means we must delete the "parent" node first and then
   // must delete the child nodes from tail to head.
 
+#ifndef FAST_MODE
   void recycle(NodeBase* node) {
     if (node == nullptr) return;
 
@@ -303,6 +280,7 @@ struct Context {
       tail = prev;
     }
   }
+#endif
 
   //----------------------------------------
   // There's one critical detail we need to make the factory work correctly - if
@@ -316,7 +294,9 @@ struct Context {
     while (top_tail && (top_tail->span.b > s.a)) {
       auto dead = top_tail;
       top_tail = top_tail->node_prev;
+#ifndef FAST_MODE
       recycle(dead);
+#endif
     }
   }
 
@@ -468,39 +448,6 @@ struct CaptureEnd {
     else {
       return end.fail();
     }
-  }
-};
-
-//------------------------------------------------------------------------------
-// To debug our patterns, we create a Trace<> matcher that prints out a
-// diagram of the current match context, the matchers being tried, and
-// whether they succeeded.
-
-// Example snippet:
-
-// {(good|bad)\s+[a-z]*$} |  pos_set ?
-// {(good|bad)\s+[a-z]*$} |  pos_set X
-// {(good|bad)\s+[a-z]*$} |  group ?
-// {good|bad)\s+[a-z]*$ } |  |  oneof ?
-// {good|bad)\s+[a-z]*$ } |  |  |  text ?
-// {good|bad)\s+[a-z]*$ } |  |  |  text OK
-
-// Uncomment this to print a full trace of the regex matching process. Note -
-// the trace will be _very_ long, even for small regexes.
-
-template <StringParam match_name, typename P>
-struct Trace {
-  static cspan match(void* ctx, cspan s) {
-    CHECK(s.is_valid());
-    if (s.is_empty()) return s.fail();
-
-    auto parser = (Context*)ctx;
-    print_bar(parser->trace_depth++, s, match_name.str_val, "?");
-    auto end = P::match(ctx, s);
-    print_bar(--parser->trace_depth, s, match_name.str_val,
-              end.is_valid() ? "OK" : "X");
-
-    return end;
   }
 };
 
