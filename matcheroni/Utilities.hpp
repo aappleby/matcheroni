@@ -266,10 +266,17 @@ inline void print_escaped(const char* s, int len, unsigned int color) {
 //------------------------------------------------------------------------------
 // Prints a text representation of the parse tree.
 
-inline void print_tree(TextNode* node, int depth = 0) {
+inline void print_tree(const TextNode* node, int depth = 0) {
   print_bar(depth, node->span, node->match_name, "");
-  for (auto c = node->_child_head; c; c = c->_node_next) {
-    print_tree((TextNode*)c, depth + 1);
+  for (auto c = node->child_head(); c; c = c->node_next()) {
+    print_tree(c, depth + 1);
+  }
+}
+
+template<typename ContextType>
+inline void print_context(const ContextType* context, int depth = 0) {
+  for (auto node = context->top_head(); node; node = node->node_next()) {
+    print_tree(node);
   }
 }
 
@@ -357,7 +364,8 @@ inline void read(const char* path, char*& text_out, size_t& size_out) {
 
 //------------------------------------------------------------------------------
 
-inline uint64_t hash_tree(TextNode* node, int depth = 0) {
+template<typename NodeType>
+inline uint64_t hash_tree(const NodeType* node, int depth = 0) {
   uint64_t h = 1 + depth * 0x87654321;
 
   for (auto c = node->match_name; *c; c++) {
@@ -368,10 +376,19 @@ inline uint64_t hash_tree(TextNode* node, int depth = 0) {
     h = (h * 123456789) ^ *c;
   }
 
-  for (auto c = node->_child_head; c; c = c->_node_next) {
-    h = (h * 987654321) ^ hash_tree((TextNode*)c, depth + 1);
+  for (auto c = node->child_head(); c; c = c->node_next()) {
+    h = (h * 987654321) ^ hash_tree(c, depth + 1);
   }
 
+  return h;
+}
+
+template<typename ContextType>
+inline uint64_t hash_context(const ContextType* context) {
+  uint64_t h = 123456789;
+  for (auto node = context->top_head(); node; node = node->node_next()) {
+    h = (h * 373781549) ^ hash_tree(node);
+  }
   return h;
 }
 

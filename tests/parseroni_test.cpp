@@ -12,6 +12,18 @@ using namespace matcheroni;
 struct ParseNode : public TextNode {
   using TextNode::TextNode;
 
+  ParseNode* node_prev()  { return (ParseNode*)TextNode::node_prev(); }
+  ParseNode* node_next()  { return (ParseNode*)TextNode::node_next(); }
+
+  const ParseNode* node_prev() const { return (const ParseNode*)TextNode::node_prev(); }
+  const ParseNode* node_next() const { return (const ParseNode*)TextNode::node_next(); }
+
+  ParseNode* child_head() { return (ParseNode*)TextNode::child_head(); }
+  ParseNode* child_tail() { return (ParseNode*)TextNode::child_tail(); }
+
+  const ParseNode* child_head() const { return (const ParseNode*)TextNode::child_head(); }
+  const ParseNode* child_tail() const { return (const ParseNode*)TextNode::child_tail(); }
+
   void dump_tree(std::string& out) {
     if (strcmp(match_name, "atom") == 0) {
       for (auto c = span.a; c < span.b; c++) out.push_back(*c);
@@ -62,44 +74,55 @@ struct TinyLisp {
 
 //----------------------------------------
 
+template<typename Context>
+void check_hash(const Context& context, uint64_t hash_a) {
+  uint64_t hash_b = hash_context(&context);
+  printf("Expected hash 0x%016lx\n", hash_a);
+  printf("Actual hash   0x%016lx\n", hash_b);
+  TEST(hash_a == hash_b, "bad hash");
+}
+
+//----------------------------------------
+
 void test_basic() {
   printf("test_basic()\n");
-  Context<ParseNode> c;
+  Context<ParseNode> context;
   cspan span;
   cspan tail;
 
   {
     // Check than we can round-trip a s-expression
     std::string text = "(abcd,efgh,(ab),(a,(bc,de)),ghijk)";
-    c.reset();
+    context.reset();
     span = to_span(text);
-    tail = TinyLisp::match(&c, span);
+    tail = TinyLisp::match(&context, span);
     TEST(tail.is_valid() && tail == "");
 
     printf("Round-trip s-expression:\n");
     std::string dump;
-    c.top_head()->dump_tree(dump);
+    context.top_head()->dump_tree(dump);
     printf("Old : %s\n", text.c_str());
     printf("New : %s\n", dump.c_str());
     TEST(text == dump, "Mismatch!");
     printf("\n");
 
-    print_tree(c.top_head());
+    print_context(&context);
+    check_hash(context, 0x7073c4e1b84277f0);
   }
 
-  c.reset();
+  context.reset();
   span = to_span("((((a))))");
-  tail = TinyLisp::match(&c, span);
+  tail = TinyLisp::match(&context, span);
   TEST(tail.is_valid() && tail == "");
 
-  c.reset();
+  context.reset();
   span = to_span("(((())))");
-  tail = TinyLisp::match(&c, span);
+  tail = TinyLisp::match(&context, span);
   TEST(tail.is_valid() && tail == "");
 
-  c.reset();
+  context.reset();
   span = to_span("(((()))(");
-  tail = TinyLisp::match(&c, span);
+  tail = TinyLisp::match(&context, span);
   TEST(!tail.is_valid() && std::string(tail.b) == "(");
 
   printf("test_basic() end, fail count %d\n\n", fail_count);
@@ -117,6 +140,7 @@ struct BeginEndTest {
   template<typename P>
   using suffixed =
   CaptureBegin<
+    ParseNode,
     P,
     Opt<
       CaptureEnd<"plus", Atom<'+'>, ParseNode>,
@@ -148,19 +172,16 @@ void test_begin_end() {
 
   auto text = to_span("[ [abc,ab?,cdb+] , [a,b,c*,d,e,f] ]");
 
-  Context<ParseNode> c;
-  auto tail = BeginEndTest::match(&c, text);
+  Context<ParseNode> context;
+  auto tail = BeginEndTest::match(&context, text);
 
-  if (tail.is_valid()) {
-    print_match(text, text - tail);
-    if (c.top_head()) print_tree(c.top_head());
-  }
-  else {
-    printf("invalid\n");
-  }
+  print_match(text, text - tail);
+  print_context(&context);
+
+  check_hash(context, 0x401403cbefc2cba9);
 
   printf("sizeof(ParseNode) %ld\n", sizeof(ParseNode));
-  printf("node count %ld\n", c.top_head()->node_count());
+  printf("node count %ld\n", context.top_head()->node_count());
   printf("constructor calls %ld\n", NodeBase::constructor_calls);
   printf("destructor calls %ld\n", NodeBase::destructor_calls);
   printf("max size %d\n", SlabAlloc::slabs().max_size);
@@ -191,7 +212,7 @@ struct Pathological {
 
 void test_pathological() {
   printf("test_pathological()\n");
-  Context<ParseNode> c;
+  Context<ParseNode> context;
   cspan span;
   cspan tail;
 
@@ -207,11 +228,14 @@ void test_pathological() {
   std::string text = "[[[[[[a]]]]]]";
 
   span = to_span(text);
-  tail = Pathological::match(&c, span);
+  tail = Pathological::match(&context, span);
   TEST(tail.is_valid(), "pathological tree invalid");
-  print_tree(c.top_head());
+
+  print_context(&context);
+  check_hash(context, 0x07a37a832d506209);
+
   printf("sizeof(ParseNode) %ld\n", sizeof(ParseNode));
-  printf("node count %ld\n", c.top_head()->node_count());
+  printf("node count %ld\n", context.top_head()->node_count());
   printf("constructor calls %ld\n", NodeBase::constructor_calls);
   printf("destructor calls %ld\n", NodeBase::destructor_calls);
   printf("max size %d\n", SlabAlloc::slabs().max_size);

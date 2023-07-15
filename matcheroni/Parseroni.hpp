@@ -158,8 +158,14 @@ struct NodeBase {
   NodeBase* node_prev() { return _node_prev; }
   NodeBase* node_next() { return _node_next; }
 
+  const NodeBase* node_prev() const { return _node_prev; }
+  const NodeBase* node_next() const { return _node_next; }
+
   NodeBase* child_head() { return _child_head; }
   NodeBase* child_tail() { return _child_tail; }
+
+  const NodeBase* child_head() const { return _child_head; }
+  const NodeBase* child_tail() const { return _child_tail; }
 
   //----------------------------------------
 
@@ -213,8 +219,11 @@ struct ContextBase {
 
   //----------------------------------------
 
-  NodeBase* top_head() { return (NodeBase*)_top_head; }
-  NodeBase* top_tail() { return (NodeBase*)_top_tail; }
+  NodeBase* top_head() { return _top_head; }
+  NodeBase* top_tail() { return _top_tail; }
+
+  const NodeBase* top_head() const { return _top_head; }
+  const NodeBase* top_tail() const { return _top_tail; }
 
   void set_head(NodeBase* head) { _top_head = head; }
   void set_tail(NodeBase* tail) { _top_tail = tail; }
@@ -283,6 +292,41 @@ struct ContextBase {
     }
   }
 
+
+  NodeBase* enclose_bookmark(NodeBase* old_tail) {
+    //----------------------------------------
+    // Scan down the node list to find the bookmark
+
+    auto c = old_tail ? old_tail->node_next() : top_head();
+    for (; c; c = c->node_next()) {
+      if (c->flags & 1) {
+        break;
+      }
+    }
+    if (c == nullptr) {
+      // No bookmark = no capture, but _not_ a failure
+      return c;
+    }
+
+    //----------------------------------------
+    // Resize the bookmark's span and clear its bookmark flag
+
+    c->flags &= ~1;
+
+    //----------------------------------------
+    // Enclose its children
+
+    if (c->node_prev() != old_tail) {
+      auto child_head = old_tail ? old_tail->node_next() : top_head();
+      auto child_tail = c->node_prev();
+      detach(c);
+      splice(c, child_head, child_tail);
+    }
+
+    return c;
+  }
+
+
   /*
   template <typename NodeType>
   NodeType* create(const char* match_name, NodeBase* old_tail) {
@@ -343,12 +387,15 @@ struct ContextBase {
 
 //------------------------------------------------------------------------------
 
-template<typename NodeType>
+template<typename node_type>
 struct Context : public ContextBase {
   using ContextBase::ContextBase;
+  using NodeType = node_type;
 
   NodeType* top_head() { return (NodeType*)ContextBase::top_head(); }
   NodeType* top_tail() { return (NodeType*)ContextBase::top_tail(); }
+  const NodeType* top_head() const { return (const NodeType*)ContextBase::top_head(); }
+  const NodeType* top_tail() const { return (const NodeType*)ContextBase::top_tail(); }
 
   //const char* highwater = nullptr;
 };
@@ -367,8 +414,14 @@ struct SpanNode : public NodeBase {
   SpanNode* node_prev()  { return (SpanNode*)NodeBase::node_prev(); }
   SpanNode* node_next()  { return (SpanNode*)NodeBase::node_next(); }
 
+  const SpanNode* node_prev() const { return (const SpanNode*)NodeBase::node_prev(); }
+  const SpanNode* node_next() const { return (const SpanNode*)NodeBase::node_next(); }
+
   SpanNode* child_head() { return (SpanNode*)NodeBase::child_head(); }
   SpanNode* child_tail() { return (SpanNode*)NodeBase::child_tail(); }
+
+  const SpanNode* child_head() const { return (const SpanNode*)NodeBase::child_head(); }
+  const SpanNode* child_tail() const { return (const SpanNode*)NodeBase::child_tail(); }
 };
 
 using TextNode = SpanNode<const char>;
@@ -450,7 +503,7 @@ struct Capture {
 // If no CaptureEnd is hit inside a CaptureBegin, the capture does not occur
 // but this is _not_ an error.
 
-template<typename... rest>
+template<typename NodeType, typename... rest>
 struct CaptureBegin {
 
   template<typename atom>
@@ -475,35 +528,8 @@ struct CaptureBegin {
       return end;
     }
 
-    //----------------------------------------
-    // Scan down the node list to find the bookmark
-
-    auto c = old_tail ? old_tail->node_next() : context->top_head();
-    for (; c; c = c->node_next()) {
-      if (c->flags & 1) {
-        break;
-      }
-    }
-    if (c == nullptr) {
-      // No bookmark = no capture, but _not_ a failure
-      return end;
-    }
-
-    //----------------------------------------
-    // Resize the bookmark's span and clear its bookmark flag
-
-    // c->span.a = s.a;
-    c->flags &= ~1;
-
-    //----------------------------------------
-    // Enclose its children
-
-    if (c->node_prev() != old_tail) {
-      auto child_head = old_tail ? old_tail->node_next() : context->top_head();
-      auto child_tail = c->node_prev();
-      context->detach(c);
-      context->splice(c, child_head, child_tail);
-    }
+    auto c = context->enclose_bookmark(old_tail);
+    if (c) ((NodeType*)c)->span.a = s.a;
 
     return end;
   }
