@@ -6,30 +6,16 @@
 #include <cstddef>  // for size_t
 #include <typeinfo>
 
+#include "matcheroni/Parseroni.hpp"
 #include "examples/c99_parser/Token.hpp"
 typedef matcheroni::Span<Token> tspan;
 
 //------------------------------------------------------------------------------
 
-struct ParseNode {
-
-  static void* operator new(std::size_t size);
-  static void* operator new[](std::size_t size);
-  static void operator delete(void*);
-  static void operator delete[](void*);
-
-  virtual ~ParseNode();
-
-  bool in_range(tspan s);
-  virtual void init_node(void* ctx, tspan s, ParseNode* node_a, ParseNode* node_b);
-  virtual void init_leaf(void* ctx, tspan s);
-  void attach_child(ParseNode* child);
-  int node_count() const;
-  ParseNode* left_neighbor();
-  ParseNode* right_neighbor();
+struct ParseNode : public matcheroni::NodeBase {
 
   //----------------------------------------
-
+#if 0
   template <typename P>
   bool is_a() const {
     return typeid(*this) == typeid(P);
@@ -75,36 +61,14 @@ struct ParseNode {
   const P* as_a() const {
     return dynamic_cast<const P*>(this);
   }
+#endif
 
   //----------------------------------------
-
-  void print_class_name(int max_len = 0) const;
-  void check_sanity();
-
-  Token* tok_a();
-  Token* tok_b();
-  const Token* tok_a() const;
-  const Token* tok_b() const;
-
-  void dump_tree(int max_depth, int indentation);
-
-  //----------------------------------------
-
-  inline static int constructor_count = 0;
 
   int precedence = 0;
 
   // -2 = prefix, -1 = right-to-left, 0 = none, 1 = left-to-right, 2 = suffix
   int assoc = 0;
-
-  ParseNode* prev = nullptr;
-  ParseNode* next = nullptr;
-  ParseNode* head = nullptr;
-  ParseNode* tail = nullptr;
-
- private:
-  Token* _tok_a = nullptr;  // First token, inclusive
-  Token* _tok_b = nullptr;  // Last token, inclusive
 };
 
 //------------------------------------------------------------------------------

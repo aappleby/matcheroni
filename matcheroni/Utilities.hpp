@@ -269,24 +269,30 @@ inline void print_tree(NodeBase* node, int depth = 0) {
 
 //------------------------------------------------------------------------------
 
-inline void print_typeid_name(const char* name) {
+inline void print_typeid_name(const char* name, int max_len = 0) {
   int name_len = 0;
-  if (sscanf(name, "%d", &name_len)) {
-    while((*name >= '0') && (*name <= '9')) name++;
-    for (int i = 0; i < name_len; i++) {
-      putc(name[i], stdout);
-    }
+
+  while((*name >= '0') && (*name <= '9')) {
+    name_len *= 10;
+    name_len += *name - '0';
+    name++;
   }
-  else {
-    printf("%s", name);
+
+  if (max_len && name_len > max_len) name_len = max_len;
+
+  for (int i = 0; i < name_len; i++) {
+    putc(name[i], stdout);
+  }
+  for (int i = name_len; i < max_len; i++) {
+    putc(' ', stdout);
   }
 }
 
 //------------------------------------------------------------------------------
 
 template<typename T>
-inline void print_class_name() {
-  print_typeid_name(typeid(T).name());
+inline void print_class_name(int max_len = 0) {
+  print_typeid_name(typeid(T).name(), max_len);
 }
 
 //------------------------------------------------------------------------------

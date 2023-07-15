@@ -120,7 +120,7 @@ build bin/tutorial/json_tut2a   : link obj/tutorial/json_tut2a.o
 #build obj/c99_parser/C99Lexer.o        : compile_cpp examples/c99_parser/C99Lexer.cpp
 #build obj/c99_parser/C99Parser.o       : compile_cpp examples/c99_parser/C99Parser.cpp
 build obj/c99_parser/Lexeme.o          : compile_cpp examples/c99_parser/Lexeme.cpp
-#build obj/c99_parser/ParseNode.o       : compile_cpp examples/c99_parser/ParseNode.cpp
+build obj/c99_parser/ParseNode.o       : compile_cpp examples/c99_parser/ParseNode.cpp
 build obj/c99_parser/Token.o           : compile_cpp examples/c99_parser/Token.cpp
 build obj/c99_parser/TypeScope.o       : compile_cpp examples/c99_parser/TypeScope.cpp
 
