@@ -323,7 +323,7 @@ inline void read(const char* path, char*& text_out, size_t& size_out) {
 
 //------------------------------------------------------------------------------
 
-uint64_t hash_tree(NodeBase* node, int depth = 0) {
+inline uint64_t hash_tree(NodeBase* node, int depth = 0) {
   uint64_t h = 1 + depth * 0x87654321;
 
   for (auto c = node->match_name; *c; c++) {

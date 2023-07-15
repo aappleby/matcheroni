@@ -79,9 +79,7 @@ build bin/tests/parseroni_test    : link obj/tests/parseroni_test.o
 # This SRELL define seems to break things
 #benchmark_defs = ${benchmark_defs} -DSRELL_NO_APIEXT
 
-build obj/examples/benchmark.o    : compile_cpp examples/benchmark.cpp
-  defs = ${defs} ${benchmark_defs}
-build bin/examples/benchmark      : link obj/examples/benchmark.o
+defs = ${defs} ${benchmark_defs}
 
 #-------------------------------------------------------------------------------
 # Examples

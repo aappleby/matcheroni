@@ -692,7 +692,7 @@ struct MatchBackref {
   static Span<atom> match(void* ctx, Span<atom> s) {
     CHECK(s.is_valid());
 
-    auto ref = StoreBackref<atom, P>::ref;
+    auto ref = StoreBackref<name, atom, P>::ref;
     if (!ref.is_valid() || ref.is_empty()) return s.fail();
 
     for (size_t i = 0; i < ref.len(); i++) {
