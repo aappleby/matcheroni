@@ -91,44 +91,35 @@ void C99Parser::pop_scope() {
 }
 
 //----------------------------------------------------------------------------
-#if 0
-void C99Parser::append_node(ParseNode* node) {
-  if (tail) {
-    tail->next = node;
-    node->prev = tail;
-    tail = node;
-  } else {
-    head = node;
-    tail = node;
+
+tspan C99Parser::match_builtin_type_base(tspan s) {
+  if (!s.is_valid() || s.is_empty()) return s.fail();
+  if (SST<builtin_type_base>::match(s.a->lex->span.a, s.a->lex->span.b)) {
+    return s.advance(1);
+  }
+  else {
+    return s.fail();
   }
 }
 
-void C99Parser::enclose_nodes(ParseNode* start, ParseNode* node) {
-  // Is this right? Who knows. :D
-  node->head = start;
-  node->tail = tail;
-
-  tail->next = node;
-  start->prev = nullptr;
-
-  tail = node;
+tspan C99Parser::match_builtin_type_prefix(tspan s) {
+  if (!s.is_valid() || s.is_empty()) return s.fail();
+  if (SST<builtin_type_prefix>::match(s.a->lex->span.a, s.a->lex->span.b)) {
+    return s.advance(1);
+  }
+  else {
+    return s.fail();
+  }
 }
 
-//------------------------------------------------------------------------------
-
-Token* C99Parser::match_builtin_type_base(Token* a, Token* b) {
-  if (!a || a == b) return nullptr;
-  return SST<builtin_type_base>::match(this, a, b);
-}
-
-Token* C99Parser::match_builtin_type_prefix(Token* a, Token* b) {
-  if (!a || a == b) return nullptr;
-  return SST<builtin_type_prefix>::match(this, a, b);
-}
-
-Token* C99Parser::match_builtin_type_suffix(Token* a, Token* b) {
-  if (!a || a == b) return nullptr;
-  return SST<builtin_type_suffix>::match(this, a, b);
+tspan C99Parser::match_builtin_type_suffix(tspan s) {
+  if (!s.is_valid() || s.is_empty()) return s.fail();
+  if (SST<builtin_type_suffix>::match(s.a->lex->span.a, s.a->lex->span.b)) {
+    return s.advance(1);
+  }
+  else {
+    return s.fail();
+  }
 }
 
 //------------------------------------------------------------------------------
@@ -140,4 +131,3 @@ void C99Parser::dump_tokens() {
 }
 
 //------------------------------------------------------------------------------
-#endif
