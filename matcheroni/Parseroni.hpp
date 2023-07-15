@@ -1,5 +1,6 @@
 #pragma once
 #include <stdlib.h>  // for malloc/free
+#include <string.h>
 
 #include "matcheroni/Matcheroni.hpp"
 
@@ -123,18 +124,25 @@ struct NodeBase {
     destructor_calls++;
   }
 
-  void init(const char* match_name, cspan span) {
-    this->match_name = match_name;
-    this->span = span;
-    this->flags = 0;
-  }
-
   static void* operator new(size_t s) { return slabs.alloc(s); }
   static void* operator new[](size_t s) { return slabs.alloc(s); }
   static void operator delete(void* p, size_t s) { slabs.free(p, s); }
   static void operator delete[](void* p, size_t s) { slabs.free(p, s); }
 
   //----------------------------------------
+
+  void init(const char* match_name, cspan span) {
+    this->match_name = match_name;
+    this->span = span;
+    this->flags = 0;
+  }
+
+  NodeBase* child(const char* name) {
+    for (auto c = child_head; c; c = c->node_next) {
+      if (strcmp(name, c->match_name) == 0) return c;
+    }
+    return nullptr;
+  }
 
   size_t node_count() {
     size_t accum = 1;

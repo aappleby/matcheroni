@@ -17,12 +17,13 @@ struct ParseNode : public matcheroni::NodeBase {
   using matcheroni::NodeBase::NodeBase;
 
   //----------------------------------------
-#if 0
+
   template <typename P>
   bool is_a() const {
     return typeid(*this) == typeid(P);
   }
 
+  /*
   template <typename P>
   P* child() {
     for (auto cursor = head; cursor; cursor = cursor->next) {
@@ -53,6 +54,7 @@ struct ParseNode : public matcheroni::NodeBase {
     }
     return nullptr;
   }
+  */
 
   template <typename P>
   P* as_a() {
@@ -63,7 +65,6 @@ struct ParseNode : public matcheroni::NodeBase {
   const P* as_a() const {
     return dynamic_cast<const P*>(this);
   }
-#endif
 
   //----------------------------------------
 
