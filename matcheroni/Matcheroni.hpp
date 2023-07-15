@@ -54,6 +54,8 @@ struct Span {
   bool is_empty() const { return a && a == b; }
   bool is_valid() const { return a; }
 
+  operator bool() const { return a && b && a < b; }
+
   Span fail() const {
     return a ? Span(nullptr, a) : Span(a, b);
   }
@@ -66,6 +68,10 @@ struct Span {
   atom* a = 0;
   atom* b = 0;
 };
+
+// We'll be using spans of constant characters a lot, so this is a convenience
+// declaration.
+using cspan = Span<const char>;
 
 //------------------------------------------------------------------------------
 // Matcheroni is based on building trees of "matcher" functions. A matcher

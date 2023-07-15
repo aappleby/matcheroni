@@ -7,8 +7,6 @@
 
 namespace matcheroni {
 
-using cspan = Span<const char>;
-
 //------------------------------------------------------------------------------
 
 struct SlabAlloc {

@@ -16,8 +16,6 @@
 
 namespace matcheroni {
 
-using cspan = matcheroni::Span<const char>;
-
 //------------------------------------------------------------------------------
 // To debug our patterns, we create a Trace<> matcher that prints out a
 // diagram of the current match context, the matchers being tried, and

@@ -8,7 +8,7 @@
 
 //------------------------------------------------------------------------------
 
-Lexeme::Lexeme(LexemeType type, cspan s) {
+Lexeme::Lexeme(LexemeType type, matcheroni::cspan s) {
   this->type = type;
   this->span = s;
 }

@@ -6,7 +6,6 @@
 #include <string>
 
 using namespace matcheroni;
-using cspan = Span<const char>;
 
 //------------------------------------------------------------------------------
 
