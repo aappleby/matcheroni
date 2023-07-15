@@ -231,7 +231,7 @@ int test_parser(int argc, char** argv) {
   printf("Cleanup time   %f msec\n", cleanup_time);
   printf("\n");
   printf("Total nodes    %d\n", ParseNode::constructor_count);
-  printf("Node pool      %ld bytes\n", ParseNode::slabs.max_size);
+  printf("Node pool      %ld bytes\n", SlabAlloc::slabs().max_size);
   printf("Rewind count   %d\n", C99Parser::rewind_count);
   printf("Didn't rewind  %d\n", C99Parser::didnt_rewind);
   printf("File pass      %d\n", file_pass);

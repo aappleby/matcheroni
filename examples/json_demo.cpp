@@ -113,8 +113,8 @@ int main(int argc, char** argv) {
     }
 
     if (verbose) {
-      printf("Slab current      %d\n",  NodeBase::slabs.current_size);
-      printf("Slab max          %d\n",  NodeBase::slabs.max_size);
+      printf("Slab current      %d\n",  SlabAlloc::slabs().current_size);
+      printf("Slab max          %d\n",  SlabAlloc::slabs().max_size);
       printf("Tree nodes        %ld\n", context->node_count());
       printf("Constructor calls %ld\n", NodeBase::constructor_calls);
       printf("Destructor calls  %ld\n", NodeBase::destructor_calls);

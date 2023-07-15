@@ -156,8 +156,8 @@ void test_begin_end() {
   printf("node count %ld\n", c.top_head->node_count());
   printf("constructor calls %ld\n", NodeBase::constructor_calls);
   printf("destructor calls %ld\n", NodeBase::destructor_calls);
-  printf("max size %d\n", NodeBase::slabs.max_size);
-  printf("current size %d\n", NodeBase::slabs.current_size);
+  printf("max size %d\n", SlabAlloc::slabs().max_size);
+  printf("current size %d\n", SlabAlloc::slabs().current_size);
 
   printf("test_begin_end() done\n\n");
 }
@@ -207,8 +207,8 @@ void test_pathological() {
   printf("node count %ld\n", c.top_head->node_count());
   printf("constructor calls %ld\n", NodeBase::constructor_calls);
   printf("destructor calls %ld\n", NodeBase::destructor_calls);
-  printf("max size %d\n", NodeBase::slabs.max_size);
-  printf("current size %d\n", NodeBase::slabs.current_size);
+  printf("max size %d\n", SlabAlloc::slabs().max_size);
+  printf("current size %d\n", SlabAlloc::slabs().current_size);
   printf("test_pathological() done\n\n");
 }
 

@@ -107,6 +107,11 @@ struct SlabAlloc {
     current_size -= size;
   }
 
+  static SlabAlloc& slabs() {
+    static SlabAlloc inst;
+    return inst;
+  }
+
   Slab* top_slab = nullptr;
   int current_size = 0;
   int max_size = 0;
@@ -124,16 +129,16 @@ struct NodeBase {
     destructor_calls++;
   }
 
-  static void* operator new(size_t s) { return slabs.alloc(s); }
-  static void* operator new[](size_t s) { return slabs.alloc(s); }
-  static void operator delete(void* p, size_t s) { slabs.free(p, s); }
-  static void operator delete[](void* p, size_t s) { slabs.free(p, s); }
+  static void* operator new(size_t s) { return SlabAlloc::slabs().alloc(s); }
+  static void* operator new[](size_t s) { return SlabAlloc::slabs().alloc(s); }
+  static void operator delete(void* p, size_t s) { SlabAlloc::slabs().free(p, s); }
+  static void operator delete[](void* p, size_t s) { SlabAlloc::slabs().free(p, s); }
 
   //----------------------------------------
 
-  void init(const char* match_name, cspan span) {
+  void init(const char* match_name /*, cspan span*/) {
     this->match_name = match_name;
-    this->span = span;
+    //this->span = span;
     this->flags = 0;
   }
 
@@ -152,12 +157,10 @@ struct NodeBase {
 
   //----------------------------------------
 
-  inline static SlabAlloc slabs;
   inline static size_t constructor_calls = 0;
   inline static size_t destructor_calls = 0;
 
   const char* match_name;
-  cspan span;
 
   NodeBase* node_prev;
   NodeBase* node_next;
@@ -168,17 +171,23 @@ struct NodeBase {
   int flags;
 };
 
+//------------------------------------------------------------------------------
+
+template<typename atom>
+struct SpanBase : public NodeBase {
+  Span<atom> span;
+};
 
 //------------------------------------------------------------------------------
 
 struct Context {
   Context() {
-    NodeBase::slabs.reset();
+    SlabAlloc::slabs().reset();
   }
 
   virtual ~Context() {
     reset();
-    NodeBase::slabs.destroy();
+    SlabAlloc::slabs().destroy();
   }
 
   void reset() {
@@ -191,9 +200,9 @@ struct Context {
 
     top_head = nullptr;
     top_tail = nullptr;
-    highwater = nullptr;
+    //highwater = nullptr;
 
-    NodeBase::slabs.reset();
+    SlabAlloc::slabs().reset();
     NodeBase::constructor_calls = 0;
     NodeBase::destructor_calls = 0;
   }
@@ -262,11 +271,11 @@ struct Context {
   //----------------------------------------
 
   template <typename NodeType>
-  NodeType* create(const char* match_name, cspan s, NodeBase* old_tail) {
+  NodeType* create(const char* match_name, NodeBase* old_tail) {
     auto new_node = new NodeType();
-    new_node->init(match_name, s);
+    new_node->init(match_name);
 
-    highwater = s.b;
+    //highwater = s.b;
 
     add(new_node, old_tail);
 
@@ -301,7 +310,9 @@ struct Context {
   // we must also throw away any parse nodes that were created during the failed
   // match.
 
-  void rewind(cspan s) {
+#if 0
+  template<typename atom>
+  void rewind(Span<atom> s) {
     //printf("rewind\n");
     while (top_tail && (top_tail->span.b > s.a)) {
       auto dead = top_tail;
@@ -311,6 +322,7 @@ struct Context {
 #endif
     }
   }
+#endif
 
   //----------------------------------------
 
@@ -324,7 +336,7 @@ struct Context {
 
   NodeBase* top_head = nullptr;
   NodeBase* top_tail = nullptr;
-  const char* highwater = nullptr;
+  //const char* highwater = nullptr;
   int trace_depth = 0;
 };
 
@@ -332,12 +344,24 @@ struct Context {
 // Matcheroni's default rewind callback does nothing, but if we provide a
 // specialized version of it Matcheroni will call it as needed.
 
-template <>
+#if 0
+template <typename atom>
 inline void parser_rewind(void* ctx, cspan s) {
   if (ctx) {
-    ((Context*)ctx)->rewind(s);
+    auto context = (Context*)ctx;
+    //((Context*)ctx)->rewind(s);
+
+    //printf("rewind\n");
+    while (ctx->top_tail && (ctx->top_tail->span.b > s.a)) {
+      auto dead = top_tail;
+      top_tail = top_tail->node_prev;
+#ifndef FAST_MODE
+      recycle(dead);
+#endif
+
   }
 }
+#endif
 
 //------------------------------------------------------------------------------
 // To convert our pattern matches to parse nodes, we create a Factory<>
@@ -346,23 +370,26 @@ inline void parser_rewind(void* ctx, cspan s) {
 
 template <StringParam match_name, typename pattern, typename NodeType>
 struct Capture {
-  static cspan match(void* ctx, cspan s) {
+
+  template<typename atom>
+  static Span<atom> match(void* ctx, Span<atom> s) {
     Context* context = (Context*)ctx;
     auto old_tail = context->top_tail;
 #ifdef PARSERONI_FAST_MODE
-    auto old_state = NodeBase::slabs.save_state();
+    auto old_state = SlabAlloc::slabs().save_state();
 #endif
 
     auto end = pattern::match(context, s);
 
     if (end.is_valid()) {
-      cspan node_span = {s.a, end.a};
-      context->create<NodeType>(match_name.str_val, node_span, old_tail);
+      Span<atom> node_span = {s.a, end.a};
+      NodeType* new_node = (NodeType*)context->create<NodeType>(match_name.str_val, old_tail);
+      new_node->span = node_span;
     }
     else {
       context->top_tail = old_tail;
 #ifdef PARSERONI_FAST_MODE
-      NodeBase::slabs.restore_state(old_state);
+      SlabAlloc::slabs().restore_state(old_state);
 #endif
     }
 
@@ -388,7 +415,9 @@ struct Capture {
 
 template<typename... rest>
 struct CaptureBegin {
-  static cspan match(void* ctx, cspan s) {
+
+  template<typename atom>
+  static Span<atom> match(void* ctx, Span<atom> s) {
     Context* context = (Context*)ctx;
 
     //----------------------------------------
@@ -396,7 +425,7 @@ struct CaptureBegin {
 
     auto old_tail = context->top_tail;
 #ifdef PARSERONI_FAST_MODE
-    auto old_state = NodeBase::slabs.save_state();
+    auto old_state = SlabAlloc::slabs().save_state();
 #endif
 
     auto end = Seq<rest...>::match(context, s);
@@ -404,7 +433,7 @@ struct CaptureBegin {
     if (!end.is_valid()) {
       context->top_tail = old_tail;
 #ifdef PARSERONI_FAST_MODE
-      NodeBase::slabs.restore_state(old_state);
+      SlabAlloc::slabs().restore_state(old_state);
 #endif
       return end;
     }
@@ -447,13 +476,15 @@ struct CaptureBegin {
 
 template<StringParam match_name, typename P, typename NodeType>
 struct CaptureEnd {
-  static cspan match(void* ctx, cspan s) {
+  template<typename atom>
+  static Span<atom> match(void* ctx, Span<atom> s) {
     Context* context = (Context*)ctx;
 
     auto end = P::match(ctx, s);
     if (end.is_valid()) {
-      cspan new_span(end.a, end.a);
-      auto n = context->create<NodeType>(match_name.str_val, new_span, context->top_tail);
+      Span<atom> new_span(end.a, end.a);
+      NodeType* n = (NodeType*)context->create<NodeType>(match_name.str_val, context->top_tail);
+      n->span = new_span;
       n->flags |= 1;
       return end;
     }
