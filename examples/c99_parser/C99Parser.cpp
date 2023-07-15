@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: MIT License
 
 #include "examples/c99_parser/C99Parser.hpp"
-#include "examples/c99_parser/c99_parse_nodes.hpp"
+
+//#include "examples/c99_parser/c99_parse_nodes.hpp"
 
 using namespace matcheroni;
 
@@ -16,14 +17,14 @@ C99Parser::C99Parser() {
 //------------------------------------------------------------------------------
 
 void C99Parser::reset() {
+  Context::reset();
 
   tokens.clear();
-  ParseNode::slabs.reset();
-
   while (type_scope->parent) pop_scope();
   type_scope->clear();
 }
 
+#if 0
 //------------------------------------------------------------------------------
 
 bool C99Parser::parse(std::vector<Lexeme>& lexemes) {
@@ -172,3 +173,4 @@ void C99Parser::dump_tokens() {
 }
 
 //------------------------------------------------------------------------------
+#endif

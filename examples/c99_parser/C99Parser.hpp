@@ -20,8 +20,6 @@
 #include "examples/c99_parser/ParseNode.hpp"
 #include "examples/c99_parser/TypeScope.hpp"
 
-using namespace matcheroni;
-
 struct C99Parser;
 struct Lexeme;
 struct ParseNode;
@@ -29,11 +27,11 @@ struct SlabAlloc;
 struct Token;
 struct TypeScope;
 
-typedef Span<Token> tspan;
+typedef matcheroni::Span<Token> tspan;
 
 //------------------------------------------------------------------------------
 
-class C99Parser {
+class C99Parser : public matcheroni::Context {
  public:
   C99Parser();
 
@@ -76,42 +74,6 @@ class C99Parser {
   ParseNode* head = nullptr;
   ParseNode* tail = nullptr;
   ParseNode* root = nullptr;
-
-  Token* global_cursor;
-  inline static int rewind_count = 0;
-  inline static int didnt_rewind = 0;
 };
-
-//------------------------------------------------------------------------------
-
-template<>
-inline int matcheroni::atom_cmp(void* ctx, Token* a, LexemeType b) {
-  return ((C99Parser*)ctx)->atom_cmp(a, b);
-}
-
-template<>
-inline int matcheroni::atom_cmp(void* ctx, Token* a, char b) {
-  return ((C99Parser*)ctx)->atom_cmp(a, b);
-}
-
-template<>
-inline int matcheroni::atom_cmp(void* ctx, Token* a, const char* b) {
-  return ((C99Parser*)ctx)->atom_cmp(a, b);
-}
-
-template<int N>
-inline int atom_cmp(void* ctx, Token* a, const StringParam<N>& b) {
-  return ((C99Parser*)ctx)->atom_cmp(a, b);
-}
-
-template<>
-inline int matcheroni::atom_cmp(void* ctx, Token* a, const Token* b) {
-  return ((C99Parser*)ctx)->atom_cmp(a, b);
-}
-
-template<>
-inline void matcheroni::parser_rewind(void* ctx, tspan s) {
-  ((C99Parser*)ctx)->parser_rewind(s);
-}
 
 //------------------------------------------------------------------------------
