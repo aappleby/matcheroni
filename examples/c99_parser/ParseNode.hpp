@@ -12,9 +12,9 @@ typedef matcheroni::Span<Token> tspan;
 
 //------------------------------------------------------------------------------
 
-struct ParseNode : public matcheroni::NodeBase {
+struct ParseNode : public matcheroni::SpanNode<Token> {
 
-  using matcheroni::NodeBase::NodeBase;
+  using matcheroni::SpanNode<Token>::SpanNode;
 
   //----------------------------------------
 

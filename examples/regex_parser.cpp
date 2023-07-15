@@ -27,7 +27,7 @@ struct RegexParser {
     // A 'top-level' regex is either a simple regex or a one-of regex.
     using regex_top =
     Oneof<
-      Capture<"oneof", oneof, NodeBase>,
+      Capture<"oneof", oneof, TextNode>,
       simple
     >;
     return regex_top::match(ctx, s);
@@ -54,18 +54,18 @@ struct RegexParser {
 
   using range =
   Seq<
-    Capture<"begin", pchar, NodeBase>,
+    Capture<"begin", pchar, TextNode>,
     Atom<'-'>,
-    Capture<"end", pchar, NodeBase>
+    Capture<"end", pchar, TextNode>
   >;
 
   // The contents of a matcher set must be ranges or individual characters.
 
   using set_body =
   Some<
-    Capture<"range", range, NodeBase>,
-    Capture<"char",  pchar, NodeBase>,
-    Capture<"meta",  mchar, NodeBase>
+    Capture<"range", range, TextNode>,
+    Capture<"char",  pchar, TextNode>,
+    Capture<"meta",  mchar, TextNode>
   >;
 
   // The regex units that we can apply a */+/? operator to are sets, groups,
@@ -74,24 +74,24 @@ struct RegexParser {
 
   using unit =
   Oneof<
-    Capture<"neg_set", Seq<Atom<'['>, Atom<'^'>, set_body, Atom<']'>>, NodeBase>,
-    Capture<"pos_set", Seq<Atom<'['>,            set_body, Atom<']'>>, NodeBase>,
-    Capture<"group",   Seq<Atom<'('>, Ref<match>,          Atom<')'>>, NodeBase>,
-    Capture<"dot",     Atom<'.'>, NodeBase>,
-    Capture<"char",    pchar, NodeBase>,
-    Capture<"meta",    mchar, NodeBase>
+    Capture<"neg_set", Seq<Atom<'['>, Atom<'^'>, set_body, Atom<']'>>, TextNode>,
+    Capture<"pos_set", Seq<Atom<'['>,            set_body, Atom<']'>>, TextNode>,
+    Capture<"group",   Seq<Atom<'('>, Ref<match>,          Atom<')'>>, TextNode>,
+    Capture<"dot",     Atom<'.'>, TextNode>,
+    Capture<"char",    pchar, TextNode>,
+    Capture<"meta",    mchar, TextNode>
   >;
 
   // A 'simple' regex is text, line end markers, a unit w/ operator, or a bare
   // unit.
 
   using simple = Some<
-    Capture<"text", text, NodeBase>,
-    Capture<"BOL",  Atom<'^'>, NodeBase>,
-    Capture<"EOL",  Atom<'$'>, NodeBase>,
-    Capture<"any",  Seq<unit, Atom<'*'>>, NodeBase>,
-    Capture<"some", Seq<unit, Atom<'+'>>, NodeBase>,
-    Capture<"opt",  Seq<unit, Atom<'?'>>, NodeBase>,
+    Capture<"text", text, TextNode>,
+    Capture<"BOL",  Atom<'^'>, TextNode>,
+    Capture<"EOL",  Atom<'$'>, TextNode>,
+    Capture<"any",  Seq<unit, Atom<'*'>>, TextNode>,
+    Capture<"some", Seq<unit, Atom<'+'>>, TextNode>,
+    Capture<"opt",  Seq<unit, Atom<'?'>>, TextNode>,
     unit
   >;
 
@@ -99,10 +99,10 @@ struct RegexParser {
 
   using oneof =
   Seq<
-    Capture<"option", simple, NodeBase>,
+    Capture<"option", simple, TextNode>,
     Some<Seq<
       Atom<'|'>,
-      Capture<"option", simple, NodeBase>
+      Capture<"option", simple, TextNode>
     >>
   >;
 

@@ -31,28 +31,28 @@ struct JsonParser {
 
   static cspan value(void* ctx, cspan s) {
     return Oneof<
-      Capture<"array",   array,   NodeBase>,
-      Capture<"number",  number,  NodeBase>,
-      Capture<"object",  object,  NodeBase>,
-      Capture<"string",  string,  NodeBase>,
-      Capture<"keyword", keyword, NodeBase>
+      Capture<"array",   array,   TextNode>,
+      Capture<"number",  number,  TextNode>,
+      Capture<"object",  object,  TextNode>,
+      Capture<"string",  string,  TextNode>,
+      Capture<"keyword", keyword, TextNode>
     >::match(ctx, s);
   }
 
   using pair =
   Seq<
-    Capture<"key", string, NodeBase>,
+    Capture<"key", string, TextNode>,
     ws,
     Atom<':'>,
     ws,
-    Capture<"value", Ref<value>, NodeBase>
+    Capture<"value", Ref<value>, TextNode>
   >;
 
   using object =
   Seq<
     Atom<'{'>, ws,
     Opt<comma_separated<
-      Capture<"member", pair, NodeBase>
+      Capture<"member", pair, TextNode>
     >>,
     ws,
     Atom<'}'>

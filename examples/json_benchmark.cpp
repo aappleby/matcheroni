@@ -50,7 +50,7 @@ int main(int argc, char** argv) {
   double time_accum = 0;
   double line_accum = 0;
 
-  Context* context = new Context();
+  Context<TextNode>* context = new Context<TextNode>();
 
   for (auto path : paths) {
     if (verbose) {
@@ -93,7 +93,7 @@ int main(int argc, char** argv) {
     if (parse_end.a < text.b) {
       printf("Parse failed!\n");
       printf("Failure near `");
-      print_flat(cspan(context->highwater, text.b), 20);
+      //print_flat(cspan(context->highwater, text.b), 20);
       printf("`\n");
       continue;
     }
@@ -105,7 +105,7 @@ int main(int argc, char** argv) {
 
     if (dump_tree) {
       printf("Parse tree:\n");
-      for (auto n = context->top_head; n; n = n->node_next) {
+      for (auto n = context->top_head(); n; n = n->node_next()) {
         print_tree(n);
       }
     }

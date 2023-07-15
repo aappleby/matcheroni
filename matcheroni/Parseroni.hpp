@@ -1,6 +1,7 @@
 #pragma once
 #include <stdlib.h>  // for malloc/free
 #include <string.h>
+#include <stdint.h>
 
 #include "matcheroni/Matcheroni.hpp"
 
@@ -129,21 +130,20 @@ struct NodeBase {
     destructor_calls++;
   }
 
-  static void* operator new(size_t s) { return SlabAlloc::slabs().alloc(s); }
-  static void* operator new[](size_t s) { return SlabAlloc::slabs().alloc(s); }
-  static void operator delete(void* p, size_t s) { SlabAlloc::slabs().free(p, s); }
-  static void operator delete[](void* p, size_t s) { SlabAlloc::slabs().free(p, s); }
+  static void* operator new     (size_t s)          { return SlabAlloc::slabs().alloc(s); }
+  static void* operator new[]   (size_t s)          { return SlabAlloc::slabs().alloc(s); }
+  static void  operator delete  (void* p, size_t s) { SlabAlloc::slabs().free(p, s); }
+  static void  operator delete[](void* p, size_t s) { SlabAlloc::slabs().free(p, s); }
 
   //----------------------------------------
 
-  void init(const char* match_name /*, cspan span*/) {
+  void init(const char* match_name) {
     this->match_name = match_name;
-    //this->span = span;
     this->flags = 0;
   }
 
   NodeBase* child(const char* name) {
-    for (auto c = child_head; c; c = c->node_next) {
+    for (auto c = _child_head; c; c = c->_node_next) {
       if (strcmp(name, c->match_name) == 0) return c;
     }
     return nullptr;
@@ -151,9 +151,15 @@ struct NodeBase {
 
   size_t node_count() {
     size_t accum = 1;
-    for (auto c = child_head; c; c = c->node_next) accum += c->node_count();
+    for (auto c = _child_head; c; c = c->_node_next) accum += c->node_count();
     return accum;
   }
+
+  NodeBase* node_prev() { return _node_prev; }
+  NodeBase* node_next() { return _node_next; }
+
+  NodeBase* child_head() { return _child_head; }
+  NodeBase* child_tail() { return _child_tail; }
 
   //----------------------------------------
 
@@ -161,45 +167,35 @@ struct NodeBase {
   inline static size_t destructor_calls = 0;
 
   const char* match_name;
-
-  NodeBase* node_prev;
-  NodeBase* node_next;
-
-  NodeBase* child_head;
-  NodeBase* child_tail;
-
-  int flags;
+  uint64_t    flags;
+  NodeBase*   _node_prev;
+  NodeBase*   _node_next;
+  NodeBase*   _child_head;
+  NodeBase*   _child_tail;
 };
 
 //------------------------------------------------------------------------------
 
-template<typename atom>
-struct SpanBase : public NodeBase {
-  Span<atom> span;
-};
-
-//------------------------------------------------------------------------------
-
-struct Context {
-  Context() {
+struct ContextBase {
+  ContextBase() {
     SlabAlloc::slabs().reset();
   }
 
-  virtual ~Context() {
+  virtual ~ContextBase() {
     reset();
     SlabAlloc::slabs().destroy();
   }
 
   void reset() {
-    auto c = top_tail;
+    auto c = _top_tail;
     while (c) {
-      auto prev = c->node_prev;
+      auto prev = c->_node_prev;
       recycle(c);
       c = prev;
     }
 
-    top_head = nullptr;
-    top_tail = nullptr;
+    _top_head = nullptr;
+    _top_tail = nullptr;
     //highwater = nullptr;
 
     SlabAlloc::slabs().reset();
@@ -209,63 +205,65 @@ struct Context {
 
   //----------------------------------------
 
-  void append(NodeBase* new_node) {
-    new_node->node_prev = nullptr;
-    new_node->node_next = nullptr;
-    new_node->child_head = nullptr;
-    new_node->child_tail = nullptr;
+  size_t node_count() {
+    size_t accum = 0;
+    for (auto c = _top_head; c; c = c->_node_next) accum += c->node_count();
+    return accum;
+  }
 
-    if (top_tail) {
-      new_node->node_prev = top_tail;
-      top_tail->node_next = new_node;
-      top_tail = new_node;
+  //----------------------------------------
+
+  NodeBase* top_head() { return (NodeBase*)_top_head; }
+  NodeBase* top_tail() { return (NodeBase*)_top_tail; }
+
+  void set_head(NodeBase* head) { _top_head = head; }
+  void set_tail(NodeBase* tail) { _top_tail = tail; }
+
+  //----------------------------------------
+
+  void append(NodeBase* new_node) {
+    new_node->_node_prev = nullptr;
+    new_node->_node_next = nullptr;
+    new_node->_child_head = nullptr;
+    new_node->_child_tail = nullptr;
+
+    if (_top_tail) {
+      new_node->_node_prev = _top_tail;
+      _top_tail->_node_next = new_node;
+      _top_tail = new_node;
     } else {
-      top_head = new_node;
-      top_tail = new_node;
+      _top_head = new_node;
+      _top_tail = new_node;
     }
   }
 
   //----------------------------------------
 
   void detach(NodeBase* n) {
-    if (n->node_prev) n->node_prev->node_next = n->node_next;
-    if (n->node_next) n->node_next->node_prev = n->node_prev;
-    if (top_head == n) top_head = n->node_next;
-    if (top_tail == n) top_tail = n->node_prev;
-    n->node_prev = nullptr;
-    n->node_next = nullptr;
+    if (n->_node_prev) n->_node_prev->_node_next = n->_node_next;
+    if (n->_node_next) n->_node_next->_node_prev = n->_node_prev;
+    if (_top_head == n) _top_head = n->_node_next;
+    if (_top_tail == n) _top_tail = n->_node_prev;
+    n->_node_prev = nullptr;
+    n->_node_next = nullptr;
   }
 
   //----------------------------------------
 
   void splice(NodeBase* new_node, NodeBase* child_head, NodeBase* child_tail) {
-    new_node->node_prev = child_head->node_prev;
-    new_node->node_next = child_tail->node_next;
-    new_node->child_head = child_head;
-    new_node->child_tail = child_tail;
+    new_node->_node_prev = child_head->_node_prev;
+    new_node->_node_next = child_tail->_node_next;
+    new_node->_child_head = child_head;
+    new_node->_child_tail = child_tail;
 
-    if (child_head->node_prev) child_head->node_prev->node_next = new_node;
-    if (child_tail->node_next) child_head->node_next->node_prev = new_node;
+    if (child_head->_node_prev) child_head->_node_prev->_node_next = new_node;
+    if (child_tail->_node_next) child_head->_node_next->_node_prev = new_node;
 
-    child_head->node_prev = nullptr;
-    child_tail->node_next = nullptr;
+    child_head->_node_prev = nullptr;
+    child_tail->_node_next = nullptr;
 
-    if (top_head == child_head) top_head = new_node;
-    if (top_tail == child_tail) top_tail = new_node;
-  }
-
-  //----------------------------------------
-
-  void add(NodeBase* new_node, NodeBase* old_tail) {
-    // Move all nodes in (old_tail,new_tail] to be children of new_node and
-    // append new_node to the node list.
-    if (old_tail == top_tail) {
-      append(new_node);
-    } else {
-      auto child_head = old_tail ? old_tail->node_next : top_head;
-      auto child_tail = top_tail;
-      splice(new_node, child_head, child_tail);
-    }
+    if (_top_head == child_head) _top_head = new_node;
+    if (_top_tail == child_tail) _top_tail = new_node;
   }
 
   //----------------------------------------
@@ -275,9 +273,16 @@ struct Context {
     auto new_node = new NodeType();
     new_node->init(match_name);
 
-    //highwater = s.b;
+    // Move all nodes in (old_tail,new_tail] to be children of new_node and
+    // append new_node to the node list.
 
-    add(new_node, old_tail);
+    if (old_tail == _top_tail) {
+      append(new_node);
+    } else {
+      auto child_head = old_tail ? old_tail->_node_next : _top_head;
+      auto child_tail = _top_tail;
+      splice(new_node, child_head, child_tail);
+    }
 
     return new_node;
   }
@@ -291,12 +296,12 @@ struct Context {
   void recycle(NodeBase* node) {
     if (node == nullptr) return;
 
-    auto tail = node->child_tail;
+    auto tail = node->_child_tail;
 
     delete node;
 
     while (tail) {
-      auto prev = tail->node_prev;
+      auto prev = tail->_node_prev;
       recycle(tail);
       tail = prev;
     }
@@ -326,19 +331,43 @@ struct Context {
 
   //----------------------------------------
 
-  size_t node_count() {
-    size_t accum = 0;
-    for (auto c = top_head; c; c = c->node_next) accum += c->node_count();
-    return accum;
-  }
-
-  //----------------------------------------
-
-  NodeBase* top_head = nullptr;
-  NodeBase* top_tail = nullptr;
+  NodeBase* _top_head = nullptr;
+  NodeBase* _top_tail = nullptr;
   //const char* highwater = nullptr;
   int trace_depth = 0;
 };
+
+//------------------------------------------------------------------------------
+
+template<typename NodeType>
+struct Context : public ContextBase {
+  using ContextBase::ContextBase;
+
+  NodeType* top_head() { return (NodeType*)ContextBase::top_head(); }
+  NodeType* top_tail() { return (NodeType*)ContextBase::top_tail(); }
+
+  //const char* highwater = nullptr;
+};
+
+//------------------------------------------------------------------------------
+
+template<typename atom>
+struct SpanNode : public NodeBase {
+  using NodeBase::NodeBase;
+
+  using ContextType = Context<SpanNode<atom>>;
+  using SpanType = Span<atom>;
+
+  SpanType span;
+
+  SpanNode* node_prev()  { return (SpanNode*)NodeBase::node_prev(); }
+  SpanNode* node_next()  { return (SpanNode*)NodeBase::node_next(); }
+
+  SpanNode* child_head() { return (SpanNode*)NodeBase::child_head(); }
+  SpanNode* child_tail() { return (SpanNode*)NodeBase::child_tail(); }
+};
+
+using TextNode = SpanNode<const char>;
 
 //------------------------------------------------------------------------------
 // Matcheroni's default rewind callback does nothing, but if we provide a
@@ -371,10 +400,13 @@ inline void parser_rewind(void* ctx, cspan s) {
 template <StringParam match_name, typename pattern, typename NodeType>
 struct Capture {
 
-  template<typename atom>
-  static Span<atom> match(void* ctx, Span<atom> s) {
-    Context* context = (Context*)ctx;
-    auto old_tail = context->top_tail;
+  using ContextType = NodeType::ContextType;
+  using SpanType = NodeType::SpanType;
+
+  static SpanType match(void* ctx, SpanType s) {
+    ContextType* context = (ContextType*)ctx;
+
+    auto old_tail = context->top_tail();
 #ifdef PARSERONI_FAST_MODE
     auto old_state = SlabAlloc::slabs().save_state();
 #endif
@@ -382,12 +414,13 @@ struct Capture {
     auto end = pattern::match(context, s);
 
     if (end.is_valid()) {
-      Span<atom> node_span = {s.a, end.a};
-      NodeType* new_node = (NodeType*)context->create<NodeType>(match_name.str_val, old_tail);
+      SpanType node_span = {s.a, end.a};
+      // This syntax looks awful... :/
+      NodeType* new_node = context->template create<NodeType>(match_name.str_val, old_tail);
       new_node->span = node_span;
     }
     else {
-      context->top_tail = old_tail;
+      context->set_tail(old_tail);
 #ifdef PARSERONI_FAST_MODE
       SlabAlloc::slabs().restore_state(old_state);
 #endif
@@ -418,12 +451,12 @@ struct CaptureBegin {
 
   template<typename atom>
   static Span<atom> match(void* ctx, Span<atom> s) {
-    Context* context = (Context*)ctx;
+    ContextBase* context = (ContextBase*)ctx;
 
     //----------------------------------------
     // Save tail and match pattern
 
-    auto old_tail = context->top_tail;
+    auto old_tail = context->top_tail();
 #ifdef PARSERONI_FAST_MODE
     auto old_state = SlabAlloc::slabs().save_state();
 #endif
@@ -431,7 +464,7 @@ struct CaptureBegin {
     auto end = Seq<rest...>::match(context, s);
 
     if (!end.is_valid()) {
-      context->top_tail = old_tail;
+      context->set_tail(old_tail);
 #ifdef PARSERONI_FAST_MODE
       SlabAlloc::slabs().restore_state(old_state);
 #endif
@@ -441,8 +474,8 @@ struct CaptureBegin {
     //----------------------------------------
     // Scan down the node list to find the bookmark
 
-    auto c = old_tail ? old_tail->node_next : context->top_head;
-    for (; c; c = c->node_next) {
+    auto c = old_tail ? old_tail->node_next() : context->top_head();
+    for (; c; c = c->node_next()) {
       if (c->flags & 1) {
         break;
       }
@@ -455,15 +488,15 @@ struct CaptureBegin {
     //----------------------------------------
     // Resize the bookmark's span and clear its bookmark flag
 
-    c->span.a = s.a;
+    // c->span.a = s.a;
     c->flags &= ~1;
 
     //----------------------------------------
     // Enclose its children
 
-    if (c->node_prev != old_tail) {
-      auto child_head = old_tail ? old_tail->node_next : context->top_head;
-      auto child_tail = c->node_prev;
+    if (c->node_prev() != old_tail) {
+      auto child_head = old_tail ? old_tail->node_next() : context->top_head();
+      auto child_tail = c->node_prev();
       context->detach(c);
       context->splice(c, child_head, child_tail);
     }
@@ -476,14 +509,17 @@ struct CaptureBegin {
 
 template<StringParam match_name, typename P, typename NodeType>
 struct CaptureEnd {
-  template<typename atom>
-  static Span<atom> match(void* ctx, Span<atom> s) {
-    Context* context = (Context*)ctx;
+
+  using ContextType = NodeType::ContextType;
+  using SpanType = NodeType::SpanType;
+
+  static SpanType match(void* ctx, SpanType s) {
+    ContextType* context = (ContextType*)ctx;
 
     auto end = P::match(ctx, s);
     if (end.is_valid()) {
-      Span<atom> new_span(end.a, end.a);
-      NodeType* n = (NodeType*)context->create<NodeType>(match_name.str_val, context->top_tail);
+      SpanType new_span(end.a, end.a);
+      NodeType* n = context->template create<NodeType>(match_name.str_val, context->top_tail());
       n->span = new_span;
       n->flags |= 1;
       return end;

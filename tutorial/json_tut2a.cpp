@@ -46,11 +46,11 @@ struct JsonParser {
   static cspan value(void* ctx, cspan s) {
     using value =
     Oneof<
-      Capture<"array",   array,   NodeBase>,
-      Capture<"number",  number,  NodeBase>,
-      Capture<"object",  object,  NodeBase>,
-      Capture<"string",  string,  NodeBase>,
-      Capture<"keyword", keyword, NodeBase>
+      Capture<"array",   array,   TextNode>,
+      Capture<"number",  number,  TextNode>,
+      Capture<"object",  object,  TextNode>,
+      Capture<"string",  string,  TextNode>,
+      Capture<"keyword", keyword, TextNode>
     >;
     return value::match(ctx, s);
   }
@@ -66,18 +66,18 @@ struct JsonParser {
 
   using pair =
   Seq<
-    Capture<"key", string, NodeBase>,
+    Capture<"key", string, TextNode>,
     ws,
     Atom<':'>,
     ws,
-    Capture<"value", Ref<value>, NodeBase>
+    Capture<"value", Ref<value>, TextNode>
   >;
 
   using object =
   Seq<
     Atom<'{'>,
     ws,
-    list<Capture<"pair", pair, NodeBase>>,
+    list<Capture<"pair", pair, TextNode>>,
     ws,
     Atom<'}'>
   >;
@@ -103,13 +103,13 @@ int main(int argc, char** argv) {
   read(path, buf, size);
 
   printf("Parsing %s\n", path);
-  Context* context = new Context();
+  Context<TextNode>* context = new Context<TextNode>();
   auto parse_end = JsonParser::match(context, cspan(buf, buf + size));
 
   if (parse_end.is_valid()) {
     printf("Parse tree:\n");
-    for (auto n = context->top_head; n; n = n->node_next) {
-      print_tree(n);
+    for (auto n = context->top_head(); n; n = n->node_next()) {
+      print_tree((TextNode*)n);
     }
   }
   else {

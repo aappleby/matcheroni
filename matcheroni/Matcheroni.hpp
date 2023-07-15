@@ -56,6 +56,11 @@ struct Span {
 
   operator bool() const { return a && b && a < b; }
 
+  template<typename atom2>
+  operator Span<const atom2>() const {
+    return Span<const atom2>(a, b);
+  }
+
   Span fail() const {
     return a ? Span(nullptr, a) : Span(a, b);
   }

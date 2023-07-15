@@ -27,11 +27,11 @@ struct SlabAlloc;
 struct Token;
 struct TypeScope;
 
-typedef matcheroni::Span<Token> tspan;
+using tspan = matcheroni::Span<Token>;
 
 //------------------------------------------------------------------------------
 
-class C99Parser : public matcheroni::Context {
+class C99Parser : public matcheroni::Context<ParseNode> {
  public:
   C99Parser();
 
@@ -70,10 +70,6 @@ class C99Parser : public matcheroni::Context {
 
   std::vector<Token> tokens;
   TypeScope* type_scope;
-
-  ParseNode* head = nullptr;
-  ParseNode* tail = nullptr;
-  ParseNode* root = nullptr;
 };
 
 //------------------------------------------------------------------------------

@@ -80,7 +80,7 @@ struct JsonParser {
 
 int main(int argc, char** argv) {
   auto text = to_span(R"( { "zarg" : "whop", "foo" : [1,2,3] } )");
-  Context context;
+  Context<TextNode> context;
   auto tail = JsonParser::match(&context, text);
 
   if (tail.is_valid()) {

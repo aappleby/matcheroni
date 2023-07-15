@@ -13,6 +13,7 @@
 #include <sys/stat.h>
 #include <time.h>      // for clock_gettime, CLOCK_PROCESS_CP...
 #include <typeinfo>    // for type_info
+#include <assert.h>
 
 namespace matcheroni {
 
@@ -39,7 +40,7 @@ struct Trace {
     CHECK(s.is_valid());
     if (s.is_empty()) return s.fail();
 
-    auto parser = (Context*)ctx;
+    auto parser = (ContextBase*)ctx;
     print_bar(parser->trace_depth++, s, match_name.str_val, "?");
     auto end = P::match(ctx, s);
     print_bar(--parser->trace_depth, s, match_name.str_val,
@@ -60,7 +61,8 @@ inline cspan to_span(const std::string& s) {
 }
 
 inline std::string to_string(cspan s) {
-  return s.a ? std::string(s.a, s.b) : std::string(s.b);
+  assert(s.a);
+  return std::string(s.a, s.b);
 }
 
 inline bool operator==(cspan a, const std::string& b) {
@@ -81,42 +83,48 @@ inline bool operator!=(const std::string& a, cspan b) {
 
 //------------------------------------------------------------------------------
 
-struct ParseNodeIterator {
-  ParseNodeIterator(NodeBase* cursor) : n(cursor) {}
-  ParseNodeIterator& operator++() {
+template<typename NodeType>
+struct NodeIterator {
+  NodeIterator(NodeBase* cursor) : n(cursor) {}
+  NodeIterator& operator++() {
+    n = (NodeType*)n->node_next;
+    return *this;
+  }
+  bool operator!=(NodeIterator& b) const { return n != b.n; }
+  NodeType* operator*() const { return n; }
+  NodeType* n;
+};
+
+template<typename NodeType>
+inline NodeIterator<NodeType> begin(NodeType* parent) {
+  return NodeIterator<NodeType>(parent->child_head);
+}
+
+template<typename NodeType>
+inline NodeIterator<NodeType> end(NodeType* parent) {
+  return NodeIterator<NodeType>(nullptr);
+}
+
+template<typename NodeType>
+struct ConstNodeIterator {
+  ConstNodeIterator(const NodeType* cursor) : n(cursor) {}
+  ConstNodeIterator& operator++() {
     n = n->node_next;
     return *this;
   }
-  bool operator!=(ParseNodeIterator& b) const { return n != b.n; }
-  NodeBase* operator*() const { return n; }
-  NodeBase* n;
+  bool operator!=(const ConstNodeIterator& b) const { return n != b.n; }
+  const NodeType* operator*() const { return n; }
+  const NodeType* n;
 };
 
-inline ParseNodeIterator begin(NodeBase* parent) {
-  return ParseNodeIterator(parent->child_head);
+template<typename NodeType>
+inline ConstNodeIterator<NodeType> begin(const NodeType* parent) {
+  return ConstNodeIterator<NodeType>(parent->child_head);
 }
 
-inline ParseNodeIterator end(NodeBase* parent) {
-  return ParseNodeIterator(nullptr);
-}
-
-struct ConstParseNodeIterator {
-  ConstParseNodeIterator(const NodeBase* cursor) : n(cursor) {}
-  ConstParseNodeIterator& operator++() {
-    n = n->node_next;
-    return *this;
-  }
-  bool operator!=(const ConstParseNodeIterator& b) const { return n != b.n; }
-  const NodeBase* operator*() const { return n; }
-  const NodeBase* n;
-};
-
-inline ConstParseNodeIterator begin(const NodeBase* parent) {
-  return ConstParseNodeIterator(parent->child_head);
-}
-
-inline ConstParseNodeIterator end(const NodeBase* parent) {
-  return ConstParseNodeIterator(nullptr);
+template<typename NodeType>
+inline ConstNodeIterator<NodeType> end(const NodeType* parent) {
+  return ConstNodeIterator<NodeType>(nullptr);
 }
 
 //------------------------------------------------------------------------------
@@ -258,10 +266,10 @@ inline void print_escaped(const char* s, int len, unsigned int color) {
 //------------------------------------------------------------------------------
 // Prints a text representation of the parse tree.
 
-inline void print_tree(NodeBase* node, int depth = 0) {
+inline void print_tree(TextNode* node, int depth = 0) {
   print_bar(depth, node->span, node->match_name, "");
-  for (auto c = node->child_head; c; c = c->node_next) {
-    print_tree(c, depth + 1);
+  for (auto c = node->_child_head; c; c = c->_node_next) {
+    print_tree((TextNode*)c, depth + 1);
   }
 }
 
@@ -345,7 +353,7 @@ inline void read(const char* path, char*& text_out, size_t& size_out) {
 
 //------------------------------------------------------------------------------
 
-inline uint64_t hash_tree(NodeBase* node, int depth = 0) {
+inline uint64_t hash_tree(TextNode* node, int depth = 0) {
   uint64_t h = 1 + depth * 0x87654321;
 
   for (auto c = node->match_name; *c; c++) {
@@ -356,8 +364,8 @@ inline uint64_t hash_tree(NodeBase* node, int depth = 0) {
     h = (h * 123456789) ^ *c;
   }
 
-  for (auto c = node->child_head; c; c = c->node_next) {
-    h = (h * 987654321) ^ hash_tree(c, depth + 1);
+  for (auto c = node->_child_head; c; c = c->_node_next) {
+    h = (h * 987654321) ^ hash_tree((TextNode*)c, depth + 1);
   }
 
   return h;
