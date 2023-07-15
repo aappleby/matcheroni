@@ -268,9 +268,7 @@ struct ContextBase {
 
   //----------------------------------------
 
-  template <typename NodeType>
-  NodeType* create(const char* match_name, NodeBase* old_tail) {
-    auto new_node = new NodeType();
+  void create2(NodeBase* new_node, const char* match_name, NodeBase* old_tail) {
     new_node->init(match_name);
 
     // Move all nodes in (old_tail,new_tail] to be children of new_node and
@@ -283,9 +281,16 @@ struct ContextBase {
       auto child_tail = _top_tail;
       splice(new_node, child_head, child_tail);
     }
+  }
 
+  /*
+  template <typename NodeType>
+  NodeType* create(const char* match_name, NodeBase* old_tail) {
+    auto new_node = new NodeType();
+    create2(new_node, match_name, old_tail);
     return new_node;
   }
+  */
 
   //----------------------------------------
   // Nodes _must_ be deleted in the reverse order they were allocated.
@@ -399,8 +404,8 @@ inline void parser_rewind(void* ctx, cspan s) {
 template <StringParam match_name, typename pattern, typename NodeType>
 struct Capture {
 
-  using ContextType = NodeType::ContextType;
-  using SpanType = NodeType::SpanType;
+  using ContextType = typename NodeType::ContextType;
+  using SpanType = typename NodeType::SpanType;
 
   static SpanType match(void* ctx, SpanType s) {
     ContextType* context = (ContextType*)ctx;
@@ -414,8 +419,8 @@ struct Capture {
 
     if (end.is_valid()) {
       SpanType node_span = {s.a, end.a};
-      // This syntax looks awful... :/
-      NodeType* new_node = context->template create<NodeType>(match_name.str_val, old_tail);
+      auto new_node = new NodeType();
+      context->create2(new_node, match_name.str_val, old_tail);
       new_node->span = node_span;
     }
     else {
@@ -509,8 +514,8 @@ struct CaptureBegin {
 template<StringParam match_name, typename P, typename NodeType>
 struct CaptureEnd {
 
-  using ContextType = NodeType::ContextType;
-  using SpanType = NodeType::SpanType;
+  using ContextType = typename NodeType::ContextType;
+  using SpanType = typename NodeType::SpanType;
 
   static SpanType match(void* ctx, SpanType s) {
     ContextType* context = (ContextType*)ctx;
@@ -518,9 +523,11 @@ struct CaptureEnd {
     auto end = P::match(ctx, s);
     if (end.is_valid()) {
       SpanType new_span(end.a, end.a);
-      NodeType* n = context->template create<NodeType>(match_name.str_val, context->top_tail());
-      n->span = new_span;
-      n->flags |= 1;
+      auto new_node = new NodeType();
+      context->create2(new_node, match_name.str_val, context->top_tail());
+
+      new_node->span = new_span;
+      new_node->flags |= 1;
       return end;
     }
     else {

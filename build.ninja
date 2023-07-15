@@ -6,7 +6,7 @@
 # Turning EXTRA_DEBUG on will generate even more spam.
 
 ### Debug build
-build_mode = -g -O0 -Wall -Werror -Wno-unused-variable
+#build_mode = -g -O0 -Wall -Werror -Wno-unused-variable
 #defs = ${defs} -DDEBUG
 #defs = ${defs} -DMATCHERONI_ENABLE_TRACE
 #defs = ${defs} -DEXTRA_DEBUG
@@ -16,7 +16,7 @@ build_mode = -g -O0 -Wall -Werror -Wno-unused-variable
 
 ### -O3 needs LTO to maximize performance
 ### LTO breaks "size obj/examples/json_parser.o"
-#build_mode = -O3 -Wall -Werror -DRELEASE
+build_mode = -O3
 
 includes = -I.
 
@@ -79,7 +79,7 @@ build bin/tests/parseroni_test_pass  : run_test bin/tests/parseroni_test
 # This SRELL define seems to break things
 #benchmark_defs = ${benchmark_defs} -DSRELL_NO_APIEXT
 
-defs = ${defs} ${benchmark_defs}
+#defs = ${defs} ${benchmark_defs}
 
 #-------------------------------------------------------------------------------
 # Examples

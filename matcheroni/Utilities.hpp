@@ -275,6 +275,7 @@ inline void print_tree(TextNode* node, int depth = 0) {
 
 //------------------------------------------------------------------------------
 
+/*
 inline void print_typeid_name(const char* name, int max_len = 0) {
   int name_len = 0;
 
@@ -293,13 +294,16 @@ inline void print_typeid_name(const char* name, int max_len = 0) {
     putc(' ', stdout);
   }
 }
+*/
 
 //------------------------------------------------------------------------------
 
+/*
 template<typename T>
 inline void print_class_name(int max_len = 0) {
   print_typeid_name(typeid(T).name(), max_len);
 }
+*/
 
 //------------------------------------------------------------------------------
 

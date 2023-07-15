@@ -18,10 +18,12 @@ struct ParseNode : public matcheroni::SpanNode<Token> {
 
   //----------------------------------------
 
+  /*
   template <typename P>
   bool is_a() const {
     return typeid(*this) == typeid(P);
   }
+  */
 
   /*
   template <typename P>
