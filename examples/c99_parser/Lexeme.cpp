@@ -1,22 +1,22 @@
 // SPDX-FileCopyrightText:  2023 Austin Appleby <aappleby@gmail.com>
 // SPDX-License-Identifier: MIT License
 
-#include "examples/c99_parser/C99Parser.hpp"
+#include "examples/c99_parser/c_constants.hpp"
+#include "examples/c99_parser/Lexeme.hpp"
 
 #include <stdio.h>
 
 //------------------------------------------------------------------------------
 
-Lexeme::Lexeme(LexemeType type, const char* span_a, const char* span_b) {
+Lexeme::Lexeme(LexemeType type, cspan s) {
   this->type = type;
-  this->span_a = span_a;
-  this->span_b = span_b;
+  this->span = s;
 }
 
 //----------------------------------------------------------------------------
 
 int Lexeme::len() const {
-  return span_b - span_a;
+  return span.len();
 }
 
 bool Lexeme::is_bof() const {
@@ -102,17 +102,17 @@ void Lexeme::dump_lexeme() const {
     return;
   }
 
-  int len = span_b - span_a;
+  int len = span.len();
   const int span_len = 16;
   if (len > span_len) len = span_len;
   printf("{");
   for (int i = 0; i < len; i++) {
-    auto c = span_a[i];
+    auto c = span.a[i];
     if (c == '\n' || c == '\t' || c == '\r') {
       putc('@', stdout);
     }
     else {
-      putc(span_a[i], stdout);
+      putc(span.a[i], stdout);
     }
   }
   for (int i = len; i < span_len; i++) {
@@ -120,3 +120,5 @@ void Lexeme::dump_lexeme() const {
   }
   printf("}");
 }
+
+//----------------------------------------------------------------------------

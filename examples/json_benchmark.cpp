@@ -36,25 +36,14 @@ cspan parse_json(void* ctx, cspan s);
 
 int main(int argc, char** argv) {
 
-  /*
-  if (argc < 2) {
-    printf("Usage: json_parser <filename>\n");
-    return 1;
-  }
-
-  printf("argv[0] = %s\n", argv[0]);
-  printf("argv[1] = %s\n", argv[1]);
-  //paths.push_back(argv[1]);
-  */
-
   const char* paths[] = {
     //"data/json_demo.json",
-    "data/invalid.json",
+    //"data/invalid.json",
 
     // 4609770.000000
-    //"../nativejson-benchmark/data/canada.json",
-    //"../nativejson-benchmark/data/citm_catalog.json",
-    //"../nativejson-benchmark/data/twitter.json",
+    "../nativejson-benchmark/data/canada.json",
+    "../nativejson-benchmark/data/citm_catalog.json",
+    "../nativejson-benchmark/data/twitter.json",
   };
 
   double byte_accum = 0;

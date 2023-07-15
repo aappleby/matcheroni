@@ -27,13 +27,13 @@ int Token::atom_cmp(const LexemeType& b) {
 int Token::atom_cmp(const char& b) {
   clear_span();
   if (int c = lex->len() - 1) return c;
-  if (int c = lex->span_a[0] - b) return c;
+  if (int c = lex->span.a[0] - b) return c;
   return 0;
 }
 
 int Token::atom_cmp(const char* b) {
   clear_span();
-  if (int c = strcmp_span(lex->span_a, lex->span_b, b)) return c;
+  if (int c = strcmp_span(lex->span, b)) return c;
   return 0;
 }
 
@@ -42,14 +42,14 @@ int Token::atom_cmp(const Token* b) {
   if (int c = lex->type - b->lex->type) return c;
   if (int c = lex->len() - b->lex->len()) return c;
   for (auto i = 0; i < lex->len(); i++) {
-    if (auto c = lex->span_a[i] - b->lex->span_a[i]) return c;
+    if (auto c = lex->span.a[i] - b->lex->span.a[i]) return c;
   }
   return 0;
 }
 
 //----------------------------------------------------------------------------
 
-const char* Token::unsafe_span_a() { return lex->span_a; }
+const char* Token::unsafe_span_a() { return lex->span.a; }
 
 ParseNode* Token::get_span() { return span; }
 
@@ -70,9 +70,9 @@ Token* Token::step_left() { return (this - 1)->get_span()->tok_a(); }
 
 Token* Token::step_right() { return get_span()->tok_b() + 1; }
 
-const char* Token::debug_span_a() const { return lex->span_a; }
+const char* Token::debug_span_a() const { return lex->span.a; }
 
-const char* Token::debug_span_b() const { return lex->span_b; }
+const char* Token::debug_span_b() const { return lex->span.b; }
 
 const Lexeme* Token::get_lex_debug() const { return lex; }
 

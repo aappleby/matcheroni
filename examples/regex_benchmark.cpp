@@ -3,30 +3,30 @@
 
 #include <stdio.h>
 
-#define BENCHMARK_BASELINE
-#define BENCHMARK_MATCHERONI
-#define BENCHMARK_BOOST
-#define BENCHMARK_STD_REGEX
+#define REGEX_BENCHMARK_BASELINE
+#define REGEX_BENCHMARK_MATCHERONI
+#define REGEX_BENCHMARK_BOOST
+#define REGEX_BENCHMARK_STD_REGEX
 
-#ifdef BENCHMARK_SRELL
+#ifdef REGEX_BENCHMARK_SRELL
 #include "srell.hpp"
 #endif
 
-#ifdef BENCHMARK_STD_REGEX
+#ifdef REGEX_BENCHMARK_STD_REGEX
 #include <regex>
 #endif
 
-#ifdef BENCHMARK_BOOST
+#ifdef REGEX_BENCHMARK_BOOST
 #include <boost/regex.hpp>
 #endif
 
-#ifdef BENCHMARK_MATCHERONI
+#ifdef REGEX_BENCHMARK_MATCHERONI
 #include "matcheroni/Matcheroni.hpp"
 #include "matcheroni/Utilities.hpp"
 using namespace matcheroni;
 #endif
 
-#ifdef BENCHMARK_CTRE
+#ifdef REGEX_BENCHMARK_CTRE
 #include "ctre.hpp"
 #endif
 
@@ -37,7 +37,7 @@ using namespace matcheroni;
 
 //------------------------------------------------------------------------------
 
-#ifdef BENCHMARK_BASELINE
+#ifdef REGEX_BENCHMARK_BASELINE
 
 void benchmark_baseline(const char* path) {
   std::string buf = read(path);
@@ -77,7 +77,7 @@ void benchmark_baseline(const char* path) {
 
 //------------------------------------------------------------------------------
 
-#ifdef BENCHMARK_MATCHERONI
+#ifdef REGEX_BENCHMARK_MATCHERONI
 
 template<typename P>
 void benchmark_pattern(cspan s) {
@@ -166,7 +166,7 @@ void benchmark_matcheroni(const char* path) {
 
 //------------------------------------------------------------------------------
 
-#ifdef BENCHMARK_STD_REGEX
+#ifdef REGEX_BENCHMARK_STD_REGEX
 
 void benchmark_std_regex(const char* path) {
   std::string buf = read(path);
@@ -224,7 +224,7 @@ void benchmark_std_regex(const char* path) {
 
 //------------------------------------------------------------------------------
 
-#ifdef BENCHMARK_BOOST
+#ifdef REGEX_BENCHMARK_BOOST
 
 void benchmark_boost_regex(const char* path) {
   std::string buf = read(path);
@@ -282,7 +282,7 @@ void benchmark_boost_regex(const char* path) {
 
 //------------------------------------------------------------------------------
 
-#ifdef BENCHMARK_CTRE
+#ifdef REGEX_BENCHMARK_CTRE
 void benchmark_ctre(const char* path) {
   std::string buf = read(path);
 
@@ -334,7 +334,7 @@ void benchmark_ctre(const char* path) {
 
 //------------------------------------------------------------------------------
 
-#ifdef BENCHMARK_SRELL
+#ifdef REGEX_BENCHMARK_SRELL
 
 void benchmark_srell(const char* path) {
   std::string buf = read(path);
@@ -399,37 +399,37 @@ int main(int argc, char** argv) {
   if (argc > 1) path = argv[1];
   else          path = "../regex-benchmark/input-text.txt";
 
-#ifdef BENCHMARK_BASELINE
+#ifdef REGEX_BENCHMARK_BASELINE
   printf("Benchmarking baseline:\n");
   benchmark_baseline(path);
   printf("\n");
 #endif
 
-#ifdef BENCHMARK_MATCHERONI
+#ifdef REGEX_BENCHMARK_MATCHERONI
   printf("Benchmarking Matcheroni:\n");
   benchmark_matcheroni(path);
   printf("\n");
 #endif
 
-#ifdef BENCHMARK_STD_REGEX
+#ifdef REGEX_BENCHMARK_STD_REGEX
   printf("Benchmarking std::regex:\n");
   benchmark_std_regex(path);
   printf("\n");
 #endif
 
-#ifdef BENCHMARK_CTRE
+#ifdef REGEX_BENCHMARK_CTRE
   printf("Benchmarking CTRE:\n");
   benchmark_ctre(path);
   printf("\n");
 #endif
 
-#ifdef BENCHMARK_BOOST
+#ifdef REGEX_BENCHMARK_BOOST
   printf("Benchmarking Boost:\n");
   benchmark_boost_regex(path);
   printf("\n");
 #endif
 
-#ifdef BENCHMARK_SRELL
+#ifdef REGEX_BENCHMARK_SRELL
   printf("Benchmarking Srell:\n");
   benchmark_srell(path);
   printf("\n");

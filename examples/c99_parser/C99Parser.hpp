@@ -3,18 +3,18 @@
 
 #pragma once
 
+#include "matcheroni/Matcheroni.hpp"
+#include "matcheroni/Parseroni.hpp"
+#include "matcheroni/Utilities.hpp"
+
 #include <stdio.h>
 #include <string>
 #include <vector>
 #include <array>
 
-#include "matcheroni/Matcheroni.hpp"
-#include "matcheroni/Parseroni.hpp"
-#include "matcheroni/Utilities.hpp"
-
-#include "examples/c99_parser/SlabAlloc.hpp"
 #include "examples/c99_parser/c_constants.hpp"
 #include "examples/c99_parser/SST.hpp"
+#include "examples/c99_parser/Lexeme.hpp"
 
 using namespace matcheroni;
 
@@ -25,48 +25,7 @@ struct SlabAlloc;
 struct Token;
 struct TypeScope;
 
-//------------------------------------------------------------------------------
-
-enum LexemeType {
-  LEX_INVALID = 0,
-  LEX_SPACE,
-  LEX_NEWLINE,
-  LEX_STRING,
-  LEX_KEYWORD,
-  LEX_IDENTIFIER,
-  LEX_COMMENT,
-  LEX_PREPROC,
-  LEX_FLOAT,
-  LEX_INT,
-  LEX_PUNCT,
-  LEX_CHAR,
-  LEX_SPLICE,
-  LEX_FORMFEED,
-  LEX_BOF,
-  LEX_EOF,
-  LEX_LAST
-};
-
-//------------------------------------------------------------------------------
-
-struct Lexeme {
-  Lexeme(LexemeType type, const char* span_a, const char* span_b);
-
-  int len() const;
-  bool is_bof() const;
-  bool is_eof() const;
-  bool is_gap() const;
-
-  const char* type_to_str() const;
-  uint32_t type_to_color() const;
-  void dump_lexeme() const;
-
-  //----------------------------------------
-
-  LexemeType  type;
-  const char* span_a;
-  const char* span_b;
-};
+typedef Span<Token> tspan;
 
 //------------------------------------------------------------------------------
 
@@ -101,7 +60,7 @@ struct Token {
     clear_span();
     if (int c = lex->len() - b.str_len) return c;
     for (auto i = 0; i < b.str_len; i++) {
-      if (auto c = lex->span_a[i] - b.str_val[i]) return c;
+      if (auto c = lex->span.a[i] - b.str_val[i]) return c;
     }
     return 0;
   }
@@ -138,7 +97,6 @@ private:
 //------------------------------------------------------------------------------
 
 struct ParseNode {
-  static SlabAlloc slabs;
 
   static void* operator new(std::size_t size);
   static void* operator new[](std::size_t size);
@@ -147,10 +105,9 @@ struct ParseNode {
 
   virtual ~ParseNode();
 
-  bool in_range(const Token* a, const Token* b);
-  virtual void init_node(void* ctx, Token* tok_a, Token* tok_b,
-                         ParseNode* node_a, ParseNode* node_b);
-  virtual void init_leaf(void* ctx, Token* tok_a, Token* tok_b);
+  bool in_range(tspan s);
+  virtual void init_node(void* ctx, tspan s, ParseNode* node_a, ParseNode* node_b);
+  virtual void init_leaf(void* ctx, tspan s);
   void attach_child(ParseNode* child);
   int node_count() const;
   ParseNode* left_neighbor();
@@ -242,14 +199,14 @@ struct TypeScope {
   using token_list = std::vector<const Token*>;
 
   void clear();
-  bool has_type(void* ctx, Token* a, Token* b, token_list& types);
+  bool has_type(void* ctx, tspan s, token_list& types);
   void add_type(Token* a, token_list& types);
 
-  bool has_class_type  (void* ctx, Token* a, Token* b);
-  bool has_struct_type (void* ctx, Token* a, Token* b);
-  bool has_union_type  (void* ctx, Token* a, Token* b);
-  bool has_enum_type   (void* ctx, Token* a, Token* b);
-  bool has_typedef_type(void* ctx, Token* a, Token* b);
+  bool has_class_type  (void* ctx, tspan s);
+  bool has_struct_type (void* ctx, tspan s);
+  bool has_union_type  (void* ctx, tspan s);
+  bool has_enum_type   (void* ctx, tspan s);
+  bool has_typedef_type(void* ctx, tspan s);
 
   void add_class_type  (Token* a);
   void add_struct_type (Token* a);
@@ -274,20 +231,20 @@ class C99Parser {
   void reset();
   bool parse(std::vector<Lexeme>& lexemes);
 
-  Token* match_builtin_type_base(Token* a, Token* b);
-  Token* match_builtin_type_prefix(Token* a, Token* b);
-  Token* match_builtin_type_suffix(Token* a, Token* b);
+  Token* match_builtin_type_base  (tspan s);
+  Token* match_builtin_type_prefix(tspan s);
+  Token* match_builtin_type_suffix(tspan s);
 
-  Token* match_class_type(Token* a, Token* b);
-  Token* match_struct_type(Token* a, Token* b);
-  Token* match_union_type(Token* a, Token* b);
-  Token* match_enum_type(Token* a, Token* b);
-  Token* match_typedef_type(Token* a, Token* b);
+  Token* match_class_type  (tspan s);
+  Token* match_struct_type (tspan s);
+  Token* match_union_type  (tspan s);
+  Token* match_enum_type   (tspan s);
+  Token* match_typedef_type(tspan s);
 
-  void add_class_type(Token* a);
-  void add_struct_type(Token* a);
-  void add_union_type(Token* a);
-  void add_enum_type(Token* a);
+  void add_class_type  (Token* a);
+  void add_struct_type (Token* a);
+  void add_union_type  (Token* a);
+  void add_enum_type   (Token* a);
   void add_typedef_type(Token* a);
 
   void push_scope();
@@ -304,7 +261,8 @@ class C99Parser {
   int atom_cmp(Token* a, const char& b);
   int atom_cmp(Token* a, const char* b);
   int atom_cmp(Token* a, const Token* b);
-  void parser_rewind(Token* a, Token* b);
+
+  void parser_rewind(tspan s);
 
   template<int N>
   inline int atom_cmp(Token* a, const StringParam<N>& b) {
@@ -356,8 +314,8 @@ inline int matcheroni::atom_cmp(void* ctx, Token* a, const Token* b) {
 }
 
 template<>
-inline void matcheroni::parser_rewind(void* ctx, Token* a, Token* b) {
-  ((C99Parser*)ctx)->parser_rewind(a, b);
+inline void matcheroni::parser_rewind(void* ctx, tspan s) {
+  ((C99Parser*)ctx)->parser_rewind(s);
 }
 
 //------------------------------------------------------------------------------

@@ -15,6 +15,7 @@
 #include <stdio.h>
 
 #define CHECK(...)
+#define DCHECK(...)
 
 namespace matcheroni {
 

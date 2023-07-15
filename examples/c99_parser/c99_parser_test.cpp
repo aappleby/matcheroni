@@ -8,7 +8,6 @@
 #include "examples/c99_parser/C99Lexer.hpp"
 #include "examples/c99_parser/C99Parser.hpp"
 #include "examples/c99_parser/ParseNode.hpp"
-#include "examples/c99_parser/SlabAlloc.hpp"
 
 //------------------------------------------------------------------------------
 // File filters

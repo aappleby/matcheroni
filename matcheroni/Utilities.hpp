@@ -123,6 +123,17 @@ inline ConstParseNodeIterator end(const NodeBase* parent) {
 
 //------------------------------------------------------------------------------
 
+inline void set_color(uint32_t c) {
+  if (c) {
+    printf("\u001b[38;2;%d;%d;%dm", (c >> 0) & 0xFF, (c >> 8) & 0xFF, (c >> 16) & 0xFF);
+  }
+  else {
+    printf("\u001b[0m");
+  }
+}
+
+//------------------------------------------------------------------------------
+
 inline void print_flat(cspan s, size_t max_len = 0) {
   if (max_len == 0) max_len = s.len();
 
@@ -161,27 +172,24 @@ inline void print_flat(cspan s, size_t max_len = 0) {
 
 inline void print_bar(int depth, cspan s, const char* val,
                       const char* suffix) {
-  printf("|");
+  set_color(0);
+  printf("{");
+  set_color(0xAAFFAA);
   print_flat(s, 20);
-  printf("|");
+  set_color(0);
+  printf("}");
 
-  printf(depth == 0 ? "  *" : "   ");
+  set_color(0x404040);
+  printf(depth == 0 ? " *" : "  ");
   for (int i = 0; i < depth; i++) {
-    printf(i == depth - 1 ? "|--" : "|  ");
+    printf(i == depth - 1 ? "|-" : "| ");
   }
 
+  set_color(0xFFAAAA);
   printf("%s %s", val, suffix);
   printf("\n");
-}
 
-//------------------------------------------------------------------------------
-// Prints a text representation of the parse tree.
-
-inline void print_tree(NodeBase* node, int depth = 0) {
-  print_bar(depth, node->span, node->match_name, "");
-  for (auto c = node->child_head; c; c = c->node_next) {
-    print_tree(c, depth + 1);
-  }
+  set_color(0);
 }
 
 //------------------------------------------------------------------------------
@@ -194,10 +202,17 @@ inline void print_match(cspan text, cspan match) {
   size_t prefix_len = match.a - text.a;
   size_t suffix_len = text.b - match.b;
 
+  set_color(0x404040);
   for (size_t i = 0; i < prefix_len;  i++) putc('_', stdout);
+
+  set_color(0x80FF80);
   for (size_t i = 0; i < match.len(); i++) putc('^', stdout);
+
+  set_color(0x404040);
   for (size_t i = 0; i < suffix_len;  i++) putc('_', stdout);
+
   printf("\n");
+  set_color(0);
 }
 
 //------------------------------------------------------------------------------
@@ -210,20 +225,14 @@ inline void print_fail(cspan text, cspan tail) {
   size_t fail_pos = tail.b - text.a;
   size_t suffix_len = text.b - tail.b;
 
+  set_color(0x404040);
   for (size_t i = 0; i < fail_pos;   i++) putc('_', stdout);
+
+  set_color(0x8080FF);
   for (size_t i = 0; i < suffix_len; i++) putc('^', stdout);
+
   printf("\n");
-}
-
-//------------------------------------------------------------------------------
-
-inline void set_color(uint32_t c) {
-  if (c) {
-    printf("\u001b[38;2;%d;%d;%dm", (c >> 0) & 0xFF, (c >> 8) & 0xFF, (c >> 16) & 0xFF);
-  }
-  else {
-    printf("\u001b[0m");
-  }
+  set_color(0);
 }
 
 //------------------------------------------------------------------------------
@@ -243,10 +252,19 @@ inline void print_escaped(const char* s, int len, unsigned int color) {
     else                putc(c,   stdout);
     len--;
   }
-  while(len--) putc('#', stdout);
   set_color(0);
 
   return;
+}
+
+//------------------------------------------------------------------------------
+// Prints a text representation of the parse tree.
+
+inline void print_tree(NodeBase* node, int depth = 0) {
+  print_bar(depth, node->span, node->match_name, "");
+  for (auto c = node->child_head; c; c = c->node_next) {
+    print_tree(c, depth + 1);
+  }
 }
 
 //------------------------------------------------------------------------------
