@@ -281,16 +281,22 @@ struct NodeQualifier : public ParseNode {
 
 struct NodeAsmSuffix : public ParseNode {
   using pattern =
-      Seq<Oneof<Keyword<"asm">, Keyword<"__asm">, Keyword<"__asm__">>,
-          Atom<'('>, Some<NodeAtom<LEX_STRING>>, Atom<')'>>;
+  Seq<
+    Oneof<
+      Keyword<"asm">,
+      Keyword<"__asm">,
+      Keyword<"__asm__">
+    >,
+    Atom<'('>,
+    Capture<"code", Some<NodeAtom<LEX_STRING>>, ParseNode>,
+    Atom<')'>
+  >;
 };
 
 //------------------------------------------------------------------------------
 
-#if 0
 
-struct NodeAccessSpecifier : public ParseNode,
-                             public LeafMaker<NodeAccessSpecifier> {
+struct NodeAccessSpecifier : public ParseNode {
   using pattern =
   Seq<
     Oneof<
@@ -306,11 +312,11 @@ struct NodeAccessSpecifier : public ParseNode,
 //   unary-expression
 //   ( type-name ) cast-expression
 
-struct NodeParenType : public ParseNode, public NodeMaker<NodeParenType> {
+struct NodeParenType : public ParseNode {
   using pattern = Seq<Atom<'('>, NodeTypeName, Atom<')'>>;
 };
 
-struct NodePrefixCast : public ParseNode, public NodeMaker<NodePrefixCast> {
+struct NodePrefixCast : public ParseNode {
   NodePrefixCast() {
     precedence = 3;
     assoc = -2;
@@ -319,15 +325,15 @@ struct NodePrefixCast : public ParseNode, public NodeMaker<NodePrefixCast> {
   using pattern = Seq<Atom<'('>, NodeTypeName, Atom<')'>>;
 };
 
+
 //------------------------------------------------------------------------------
 
-struct NodeExpressionParen : public ParseNode,
-                             public NodeMaker<NodeExpressionParen> {
+struct NodeExpressionParen : public ParseNode {
   using pattern =
       DelimitedList<Atom<'('>, NodeExpression, Atom<','>, Atom<')'>>;
 };
 
-struct NodeSuffixParen : public ParseNode, public NodeMaker<NodeSuffixParen> {
+struct NodeSuffixParen : public ParseNode {
   NodeSuffixParen() {
     precedence = 2;
     assoc = 2;
@@ -339,13 +345,12 @@ struct NodeSuffixParen : public ParseNode, public NodeMaker<NodeSuffixParen> {
 
 //------------------------------------------------------------------------------
 
-struct NodeExpressionBraces : public ParseNode,
-                              public NodeMaker<NodeExpressionBraces> {
+struct NodeExpressionBraces : public ParseNode {
   using pattern =
       DelimitedList<Atom<'{'>, NodeExpression, Atom<','>, Atom<'}'>>;
 };
 
-struct NodeSuffixBraces : public ParseNode, public NodeMaker<NodeSuffixBraces> {
+struct NodeSuffixBraces : public ParseNode {
   NodeSuffixBraces() {
     precedence = 2;
     assoc = 2;
@@ -355,10 +360,10 @@ struct NodeSuffixBraces : public ParseNode, public NodeMaker<NodeSuffixBraces> {
       DelimitedList<Atom<'{'>, NodeExpression, Atom<','>, Atom<'}'>>;
 };
 
+
 //------------------------------------------------------------------------------
 
-struct NodeSuffixSubscript : public ParseNode,
-                             public NodeMaker<NodeSuffixSubscript> {
+struct NodeSuffixSubscript : public ParseNode {
   NodeSuffixSubscript() {
     precedence = 2;
     assoc = 2;
@@ -371,10 +376,14 @@ struct NodeSuffixSubscript : public ParseNode,
 //------------------------------------------------------------------------------
 // This is a weird ({...}) thing that GCC supports
 
-struct NodeExpressionGccCompound : public ParseNode,
-                                   public NodeMaker<NodeExpressionGccCompound> {
-  using pattern = Seq<Opt<Keyword<"__extension__">>, Atom<'('>,
-                      NodeStatementCompound, Atom<')'>>;
+struct NodeExpressionGccCompound : public ParseNode {
+  using pattern =
+  Seq<
+    Opt<Keyword<"__extension__">>,
+    Atom<'('>,
+    NodeStatementCompound,
+    Atom<')'>
+  >;
 };
 
 //------------------------------------------------------------------------------
@@ -384,31 +393,44 @@ struct NodeExpressionBinary : public ParseNode {};
 struct NodeExpressionPrefix : public ParseNode {};
 struct NodeExpressionSuffix : public ParseNode {};
 
-struct NodeExpressionSizeof : public ParseNode,
-                              public NodeMaker<NodeExpressionSizeof> {
+struct NodeExpressionSizeof : public ParseNode {
   using pattern =
-      Seq<Keyword<"sizeof">,
-          Oneof<NodeParenType, NodeExpressionParen, NodeExpression>>;
+  Seq<
+    Keyword<"sizeof">,
+    Oneof<
+      NodeParenType,
+      NodeExpressionParen,
+      NodeExpression
+    >
+  >;
 };
 
-struct NodeExpressionAlignof : public ParseNode,
-                               public NodeMaker<NodeExpressionAlignof> {
+struct NodeExpressionAlignof : public ParseNode {
   using pattern =
       Seq<Keyword<"__alignof__">, Oneof<NodeParenType, NodeExpressionParen>>;
 };
 
-struct NodeExpressionOffsetof : public ParseNode,
-                                public NodeMaker<NodeExpressionOffsetof> {
+/*
+struct NodeExpressionOffsetof : public ParseNode {
   using pattern =
-      Seq<Oneof<Keyword<"offsetof">, Keyword<"__builtin_offsetof">>, Atom<'('>,
-          NodeTypeName, Atom<','>, NodeExpression, Atom<')'>>;
+  Seq<
+    Oneof<
+      Keyword<"offsetof">,
+      Keyword<"__builtin_offsetof">
+    >,
+    Atom<'('>,
+    Capture<"name", NodeTypeName::pattern, NodeTypeName>,
+    Atom<','>,
+    NodeExpression,
+    Atom<')'>
+  >;
 };
+*/
 
 //----------------------------------------
 
 template <StringParam lit>
-struct NodePrefixKeyword : public ParseNode,
-                           public LeafMaker<NodePrefixKeyword<lit>> {
+struct NodePrefixKeyword : public ParseNode {
   NodePrefixKeyword() {
     precedence = 3;
     assoc = -2;
@@ -444,7 +466,8 @@ using ExpressionCore =
 Oneof<
   NodeExpressionSizeof,
   NodeExpressionAlignof,
-  NodeExpressionOffsetof,
+  // FIXME FIXME FIXME DO NOT RUN TESTS
+  //NodeExpressionOffsetof,
   NodeExpressionGccCompound,
   NodeExpressionParen,
   NodeInitializerList,
@@ -481,7 +504,7 @@ Seq<
 
 //----------------------------------------
 
-struct NodeTernaryOp : public ParseNode, public NodeMaker<NodeTernaryOp> {
+struct NodeTernaryOp : public ParseNode {
   NodeTernaryOp() {
     precedence = 16;
     assoc = -1;
@@ -490,6 +513,9 @@ struct NodeTernaryOp : public ParseNode, public NodeMaker<NodeTernaryOp> {
   using pattern = Seq<NodeBinaryOp<"?">, Opt<comma_separated<NodeExpression>>,
                       NodeBinaryOp<":">>;
 };
+
+#if 0
+
 
 //----------------------------------------
 
@@ -881,7 +907,7 @@ struct NodeSpecifier : public ParseNode, public NodeMaker<NodeSpecifier> {
 // (6.7.6) type-name:
 //   specifier-qualifier-list abstract-declaratoropt
 
-struct NodeTypeName : public ParseNode, public NodeMaker<NodeTypeName> {
+struct NodeTypeName : public ParseNode {
   using pattern =
       Seq<Some<NodeSpecifier, NodeModifier>, Opt<NodeAbstractDeclarator>>;
 };
