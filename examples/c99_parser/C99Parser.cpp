@@ -24,9 +24,9 @@ void C99Parser::reset() {
   type_scope->clear();
 }
 
-#if 0
 //------------------------------------------------------------------------------
 
+#if 0
 bool C99Parser::parse(std::vector<Lexeme>& lexemes) {
 
   for (auto i = 0; i < lexemes.size(); i++) {
@@ -39,72 +39,39 @@ bool C99Parser::parse(std::vector<Lexeme>& lexemes) {
   // Skip over BOF, stop before EOF
   auto tok_a = tokens.data() + 1;
   auto tok_b = tokens.data() + tokens.size() - 1;
+  tspan s(tok_a, tok_b);
 
-  global_cursor = tok_a;
-  auto end = NodeTranslationUnit::match(this, tok_a, tok_b);
-
-  root = tok_a->get_span();
-
-#ifdef DEBUG
-  if (root) {
-    root->check_sanity();
-  }
+  auto end = NodeTranslationUnit::match(this, s);
+  return end.is_valid();
+}
 #endif
 
-  if (!end || end != tok_b) return false;
-
-  return true;
-}
-
 //------------------------------------------------------------------------------
 
-void C99Parser::parser_rewind(Token* a, Token* b) {
-  printf("rewind to %20.20s\n", a->debug_span_a());
-
-  /*
-  if (a < global_cursor) {
-    static constexpr int context_len = 60;
-    printf("[");
-    print_escaped(global_cursor->get_lex_debug()->span_a, context_len,
-  0x804080); printf("]\n"); printf("[");
-    print_escaped(a->get_lex_debug()->span_a, context_len, 0x804040);
-    printf("]\n");
-  }
-  */
-
-  DCHECK(a <= global_cursor);
-
-  if (a < global_cursor) {
-    rewind_count++;
-  } else {
-    didnt_rewind++;
-  }
-
-  global_cursor = a;
+tspan C99Parser::match_class_type(tspan s) {
+  return type_scope->has_class_type(this, s) ? s.advance(1) : s.fail();
 }
 
-//------------------------------------------------------------------------------
-
-Token* C99Parser::match_class_type(Token* a, Token* b) {
-  return type_scope->has_class_type(this, a, b) ? a + 1 : nullptr;
-}
-Token* C99Parser::match_struct_type(Token* a, Token* b) {
-  return type_scope->has_struct_type(this, a, b) ? a + 1 : nullptr;
-}
-Token* C99Parser::match_union_type(Token* a, Token* b) {
-  return type_scope->has_union_type(this, a, b) ? a + 1 : nullptr;
-}
-Token* C99Parser::match_enum_type(Token* a, Token* b) {
-  return type_scope->has_enum_type(this, a, b) ? a + 1 : nullptr;
-}
-Token* C99Parser::match_typedef_type(Token* a, Token* b) {
-  return type_scope->has_typedef_type(this, a, b) ? a + 1 : nullptr;
+tspan C99Parser::match_struct_type(tspan s) {
+  return type_scope->has_struct_type(this, s) ? s.advance(1) : s.fail();
 }
 
-void C99Parser::add_class_type(Token* a) { type_scope->add_class_type(a); }
-void C99Parser::add_struct_type(Token* a) { type_scope->add_struct_type(a); }
-void C99Parser::add_union_type(Token* a) { type_scope->add_union_type(a); }
-void C99Parser::add_enum_type(Token* a) { type_scope->add_enum_type(a); }
+tspan C99Parser::match_union_type(tspan s) {
+  return type_scope->has_union_type(this, s) ? s.advance(1) : s.fail();
+}
+
+tspan C99Parser::match_enum_type(tspan s) {
+  return type_scope->has_enum_type(this, s) ? s.advance(1) : s.fail();
+}
+
+tspan C99Parser::match_typedef_type(tspan s) {
+  return type_scope->has_typedef_type(this, s) ? s.advance(1) : s.fail();
+}
+
+void C99Parser::add_class_type  (Token* a) { type_scope->add_class_type(a); }
+void C99Parser::add_struct_type (Token* a) { type_scope->add_struct_type(a); }
+void C99Parser::add_union_type  (Token* a) { type_scope->add_union_type(a); }
+void C99Parser::add_enum_type   (Token* a) { type_scope->add_enum_type(a); }
 void C99Parser::add_typedef_type(Token* a) { type_scope->add_typedef_type(a); }
 
 //----------------------------------------------------------------------------
@@ -124,7 +91,7 @@ void C99Parser::pop_scope() {
 }
 
 //----------------------------------------------------------------------------
-
+#if 0
 void C99Parser::append_node(ParseNode* node) {
   if (tail) {
     tail->next = node;

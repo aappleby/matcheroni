@@ -38,15 +38,15 @@ class C99Parser : public matcheroni::Context {
   void reset();
   bool parse(std::vector<Lexeme>& lexemes);
 
-  Token* match_builtin_type_base  (tspan s);
-  Token* match_builtin_type_prefix(tspan s);
-  Token* match_builtin_type_suffix(tspan s);
+  tspan match_builtin_type_base  (tspan s);
+  tspan match_builtin_type_prefix(tspan s);
+  tspan match_builtin_type_suffix(tspan s);
 
-  Token* match_class_type  (tspan s);
-  Token* match_struct_type (tspan s);
-  Token* match_union_type  (tspan s);
-  Token* match_enum_type   (tspan s);
-  Token* match_typedef_type(tspan s);
+  tspan match_class_type  (tspan s);
+  tspan match_struct_type (tspan s);
+  tspan match_union_type  (tspan s);
+  tspan match_enum_type   (tspan s);
+  tspan match_typedef_type(tspan s);
 
   void add_class_type  (Token* a);
   void add_struct_type (Token* a);
