@@ -66,20 +66,20 @@ template <StringParam lit>
 struct Keyword : public CNode, PatternWrapper<Keyword<lit>> {
   static_assert(SST<c_keywords>::contains(lit.str_val));
 
-  static tspan match(void* ctx, tspan s) {
+  static lex_span match(void* ctx, lex_span s) {
     if (!s) return s.fail();
-    if (atom_cmp(ctx, s.a, LEX_KEYWORD)) return s.fail();
+    if (atom_cmp(ctx, *s.a, LEX_KEYWORD)) return s.fail();
     /*+*/ parser_rewind(ctx, s);
-    if (atom_cmp(ctx, s.a, lit)) return s.fail();
+    if (atom_cmp(ctx, *s.a, lit)) return s.fail();
     return s.advance(1);
   }
 };
 
 template <StringParam lit>
 struct Literal2 : public CNode, PatternWrapper<Literal2<lit>> {
-  static tspan match(void* ctx, tspan s) {
+  static lex_span match(void* ctx, lex_span s) {
     if (!s) return s.fail();
-    if (atom_cmp(ctx, s.a, lit)) return s.fail();
+    if (atom_cmp(ctx, *s.a, lit)) return s.fail();
     return s.advance(1);
   }
 };
@@ -129,15 +129,15 @@ struct LeafMaker {
 //------------------------------------------------------------------------------
 
 template <StringParam lit>
-inline tspan match_punct(void* ctx, tspan s) {
+inline lex_span match_punct(void* ctx, lex_span s) {
   if (!s) return s.fail();
   if (s.len() < lit.str_len) return s.fail();
 
   for (auto i = 0; i < lit.str_len; i++) {
-    if (atom_cmp(ctx, s.a, LEX_PUNCT)) {
+    if (atom_cmp(ctx, *s.a, LEX_PUNCT)) {
       return s.fail();
     }
-    if (atom_cmp(ctx, s.a->lex->span.a, lit.str_val[i])) {
+    if (atom_cmp(ctx, *(s.a->lex->span.a), lit.str_val[i])) {
       return s.fail();
     }
     s.advance(1);
@@ -265,7 +265,7 @@ struct NodeSuffixOp : public CNode, PatternWrapper<NodeSuffixOp<lit>> {
 //------------------------------------------------------------------------------
 
 struct NodeQualifier : public CNode, PatternWrapper<NodeQualifier> {
-  static tspan match(void* ctx, tspan s) {
+  static lex_span match(void* ctx, lex_span s) {
     matcheroni_assert(s.is_valid());
     auto span = s.a->lex->span;
     if (SST<qualifiers>::match(span.a, span.b)) {
@@ -518,10 +518,10 @@ struct NodeTernaryOp : public CNode, PatternWrapper<NodeTernaryOp> {
 //----------------------------------------
 
 struct NodeExpression : public CNode, PatternWrapper<NodeExpression> {
-  static tspan match_binary_op(void* ctx, tspan s) {
+  static lex_span match_binary_op(void* ctx, lex_span s) {
     matcheroni_assert(s);
 
-    if (atom_cmp(ctx, s.a, LEX_PUNCT)) {
+    if (atom_cmp(ctx, *s.a, LEX_PUNCT)) {
       return s.fail();
     }
 
@@ -576,7 +576,7 @@ struct NodeExpression : public CNode, PatternWrapper<NodeExpression> {
   subtraction.
   */
 
-  static tspan match2(void* ctx, tspan s) {
+  static lex_span match2(void* ctx, lex_span s) {
 
     using pattern =
         Seq<unit_pattern, Any<Seq<Ref<match_binary_op>, unit_pattern>>>;
@@ -733,7 +733,7 @@ struct NodeExpression : public CNode, PatternWrapper<NodeExpression> {
 
   //----------------------------------------
 
-  static tspan match(void* ctx, tspan s) {
+  static lex_span match(void* ctx, lex_span s) {
     //print_trace_start<NodeExpression, CToken>(a);
     auto end = match2(ctx, s);
     if (end) {
@@ -1008,7 +1008,7 @@ struct NodeStructType : public CNode, public PatternWrapper<NodeStructType> {
 };
 
 struct NodeStructTypeAdder : public NodeIdentifier {
-  static tspan match(void* ctx, tspan s) {
+  static lex_span match(void* ctx, lex_span s) {
     if (auto end = NodeIdentifier::match(ctx, s)) {
       ((CParser*)ctx)->add_struct_type(s.a);
       return end;
@@ -1039,14 +1039,14 @@ struct NodeStruct : public CNode, public PatternWrapper<NodeStruct> {
 //------------------------------------------------------------------------------
 
 struct NodeUnionType : public CNode {
-  static tspan match(void* ctx, tspan s) {
+  static lex_span match(void* ctx, lex_span s) {
     auto context = ((CParser*)ctx);
     return context->match_union_type(s);
   }
 };
 
 struct NodeUnionTypeAdder : public NodeIdentifier {
-  static tspan match(void* ctx, tspan s) {
+  static lex_span match(void* ctx, lex_span s) {
     if (auto end = NodeIdentifier::match(ctx, s)) {
       ((CParser*)ctx)->add_union_type(s.a);
       return end;
@@ -1081,7 +1081,7 @@ struct NodeClassType : public CNode, public PatternWrapper<NodeClassType> {
 };
 
 struct NodeClassTypeAdder : public NodeIdentifier {
-  static tspan match(void* ctx, tspan s) {
+  static lex_span match(void* ctx, lex_span s) {
     if (auto end = NodeIdentifier::match(ctx, s)) {
       ((CParser*)ctx)->add_class_type(s.a);
       return end;
@@ -1129,7 +1129,7 @@ struct NodeEnumType : public CNode, public PatternWrapper<NodeEnumType> {
 };
 
 struct NodeEnumTypeAdder : public NodeIdentifier {
-  static tspan match(void* ctx, tspan s) {
+  static lex_span match(void* ctx, lex_span s) {
     if (auto end = NodeIdentifier::match(ctx, s)) {
       ((CParser*)ctx)->add_enum_type(s.a);
       return end;
@@ -1299,7 +1299,7 @@ struct NodeDeclaration : public CNode, public PatternWrapper<NodeDeclaration> {
 
 template <typename P>
 struct PushPopScope {
-  static tspan match(void* ctx, tspan s) {
+  static lex_span match(void* ctx, lex_span s) {
     ((CParser*)ctx)->push_scope();
 
     auto end = P::match(ctx, s);
@@ -1600,7 +1600,7 @@ struct NodeTypedef : public CNode, public PatternWrapper<NodeTypedef> {
     matcheroni_assert(false);
   }
 
-  static tspan match(void* ctx, tspan s) {
+  static lex_span match(void* ctx, lex_span s) {
     auto end = pattern::match(ctx, s);
     if (end) extract_type(ctx);
     return end;

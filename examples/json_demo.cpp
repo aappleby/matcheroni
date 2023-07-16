@@ -30,7 +30,7 @@ const int warmup = 10;
 const int reps = 10;
 #endif
 
-text_span parse_json(void* ctx, text_span s);
+TextSpan parse_json(void* ctx, TextSpan s);
 
 //------------------------------------------------------------------------------
 
@@ -71,8 +71,8 @@ int main(int argc, char** argv) {
     byte_accum += size;
     for (size_t i = 0; i < size; i++) if (buf[i] == '\n') line_accum++;
 
-    text_span text = {buf, buf + size};
-    text_span parse_end = text;
+    TextSpan text = {buf, buf + size};
+    TextSpan parse_end = text;
 
     //----------------------------------------
 
@@ -95,7 +95,7 @@ int main(int argc, char** argv) {
     if (parse_end.a < text.b) {
       printf("Parse failed!\n");
       printf("Failure near `");
-      //print_flat(text_span(context->highwater, text.b), 20);
+      //print_flat(TextSpan(context->highwater, text.b), 20);
       printf("`\n");
       continue;
     }

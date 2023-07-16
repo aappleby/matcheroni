@@ -24,25 +24,6 @@ static int fail_count = 0;
 
 //------------------------------------------------------------------------------
 
-/*
-text_span to_span(const char* text) { return text_span(text, text + strlen(text)); }
-
-text_span to_span(const std::string& s) {
-  return text_span(s.data(), s.data() + s.size());
-}
-
-std::string to_string(text_span s) {
-  return s.a ? std::string(s.a, s.b) : std::string(s.b);
-}
-*/
-
-//bool operator==(text_span a, const std::string& b) { return to_string(a) == b; }
-//bool operator==(const std::string& a, text_span b) { return a == to_string(b); }
-//bool operator!=(text_span a, const std::string& b) { return to_string(a) != b; }
-//bool operator!=(const std::string& a, text_span b) { return a != to_string(b); }
-
-//------------------------------------------------------------------------------
-
 void test_span() {
   auto span1 = to_span("Hello World");
   auto span2 = span1.advance(strlen("Hello"));
@@ -66,8 +47,8 @@ void test_span() {
 //------------------------------------------------------------------------------
 
 void test_atom() {
-  text_span text;
-  text_span tail;
+  TextSpan text;
+  TextSpan tail;
 
   // Single atoms should match a single character.
   text = to_span("abc");
@@ -102,8 +83,8 @@ void test_atom() {
 //------------------------------------------------------------------------------
 
 void test_notatom() {
-  text_span text;
-  text_span tail;
+  TextSpan text;
+  TextSpan tail;
 
   text = to_span("");
   tail = NotAtom<'a'>::match(nullptr, text);
@@ -129,8 +110,8 @@ void test_notatom() {
 //------------------------------------------------------------------------------
 
 void test_range() {
-  text_span text;
-  text_span tail;
+  TextSpan text;
+  TextSpan tail;
 
   text = to_span("");
   tail = Range<'a', 'z'>::match(nullptr, text);
@@ -156,8 +137,8 @@ void test_range() {
 //------------------------------------------------------------------------------
 
 void test_lit() {
-  text_span text;
-  text_span tail;
+  TextSpan text;
+  TextSpan tail;
 
   text = to_span("");
   tail = Lit<"foo">::match(nullptr, text);
@@ -185,8 +166,8 @@ void test_lit() {
 //------------------------------------------------------------------------------
 
 void test_seq() {
-  text_span text;
-  text_span tail;
+  TextSpan text;
+  TextSpan tail;
 
   text = to_span("abc");
   tail = Seq<Atom<'a'>, Atom<'b'>>::match(nullptr, text);
@@ -201,8 +182,8 @@ void test_seq() {
 //------------------------------------------------------------------------------
 
 void test_oneof() {
-  text_span text;
-  text_span tail;
+  TextSpan text;
+  TextSpan tail;
 
   // Order of the oneof<> items if they do _not_ share a prefix should _not_
   // matter
@@ -232,8 +213,8 @@ void test_oneof() {
 //------------------------------------------------------------------------------
 
 void test_opt() {
-  text_span text;
-  text_span tail;
+  TextSpan text;
+  TextSpan tail;
 
   text = to_span("abcd");
   tail = Opt<Atom<'a'>>::match(nullptr, text);
@@ -247,8 +228,8 @@ void test_opt() {
 //------------------------------------------------------------------------------
 
 void test_any() {
-  text_span text;
-  text_span tail;
+  TextSpan text;
+  TextSpan tail;
 
   text = to_span("");
   tail = Any<Atom<'a'>>::match(nullptr, text);
@@ -266,8 +247,8 @@ void test_any() {
 //------------------------------------------------------------------------------
 
 void test_some() {
-  text_span text;
-  text_span tail;
+  TextSpan text;
+  TextSpan tail;
 
   text = to_span("");
   tail = Some<Atom<'a'>>::match(nullptr, text);
@@ -285,8 +266,8 @@ void test_some() {
 //------------------------------------------------------------------------------
 
 void test_and() {
-  text_span text;
-  text_span tail;
+  TextSpan text;
+  TextSpan tail;
 
   text = to_span("");
   tail = And<Atom<'a'>>::match(nullptr, text);
@@ -304,8 +285,8 @@ void test_and() {
 //------------------------------------------------------------------------------
 
 void test_not() {
-  text_span text;
-  text_span tail;
+  TextSpan text;
+  TextSpan tail;
 
   text = to_span("");
   tail = Not<Atom<'a'>>::match(nullptr, text);
@@ -323,8 +304,8 @@ void test_not() {
 //------------------------------------------------------------------------------
 
 void test_rep() {
-  text_span text;
-  text_span tail;
+  TextSpan text;
+  TextSpan tail;
 
   text = to_span("");
   tail = Rep<3, Atom<'a'>>::match(nullptr, text);
@@ -346,8 +327,8 @@ void test_rep() {
 //------------------------------------------------------------------------------
 
 void test_reprange() {
-  text_span text;
-  text_span tail;
+  TextSpan text;
+  TextSpan tail;
 
   text = to_span("");
   tail = RepRange<2, 3, Atom<'a'>>::match(nullptr, text);
@@ -373,8 +354,8 @@ void test_reprange() {
 //------------------------------------------------------------------------------
 
 void test_until() {
-  text_span text;
-  text_span tail;
+  TextSpan text;
+  TextSpan tail;
 
   text = to_span("");
   tail = Until<Atom<'b'>>::match(nullptr, text);
@@ -392,15 +373,15 @@ void test_until() {
 
 //------------------------------------------------------------------------------
 
-text_span test_matcher(void* ctx, text_span s) {
+TextSpan test_matcher(void* ctx, TextSpan s) {
   matcheroni_assert(s.is_valid());
   if (s.is_empty()) return s.fail();
   return s.a[0] == 'a' ? s.advance(1) : s.fail();
 }
 
 void test_ref() {
-  text_span text;
-  text_span tail;
+  TextSpan text;
+  TextSpan tail;
 
   text = to_span("");
   tail = Ref<test_matcher>::match(nullptr, text);
@@ -418,8 +399,8 @@ void test_ref() {
 //------------------------------------------------------------------------------
 
 void test_backref() {
-  text_span text;
-  text_span tail;
+  TextSpan text;
+  TextSpan tail;
 
   using pattern1 =
       Seq<StoreBackref<"backref", char, Rep<4, Range<'a', 'z'>>>,
@@ -450,8 +431,8 @@ void test_backref() {
 //------------------------------------------------------------------------------
 
 void test_delimited_block() {
-  text_span text;
-  text_span tail;
+  TextSpan text;
+  TextSpan tail;
 
   using pattern = DelimitedBlock<Atom<'{'>, Atom<'a'>, Atom<'}'>>;
 
@@ -483,8 +464,8 @@ void test_delimited_block() {
 //------------------------------------------------------------------------------
 
 void test_delimited_list() {
-  text_span text;
-  text_span tail;
+  TextSpan text;
+  TextSpan tail;
 
   using pattern = DelimitedList<Atom<'{'>, Atom<'a'>, Atom<','>, Atom<'}'>>;
 
@@ -542,8 +523,8 @@ void test_delimited_list() {
 //------------------------------------------------------------------------------
 
 void test_eol() {
-  text_span text;
-  text_span tail;
+  TextSpan text;
+  TextSpan tail;
 
   text = to_span("aaaa");
   tail = Seq<Some<Atom<'a'>>, EOL>::match(nullptr, text);
@@ -561,8 +542,8 @@ void test_eol() {
 //------------------------------------------------------------------------------
 
 void test_charset() {
-  text_span text;
-  text_span tail;
+  TextSpan text;
+  TextSpan tail;
 
   text = to_span("dcbaxxxx");
   tail = Some<Charset<"abcd">>::match(nullptr, text);

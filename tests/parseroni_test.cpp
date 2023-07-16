@@ -44,7 +44,7 @@ struct TestNode : public TextNode {
 // A whole s-expression parser in ~10 lines of code. :D
 
 struct TinyLisp {
-  static text_span match(void* ctx, text_span s) {
+  static TextSpan match(void* ctx, TextSpan s) {
     return Oneof<
       Capture<"atom", atom, TestNode>,
       Capture<"list", list, TestNode>
@@ -73,8 +73,8 @@ void check_hash(const Context& context, uint64_t hash_a) {
 void test_basic() {
   printf("test_basic()\n");
   TextContext context;
-  text_span span;
-  text_span tail;
+  TextSpan span;
+  TextSpan tail;
 
   {
     // Check than we can round-trip a s-expression
@@ -159,7 +159,7 @@ void test_rewind() {
 //------------------------------------------------------------------------------
 
 struct BeginEndTest {
-  static text_span match(void* ctx, text_span s) {
+  static TextSpan match(void* ctx, TextSpan s) {
     return Oneof<atom, list>::match(ctx, s);
   }
 
@@ -225,7 +225,7 @@ void test_begin_end() {
 // mismatched suffix.
 
 struct Pathological {
-  static text_span match(void* ctx, text_span s) {
+  static TextSpan match(void* ctx, TextSpan s) {
     return pattern::match(ctx, s);
   }
 
@@ -245,8 +245,8 @@ struct Pathological {
 void test_pathological() {
   printf("test_pathological()\n");
   TextContext context;
-  text_span span;
-  text_span tail;
+  TextSpan span;
+  TextSpan tail;
 
   // We expect 137257 constructor calls and 137250 destructor calls for this
   // pattern.

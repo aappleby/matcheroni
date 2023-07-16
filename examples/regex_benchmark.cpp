@@ -80,7 +80,7 @@ void benchmark_baseline(const char* path) {
 #ifdef REGEX_BENCHMARK_MATCHERONI
 
 template<typename P>
-void benchmark_pattern(text_span s) {
+void benchmark_pattern(TextSpan s) {
   int matches = 0;
   double time = 0;
 
@@ -151,7 +151,7 @@ using matcheroni_ip4_pattern = Seq<
 
 void benchmark_matcheroni(const char* path) {
   std::string buf = read(path);
-  text_span s = to_span(buf);
+  TextSpan s = to_span(buf);
 
   printf("Email: ");
   benchmark_pattern<matcheroni_email_pattern>(s);

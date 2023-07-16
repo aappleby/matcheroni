@@ -39,7 +39,7 @@ bool CParser::parse(std::vector<CLexeme>& lexemes) {
   // Skip over BOF, stop before EOF
   auto tok_a = tokens.data() + 1;
   auto tok_b = tokens.data() + tokens.size() - 1;
-  tspan s(tok_a, tok_b);
+  lex_span s(tok_a, tok_b);
 
   auto end = NodeTranslationUnit::match(this, s);
   return end.is_valid();
@@ -48,23 +48,23 @@ bool CParser::parse(std::vector<CLexeme>& lexemes) {
 
 //------------------------------------------------------------------------------
 
-tspan CParser::match_class_type(tspan s) {
+lex_span CParser::match_class_type(lex_span s) {
   return type_scope->has_class_type(this, s) ? s.advance(1) : s.fail();
 }
 
-tspan CParser::match_struct_type(tspan s) {
+lex_span CParser::match_struct_type(lex_span s) {
   return type_scope->has_struct_type(this, s) ? s.advance(1) : s.fail();
 }
 
-tspan CParser::match_union_type(tspan s) {
+lex_span CParser::match_union_type(lex_span s) {
   return type_scope->has_union_type(this, s) ? s.advance(1) : s.fail();
 }
 
-tspan CParser::match_enum_type(tspan s) {
+lex_span CParser::match_enum_type(lex_span s) {
   return type_scope->has_enum_type(this, s) ? s.advance(1) : s.fail();
 }
 
-tspan CParser::match_typedef_type(tspan s) {
+lex_span CParser::match_typedef_type(lex_span s) {
   return type_scope->has_typedef_type(this, s) ? s.advance(1) : s.fail();
 }
 
@@ -92,7 +92,7 @@ void CParser::pop_scope() {
 
 //----------------------------------------------------------------------------
 
-tspan CParser::match_builtin_type_base(tspan s) {
+lex_span CParser::match_builtin_type_base(lex_span s) {
   if (!s.is_valid() || s.is_empty()) return s.fail();
   if (SST<builtin_type_base>::match(s.a->lex->span.a, s.a->lex->span.b)) {
     return s.advance(1);
@@ -102,7 +102,7 @@ tspan CParser::match_builtin_type_base(tspan s) {
   }
 }
 
-tspan CParser::match_builtin_type_prefix(tspan s) {
+lex_span CParser::match_builtin_type_prefix(lex_span s) {
   if (!s.is_valid() || s.is_empty()) return s.fail();
   if (SST<builtin_type_prefix>::match(s.a->lex->span.a, s.a->lex->span.b)) {
     return s.advance(1);
@@ -112,7 +112,7 @@ tspan CParser::match_builtin_type_prefix(tspan s) {
   }
 }
 
-tspan CParser::match_builtin_type_suffix(tspan s) {
+lex_span CParser::match_builtin_type_suffix(lex_span s) {
   if (!s.is_valid() || s.is_empty()) return s.fail();
   if (SST<builtin_type_suffix>::match(s.a->lex->span.a, s.a->lex->span.b)) {
     return s.advance(1);
@@ -124,10 +124,12 @@ tspan CParser::match_builtin_type_suffix(tspan s) {
 
 //------------------------------------------------------------------------------
 
+#if 0
 void CParser::dump_tokens() {
   for (auto& t : tokens) {
     t.dump_token();
   }
 }
+#endif
 
 //------------------------------------------------------------------------------

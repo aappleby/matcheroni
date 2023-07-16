@@ -4,8 +4,6 @@
 #include "examples/c_parser/CToken.hpp"
 #include "examples/c_parser/CLexeme.hpp"
 
-using namespace matcheroni;
-
 //----------------------------------------------------------------------------
 
 CToken::CToken(const CLexeme* lex) {
@@ -14,8 +12,8 @@ CToken::CToken(const CLexeme* lex) {
 
 //----------------------------------------------------------------------------
 
-void CToken::dump_token() const {
 #if 0
+void CToken::dump_token() const {
   // Dump token
   printf("tok @ %p :", this);
 
@@ -33,7 +31,7 @@ void CToken::dump_token() const {
     printf("{                    }");
   }
   printf("\n");
-#endif
 }
+#endif
 
 //------------------------------------------------------------------------------

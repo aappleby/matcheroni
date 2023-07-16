@@ -29,7 +29,7 @@ struct JsonParser {
   using keyword   = Oneof<Lit<"true">, Lit<"false">, Lit<"null">>;
   // clang-format on
 
-  static text_span match(void* ctx, text_span s) {
+  static TextSpan match(void* ctx, TextSpan s) {
     return Oneof<number, string, keyword>::match(ctx, s);
   }
 };

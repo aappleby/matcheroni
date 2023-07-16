@@ -8,7 +8,7 @@
 
 //------------------------------------------------------------------------------
 
-CLexeme::CLexeme(LexemeType type, matcheroni::text_span s) {
+CLexeme::CLexeme(LexemeType type, matcheroni::TextSpan s) {
   this->type = type;
   this->span = s;
 }

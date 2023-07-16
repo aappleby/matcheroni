@@ -9,7 +9,7 @@
 #include "matcheroni/Parseroni.hpp"
 #include "examples/c_parser/CToken.hpp"
 
-typedef matcheroni::Span<CToken> tspan;
+typedef matcheroni::Span<CToken> lex_span;
 
 //------------------------------------------------------------------------------
 

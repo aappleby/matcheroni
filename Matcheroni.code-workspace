@@ -23,7 +23,13 @@
 			"tuple": "cpp",
 			"type_traits": "cpp",
 			"utility": "cpp",
-			"variant": "cpp"
+			"variant": "cpp",
+			"deque": "cpp",
+			"list": "cpp",
+			"vector": "cpp",
+			"string_view": "cpp",
+			"initializer_list": "cpp",
+			"regex": "cpp"
 		}
 	}
 }

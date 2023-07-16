@@ -26,7 +26,7 @@ struct CParser;
 struct CScope;
 struct CToken;
 
-using tspan = matcheroni::Span<CToken>;
+using lex_span = matcheroni::Span<CToken>;
 
 //------------------------------------------------------------------------------
 
@@ -37,15 +37,15 @@ class CParser : public matcheroni::ContextBase<CNode> {
   void reset();
   bool parse(std::vector<CLexeme>& lexemes);
 
-  tspan match_builtin_type_base  (tspan s);
-  tspan match_builtin_type_prefix(tspan s);
-  tspan match_builtin_type_suffix(tspan s);
+  lex_span match_builtin_type_base  (lex_span s);
+  lex_span match_builtin_type_prefix(lex_span s);
+  lex_span match_builtin_type_suffix(lex_span s);
 
-  tspan match_class_type  (tspan s);
-  tspan match_struct_type (tspan s);
-  tspan match_union_type  (tspan s);
-  tspan match_enum_type   (tspan s);
-  tspan match_typedef_type(tspan s);
+  lex_span match_class_type  (lex_span s);
+  lex_span match_struct_type (lex_span s);
+  lex_span match_union_type  (lex_span s);
+  lex_span match_enum_type   (lex_span s);
+  lex_span match_typedef_type(lex_span s);
 
   void add_class_type  (const CToken* a);
   void add_struct_type (const CToken* a);
@@ -61,9 +61,9 @@ class CParser : public matcheroni::ContextBase<CNode> {
 
   void dump_stats();
   void dump_lexemes();
-  void dump_tokens();
+  //void dump_tokens();
 
-  void parser_rewind(tspan s);
+  void parser_rewind(lex_span s);
 
   //----------------------------------------
 

@@ -108,18 +108,26 @@ inline int strcmp_span(Span<char> s, const char* lit) {
   }
 }
 
+inline int strcmp_span(Span<char> a, Span<char> b) {
+  if (int c = a.len() - b.len()) return c;
+  for (auto i = 0; i < a.len(); i++) {
+    if (auto c = a.a[i] - b.a[i]) return c;
+  }
+  return 0;
+}
+
 //------------------------------------------------------------------------------
 // Matcheroni needs some way to compare atoms against constants. By default, it
 // uses a generic atom_cmp function to compute the integer difference between
 // the atom and the constant.
 
 // If you specialize the function below for your various atom types and
-// constant types, Matcheroni will use your code instead. Your atom_cmp()
+// constant types, Matcheroni will use your code instead. Your ()
 // should return <0 for a<b, ==0 for a==b, and >0 for a>b.
 
 template <typename atom1, typename atom2>
-inline int atom_cmp(void* ctx, const atom1* a, const atom2 b) {
-  return int(*a - b);
+inline int atom_cmp(void* ctx, const atom1& a, const atom2& b) {
+  return int(a - b);
 }
 
 //------------------------------------------------------------------------------
@@ -152,7 +160,7 @@ struct Atom<C, rest...> {
     matcheroni_assert(s.is_valid());
     if (s.is_empty()) return s.fail();
 
-    if (atom_cmp(ctx, s.a, C) == 0) {
+    if (atom_cmp(ctx, *s.a, C) == 0) {
       return s.advance(1);
     } else {
       return Atom<rest...>::match(ctx, s);
@@ -167,7 +175,7 @@ struct Atom<C> {
     matcheroni_assert(s.is_valid());
     if (s.is_empty()) return s.fail();
 
-    if (atom_cmp(ctx, s.a, C) == 0) {
+    if (atom_cmp(ctx, *s.a, C) == 0) {
       return s.advance(1);
     } else {
       return s.fail();
@@ -186,7 +194,7 @@ struct NotAtom {
     matcheroni_assert(s.is_valid());
     if (s.is_empty()) return s.fail();
 
-    if (atom_cmp(ctx, s.a, C) == 0) {
+    if (atom_cmp(ctx, *s.a, C) == 0) {
       return s.fail();
     }
     return NotAtom<rest...>::match(ctx, s);
@@ -200,7 +208,7 @@ struct NotAtom<C> {
     matcheroni_assert(s.is_valid());
     if (s.is_empty()) return s.fail();
 
-    if (atom_cmp(ctx, s.a, C) == 0) {
+    if (atom_cmp(ctx, *s.a, C) == 0) {
       return s.fail();
     } else {
       return s.advance(1);
@@ -229,8 +237,8 @@ struct Range {
   static Span<atom> match(void* ctx, Span<atom> s) {
     matcheroni_assert(s.is_valid());
     if (s.is_empty()) return s.fail();
-    if (atom_cmp(ctx, s.a, RA) < 0) return s.fail();
-    if (atom_cmp(ctx, s.a, RB) > 0) return s.fail();
+    if (atom_cmp(ctx, *s.a, RA) < 0) return s.fail();
+    if (atom_cmp(ctx, *s.a, RB) > 0) return s.fail();
     return s.advance(1);
   }
 };
@@ -245,8 +253,8 @@ struct NotRange {
   static Span<atom> match(void* ctx, Span<atom> s) {
     matcheroni_assert(s.is_valid());
     if (s.is_empty()) return s.fail();
-    if (atom_cmp(ctx, s.a, RA) < 0) return s.advance(1);
-    if (atom_cmp(ctx, s.a, RB) > 0) return s.advance(1);
+    if (atom_cmp(ctx, *s.a, RA) < 0) return s.advance(1);
+    if (atom_cmp(ctx, *s.a, RB) > 0) return s.advance(1);
     return s.fail();
   }
 };
@@ -716,7 +724,7 @@ struct MatchBackref {
 
     for (size_t i = 0; i < ref.len(); i++) {
       if (s.is_empty()) return s.fail();
-      if (atom_cmp(ctx, s.a, ref.a[i]) != 0) return s.fail();
+      if (atom_cmp(ctx, *s.a, ref.a[i]) != 0) return s.fail();
       s = s.advance(1);
     }
 

@@ -393,14 +393,18 @@ struct ContextBase {
 };
 
 //------------------------------------------------------------------------------
-// Matcheroni's default rewind callback does nothing, but if we provide a
-// specialized version of it Matcheroni will call it as needed.
+// We'll be using spans of constant characters a lot, so this is a convenience
+// declaration.
 
+using TextSpan = Span<char>;
 using TextNode = NodeBase<char>;
 using TextContext = ContextBase<char>;
 
+// Matcheroni's default rewind callback does nothing, but if we provide a
+// specialized version of it Matcheroni will call it as needed.
+
 template <>
-inline void parser_rewind(void* ctx, Span<char> s) {
+inline void parser_rewind(void* ctx, TextSpan s) {
   if (ctx) {
     auto context = (TextContext*)ctx;
     context->rewind(s);
