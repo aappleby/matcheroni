@@ -65,7 +65,7 @@ using opt_comma_separated = Opt<comma_separated<P>>;
 
 template <StringParam lit>
 struct Keyword : public ParseNode, PatternWrapper<Keyword<lit>> {
-  static_assert(SST<c99_keywords>::contains(lit.str_val));
+  static_matcheroni_assert(SST<c99_keywords>::contains(lit.str_val));
 
   static tspan match(void* ctx, tspan s) {
     if (!s) return s.fail();
@@ -267,7 +267,7 @@ struct NodeSuffixOp : public ParseNode, PatternWrapper<NodeSuffixOp<lit>> {
 
 struct NodeQualifier : public ParseNode, PatternWrapper<NodeQualifier> {
   static tspan match(void* ctx, tspan s) {
-    assert(s.is_valid());
+    matcheroni_assert(s.is_valid());
     auto span = s.a->lex->span;
     if (SST<qualifiers>::match(span.a, span.b)) {
       return s.advance(1);
@@ -520,7 +520,7 @@ struct NodeTernaryOp : public ParseNode, PatternWrapper<NodeTernaryOp> {
 
 struct NodeExpression : public ParseNode, PatternWrapper<NodeExpression> {
   static tspan match_binary_op(void* ctx, tspan s) {
-    assert(s);
+    matcheroni_assert(s);
 
     if (atom_cmp(ctx, s.a, LEX_PUNCT)) {
       return s.fail();
@@ -655,7 +655,7 @@ struct NodeExpression : public ParseNode, PatternWrapper<NodeExpression> {
         node->init(na->tok_a(), nb->tok_b());
       }
       else if (ox->precedence == oy->precedence) {
-        assert(ox->assoc == oy->assoc);
+        matcheroni_assert(ox->assoc == oy->assoc);
 
         if (ox->assoc == 1) {
           // Left to right
@@ -670,7 +670,7 @@ struct NodeExpression : public ParseNode, PatternWrapper<NodeExpression> {
           node->init(nb->tok_a(), nc->tok_b());
         }
         else {
-          assert(false);
+          matcheroni_assert(false);
         }
       }
       else {
@@ -1595,7 +1595,7 @@ struct NodeTypedef : public ParseNode, public PatternWrapper<NodeTypedef> {
       return;
     }
 
-    assert(false);
+    matcheroni_assert(false);
   }
 
   static Token* match(void* ctx, Token* a, Token* b) {

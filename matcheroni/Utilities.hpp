@@ -39,7 +39,7 @@ struct Trace {
   static cspan match(void* ctx, cspan s) {
     //printf("match_name %s\n", match_name.str_val);
 
-    assert(s.is_valid());
+    matcheroni_assert(s.is_valid());
     if (s.is_empty()) return s.fail();
 
     auto parser = (ContextBase*)ctx;
@@ -63,7 +63,7 @@ inline cspan to_span(const std::string& s) {
 }
 
 inline std::string to_string(cspan s) {
-  assert(s.a);
+  matcheroni_assert(s.a);
   return std::string(s.a, s.b);
 }
 

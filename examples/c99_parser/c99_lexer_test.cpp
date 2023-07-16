@@ -21,16 +21,16 @@ using namespace matcheroni;
 /*
 void test_match_string() {
   const char* text1 = "asdfasdf \"Hello World\" 123456789";
-  assert("\"Hello World\"" == get_first_match(text1, match_string));
+  matcheroni_assert("\"Hello World\"" == get_first_match(text1, match_string));
 
   const char* text2 = "asdfasdf \"Hello\nWorld\" 123456789";
-  assert("\"Hello\nWorld\"" == get_first_match(text2, match_string));
+  matcheroni_assert("\"Hello\nWorld\"" == get_first_match(text2, match_string));
 
   const char* text3 = "asdfasdf \"Hello\\\"World\" 123456789";
-  assert("\"Hello\\\"World\"" == get_first_match(text3, match_string));
+  matcheroni_assert("\"Hello\\\"World\"" == get_first_match(text3, match_string));
 
   const char* text4 = "asdfasdf \"Hello\\\\World\" 123456789";
-  assert("\"Hello\\\\World\"" == get_first_match(text4, match_string));
+  matcheroni_assert("\"Hello\\\\World\"" == get_first_match(text4, match_string));
 
   printf("test_match_string() pass\n");
 }

@@ -35,7 +35,7 @@ struct ParseNode : public TextNode {
       }
       out.push_back(')');
     } else {
-      assert(false);
+      matcheroni_assert(false);
     }
   }
 };
@@ -65,7 +65,7 @@ void check_hash(const Context& context, uint64_t hash_a) {
   uint64_t hash_b = hash_context(&context);
   printf("Expected hash 0x%016lx\n", hash_a);
   printf("Actual hash   0x%016lx\n", hash_b);
-  assert(hash_a == hash_b && "bad hash");
+  matcheroni_assert(hash_a == hash_b && "bad hash");
 }
 
 //----------------------------------------
@@ -82,14 +82,14 @@ void test_basic() {
     context.reset();
     span = to_span(text);
     tail = TinyLisp::match(&context, span);
-    assert(tail.is_valid() && tail == "");
+    matcheroni_assert(tail.is_valid() && tail == "");
 
     printf("Round-trip s-expression:\n");
     std::string dump;
     context.top_head()->dump_tree(dump);
     printf("Old : %s\n", text.c_str());
     printf("New : %s\n", dump.c_str());
-    assert(text == dump && "Mismatch!");
+    matcheroni_assert(text == dump && "Mismatch!");
     printf("\n");
 
     print_context(&context);
@@ -99,17 +99,17 @@ void test_basic() {
   context.reset();
   span = to_span("((((a))))");
   tail = TinyLisp::match(&context, span);
-  assert(tail.is_valid() && tail == "");
+  matcheroni_assert(tail.is_valid() && tail == "");
 
   context.reset();
   span = to_span("(((())))");
   tail = TinyLisp::match(&context, span);
-  assert(tail.is_valid() && tail == "");
+  matcheroni_assert(tail.is_valid() && tail == "");
 
   context.reset();
   span = to_span("(((()))(");
   tail = TinyLisp::match(&context, span);
-  assert(!tail.is_valid() && std::string(tail.b) == "(");
+  matcheroni_assert(!tail.is_valid() && std::string(tail.b) == "(");
 
   printf("test_basic() end\n\n");
 }
@@ -151,7 +151,7 @@ void test_rewind() {
   printf("max size %d\n", SlabAlloc::slabs().max_size);
   printf("current size %d\n", SlabAlloc::slabs().current_size);
 
-  //assert(SlabAlloc::slabs().current_size == sizeof(ParseNode));
+  //matcheroni_assert(SlabAlloc::slabs().current_size == sizeof(ParseNode));
 
   printf("test_rewind() end\n\n");
 }
@@ -254,7 +254,7 @@ void test_pathological() {
 
   span = to_span(text);
   tail = Pathological::match(&context, span);
-  assert(tail.is_valid() && "pathological tree invalid");
+  matcheroni_assert(tail.is_valid() && "pathological tree invalid");
 
   // Tree should be
   // {[[[[[[a]]]]]]       } *none
@@ -265,15 +265,15 @@ void test_pathological() {
   // {[a]                 }  | | | | |-none
   // {a                   }  | | | | | |-atom
 
-  assert(context.top_head()->node_count() == 7);
+  matcheroni_assert(context.top_head()->node_count() == 7);
   print_context(&context);
   check_hash(context, 0x07a37a832d506209);
 
-  assert(NodeBase::constructor_calls == 137257);
-  assert(NodeBase::destructor_calls  == 137250);
+  matcheroni_assert(NodeBase::constructor_calls == 137257);
+  matcheroni_assert(NodeBase::destructor_calls  == 137250);
 
-  assert(SlabAlloc::slabs().max_size == sizeof(ParseNode) * 7);
-  assert(SlabAlloc::slabs().current_size == sizeof(ParseNode) * 7);
+  matcheroni_assert(SlabAlloc::slabs().max_size == sizeof(ParseNode) * 7);
+  matcheroni_assert(SlabAlloc::slabs().current_size == sizeof(ParseNode) * 7);
 
   //printf("sizeof(ParseNode) %ld\n", sizeof(ParseNode));
   //printf("node count %ld\n", context.top_head()->node_count());

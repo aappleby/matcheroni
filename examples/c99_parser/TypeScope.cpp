@@ -32,7 +32,7 @@ bool TypeScope::has_type(void* ctx, tspan s, token_list& types) {
 }
 
 void TypeScope::add_type(Token* a, token_list& types) {
-  assert(matcheroni::atom_cmp(nullptr, a, LEX_IDENTIFIER) == 0);
+  matcheroni_assert(matcheroni::atom_cmp(nullptr, a, LEX_IDENTIFIER) == 0);
 
   for (const auto& c : types) {
     if (matcheroni::atom_cmp(nullptr, a, c) == 0) return;

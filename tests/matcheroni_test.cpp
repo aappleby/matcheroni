@@ -389,7 +389,7 @@ void test_until() {
 //------------------------------------------------------------------------------
 
 cspan test_matcher(void* ctx, cspan s) {
-  assert(s.is_valid());
+  matcheroni_assert(s.is_valid());
   if (s.is_empty()) return s.fail();
   return s.a[0] == 'a' ? s.advance(1) : s.fail();
 }

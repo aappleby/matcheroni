@@ -69,7 +69,7 @@ struct SlabAlloc {
   void add_slab() {
     if (top_slab && top_slab->next) {
       top_slab = top_slab->next;
-      assert(top_slab->cursor == 0);
+      matcheroni_assert(top_slab->cursor == 0);
       return;
     }
 
