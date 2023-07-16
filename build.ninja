@@ -16,7 +16,7 @@
 
 ### -O3 needs LTO to maximize performance
 ### LTO breaks "size obj/examples/json_parser.o"
-build_mode = -O3
+build_mode = -O3 -Wl,-s
 
 includes = -I.
 

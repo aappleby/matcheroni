@@ -16,7 +16,7 @@
 
 using namespace matcheroni;
 
-#if 0
+#if 1
 // Debug config
 constexpr bool verbose   = true;
 constexpr bool dump_tree = true;

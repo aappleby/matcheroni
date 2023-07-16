@@ -23,26 +23,26 @@ struct Token {
 //------------------------------------------------------------------------------
 
 template<>
-inline int matcheroni::atom_cmp(void* ctx, Token* a, LexemeType b) {
+inline int matcheroni::atom_cmp(void* ctx, const Token* a, LexemeType b) {
   if (int c = int(a->lex->type) - int(b)) return c;
   return 0;
 }
 
 template<>
-inline int matcheroni::atom_cmp(void* ctx, Token* a, char b) {
+inline int matcheroni::atom_cmp(void* ctx, const Token* a, char b) {
   if (int c = a->lex->len() - 1) return c;
   if (int c = a->lex->span.a[0] - b) return c;
   return 0;
 }
 
 template<>
-inline int matcheroni::atom_cmp(void* ctx, Token* a, const char* b) {
+inline int matcheroni::atom_cmp(void* ctx, const Token* a, const char* b) {
   if (int c = strcmp_span(a->lex->span, b)) return c;
   return 0;
 }
 
 template<>
-inline int matcheroni::atom_cmp<Token, const Token*>(void* ctx, Token* a, const Token* b) {
+inline int matcheroni::atom_cmp<Token, const Token*>(void* ctx, const Token* a, const Token* b) {
   if (int c = a->lex->type - b->lex->type) return c;
   if (int c = a->lex->len() - b->lex->len()) return c;
   for (auto i = 0; i < a->lex->len(); i++) {
@@ -52,7 +52,7 @@ inline int matcheroni::atom_cmp<Token, const Token*>(void* ctx, Token* a, const 
 }
 
 template<int N>
-inline int atom_cmp(void* ctx, Token* a, const matcheroni::StringParam<N> b) {
+inline int atom_cmp(void* ctx, const Token* a, const matcheroni::StringParam<N> b) {
   if (int c = a->lex->len() - b.str_len) return c;
   for (auto i = 0; i < b.str_len; i++) {
     if (auto c = a->lex->span.a[i] - b.str_val[i]) return c;

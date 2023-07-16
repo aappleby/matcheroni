@@ -162,6 +162,7 @@ void test_lit() {
 
   text = to_span("foo");
   tail = Lit<"foo">::match(nullptr, text);
+
   TEST(tail.is_valid() && tail == "");
 
   text = to_span("foo bar baz");

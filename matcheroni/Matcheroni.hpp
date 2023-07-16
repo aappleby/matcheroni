@@ -24,19 +24,15 @@ namespace matcheroni {
 
 template <typename atom>
 struct Span {
+  using AtomType = atom;
+
   Span() : a(nullptr), b(nullptr) {}
 
-  Span(atom* a, atom* b) : a(a), b(b) {
+  Span(const atom* a, const atom* b) : a(a), b(b) {
     if (a == nullptr) {
       int x = 1;
       x++;
     }
-  }
-
-  Span& operator=(const Span& c) {
-    a = c.a;
-    b = c.b;
-    return *this;
   }
 
   Span advance(int offset) const {
@@ -71,8 +67,8 @@ struct Span {
     return b - a;
   }
 
-  atom* a = 0;
-  atom* b = 0;
+  const atom* a = 0;
+  const atom* b = 0;
 };
 
 // We'll be using spans of constant characters a lot, so this is a convenience
@@ -116,7 +112,7 @@ inline int strcmp_span(Span<const char> s, const char* lit) {
 // should return <0 for a<b, ==0 for a==b, and >0 for a>b.
 
 template <typename atom1, typename atom2>
-inline int atom_cmp(void* ctx, atom1* a, atom2 b) {
+inline int atom_cmp(void* ctx, const atom1* a, const atom2 b) {
   return int(*a - b);
 }
 
@@ -268,19 +264,35 @@ struct StringParam {
 
 // Lit<"foo">::match("foobar") == "bar"
 
+inline cspan match_lit(void* ctx, cspan s, const char* lit, int len) {
+  CHECK(s.is_valid());
+  if (len > s.len()) return s.fail();
+
+  /*
+  for (int i = 0; i < len; i++) {
+    if (atom_cmp(ctx, &s.a[i], lit[i])) {
+      return s.advance(i).fail();
+    }
+  }
+  return s.advance(len);
+  */
+
+  for (int i = 0; i < len; i++) {
+    if (*s.a != *lit) {
+      return s.fail();
+    }
+    else {
+      s = s.advance(1);
+      lit++;
+    }
+  }
+  return s;
+}
+
 template <StringParam lit>
 struct Lit {
-  template <typename atom>
-  static Span<atom> match(void* ctx, Span<atom> s) {
-    CHECK(s.is_valid());
-    if (lit.str_len > s.len()) return s.fail();
-
-    for (int i = 0; i < lit.str_len; i++) {
-      if (atom_cmp(ctx, &s.a[i], lit.str_val[i])) {
-        return s.advance(i).fail();
-      }
-    }
-    return s.advance(lit.str_len);
+  static cspan match(void* ctx, cspan s) {
+    return match_lit(ctx, s, lit.str_val, lit.str_len);
   }
 };
 
@@ -295,9 +307,9 @@ struct Seq {
   template <typename atom>
   static Span<atom> match(void* ctx, Span<atom> s) {
     CHECK(s.is_valid());
-    s = P::match(ctx, s);
-    if (!s.is_valid()) return s;
-    return Seq<rest...>::match(ctx, s);
+    auto end = P::match(ctx, s);
+    if (!end.is_valid()) return end;
+    return Seq<rest...>::match(ctx, end);
   }
 };
 
