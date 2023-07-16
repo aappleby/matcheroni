@@ -8,7 +8,7 @@
 #include "matcheroni/Matcheroni.hpp"
 
 struct Lexeme;
-struct ParseNode;
+struct C99ParseNode;
 
 //------------------------------------------------------------------------------
 

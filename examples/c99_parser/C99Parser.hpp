@@ -22,7 +22,7 @@
 
 struct C99Parser;
 struct Lexeme;
-struct ParseNode;
+struct C99ParseNode;
 struct SlabAlloc;
 struct Token;
 struct TypeScope;
@@ -31,7 +31,7 @@ using tspan = matcheroni::Span<Token>;
 
 //------------------------------------------------------------------------------
 
-class C99Parser : public matcheroni::Context<ParseNode> {
+class C99Parser : public matcheroni::Context<C99ParseNode> {
  public:
   C99Parser();
 
@@ -48,17 +48,17 @@ class C99Parser : public matcheroni::Context<ParseNode> {
   tspan match_enum_type   (tspan s);
   tspan match_typedef_type(tspan s);
 
-  void add_class_type  (Token* a);
-  void add_struct_type (Token* a);
-  void add_union_type  (Token* a);
-  void add_enum_type   (Token* a);
-  void add_typedef_type(Token* a);
+  void add_class_type  (const Token* a);
+  void add_struct_type (const Token* a);
+  void add_union_type  (const Token* a);
+  void add_enum_type   (const Token* a);
+  void add_typedef_type(const Token* a);
 
   void push_scope();
   void pop_scope();
 
-  void append_node(ParseNode* node);
-  void enclose_nodes(ParseNode* start, ParseNode* node);
+  void append_node(C99ParseNode* node);
+  void enclose_nodes(C99ParseNode* start, C99ParseNode* node);
 
   void dump_stats();
   void dump_lexemes();

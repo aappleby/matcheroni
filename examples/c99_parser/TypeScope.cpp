@@ -31,7 +31,7 @@ bool TypeScope::has_type(void* ctx, tspan s, token_list& types) {
   return false;
 }
 
-void TypeScope::add_type(Token* a, token_list& types) {
+void TypeScope::add_type(const Token* a, token_list& types) {
   matcheroni_assert(matcheroni::atom_cmp(nullptr, a, LEX_IDENTIFIER) == 0);
 
   for (const auto& c : types) {
@@ -49,8 +49,8 @@ bool TypeScope::has_union_type  (void* ctx, tspan s) { if (has_type(ctx, s, unio
 bool TypeScope::has_enum_type   (void* ctx, tspan s) { if (has_type(ctx, s, enum_types   )) return true; if (parent) return parent->has_enum_type   (ctx, s); else return false; }
 bool TypeScope::has_typedef_type(void* ctx, tspan s) { if (has_type(ctx, s, typedef_types)) return true; if (parent) return parent->has_typedef_type(ctx, s); else return false; }
 
-void TypeScope::add_class_type  (Token* a) { return add_type(a, class_types  ); }
-void TypeScope::add_struct_type (Token* a) { return add_type(a, struct_types ); }
-void TypeScope::add_union_type  (Token* a) { return add_type(a, union_types  ); }
-void TypeScope::add_enum_type   (Token* a) { return add_type(a, enum_types   ); }
-void TypeScope::add_typedef_type(Token* a) { return add_type(a, typedef_types); }
+void TypeScope::add_class_type  (const Token* a) { return add_type(a, class_types  ); }
+void TypeScope::add_struct_type (const Token* a) { return add_type(a, struct_types ); }
+void TypeScope::add_union_type  (const Token* a) { return add_type(a, union_types  ); }
+void TypeScope::add_enum_type   (const Token* a) { return add_type(a, enum_types   ); }
+void TypeScope::add_typedef_type(const Token* a) { return add_type(a, typedef_types); }

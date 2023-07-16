@@ -68,11 +68,11 @@ tspan C99Parser::match_typedef_type(tspan s) {
   return type_scope->has_typedef_type(this, s) ? s.advance(1) : s.fail();
 }
 
-void C99Parser::add_class_type  (Token* a) { type_scope->add_class_type(a); }
-void C99Parser::add_struct_type (Token* a) { type_scope->add_struct_type(a); }
-void C99Parser::add_union_type  (Token* a) { type_scope->add_union_type(a); }
-void C99Parser::add_enum_type   (Token* a) { type_scope->add_enum_type(a); }
-void C99Parser::add_typedef_type(Token* a) { type_scope->add_typedef_type(a); }
+void C99Parser::add_class_type  (const Token* a) { type_scope->add_class_type(a); }
+void C99Parser::add_struct_type (const Token* a) { type_scope->add_struct_type(a); }
+void C99Parser::add_union_type  (const Token* a) { type_scope->add_union_type(a); }
+void C99Parser::add_enum_type   (const Token* a) { type_scope->add_enum_type(a); }
+void C99Parser::add_typedef_type(const Token* a) { type_scope->add_typedef_type(a); }
 
 //----------------------------------------------------------------------------
 

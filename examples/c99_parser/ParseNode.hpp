@@ -8,13 +8,18 @@
 
 #include "matcheroni/Parseroni.hpp"
 #include "examples/c99_parser/Token.hpp"
+
 typedef matcheroni::Span<Token> tspan;
 
 //------------------------------------------------------------------------------
 
-struct ParseNode : public matcheroni::SpanNode<Token> {
+struct C99ParseNode : public matcheroni::SpanNode<Token> {
 
   using matcheroni::SpanNode<Token>::SpanNode;
+
+  C99ParseNode* child(const char* name) {
+    return (C99ParseNode*)matcheroni::SpanNode<Token>::child(name);
+  }
 
   //----------------------------------------
 

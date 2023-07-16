@@ -210,7 +210,7 @@ int test_parser(int argc, char** argv) {
 
   // current torture test nodes - 531557
 
-  if (file_pass == 10000 && ParseNode::constructor_count != 520803633) {
+  if (file_pass == 10000 && C99ParseNode::constructor_count != 520803633) {
     set_color(0x008080FF);
     printf("############## NODE COUNT MISMATCH\n");
     set_color(0);
@@ -230,7 +230,7 @@ int test_parser(int argc, char** argv) {
   printf("Parsing time   %f msec\n", parse_time);
   printf("Cleanup time   %f msec\n", cleanup_time);
   printf("\n");
-  printf("Total nodes    %d\n", ParseNode::constructor_count);
+  printf("Total nodes    %d\n", C99ParseNode::constructor_count);
   printf("Node pool      %ld bytes\n", SlabAlloc::slabs().max_size);
   printf("Rewind count   %d\n", C99Parser::rewind_count);
   printf("Didn't rewind  %d\n", C99Parser::didnt_rewind);
