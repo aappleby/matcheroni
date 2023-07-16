@@ -1,3 +1,25 @@
+#if 0
+void CToken::dump_token() const {
+  // Dump token
+  printf("tok @ %p :", this);
+
+  printf(" %14.14s ", type_to_str());
+  set_color(type_to_color());
+  lex->dump_lexeme();
+  set_color(0);
+
+  printf("    span %14p ", span);
+  if (span) {
+    printf("{");
+    span->print_class_name(20);
+    printf("} prec %d", span->precedence);
+  } else {
+    printf("{                    }");
+  }
+  printf("\n");
+}
+#endif
+
 // To build a parse tree, we wrap the patterns we want to create nodes for
 // in a Capture<> matcher that will invoke our node factory. We can also wrap
 // them in a Trace<> matcher if we want to debug our patterns.

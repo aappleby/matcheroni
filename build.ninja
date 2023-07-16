@@ -5,7 +5,7 @@
 # Turning EXTRA_DEBUG on will generate even more spam.
 
 ### Debug build
-#build_mode = -g -O0 -Wall -Werror -Wno-unused-variable
+build_mode = -g -O0 -Wall -Werror -Wno-unused-variable -Wno-unused-local-typedefs
 #defs = ${defs} -DMATCHERONI_ENABLE_TRACE
 #defs = ${defs} -DEXTRA_DEBUG
 
@@ -14,7 +14,7 @@
 
 ### -O3 needs LTO to maximize performance
 ### LTO breaks "size obj/examples/json_parser.o"
-build_mode = -O3
+#build_mode = -O3
 
 includes = -I.
 

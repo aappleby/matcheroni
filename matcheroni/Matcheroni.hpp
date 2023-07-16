@@ -25,14 +25,8 @@ template <typename atom>
 struct Span {
   using AtomType = atom;
 
-  Span() : a(nullptr), b(nullptr) {}
-
-  Span(const atom* a, const atom* b) : a(a), b(b) {
-    if (a == nullptr) {
-      int x = 1;
-      x++;
-    }
-  }
+  constexpr Span() : a(nullptr), b(nullptr) {}
+  constexpr Span(const atom* a, const atom* b) : a(a), b(b) {}
 
   Span advance(int offset) const {
     matcheroni_assert(a);
@@ -110,7 +104,7 @@ inline int strcmp_span(Span<char> s, const char* lit) {
 
 inline int strcmp_span(Span<char> a, Span<char> b) {
   if (int c = a.len() - b.len()) return c;
-  for (auto i = 0; i < a.len(); i++) {
+  for (size_t i = 0; i < a.len(); i++) {
     if (auto c = a.a[i] - b.a[i]) return c;
   }
   return 0;
@@ -270,7 +264,11 @@ struct StringParam {
     for (int i = 0; i < N; i++) str_val[i] = str[i];
   }
   constexpr static auto str_len = N - 1;
-  char str_val[str_len + 1];
+  char str_val[N];
+
+  Span<char> span() {
+    return Span<char>(str_val, str_val + str_len);
+  }
 };
 
 //------------------------------------------------------------------------------

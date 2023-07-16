@@ -55,6 +55,7 @@ struct LinearAlloc {
     for (auto c = top_slab; c; c = c->next) {
       c->cursor = 0;
     }
+    max_size = 0;
     current_size = 0;
   }
 

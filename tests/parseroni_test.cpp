@@ -96,6 +96,10 @@ void test_basic() {
     check_hash(context, 0x7073c4e1b84277f0);
   }
 
+  auto& alloc = LinearAlloc::inst();
+  matcheroni_assert(alloc.max_size == sizeof(TestNode) * 11);
+  matcheroni_assert(alloc.current_size == sizeof(TestNode) * 11);
+
   context.reset();
   span = to_span("((((a))))");
   tail = TinyLisp::match(&context, span);
@@ -142,7 +146,11 @@ void test_rewind() {
   print_match(span, span - tail);
   print_context(&context);
 
-  //check_hash(context, 0x2850a87bce45242a);
+  check_hash(context, 0x2850a87bce45242a);
+
+  auto& alloc = LinearAlloc::inst();
+  matcheroni_assert(alloc.current_size == sizeof(TestNode) * 1);
+  matcheroni_assert(alloc.max_size == sizeof(TestNode) * 5);
 
   printf("sizeof(ParseNode) %ld\n", sizeof(TestNode));
   printf("node count %ld\n", context.top_head()->node_count());
@@ -208,6 +216,10 @@ void test_begin_end() {
 
   check_hash(context, 0x401403cbefc2cba9);
 
+  auto& alloc = LinearAlloc::inst();
+  matcheroni_assert(alloc.max_size == sizeof(TestNode) * 15);
+  matcheroni_assert(alloc.current_size == sizeof(TestNode) * 15);
+
   printf("sizeof(ParseNode) %ld\n", sizeof(TestNode));
   printf("node count %ld\n", context.top_head()->node_count());
   printf("constructor calls %ld\n", TextNode::constructor_calls);
@@ -244,6 +256,7 @@ struct Pathological {
 
 void test_pathological() {
   printf("test_pathological()\n");
+
   TextContext context;
   TextSpan span;
   TextSpan tail;
@@ -272,15 +285,18 @@ void test_pathological() {
   matcheroni_assert(TextNode::constructor_calls == 137257);
   matcheroni_assert(TextNode::destructor_calls  == 137250);
 
-  matcheroni_assert(LinearAlloc::inst().max_size == sizeof(TestNode) * 7);
-  matcheroni_assert(LinearAlloc::inst().current_size == sizeof(TestNode) * 7);
+  auto& alloc = LinearAlloc::inst();
 
-  //printf("sizeof(ParseNode) %ld\n", sizeof(ParseNode));
-  //printf("node count %ld\n", context.top_head()->node_count());
-  //printf("constructor calls %ld\n", TextNode::constructor_calls);
-  //printf("destructor calls %ld\n", TextNode::destructor_calls);
-  //printf("max size %d\n", LinearAlloc::inst().max_size);
-  //printf("current size %d\n", LinearAlloc::inst().current_size);
+  printf("sizeof(TestNode) %ld\n", sizeof(TestNode));
+  printf("node count %ld\n", context.top_head()->node_count());
+  printf("constructor calls %ld\n", TextNode::constructor_calls);
+  printf("destructor calls %ld\n", TextNode::destructor_calls);
+  printf("max size %d\n", alloc.max_size);
+  printf("current size %d\n", alloc.current_size);
+
+  matcheroni_assert(alloc.max_size == sizeof(TestNode) * 7);
+  matcheroni_assert(alloc.current_size == sizeof(TestNode) * 7);
+
 
   printf("test_pathological() end\n\n");
 }
@@ -290,9 +306,9 @@ void test_pathological() {
 int main(int argc, char** argv) {
   printf("Parseroni tests\n");
 
-  //test_basic();
-  //test_rewind();
-  //test_begin_end();
+  test_basic();
+  test_rewind();
+  test_begin_end();
   test_pathological();
 
   printf("All tests pass!\n");

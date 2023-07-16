@@ -71,19 +71,19 @@ inline std::string to_string(TextSpan s) {
 }
 
 inline bool operator==(TextSpan a, const std::string& b) {
-  return to_string(a) == b;
+  return a.is_valid() && to_string(a) == b;
 }
 
 inline bool operator==(const std::string& a, TextSpan b) {
-  return a == to_string(b);
+  return b.is_valid() && a == to_string(b);
 }
 
 inline bool operator!=(TextSpan a, const std::string& b) {
-  return to_string(a) != b;
+  return !(a == b);
 }
 
 inline bool operator!=(const std::string& a, TextSpan b) {
-  return a != to_string(b);
+  return !(a == b);
 }
 
 //------------------------------------------------------------------------------
