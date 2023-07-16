@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText:  2023 Austin Appleby <aappleby@gmail.com>
 // SPDX-License-Identifier: MIT License
 
-#include "examples/c_parser/CParser.hpp"
+#include "examples/c_parser/CContext.hpp"
 
 #include "examples/c_parser/c_parse_nodes.hpp"
 
@@ -9,14 +9,14 @@ using namespace matcheroni;
 
 //------------------------------------------------------------------------------
 
-CParser::CParser() {
+CContext::CContext() {
   type_scope = new CScope();
   tokens.reserve(65536);
 }
 
 //------------------------------------------------------------------------------
 
-void CParser::reset() {
+void CContext::reset() {
   ContextBase::reset();
 
   tokens.clear();
@@ -27,7 +27,7 @@ void CParser::reset() {
 //------------------------------------------------------------------------------
 
 #if 0
-bool CParser::parse(std::vector<CLexeme>& lexemes) {
+bool CContext::parse(std::vector<CToken>& lexemes) {
 
   for (auto i = 0; i < lexemes.size(); i++) {
     auto l = &lexemes[i];
@@ -48,41 +48,41 @@ bool CParser::parse(std::vector<CLexeme>& lexemes) {
 
 //------------------------------------------------------------------------------
 
-lex_span CParser::match_class_type(lex_span s) {
+lex_span CContext::match_class_type(lex_span s) {
   return type_scope->has_class_type(this, s) ? s.advance(1) : s.fail();
 }
 
-lex_span CParser::match_struct_type(lex_span s) {
+lex_span CContext::match_struct_type(lex_span s) {
   return type_scope->has_struct_type(this, s) ? s.advance(1) : s.fail();
 }
 
-lex_span CParser::match_union_type(lex_span s) {
+lex_span CContext::match_union_type(lex_span s) {
   return type_scope->has_union_type(this, s) ? s.advance(1) : s.fail();
 }
 
-lex_span CParser::match_enum_type(lex_span s) {
+lex_span CContext::match_enum_type(lex_span s) {
   return type_scope->has_enum_type(this, s) ? s.advance(1) : s.fail();
 }
 
-lex_span CParser::match_typedef_type(lex_span s) {
+lex_span CContext::match_typedef_type(lex_span s) {
   return type_scope->has_typedef_type(this, s) ? s.advance(1) : s.fail();
 }
 
-void CParser::add_class_type  (const CLexeme* a) { type_scope->add_class_type(a); }
-void CParser::add_struct_type (const CLexeme* a) { type_scope->add_struct_type(a); }
-void CParser::add_union_type  (const CLexeme* a) { type_scope->add_union_type(a); }
-void CParser::add_enum_type   (const CLexeme* a) { type_scope->add_enum_type(a); }
-void CParser::add_typedef_type(const CLexeme* a) { type_scope->add_typedef_type(a); }
+void CContext::add_class_type  (const CToken* a) { type_scope->add_class_type(a); }
+void CContext::add_struct_type (const CToken* a) { type_scope->add_struct_type(a); }
+void CContext::add_union_type  (const CToken* a) { type_scope->add_union_type(a); }
+void CContext::add_enum_type   (const CToken* a) { type_scope->add_enum_type(a); }
+void CContext::add_typedef_type(const CToken* a) { type_scope->add_typedef_type(a); }
 
 //----------------------------------------------------------------------------
 
-void CParser::push_scope() {
+void CContext::push_scope() {
   CScope* new_scope = new CScope();
   new_scope->parent = type_scope;
   type_scope = new_scope;
 }
 
-void CParser::pop_scope() {
+void CContext::pop_scope() {
   CScope* old_scope = type_scope->parent;
   if (old_scope) {
     delete type_scope;
@@ -92,7 +92,7 @@ void CParser::pop_scope() {
 
 //----------------------------------------------------------------------------
 
-lex_span CParser::match_builtin_type_base(lex_span s) {
+lex_span CContext::match_builtin_type_base(lex_span s) {
   if (!s.is_valid() || s.is_empty()) return s.fail();
   if (SST<builtin_type_base>::match(s.a->span.a, s.a->span.b)) {
     return s.advance(1);
@@ -102,7 +102,7 @@ lex_span CParser::match_builtin_type_base(lex_span s) {
   }
 }
 
-lex_span CParser::match_builtin_type_prefix(lex_span s) {
+lex_span CContext::match_builtin_type_prefix(lex_span s) {
   if (!s.is_valid() || s.is_empty()) return s.fail();
   if (SST<builtin_type_prefix>::match(s.a->span.a, s.a->span.b)) {
     return s.advance(1);
@@ -112,7 +112,7 @@ lex_span CParser::match_builtin_type_prefix(lex_span s) {
   }
 }
 
-lex_span CParser::match_builtin_type_suffix(lex_span s) {
+lex_span CContext::match_builtin_type_suffix(lex_span s) {
   if (!s.is_valid() || s.is_empty()) return s.fail();
   if (SST<builtin_type_suffix>::match(s.a->span.a, s.a->span.b)) {
     return s.advance(1);
@@ -125,7 +125,7 @@ lex_span CParser::match_builtin_type_suffix(lex_span s) {
 //------------------------------------------------------------------------------
 
 #if 0
-void CParser::dump_tokens() {
+void CContext::dump_tokens() {
   for (auto& t : tokens) {
     t.dump_token();
   }

@@ -5,7 +5,7 @@
 #include "matcheroni/Utilities.hpp"
 
 #include "examples/c_parser/CLexer.hpp"
-#include "examples/c_parser/CLexeme.hpp"
+#include "examples/c_parser/CToken.hpp"
 
 #include <filesystem>
 #include <stdint.h>    // for uint8_t

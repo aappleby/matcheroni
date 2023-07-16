@@ -3,7 +3,7 @@
 
 #include "matcheroni/Matcheroni.hpp"
 
-#include "examples/c_parser/CLexeme.hpp"
+#include "examples/c_parser/CToken.hpp"
 #include "examples/SST.hpp"
 #include "examples/c_parser/c_constants.hpp"
 

@@ -1,13 +1,13 @@
 // SPDX-FileCopyrightText:  2023 Austin Appleby <aappleby@gmail.com>
 // SPDX-License-Identifier: MIT License
 
-//#include "examples/c_parser/CParser.hpp"
+//#include "examples/c_parser/CContext.hpp"
 
 #include "matcheroni/Matcheroni.hpp"
 #include "matcheroni/Utilities.hpp"
 
 #include "examples/c_parser/CLexer.hpp"
-#include "examples/c_parser/CLexeme.hpp"
+#include "examples/c_parser/CToken.hpp"
 #include "examples/SST.hpp"
 
 using namespace matcheroni;
@@ -15,7 +15,7 @@ using namespace matcheroni;
 template<typename M>
 using ticked = Seq<Opt<Atom<'\''>>, M>;
 
-CLexeme next_lexeme      (void* ctx, TextSpan s);
+CToken next_lexeme      (void* ctx, TextSpan s);
 TextSpan  match_never      (void* ctx, TextSpan s);
 TextSpan  match_space      (void* ctx, TextSpan s);
 TextSpan  match_newline    (void* ctx, TextSpan s);
@@ -48,7 +48,7 @@ bool CLexer::lex(const std::string& text) {
 
   auto s = matcheroni::to_span(text);
 
-  lexemes.push_back(CLexeme(LEX_BOF, TextSpan(nullptr, nullptr)));
+  lexemes.push_back(CToken(LEX_BOF, TextSpan(nullptr, nullptr)));
 
   while (!s.is_empty()) {
     auto lex = next_lexeme(nullptr, s);
@@ -81,37 +81,37 @@ void CLexer::dump_lexemes() {
 
 //------------------------------------------------------------------------------
 
-CLexeme next_lexeme(void* ctx, TextSpan s) {
+CToken next_lexeme(void* ctx, TextSpan s) {
 
-  if (auto end = match_space  (ctx, s)) return CLexeme(LEX_SPACE,   s - end);
-  if (auto end = match_newline(ctx, s)) return CLexeme(LEX_NEWLINE, s - end);
-  if (auto end = match_string (ctx, s)) return CLexeme(LEX_STRING,  s - end);
+  if (auto end = match_space  (ctx, s)) return CToken(LEX_SPACE,   s - end);
+  if (auto end = match_newline(ctx, s)) return CToken(LEX_NEWLINE, s - end);
+  if (auto end = match_string (ctx, s)) return CToken(LEX_STRING,  s - end);
 
   // Match char needs to come before match identifier because of its possible L'_' prefix...
-  if (auto end = match_char       (ctx, s)) return CLexeme(LEX_CHAR, s - end);
+  if (auto end = match_char       (ctx, s)) return CToken(LEX_CHAR, s - end);
 
   {
     auto end = match_identifier(ctx, s);
     if (end) {
       if (SST<c_keywords>::match(s.a, s.b)) {
-        return CLexeme(LEX_KEYWORD   , s - end);
+        return CToken(LEX_KEYWORD   , s - end);
       }
       else {
-        return CLexeme(LEX_IDENTIFIER, s - end);
+        return CToken(LEX_IDENTIFIER, s - end);
       }
     }
   }
 
-  if (auto end = match_comment(ctx, s))  return CLexeme(LEX_COMMENT,  s - end);
-  if (auto end = match_preproc(ctx, s))  return CLexeme(LEX_PREPROC,  s - end);
-  if (auto end = match_float(ctx, s))    return CLexeme(LEX_FLOAT,    s - end);
-  if (auto end = match_int(ctx, s))      return CLexeme(LEX_INT,      s - end);
-  if (auto end = match_punct(ctx, s))    return CLexeme(LEX_PUNCT,    s - end);
-  if (auto end = match_splice(ctx, s))   return CLexeme(LEX_SPLICE,   s - end);
-  if (auto end = match_formfeed(ctx, s)) return CLexeme(LEX_FORMFEED, s - end);
-  if (auto end = match_eof(ctx, s))      return CLexeme(LEX_EOF,      s - end);
+  if (auto end = match_comment(ctx, s))  return CToken(LEX_COMMENT,  s - end);
+  if (auto end = match_preproc(ctx, s))  return CToken(LEX_PREPROC,  s - end);
+  if (auto end = match_float(ctx, s))    return CToken(LEX_FLOAT,    s - end);
+  if (auto end = match_int(ctx, s))      return CToken(LEX_INT,      s - end);
+  if (auto end = match_punct(ctx, s))    return CToken(LEX_PUNCT,    s - end);
+  if (auto end = match_splice(ctx, s))   return CToken(LEX_SPLICE,   s - end);
+  if (auto end = match_formfeed(ctx, s)) return CToken(LEX_FORMFEED, s - end);
+  if (auto end = match_eof(ctx, s))      return CToken(LEX_EOF,      s - end);
 
-  return CLexeme(LEX_INVALID, s.fail());
+  return CToken(LEX_INVALID, s.fail());
 }
 
 //------------------------------------------------------------------------------

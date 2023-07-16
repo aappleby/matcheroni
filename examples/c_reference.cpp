@@ -3,7 +3,7 @@
 
 #include "matcheroni/Matcheroni.hpp"
 
-#include "examples/c_parser/CParser.hpp"
+#include "examples/c_parser/CContext.hpp"
 #include "examples/SST.hpp"
 
 using namespace matcheroni;

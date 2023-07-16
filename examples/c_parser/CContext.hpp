@@ -13,27 +13,27 @@
 #include <vector>
 
 #include "examples/c_parser/c_constants.hpp"
-#include "examples/c_parser/CLexeme.hpp"
+#include "examples/c_parser/CToken.hpp"
 #include "examples/c_parser/CLexer.hpp"
 #include "examples/c_parser/CNode.hpp"
 #include "examples/c_parser/CScope.hpp"
 #include "examples/SST.hpp"
 
-struct CLexeme;
+struct CToken;
 struct CNode;
-struct CParser;
+struct CContext;
 struct CScope;
 
-using lex_span = matcheroni::Span<CLexeme>;
+using lex_span = matcheroni::Span<CToken>;
 
 //------------------------------------------------------------------------------
 
-class CParser : public matcheroni::ContextBase<CNode> {
+class CContext : public matcheroni::ContextBase<CNode> {
  public:
-  CParser();
+  CContext();
 
   void reset();
-  bool parse(std::vector<CLexeme>& lexemes);
+  bool parse(std::vector<CToken>& lexemes);
 
   lex_span match_builtin_type_base  (lex_span s);
   lex_span match_builtin_type_prefix(lex_span s);
@@ -45,11 +45,11 @@ class CParser : public matcheroni::ContextBase<CNode> {
   lex_span match_enum_type   (lex_span s);
   lex_span match_typedef_type(lex_span s);
 
-  void add_class_type  (const CLexeme* a);
-  void add_struct_type (const CLexeme* a);
-  void add_union_type  (const CLexeme* a);
-  void add_enum_type   (const CLexeme* a);
-  void add_typedef_type(const CLexeme* a);
+  void add_class_type  (const CToken* a);
+  void add_struct_type (const CToken* a);
+  void add_union_type  (const CToken* a);
+  void add_enum_type   (const CToken* a);
+  void add_typedef_type(const CToken* a);
 
   void push_scope();
   void pop_scope();
@@ -65,7 +65,7 @@ class CParser : public matcheroni::ContextBase<CNode> {
 
   //----------------------------------------
 
-  std::vector<CLexeme> tokens;
+  std::vector<CToken> tokens;
   CScope* type_scope;
 };
 

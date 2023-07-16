@@ -1,5 +1,5 @@
 #if 0
-void CLexeme::dump_token() const {
+void CToken::dump_token() const {
   // Dump token
   printf("tok @ %p :", this);
 

@@ -6,7 +6,7 @@
 #include "matcheroni/Utilities.hpp"
 
 #include "examples/c_parser/CLexer.hpp"
-#include "examples/c_parser/CParser.hpp"
+#include "examples/c_parser/CContext.hpp"
 #include "examples/c_parser/CNode.hpp"
 
 //------------------------------------------------------------------------------
@@ -89,7 +89,7 @@ int test_parser(int argc, char** argv) {
   const char* base_path = argc > 1 ? argv[1] : "tests";
 
   CLexer lexer;
-  CParser parser;
+  CContext parser;
 
   bool verbose = false;
   double io_time = 0;
@@ -232,8 +232,8 @@ int test_parser(int argc, char** argv) {
   printf("\n");
   printf("Total nodes    %d\n", CNode::constructor_count);
   printf("Node pool      %ld bytes\n", LinearAlloc::inst().max_size);
-  printf("Rewind count   %d\n", CParser::rewind_count);
-  printf("Didn't rewind  %d\n", CParser::didnt_rewind);
+  printf("Rewind count   %d\n", CContext::rewind_count);
+  printf("Didn't rewind  %d\n", CContext::didnt_rewind);
   printf("File pass      %d\n", file_pass);
   printf("File fail      %d\n", file_fail);
   printf("File skip      %d\n", file_skip);

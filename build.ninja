@@ -114,22 +114,22 @@ build bin/tutorial/json_tut2a   : link obj/tutorial/json_tut2a.o
 #-------------------------------------------------------------------------------
 
 # C lexer/parser example (not finished)
-build obj/c_parser/CLexeme.o : compile_cpp examples/c_parser/CLexeme.cpp
-build obj/c_parser/CLexer.o  : compile_cpp examples/c_parser/CLexer.cpp
-build obj/c_parser/CNode.o   : compile_cpp examples/c_parser/CNode.cpp
-build obj/c_parser/CParser.o : compile_cpp examples/c_parser/CParser.cpp
-build obj/c_parser/CScope.o  : compile_cpp examples/c_parser/CScope.cpp
+build obj/c_parser/CLexer.o   : compile_cpp examples/c_parser/CLexer.cpp
+build obj/c_parser/CNode.o    : compile_cpp examples/c_parser/CNode.cpp
+build obj/c_parser/CContext.o : compile_cpp examples/c_parser/CContext.cpp
+build obj/c_parser/CScope.o   : compile_cpp examples/c_parser/CScope.cpp
+build obj/c_parser/CToken.o   : compile_cpp examples/c_parser/CToken.cpp
 
 #build obj/c_parser/c_lexer_test.o  : compile_cpp examples/c_parser/c_lexer_test.cpp
 #build obj/c_parser/c_parser_test.o : compile_cpp examples/c_parser/c_parser_test.cpp
 
 #build bin/c_parser : link $
 #  obj/c_parser/c_parser_test.o $
-#  obj/c_parser/CLexeme.o $
+#  obj/c_parser/CContext.o $
 #  obj/c_parser/CLexer.o $
 #  obj/c_parser/CNode.o $
-#  obj/c_parser/CParser.o $
-#  obj/c_parser/CScope.o
+#  obj/c_parser/CScope.o $
+#  obj/c_parser/CToken.o
 
 
 

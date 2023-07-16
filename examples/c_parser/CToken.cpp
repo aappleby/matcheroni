@@ -2,32 +2,32 @@
 // SPDX-License-Identifier: MIT License
 
 #include "examples/c_parser/c_constants.hpp"
-#include "examples/c_parser/CLexeme.hpp"
+#include "examples/c_parser/CToken.hpp"
 
 #include <stdio.h>
 
 //------------------------------------------------------------------------------
 
-CLexeme::CLexeme(LexemeType type, matcheroni::TextSpan s) {
+CToken::CToken(LexemeType type, matcheroni::TextSpan s) {
   this->type = type;
   this->span = s;
 }
 
 //----------------------------------------------------------------------------
 
-int CLexeme::len() const {
+int CToken::len() const {
   return span.len();
 }
 
-bool CLexeme::is_bof() const {
+bool CToken::is_bof() const {
   return type == LEX_BOF;
 }
 
-bool CLexeme::is_eof() const {
+bool CToken::is_eof() const {
   return type == LEX_EOF;
 }
 
-bool CLexeme::is_gap() const {
+bool CToken::is_gap() const {
   switch(type) {
     case LEX_NEWLINE:
     case LEX_SPACE:
@@ -42,7 +42,7 @@ bool CLexeme::is_gap() const {
 
 //----------------------------------------------------------------------------
 
-const char* CLexeme::type_to_str() const {
+const char* CToken::type_to_str() const {
   switch(type) {
     case LEX_INVALID    : return "LEX_INVALID";
     case LEX_SPACE      : return "LEX_SPACE";
@@ -67,7 +67,7 @@ const char* CLexeme::type_to_str() const {
 
 //----------------------------------------------------------------------------
 
-uint32_t CLexeme::type_to_color() const {
+uint32_t CToken::type_to_color() const {
   switch(type) {
     case LEX_INVALID    : return 0x0000FF;
     case LEX_SPACE      : return 0x804040;
@@ -92,7 +92,7 @@ uint32_t CLexeme::type_to_color() const {
 
 //----------------------------------------
 
-void CLexeme::dump_lexeme() const {
+void CToken::dump_lexeme() const {
   if (type == LEX_BOF) {
     printf("{<bof>     }");
     return;

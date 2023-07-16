@@ -7,9 +7,9 @@
 #include "matcheroni/Utilities.hpp"
 
 #include "examples/c_parser/c_constants.hpp"
-#include "examples/c_parser/CLexeme.hpp"
+#include "examples/c_parser/CToken.hpp"
 #include "examples/c_parser/CNode.hpp"
-#include "examples/c_parser/CParser.hpp"
+#include "examples/c_parser/CContext.hpp"
 #include "examples/SST.hpp"
 
 #include <assert.h>
@@ -89,12 +89,12 @@ struct Literal2 : public CNode, PatternWrapper<Literal2<lit>> {
 
 template <typename NodeType>
 struct NodeMaker {
-  static CLexeme* match(void* ctx, CLexeme* a, CLexeme* b) {
+  static CToken* match(void* ctx, CToken* a, CToken* b) {
     if (!a || a == b) return nullptr;
 
-    print_trace_start<NodeType, CLexeme>(a);
+    print_trace_start<NodeType, CToken>(a);
     auto end = NodeType::pattern::match(ctx, s);
-    print_trace_end<NodeType, CLexeme>(a, end);
+    print_trace_end<NodeType, CToken>(a, end);
 
     if (end && end != a) {
       auto node = new NodeType();
@@ -106,12 +106,12 @@ struct NodeMaker {
 
 template <typename NodeType>
 struct LeafMaker {
-  static CLexeme* match(void* ctx, CLexeme* a, CLexeme* b) {
+  static CToken* match(void* ctx, CToken* a, CToken* b) {
     if (!a || a == b) return nullptr;
 
-    print_trace_start<NodeType, CLexeme>(a);
+    print_trace_start<NodeType, CToken>(a);
     auto end = NodeType::pattern::match(ctx, s);
-    print_trace_end<NodeType, CLexeme>(a, end);
+    print_trace_end<NodeType, CToken>(a, end);
 
     if (end && end != a) {
       auto node = new NodeType();
@@ -163,9 +163,9 @@ struct NodeLiteral : public CNode, PatternWrapper<NodeLiteral<lit>> {
 // Our builtin types are any sequence of prefixes followed by a builtin type
 
 struct NodeBuiltinType : public CNode, PatternWrapper<NodeBuiltinType> {
-  using match_prefix = Ref<&CParser::match_builtin_type_prefix>;
-  using match_base = Ref<&CParser::match_builtin_type_base>;
-  using match_suffix = Ref<&CParser::match_builtin_type_suffix>;
+  using match_prefix = Ref<&CContext::match_builtin_type_prefix>;
+  using match_base = Ref<&CContext::match_builtin_type_base>;
+  using match_suffix = Ref<&CContext::match_builtin_type_suffix>;
 
   // clang-format off
   using pattern =
@@ -183,7 +183,7 @@ struct NodeBuiltinType : public CNode, PatternWrapper<NodeBuiltinType> {
 };
 
 struct NodeTypedefType : public CNode, PatternWrapper<NodeTypedefType> {
-  using pattern = Ref<&CParser::match_typedef_type>;
+  using pattern = Ref<&CContext::match_typedef_type>;
 };
 
 
@@ -706,7 +706,7 @@ struct NodeExpression : public CNode, PatternWrapper<NodeExpression> {
 #if 0
     {
       printf("---EXPRESSION---\n");
-      const CLexeme* c = a;
+      const CToken* c = a;
       while(1) {
         //c->dump_token();
         if (auto s = c->span) {
@@ -730,13 +730,13 @@ struct NodeExpression : public CNode, PatternWrapper<NodeExpression> {
   //----------------------------------------
 
   static lex_span match(void* ctx, lex_span s) {
-    //print_trace_start<NodeExpression, CLexeme>(a);
+    //print_trace_start<NodeExpression, CToken>(a);
     auto end = match2(ctx, s);
     if (end) {
       //auto node = new NodeExpression();
       //node->init_node(ctx, a, end - 1, a->span, (end - 1)->span);
     }
-    //print_trace_end<NodeExpression, CLexeme>(a, end);
+    //print_trace_end<NodeExpression, CToken>(a, end);
     return end;
   }
 };
@@ -1000,13 +1000,13 @@ struct NodeNamespace : public CNode, public PatternWrapper<NodeNamespace> {
 //------------------------------------------------------------------------------
 
 struct NodeStructType : public CNode, public PatternWrapper<NodeStructType> {
-  using pattern = Ref<&CParser::match_struct_type>;
+  using pattern = Ref<&CContext::match_struct_type>;
 };
 
 struct NodeStructTypeAdder : public NodeIdentifier {
   static lex_span match(void* ctx, lex_span s) {
     if (auto end = NodeIdentifier::match(ctx, s)) {
-      ((CParser*)ctx)->add_struct_type(s.a);
+      ((CContext*)ctx)->add_struct_type(s.a);
       return end;
     } else if (auto end = NodeTypedefType::match(ctx, s)) {
       // Already typedef'd
@@ -1036,7 +1036,7 @@ struct NodeStruct : public CNode, public PatternWrapper<NodeStruct> {
 
 struct NodeUnionType : public CNode {
   static lex_span match(void* ctx, lex_span s) {
-    auto context = ((CParser*)ctx);
+    auto context = ((CContext*)ctx);
     return context->match_union_type(s);
   }
 };
@@ -1044,7 +1044,7 @@ struct NodeUnionType : public CNode {
 struct NodeUnionTypeAdder : public NodeIdentifier {
   static lex_span match(void* ctx, lex_span s) {
     if (auto end = NodeIdentifier::match(ctx, s)) {
-      ((CParser*)ctx)->add_union_type(s.a);
+      ((CContext*)ctx)->add_union_type(s.a);
       return end;
     } else if (auto end = NodeTypedefType::match(ctx, s)) {
       // Already typedef'd
@@ -1073,13 +1073,13 @@ struct NodeUnion : public CNode, public PatternWrapper<NodeUnion> {
 //------------------------------------------------------------------------------
 
 struct NodeClassType : public CNode, public PatternWrapper<NodeClassType> {
-  using pattern = Ref<&CParser::match_class_type>;
+  using pattern = Ref<&CContext::match_class_type>;
 };
 
 struct NodeClassTypeAdder : public NodeIdentifier {
   static lex_span match(void* ctx, lex_span s) {
     if (auto end = NodeIdentifier::match(ctx, s)) {
-      ((CParser*)ctx)->add_class_type(s.a);
+      ((CContext*)ctx)->add_class_type(s.a);
       return end;
     } else if (auto end = NodeTypedefType::match(ctx, s)) {
       // Already typedef'd
@@ -1121,13 +1121,13 @@ struct NodeTemplate : public CNode, public PatternWrapper<NodeTemplate> {
 // FIXME should probably have a few diffeerent versions instead of all the opts
 
 struct NodeEnumType : public CNode, public PatternWrapper<NodeEnumType> {
-  using pattern = Ref<&CParser::match_enum_type>;
+  using pattern = Ref<&CContext::match_enum_type>;
 };
 
 struct NodeEnumTypeAdder : public NodeIdentifier {
   static lex_span match(void* ctx, lex_span s) {
     if (auto end = NodeIdentifier::match(ctx, s)) {
-      ((CParser*)ctx)->add_enum_type(s.a);
+      ((CContext*)ctx)->add_enum_type(s.a);
       return end;
     } else if (auto end = NodeTypedefType::match(ctx, s)) {
       // Already typedef'd
@@ -1296,11 +1296,11 @@ struct NodeDeclaration : public CNode, public PatternWrapper<NodeDeclaration> {
 template <typename P>
 struct PushPopScope {
   static lex_span match(void* ctx, lex_span s) {
-    ((CParser*)ctx)->push_scope();
+    ((CContext*)ctx)->push_scope();
 
     auto end = P::match(ctx, s);
 
-    ((CParser*)ctx)->pop_scope();
+    ((CContext*)ctx)->pop_scope();
 
     return end;
   }
@@ -1541,7 +1541,7 @@ struct NodeTypedef : public CNode, public PatternWrapper<NodeTypedef> {
 
   static void extract_declarator(void* ctx, NodeDeclarator* decl) {
     if (auto id = decl->child("identifier")) {
-      ((CParser*)ctx)->add_typedef_type(id->span.a);
+      ((CContext*)ctx)->add_typedef_type(id->span.a);
     }
 
     //for (auto child : decl) {
@@ -1562,7 +1562,7 @@ struct NodeTypedef : public CNode, public PatternWrapper<NodeTypedef> {
   }
 
   static void extract_type(void* ctx) {
-    auto context = ((CParser*)ctx);
+    auto context = ((CContext*)ctx);
 
     auto node = (CNode*)context->top_tail();
 

@@ -10,8 +10,8 @@
 
 //------------------------------------------------------------------------------
 
-struct CLexeme {
-  CLexeme(LexemeType type, matcheroni::TextSpan s);
+struct CToken {
+  CToken(LexemeType type, matcheroni::TextSpan s);
 
   int len() const;
   bool is_bof() const;
@@ -31,29 +31,29 @@ struct CLexeme {
 //------------------------------------------------------------------------------
 
 template <>
-inline int matcheroni::atom_cmp(void* ctx, const CLexeme& a, const LexemeType& b) {
+inline int matcheroni::atom_cmp(void* ctx, const CToken& a, const LexemeType& b) {
   if (int c = int(a.type) - int(b)) return c;
   return 0;
 }
 
 template <>
-inline int matcheroni::atom_cmp(void* ctx, const CLexeme& a, const char& b) {
+inline int matcheroni::atom_cmp(void* ctx, const CToken& a, const char& b) {
   if (int c = a.len() - 1) return c;
   if (int c = a.span.a[0] - b) return c;
   return 0;
 }
 
 template<>
-inline int matcheroni::atom_cmp(void* ctx, const CLexeme& a, const TextSpan& b) {
+inline int matcheroni::atom_cmp(void* ctx, const CToken& a, const TextSpan& b) {
   return strcmp_span(a.span, b);
 }
 
-inline int atom_cmp(void* ctx, const CLexeme& a, const char*& b) {
+inline int atom_cmp(void* ctx, const CToken& a, const char*& b) {
   return strcmp_span(a.span, b);
 }
 
 template <>
-inline int matcheroni::atom_cmp(void* ctx, const CLexeme& a, const CLexeme& b) {
+inline int matcheroni::atom_cmp(void* ctx, const CToken& a, const CToken& b) {
   if (int c = a.type - b.type) return c;
   if (int c = a.len() - b.len()) return c;
   for (auto i = 0; i < a.len(); i++) {
@@ -63,7 +63,7 @@ inline int matcheroni::atom_cmp(void* ctx, const CLexeme& a, const CLexeme& b) {
 }
 
 template <int N>
-inline int atom_cmp(void* ctx, const CLexeme& a,
+inline int atom_cmp(void* ctx, const CToken& a,
                     const matcheroni::StringParam<N>& b) {
   if (int c = a.len() - b.str_len) return c;
   for (auto i = 0; i < b.str_len; i++) {

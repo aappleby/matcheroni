@@ -5,7 +5,7 @@
 
 #include <vector>
 #include <string>
-#include "examples/c_parser/CLexeme.hpp"
+#include "examples/c_parser/CToken.hpp"
 
 //------------------------------------------------------------------------------
 
@@ -15,7 +15,7 @@ struct CLexer {
   bool lex(const std::string& text);
   void dump_lexemes();
 
-  std::vector<CLexeme> lexemes;
+  std::vector<CToken> lexemes;
 };
 
 //------------------------------------------------------------------------------
