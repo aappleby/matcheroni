@@ -10,8 +10,11 @@
 namespace matcheroni {
 
 //------------------------------------------------------------------------------
+// This is an optimized allocator for Parseroni - it allows for alloc/free, but
+// frees must be in LIFO order - if you allocate A, B, and C, you must
+// deallocate in C-B-A order.
 
-struct SlabAlloc {
+struct LinearAlloc {
   struct Slab {
     Slab* prev;
     Slab* next;
@@ -44,7 +47,7 @@ struct SlabAlloc {
   static constexpr int header_size = sizeof(Slab);
   static constexpr int slab_size = 2 * 1024 * 1024 - header_size;
 
-  SlabAlloc() { add_slab(); }
+  LinearAlloc() { add_slab(); }
 
   void reset() {
     if (!top_slab) add_slab();
@@ -108,8 +111,8 @@ struct SlabAlloc {
     current_size -= size;
   }
 
-  static SlabAlloc& slabs() {
-    static SlabAlloc inst;
+  static LinearAlloc& inst() {
+    static LinearAlloc inst;
     return inst;
   }
 
@@ -133,16 +136,17 @@ struct NodeBase {
     destructor_calls++;
   }
 
-  static void* operator new     (size_t s)          { return SlabAlloc::slabs().alloc(s); }
-  static void* operator new[]   (size_t s)          { return SlabAlloc::slabs().alloc(s); }
-  static void  operator delete  (void* p, size_t s) { SlabAlloc::slabs().free(p, s); }
-  static void  operator delete[](void* p, size_t s) { SlabAlloc::slabs().free(p, s); }
+  static void* operator new     (size_t s)          { return LinearAlloc::inst().alloc(s); }
+  static void* operator new[]   (size_t s)          { return LinearAlloc::inst().alloc(s); }
+  static void  operator delete  (void* p, size_t s) { LinearAlloc::inst().free(p, s); }
+  static void  operator delete[](void* p, size_t s) { LinearAlloc::inst().free(p, s); }
 
   //----------------------------------------
 
-  void init(const char* match_name) {
+  void init(const char* match_name, SpanType span, uint64_t flags) {
     this->match_name = match_name;
-    this->flags = 0;
+    this->span = span;
+    this->flags = flags;
   }
 
   NodeBase* child(const char* name) {
@@ -175,18 +179,15 @@ struct NodeBase {
   inline static size_t constructor_calls = 0;
   inline static size_t destructor_calls = 0;
 
-
-
   const char* match_name;
+  SpanType    span;
   uint64_t    flags;
+
   NodeBase*   _node_prev;
   NodeBase*   _node_next;
   NodeBase*   _child_head;
   NodeBase*   _child_tail;
-  SpanType    span;
 };
-
-using TextNode = NodeBase<char>;
 
 //------------------------------------------------------------------------------
 
@@ -196,12 +197,12 @@ struct ContextBase {
   using SpanType = Span<atom>;
 
   ContextBase() {
-    SlabAlloc::slabs().reset();
+    LinearAlloc::inst().reset();
   }
 
   virtual ~ContextBase() {
     reset();
-    SlabAlloc::slabs().destroy();
+    LinearAlloc::inst().destroy();
   }
 
   void reset() {
@@ -214,9 +215,9 @@ struct ContextBase {
 
     _top_head = nullptr;
     _top_tail = nullptr;
-    //highwater = nullptr;
+    _highwater = nullptr;
 
-    SlabAlloc::slabs().reset();
+    LinearAlloc::inst().reset();
     NodeType::constructor_calls = 0;
     NodeType::destructor_calls = 0;
   }
@@ -308,8 +309,10 @@ struct ContextBase {
 
   //----------------------------------------
 
-  void create2(NodeType* new_node, const char* match_name, NodeType* old_tail) {
-    new_node->init(match_name);
+  void create2(NodeType* new_node, const char* match_name, SpanType span, uint64_t flags, NodeType* old_tail) {
+    new_node->init(match_name, span, flags);
+
+    if (span.b > _highwater) _highwater = span.b;
 
     // Move all nodes in (old_tail,new_tail] to be children of new_node and
     // append new_node to the node list.
@@ -384,18 +387,20 @@ struct ContextBase {
 
   NodeType* _top_head = nullptr;
   NodeType* _top_tail = nullptr;
+  const atom* _highwater = nullptr;
   int trace_depth = 0;
   int rewind_count = 0;
 };
-
-using TextContext = ContextBase<char>;
 
 //------------------------------------------------------------------------------
 // Matcheroni's default rewind callback does nothing, but if we provide a
 // specialized version of it Matcheroni will call it as needed.
 
+using TextNode = NodeBase<char>;
+using TextContext = ContextBase<char>;
+
 template <>
-inline void parser_rewind(void* ctx, cspan s) {
+inline void parser_rewind(void* ctx, Span<char> s) {
   if (ctx) {
     auto context = (TextContext*)ctx;
     context->rewind(s);
@@ -416,7 +421,7 @@ inline Span<atom> capture(void* ctx, Span<atom> s, const char* match_name, match
 
   auto old_tail = context->top_tail();
 #ifdef PARSERONI_FAST_MODE
-  auto old_state = SlabAlloc::slabs().save_state();
+  auto old_state = LinearAlloc::inst().save_state();
 #endif
 
   auto end = match(context, s);
@@ -425,14 +430,13 @@ inline Span<atom> capture(void* ctx, Span<atom> s, const char* match_name, match
     //printf("Capture %s\n", match_name);
     SpanType node_span = {s.a, end.a};
     auto new_node = new NodeType();
-    context->create2(new_node, match_name, old_tail);
-    new_node->span = node_span;
+    context->create2(new_node, match_name, node_span, 0, old_tail);
   }
   else {
     // We don't set the tail back here, rewind will do it.
     //context->set_tail(old_tail);
 #ifdef PARSERONI_FAST_MODE
-    SlabAlloc::slabs().restore_state(old_state);
+    LinearAlloc::inst().restore_state(old_state);
 #endif
   }
 
@@ -472,7 +476,7 @@ inline Span<atom> capture_begin(void* ctx, Span<atom> s, matcher_function<atom> 
 
   auto old_tail = context->top_tail();
 #ifdef PARSERONI_FAST_MODE
-    auto old_state = SlabAlloc::slabs().save_state();
+    auto old_state = LinearAlloc::inst().save_state();
 #endif
 
   auto end = match(ctx, s);
@@ -483,7 +487,7 @@ inline Span<atom> capture_begin(void* ctx, Span<atom> s, matcher_function<atom> 
   else {
     context->set_tail(old_tail);
 #ifdef PARSERONI_FAST_MODE
-    SlabAlloc::slabs().restore_state(old_state);
+    LinearAlloc::inst().restore_state(old_state);
 #endif
   }
   return end;
@@ -512,9 +516,7 @@ inline Span<atom> capture_end(void* ctx, Span<atom> s, const char* match_name, m
   if (end.is_valid()) {
     SpanType new_span(end.a, end.a);
     auto new_node = new NodeType();
-    context->create2(new_node, match_name, context->top_tail());
-    new_node->span = new_span;
-    new_node->flags |= 1;
+    context->create2(new_node, match_name, new_span, /*flags*/ 1, context->top_tail());
   }
   return end;
 }

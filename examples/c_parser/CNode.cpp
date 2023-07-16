@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText:  2023 Austin Appleby <aappleby@gmail.com>
 // SPDX-License-Identifier: MIT License
 
-#include "examples/c99_parser/ParseNode.hpp"
+#include "examples/c_parser/CNode.hpp"
 
 //------------------------------------------------------------------------------
 

@@ -30,7 +30,7 @@ const int warmup = 10;
 const int reps = 10;
 #endif
 
-cspan parse_json(void* ctx, cspan s);
+text_span parse_json(void* ctx, text_span s);
 
 //------------------------------------------------------------------------------
 
@@ -71,8 +71,8 @@ int main(int argc, char** argv) {
     byte_accum += size;
     for (size_t i = 0; i < size; i++) if (buf[i] == '\n') line_accum++;
 
-    cspan text = {buf, buf + size};
-    cspan parse_end = text;
+    text_span text = {buf, buf + size};
+    text_span parse_end = text;
 
     //----------------------------------------
 
@@ -95,7 +95,7 @@ int main(int argc, char** argv) {
     if (parse_end.a < text.b) {
       printf("Parse failed!\n");
       printf("Failure near `");
-      //print_flat(cspan(context->highwater, text.b), 20);
+      //print_flat(text_span(context->highwater, text.b), 20);
       printf("`\n");
       continue;
     }
@@ -113,8 +113,8 @@ int main(int argc, char** argv) {
     }
 
     if (verbose) {
-      printf("Slab current      %d\n",  SlabAlloc::slabs().current_size);
-      printf("Slab max          %d\n",  SlabAlloc::slabs().max_size);
+      printf("Slab current      %d\n",  LinearAlloc::inst().current_size);
+      printf("Slab max          %d\n",  LinearAlloc::inst().max_size);
       printf("Tree nodes        %ld\n", context->node_count());
       printf("Constructor calls %ld\n", NodeBase<char>::constructor_calls);
       printf("Destructor calls  %ld\n", NodeBase<char>::destructor_calls);

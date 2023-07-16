@@ -11,12 +11,13 @@
 
 #include "matcheroni/Matcheroni.hpp"
 #include "matcheroni/Parseroni.hpp"
+#include "matcheroni/Utilities.hpp"
 
 using namespace matcheroni;
 
 template<StringParam match_name, typename pattern, typename NodeType>
 struct Capture3 {
-  static cspan match(void* ctx, cspan s) {
+  static text_span match(void* ctx, text_span s) {
     return Capture<match_name, pattern, NodeType>::match(ctx, s);
   }
 };
@@ -25,34 +26,34 @@ struct Capture3 {
 // To match anything at all, we first need to tell Matcheroni how to compare
 // one atom of our input sequence against a constant.
 
-static cspan match_regex(void* ctx, cspan s);
+static text_span match_regex(void* ctx, text_span s);
 
 // Our 'control' characters consist of all atoms with special regex meanings.
 
 struct cchar {
   using pattern = Atom<'\\', '(', ')', '|', '$', '.', '+', '*', '?', '[', ']', '^'>;
-  static cspan match(void* ctx, cspan s) { return pattern::match(ctx, s); }
+  static text_span match(void* ctx, text_span s) { return pattern::match(ctx, s); }
 };
 
 // Our 'plain' characters are every character that's not a control character.
 
 struct pchar {
   using pattern = Seq<Not<cchar>, AnyAtom>;
-  static cspan match(void* ctx, cspan s) { return pattern::match(ctx, s); }
+  static text_span match(void* ctx, text_span s) { return pattern::match(ctx, s); }
 };
 
 // Plain text is any span of plain characters not followed by an operator.
 
 struct text {
   using pattern = Some<Seq<pchar, Not<Atom<'*', '+', '?'>>>>;
-  static cspan match(void* ctx, cspan s) { return pattern::match(ctx, s); }
+  static text_span match(void* ctx, text_span s) { return pattern::match(ctx, s); }
 };
 
 // Our 'meta' characters are anything after a backslash.
 
 struct mchar {
   using pattern = Seq<Atom<'\\'>, AnyAtom>;
-  static cspan match(void* ctx, cspan s) { return pattern::match(ctx, s); }
+  static text_span match(void* ctx, text_span s) { return pattern::match(ctx, s); }
 };
 
 // A character range is a beginning character and an end character separated
@@ -65,12 +66,12 @@ struct range {
     Atom<'-'>,
     Capture3<"end", pchar, TextNode>
   >;
-  static cspan match(void* ctx, cspan s) { return pattern::match(ctx, s); }
+  static text_span match(void* ctx, text_span s) { return pattern::match(ctx, s); }
 };
 
 // The contents of a matcher set must be ranges or individual characters.
 struct set_body {
-  static cspan match(void* ctx, cspan s) {
+  static text_span match(void* ctx, text_span s) {
     return
     Some<
       Capture3<"range", range, TextNode>,
@@ -95,7 +96,7 @@ struct unit {
     Capture3<"char",    pchar, TextNode>,
     Capture3<"meta",    mchar, TextNode>
   >;
-  static cspan match(void* ctx, cspan s) { return pattern::match(ctx, s); }
+  static text_span match(void* ctx, text_span s) { return pattern::match(ctx, s); }
 };
 
 // A 'simple' regex is text, line end markers, a unit w/ operator, or a bare
@@ -111,7 +112,7 @@ struct simple {
     Capture3<"opt",  Seq<unit, Atom<'?'>>, TextNode>,
     unit
   >;
-  static cspan match(void* ctx, cspan s) {
+  static text_span match(void* ctx, text_span s) {
     return pattern::match(ctx, s);
   }
 };
@@ -127,13 +128,13 @@ struct oneof {
       Capture3<"option", simple, TextNode>
     >>
   >;
-  static cspan match(void* ctx, cspan s) {
+  static text_span match(void* ctx, text_span s) {
     return pattern::match(ctx, s);
   }
 };
 
 // This is the top level of our regex parser.
-static cspan match_regex(void* ctx, cspan s) {
+static text_span match_regex(void* ctx, text_span s) {
   // A 'top-level' regex is either a simple regex or a one-of regex.
   using regex_top =
   Oneof<
@@ -144,7 +145,7 @@ static cspan match_regex(void* ctx, cspan s) {
 }
 
 __attribute__((noinline))
-cspan parse_regex(void* ctx, cspan s) {
+text_span parse_regex(void* ctx, text_span s) {
   return match_regex(ctx, s);
   //return s.fail();
 }

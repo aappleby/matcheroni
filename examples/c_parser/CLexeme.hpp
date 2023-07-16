@@ -5,12 +5,13 @@
 #include <stdint.h>
 
 #include "matcheroni/Matcheroni.hpp"
-#include "examples/c99_parser/c_constants.hpp"
+#include "matcheroni/Utilities.hpp"
+#include "examples/c_parser/c_constants.hpp"
 
 //------------------------------------------------------------------------------
 
-struct Lexeme {
-  Lexeme(LexemeType type, matcheroni::cspan s);
+struct CLexeme {
+  CLexeme(LexemeType type, matcheroni::text_span s);
 
   int len() const;
   bool is_bof() const;
@@ -24,7 +25,7 @@ struct Lexeme {
   //----------------------------------------
 
   LexemeType type;
-  matcheroni::cspan span;
+  matcheroni::text_span span;
 };
 
 //------------------------------------------------------------------------------

@@ -44,7 +44,7 @@ struct TestNode : public TextNode {
 // A whole s-expression parser in ~10 lines of code. :D
 
 struct TinyLisp {
-  static cspan match(void* ctx, cspan s) {
+  static text_span match(void* ctx, text_span s) {
     return Oneof<
       Capture<"atom", atom, TestNode>,
       Capture<"list", list, TestNode>
@@ -73,8 +73,8 @@ void check_hash(const Context& context, uint64_t hash_a) {
 void test_basic() {
   printf("test_basic()\n");
   TextContext context;
-  cspan span;
-  cspan tail;
+  text_span span;
+  text_span tail;
 
   {
     // Check than we can round-trip a s-expression
@@ -148,10 +148,10 @@ void test_rewind() {
   printf("node count %ld\n", context.top_head()->node_count());
   printf("constructor calls %ld\n", TextNode::constructor_calls);
   printf("destructor calls %ld\n", TextNode::destructor_calls);
-  printf("max size %d\n", SlabAlloc::slabs().max_size);
-  printf("current size %d\n", SlabAlloc::slabs().current_size);
+  printf("max size %d\n", LinearAlloc::inst().max_size);
+  printf("current size %d\n", LinearAlloc::inst().current_size);
 
-  //matcheroni_assert(SlabAlloc::slabs().current_size == sizeof(ParseNode));
+  //matcheroni_assert(LinearAlloc::inst().current_size == sizeof(ParseNode));
 
   printf("test_rewind() end\n\n");
 }
@@ -159,7 +159,7 @@ void test_rewind() {
 //------------------------------------------------------------------------------
 
 struct BeginEndTest {
-  static cspan match(void* ctx, cspan s) {
+  static text_span match(void* ctx, text_span s) {
     return Oneof<atom, list>::match(ctx, s);
   }
 
@@ -212,8 +212,8 @@ void test_begin_end() {
   printf("node count %ld\n", context.top_head()->node_count());
   printf("constructor calls %ld\n", TextNode::constructor_calls);
   printf("destructor calls %ld\n", TextNode::destructor_calls);
-  printf("max size %d\n", SlabAlloc::slabs().max_size);
-  printf("current size %d\n", SlabAlloc::slabs().current_size);
+  printf("max size %d\n", LinearAlloc::inst().max_size);
+  printf("current size %d\n", LinearAlloc::inst().current_size);
 
   printf("test_begin_end() end\n\n");
 }
@@ -225,7 +225,7 @@ void test_begin_end() {
 // mismatched suffix.
 
 struct Pathological {
-  static cspan match(void* ctx, cspan s) {
+  static text_span match(void* ctx, text_span s) {
     return pattern::match(ctx, s);
   }
 
@@ -245,8 +245,8 @@ struct Pathological {
 void test_pathological() {
   printf("test_pathological()\n");
   TextContext context;
-  cspan span;
-  cspan tail;
+  text_span span;
+  text_span tail;
 
   // We expect 137257 constructor calls and 137250 destructor calls for this
   // pattern.
@@ -272,15 +272,15 @@ void test_pathological() {
   matcheroni_assert(TextNode::constructor_calls == 137257);
   matcheroni_assert(TextNode::destructor_calls  == 137250);
 
-  matcheroni_assert(SlabAlloc::slabs().max_size == sizeof(TestNode) * 7);
-  matcheroni_assert(SlabAlloc::slabs().current_size == sizeof(TestNode) * 7);
+  matcheroni_assert(LinearAlloc::inst().max_size == sizeof(TestNode) * 7);
+  matcheroni_assert(LinearAlloc::inst().current_size == sizeof(TestNode) * 7);
 
   //printf("sizeof(ParseNode) %ld\n", sizeof(ParseNode));
   //printf("node count %ld\n", context.top_head()->node_count());
   //printf("constructor calls %ld\n", TextNode::constructor_calls);
   //printf("destructor calls %ld\n", TextNode::destructor_calls);
-  //printf("max size %d\n", SlabAlloc::slabs().max_size);
-  //printf("current size %d\n", SlabAlloc::slabs().current_size);
+  //printf("max size %d\n", LinearAlloc::inst().max_size);
+  //printf("current size %d\n", LinearAlloc::inst().current_size);
 
   printf("test_pathological() end\n\n");
 }

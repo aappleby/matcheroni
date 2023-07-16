@@ -3,6 +3,7 @@
 
 #include "matcheroni/Matcheroni.hpp"
 #include "matcheroni/Parseroni.hpp"
+#include "matcheroni/Utilities.hpp"
 
 using namespace matcheroni;
 
@@ -29,7 +30,7 @@ struct JsonParser {
   template<typename P>
   using comma_separated = Seq<P, Any<Seq<ws, Atom<','>, ws, P>>>;
 
-  static cspan value(void* ctx, cspan s) {
+  static text_span value(void* ctx, text_span s) {
     return Oneof<
       Capture<"array",   array,   TextNode>,
       Capture<"number",  number,  TextNode>,
@@ -69,13 +70,13 @@ struct JsonParser {
   // clang-format on
   //----------------------------------------
 
-  static cspan match(void* ctx, cspan s) {
+  static text_span match(void* ctx, text_span s) {
     return Seq<ws, Ref<value>, ws>::match(ctx, s);
   }
 };
 
 
-cspan parse_json(void* ctx, cspan s) {
+text_span parse_json(void* ctx, text_span s) {
   return JsonParser::match(ctx, s);
 }
 

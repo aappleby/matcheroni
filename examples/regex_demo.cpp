@@ -18,7 +18,7 @@
 
 using namespace matcheroni;
 
-cspan parse_regex(void* ctx, cspan s);
+text_span parse_regex(void* ctx, text_span s);
 
 //------------------------------------------------------------------------------
 // The demo app accepts a quoted regex as its first command line argument,
@@ -33,7 +33,7 @@ int main(int argc, char** argv) {
 
   // Bash will un-quote the regex on the command line for us, so we don't need
   // to do any processing here.
-  cspan span = {argv[1], argv[1] + strlen(argv[1])};
+  text_span span = {argv[1], argv[1] + strlen(argv[1])};
 
   // Invoke our regex matcher against the input text. If it matches, we will
   // get a non-null endpoint for the match.

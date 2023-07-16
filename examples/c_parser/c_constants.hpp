@@ -32,7 +32,7 @@ enum LexemeType {
 // This is all the reserved words from GCC. Will probably have to remove some
 // for C99 compatibility...
 
-constexpr std::array c99_keywords = {
+constexpr std::array c_keywords = {
 "_Accum",
 "_Alignas",
 "_Alignof",

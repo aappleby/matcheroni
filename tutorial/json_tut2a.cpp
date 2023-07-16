@@ -43,7 +43,7 @@ struct JsonParser {
   template<typename P>
   using list = Opt<Seq<P, Any<Seq<ws, Atom<','>, ws, P>>>>;
 
-  static cspan value(void* ctx, cspan s) {
+  static text_span value(void* ctx, text_span s) {
     using value =
     Oneof<
       Capture<"array",   array,   TextNode>,
@@ -82,7 +82,7 @@ struct JsonParser {
     Atom<'}'>
   >;
 
-  static cspan match(void* ctx, cspan s) {
+  static text_span match(void* ctx, text_span s) {
     return Seq<ws, Ref<value>, ws>::match(ctx, s);
   }
 };
@@ -104,7 +104,7 @@ int main(int argc, char** argv) {
 
   printf("Parsing %s\n", path);
   TextContext* context = new TextContext();
-  auto parse_end = JsonParser::match(context, cspan(buf, buf + size));
+  auto parse_end = JsonParser::match(context, text_span(buf, buf + size));
 
   if (parse_end.is_valid()) {
     printf("Parse tree:\n");

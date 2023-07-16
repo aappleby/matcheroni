@@ -1,20 +1,20 @@
 // SPDX-FileCopyrightText:  2023 Austin Appleby <aappleby@gmail.com>
 // SPDX-License-Identifier: MIT License
 
-#include "examples/c99_parser/Token.hpp"
-#include "examples/c99_parser/Lexeme.hpp"
+#include "examples/c_parser/CToken.hpp"
+#include "examples/c_parser/CLexeme.hpp"
 
 using namespace matcheroni;
 
 //----------------------------------------------------------------------------
 
-Token::Token(const Lexeme* lex) {
+CToken::CToken(const CLexeme* lex) {
   this->lex = lex;
 }
 
 //----------------------------------------------------------------------------
 
-void Token::dump_token() const {
+void CToken::dump_token() const {
 #if 0
   // Dump token
   printf("tok @ %p :", this);

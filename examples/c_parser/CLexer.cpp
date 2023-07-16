@@ -1,54 +1,54 @@
 // SPDX-FileCopyrightText:  2023 Austin Appleby <aappleby@gmail.com>
 // SPDX-License-Identifier: MIT License
 
-//#include "examples/c99_parser/C99Parser.hpp"
+//#include "examples/c_parser/CParser.hpp"
 
 #include "matcheroni/Matcheroni.hpp"
 #include "matcheroni/Utilities.hpp"
 
-#include "examples/c99_parser/C99Lexer.hpp"
-#include "examples/c99_parser/Lexeme.hpp"
-#include "examples/c99_parser/SST.hpp"
+#include "examples/c_parser/CLexer.hpp"
+#include "examples/c_parser/CLexeme.hpp"
+#include "examples/SST.hpp"
 
 using namespace matcheroni;
 
 template<typename M>
 using ticked = Seq<Opt<Atom<'\''>>, M>;
 
-Lexeme next_lexeme      (void* ctx, cspan s);
-cspan  match_never      (void* ctx, cspan s);
-cspan  match_space      (void* ctx, cspan s);
-cspan  match_newline    (void* ctx, cspan s);
-cspan  match_string     (void* ctx, cspan s);
-cspan  match_char       (void* ctx, cspan s);
-cspan  match_keyword    (void* ctx, cspan s);
-cspan  match_identifier (void* ctx, cspan s);
-cspan  match_comment    (void* ctx, cspan s);
-cspan  match_preproc    (void* ctx, cspan s);
-cspan  match_float      (void* ctx, cspan s);
-cspan  match_int        (void* ctx, cspan s);
-cspan  match_punct      (void* ctx, cspan s);
-cspan  match_splice     (void* ctx, cspan s);
-cspan  match_formfeed   (void* ctx, cspan s);
-cspan  match_eof        (void* ctx, cspan s);
+CLexeme next_lexeme      (void* ctx, text_span s);
+text_span  match_never      (void* ctx, text_span s);
+text_span  match_space      (void* ctx, text_span s);
+text_span  match_newline    (void* ctx, text_span s);
+text_span  match_string     (void* ctx, text_span s);
+text_span  match_char       (void* ctx, text_span s);
+text_span  match_keyword    (void* ctx, text_span s);
+text_span  match_identifier (void* ctx, text_span s);
+text_span  match_comment    (void* ctx, text_span s);
+text_span  match_preproc    (void* ctx, text_span s);
+text_span  match_float      (void* ctx, text_span s);
+text_span  match_int        (void* ctx, text_span s);
+text_span  match_punct      (void* ctx, text_span s);
+text_span  match_splice     (void* ctx, text_span s);
+text_span  match_formfeed   (void* ctx, text_span s);
+text_span  match_eof        (void* ctx, text_span s);
 
 //------------------------------------------------------------------------------
 
-C99Lexer::C99Lexer() {
+CLexer::CLexer() {
   lexemes.reserve(65536);
 }
 
-void C99Lexer::reset() {
+void CLexer::reset() {
   lexemes.clear();
 }
 
 //------------------------------------------------------------------------------
 
-bool C99Lexer::lex(const std::string& text) {
+bool CLexer::lex(const std::string& text) {
 
   auto s = matcheroni::to_span(text);
 
-  lexemes.push_back(Lexeme(LEX_BOF, cspan(nullptr, nullptr)));
+  lexemes.push_back(CLexeme(LEX_BOF, text_span(nullptr, nullptr)));
 
   while (!s.is_empty()) {
     auto lex = next_lexeme(nullptr, s);
@@ -70,7 +70,7 @@ bool C99Lexer::lex(const std::string& text) {
 
 //------------------------------------------------------------------------------
 
-void C99Lexer::dump_lexemes() {
+void CLexer::dump_lexemes() {
   for (auto& l : lexemes) {
     printf("{");
     l.dump_lexeme();
@@ -81,66 +81,66 @@ void C99Lexer::dump_lexemes() {
 
 //------------------------------------------------------------------------------
 
-//inline int atom_cmp(void* ctx, cspan* s, const char* b) {
+//inline int atom_cmp(void* ctx, text_span* s, const char* b) {
 //  return strcmp_span(s, b);
 //}
 
-Lexeme next_lexeme(void* ctx, cspan s) {
+CLexeme next_lexeme(void* ctx, text_span s) {
 
-  if (auto end = match_space  (ctx, s)) return Lexeme(LEX_SPACE,   s - end);
-  if (auto end = match_newline(ctx, s)) return Lexeme(LEX_NEWLINE, s - end);
-  if (auto end = match_string (ctx, s)) return Lexeme(LEX_STRING,  s - end);
+  if (auto end = match_space  (ctx, s)) return CLexeme(LEX_SPACE,   s - end);
+  if (auto end = match_newline(ctx, s)) return CLexeme(LEX_NEWLINE, s - end);
+  if (auto end = match_string (ctx, s)) return CLexeme(LEX_STRING,  s - end);
 
   // Match char needs to come before match identifier because of its possible L'_' prefix...
-  if (auto end = match_char       (ctx, s)) return Lexeme(LEX_CHAR, s - end);
+  if (auto end = match_char       (ctx, s)) return CLexeme(LEX_CHAR, s - end);
 
   {
     auto end = match_identifier(ctx, s);
     if (end) {
-      if (SST<c99_keywords>::match(s.a, s.b)) {
-        return Lexeme(LEX_KEYWORD   , s - end);
+      if (SST<c_keywords>::match(s.a, s.b)) {
+        return CLexeme(LEX_KEYWORD   , s - end);
       }
       else {
-        return Lexeme(LEX_IDENTIFIER, s - end);
+        return CLexeme(LEX_IDENTIFIER, s - end);
       }
     }
   }
 
-  if (auto end = match_comment(ctx, s))  return Lexeme(LEX_COMMENT,  s - end);
-  if (auto end = match_preproc(ctx, s))  return Lexeme(LEX_PREPROC,  s - end);
-  if (auto end = match_float(ctx, s))    return Lexeme(LEX_FLOAT,    s - end);
-  if (auto end = match_int(ctx, s))      return Lexeme(LEX_INT,      s - end);
-  if (auto end = match_punct(ctx, s))    return Lexeme(LEX_PUNCT,    s - end);
-  if (auto end = match_splice(ctx, s))   return Lexeme(LEX_SPLICE,   s - end);
-  if (auto end = match_formfeed(ctx, s)) return Lexeme(LEX_FORMFEED, s - end);
-  if (auto end = match_eof(ctx, s))      return Lexeme(LEX_EOF,      s - end);
+  if (auto end = match_comment(ctx, s))  return CLexeme(LEX_COMMENT,  s - end);
+  if (auto end = match_preproc(ctx, s))  return CLexeme(LEX_PREPROC,  s - end);
+  if (auto end = match_float(ctx, s))    return CLexeme(LEX_FLOAT,    s - end);
+  if (auto end = match_int(ctx, s))      return CLexeme(LEX_INT,      s - end);
+  if (auto end = match_punct(ctx, s))    return CLexeme(LEX_PUNCT,    s - end);
+  if (auto end = match_splice(ctx, s))   return CLexeme(LEX_SPLICE,   s - end);
+  if (auto end = match_formfeed(ctx, s)) return CLexeme(LEX_FORMFEED, s - end);
+  if (auto end = match_eof(ctx, s))      return CLexeme(LEX_EOF,      s - end);
 
-  return Lexeme(LEX_INVALID, s.fail());
+  return CLexeme(LEX_INVALID, s.fail());
 }
 
 //------------------------------------------------------------------------------
 // Misc helpers
 
-cspan match_never(void* ctx, cspan s) {
+text_span match_never(void* ctx, text_span s) {
   return s.fail();
 }
 
-cspan match_eof(void* ctx, cspan s) {
+text_span match_eof(void* ctx, text_span s) {
   if (s.is_empty()) return s;
   return s.fail();
 }
 
-cspan match_formfeed(void* ctx, cspan s) {
+text_span match_formfeed(void* ctx, text_span s) {
   return Atom<'\f'>::match(ctx, s);
 }
 
-cspan match_space(void* ctx, cspan s) {
+text_span match_space(void* ctx, text_span s) {
   using ws = Atom<' ','\t'>;
   using pattern = Some<ws>;
   return pattern::match(ctx, s);
 }
 
-cspan match_newline(void* ctx, cspan s) {
+text_span match_newline(void* ctx, text_span s) {
   using pattern = Seq<Opt<Atom<'\r'>>, Atom<'\n'>>;
   return pattern::match(ctx, s);
 }
@@ -148,7 +148,7 @@ cspan match_newline(void* ctx, cspan s) {
 //------------------------------------------------------------------------------
 // 6.4.4.1 Integer constants
 
-cspan match_int(void* ctx, cspan s) {
+text_span match_int(void* ctx, text_span s) {
   // clang-format off
   using digit                = Range<'0', '9'>;
   using nonzero_digit        = Range<'1', '9'>;
@@ -212,7 +212,7 @@ cspan match_int(void* ctx, cspan s) {
 //------------------------------------------------------------------------------
 // 6.4.3 Universal character names
 
-cspan match_universal_character_name(void* ctx, cspan s) {
+text_span match_universal_character_name(void* ctx, text_span s) {
   using n_char = NotAtom<'}','\n'>;
   using n_char_sequence = Some<n_char>;
   using named_universal_character = Seq<Lit<"\\N{">, n_char_sequence, Lit<"}">>;
@@ -233,7 +233,7 @@ cspan match_universal_character_name(void* ctx, cspan s) {
 //------------------------------------------------------------------------------
 // Basic UTF8 support
 
-cspan match_utf8(void* ctx, cspan s) {
+text_span match_utf8(void* ctx, text_span s) {
   using utf8_ext       = Range<char(0x80), char(0xBF)>;
   //using utf8_onebyte   = Range<char(0x00), char(0x7F)>;
   using utf8_twobyte   = Seq<Range<char(0xC0), char(0xDF)>, utf8_ext>;
@@ -247,7 +247,7 @@ cspan match_utf8(void* ctx, cspan s) {
   return utf8_char::match(ctx, s);
 }
 
-cspan match_utf8_bom(void* ctx, cspan s) {
+text_span match_utf8_bom(void* ctx, text_span s) {
   using utf8_bom = Seq<Atom<char(0xEF)>, Atom<char(0xBB)>, Atom<char(0xBF)>>;
   return utf8_bom::match(ctx, s);
 }
@@ -255,7 +255,7 @@ cspan match_utf8_bom(void* ctx, cspan s) {
 //------------------------------------------------------------------------------
 // 6.4.2 Identifiers - GCC allows dollar signs in identifiers?
 
-cspan match_identifier(void* ctx, cspan s) {
+text_span match_identifier(void* ctx, text_span s) {
   using digit = Range<'0', '9'>;
 
   // Not sure if this should be in here
@@ -279,7 +279,7 @@ cspan match_identifier(void* ctx, cspan s) {
 //------------------------------------------------------------------------------
 // 6.4.4.2 Floating constants
 
-cspan match_float(void* ctx, cspan s) {
+text_span match_float(void* ctx, text_span s) {
   using floating_suffix = Oneof<
     Atom<'f'>, Atom<'l'>, Atom<'F'>, Atom<'L'>,
     // Decimal floats, GCC thing
@@ -338,7 +338,7 @@ cspan match_float(void* ctx, cspan s) {
 //------------------------------------------------------------------------------
 // Escape sequences
 
-cspan match_escape_sequence(void* ctx, cspan s) {
+text_span match_escape_sequence(void* ctx, text_span s) {
   // This is what's in the spec...
   //using simple_escape_sequence      = Seq<Atom<'\\'>, Charset<"'\"?\\abfnrtv">>;
 
@@ -370,7 +370,7 @@ cspan match_escape_sequence(void* ctx, cspan s) {
 //------------------------------------------------------------------------------
 // 6.4.4.4 Character constants
 
-cspan match_char(void* ctx, cspan s) {
+text_span match_char(void* ctx, text_span s) {
   // Multi-character character literals are allowed by spec, but their meaning is
   // implementation-defined...
 
@@ -391,7 +391,7 @@ cspan match_char(void* ctx, cspan s) {
 //------------------------------------------------------------------------------
 // 6.4.5 String literals
 
-cspan match_cooked_string_literal(void* ctx, cspan s) {
+text_span match_cooked_string_literal(void* ctx, text_span s) {
   // Note, we add splices here since we're matching before preproccessing.
   using s_char          = Oneof<Ref<match_splice>, Ref<match_escape_sequence>, NotAtom<'"', '\\', '\n'>>;
   using s_char_sequence = Some<s_char>;
@@ -403,7 +403,7 @@ cspan match_cooked_string_literal(void* ctx, cspan s) {
 //----------------------------------------
 // Raw string literals from the C++ spec
 
-cspan match_raw_string_literal(void* ctx, cspan s) {
+text_span match_raw_string_literal(void* ctx, text_span s) {
 
   using encoding_prefix    = Oneof<Lit<"u8">, Atom<'u', 'U', 'L'>>; // u8 must go first
 
@@ -434,7 +434,7 @@ cspan match_raw_string_literal(void* ctx, cspan s) {
 
 //----------------------------------------
 
-cspan match_string(void* ctx, cspan s) {
+text_span match_string(void* ctx, text_span s) {
   using any_string = Oneof<
     Ref<match_cooked_string_literal>,
     Ref<match_raw_string_literal>
@@ -446,7 +446,7 @@ cspan match_string(void* ctx, cspan s) {
 //------------------------------------------------------------------------------
 // 6.4.6 Punctuators
 
-cspan match_punct(void* ctx, cspan s) {
+text_span match_punct(void* ctx, text_span s) {
   // We're just gonna match these one punct at a time
   using punctuator = Charset<"-,;:!?.()[]{}*/&#%^+<=>|~">;
   return punctuator::match(ctx, s);
@@ -459,13 +459,13 @@ cspan match_punct(void* ctx, cspan s) {
 //------------------------------------------------------------------------------
 // 6.4.9 Comments
 
-cspan match_oneline_comment(void* ctx, cspan s) {
+text_span match_oneline_comment(void* ctx, text_span s) {
   // Single-line comments
   using slc = Seq<Lit<"//">, Until<EOL>>;
   return slc::match(ctx, s);
 }
 
-cspan match_multiline_comment(void* ctx, cspan s) {
+text_span match_multiline_comment(void* ctx, text_span s) {
   // Multi-line non-nested comments
   using mlc_ldelim = Lit<"/*">;
   using mlc_rdelim = Lit<"*/">;
@@ -473,7 +473,7 @@ cspan match_multiline_comment(void* ctx, cspan s) {
   return mlc::match(ctx, s);
 }
 
-cspan match_comment(void* ctx, cspan s) {
+text_span match_comment(void* ctx, text_span s) {
   using comment = Oneof<
     Ref<match_oneline_comment>,
     Ref<match_multiline_comment>
@@ -486,7 +486,7 @@ cspan match_comment(void* ctx, cspan s) {
 // 5.1.1.2 : Lines ending in a backslash and a newline get spliced together
 // with the following line.
 
-cspan match_splice(void* ctx, cspan s) {
+text_span match_splice(void* ctx, text_span s) {
   // According to GCC it's only a warning to have whitespace between the
   // backslash and the newline... and apparently \r\n is ok too?
 
@@ -503,7 +503,7 @@ cspan match_splice(void* ctx, cspan s) {
 
 //------------------------------------------------------------------------------
 
-cspan match_preproc(void* ctx, cspan s) {
+text_span match_preproc(void* ctx, text_span s) {
   using pattern = Seq<
     Atom<'#'>,
     Any<

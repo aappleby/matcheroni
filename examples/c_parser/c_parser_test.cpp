@@ -5,9 +5,9 @@
 
 #include "matcheroni/Utilities.hpp"
 
-#include "examples/c99_parser/C99Lexer.hpp"
-#include "examples/c99_parser/C99Parser.hpp"
-#include "examples/c99_parser/ParseNode.hpp"
+#include "examples/c_parser/CLexer.hpp"
+#include "examples/c_parser/CParser.hpp"
+#include "examples/c_parser/CNode.hpp"
 
 //------------------------------------------------------------------------------
 // File filters
@@ -88,8 +88,8 @@ int test_parser(int argc, char** argv) {
   std::vector<std::string> paths;
   const char* base_path = argc > 1 ? argv[1] : "tests";
 
-  C99Lexer lexer;
-  C99Parser parser;
+  CLexer lexer;
+  CParser parser;
 
   bool verbose = false;
   double io_time = 0;
@@ -210,7 +210,7 @@ int test_parser(int argc, char** argv) {
 
   // current torture test nodes - 531557
 
-  if (file_pass == 10000 && C99ParseNode::constructor_count != 520803633) {
+  if (file_pass == 10000 && CNode::constructor_count != 520803633) {
     set_color(0x008080FF);
     printf("############## NODE COUNT MISMATCH\n");
     set_color(0);
@@ -230,10 +230,10 @@ int test_parser(int argc, char** argv) {
   printf("Parsing time   %f msec\n", parse_time);
   printf("Cleanup time   %f msec\n", cleanup_time);
   printf("\n");
-  printf("Total nodes    %d\n", C99ParseNode::constructor_count);
-  printf("Node pool      %ld bytes\n", SlabAlloc::slabs().max_size);
-  printf("Rewind count   %d\n", C99Parser::rewind_count);
-  printf("Didn't rewind  %d\n", C99Parser::didnt_rewind);
+  printf("Total nodes    %d\n", CNode::constructor_count);
+  printf("Node pool      %ld bytes\n", LinearAlloc::inst().max_size);
+  printf("Rewind count   %d\n", CParser::rewind_count);
+  printf("Didn't rewind  %d\n", CParser::didnt_rewind);
   printf("File pass      %d\n", file_pass);
   printf("File fail      %d\n", file_fail);
   printf("File skip      %d\n", file_skip);

@@ -5,17 +5,17 @@
 
 #include <vector>
 #include <string>
-#include "examples/c99_parser/Lexeme.hpp"
+#include "examples/c_parser/CLexeme.hpp"
 
 //------------------------------------------------------------------------------
 
-struct C99Lexer {
-  C99Lexer();
+struct CLexer {
+  CLexer();
   void reset();
   bool lex(const std::string& text);
   void dump_lexemes();
 
-  std::vector<Lexeme> lexemes;
+  std::vector<CLexeme> lexemes;
 };
 
 //------------------------------------------------------------------------------

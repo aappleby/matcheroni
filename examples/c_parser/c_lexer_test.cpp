@@ -4,8 +4,8 @@
 #include "matcheroni/Matcheroni.hpp"
 #include "matcheroni/Utilities.hpp"
 
-#include "examples/c99_parser/C99Lexer.hpp"
-#include "examples/c99_parser/Lexeme.hpp"
+#include "examples/c_parser/CLexer.hpp"
+#include "examples/c_parser/CLexeme.hpp"
 
 #include <filesystem>
 #include <stdint.h>    // for uint8_t

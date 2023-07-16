@@ -3,9 +3,9 @@
 
 #include "matcheroni/Matcheroni.hpp"
 
-#include "examples/c99_parser/Lexeme.hpp"
-#include "examples/c99_parser/SST.hpp"
-#include "examples/c99_parser/c_constants.hpp"
+#include "examples/c_parser/CLexeme.hpp"
+#include "examples/SST.hpp"
+#include "examples/c_parser/c_constants.hpp"
 
 using namespace matcheroni;
 
@@ -17,7 +17,7 @@ using comma_separated = Seq<P, Any<Seq<Atom<','>, P>>, Opt<Atom<','>> >;
 
 template<StringParam lit>
 struct Keyword {
-  static_assert(SST<c99_keywords>::contains(lit.str_val));
+  static_assert(SST<c_keywords>::contains(lit.str_val));
 
   template<typename atom>
   static atom* match(void* ctx, atom* a, atom* b) {

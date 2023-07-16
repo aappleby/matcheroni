@@ -1,22 +1,22 @@
 // SPDX-FileCopyrightText:  2023 Austin Appleby <aappleby@gmail.com>
 // SPDX-License-Identifier: MIT License
 
-#include "examples/c99_parser/C99Parser.hpp"
+#include "examples/c_parser/CParser.hpp"
 
-#include "examples/c99_parser/c99_parse_nodes.hpp"
+#include "examples/c_parser/c_parse_nodes.hpp"
 
 using namespace matcheroni;
 
 //------------------------------------------------------------------------------
 
-C99Parser::C99Parser() {
-  type_scope = new TypeScope();
+CParser::CParser() {
+  type_scope = new CScope();
   tokens.reserve(65536);
 }
 
 //------------------------------------------------------------------------------
 
-void C99Parser::reset() {
+void CParser::reset() {
   ContextBase::reset();
 
   tokens.clear();
@@ -27,7 +27,7 @@ void C99Parser::reset() {
 //------------------------------------------------------------------------------
 
 #if 0
-bool C99Parser::parse(std::vector<Lexeme>& lexemes) {
+bool CParser::parse(std::vector<CLexeme>& lexemes) {
 
   for (auto i = 0; i < lexemes.size(); i++) {
     auto l = &lexemes[i];
@@ -48,42 +48,42 @@ bool C99Parser::parse(std::vector<Lexeme>& lexemes) {
 
 //------------------------------------------------------------------------------
 
-tspan C99Parser::match_class_type(tspan s) {
+tspan CParser::match_class_type(tspan s) {
   return type_scope->has_class_type(this, s) ? s.advance(1) : s.fail();
 }
 
-tspan C99Parser::match_struct_type(tspan s) {
+tspan CParser::match_struct_type(tspan s) {
   return type_scope->has_struct_type(this, s) ? s.advance(1) : s.fail();
 }
 
-tspan C99Parser::match_union_type(tspan s) {
+tspan CParser::match_union_type(tspan s) {
   return type_scope->has_union_type(this, s) ? s.advance(1) : s.fail();
 }
 
-tspan C99Parser::match_enum_type(tspan s) {
+tspan CParser::match_enum_type(tspan s) {
   return type_scope->has_enum_type(this, s) ? s.advance(1) : s.fail();
 }
 
-tspan C99Parser::match_typedef_type(tspan s) {
+tspan CParser::match_typedef_type(tspan s) {
   return type_scope->has_typedef_type(this, s) ? s.advance(1) : s.fail();
 }
 
-void C99Parser::add_class_type  (const Token* a) { type_scope->add_class_type(a); }
-void C99Parser::add_struct_type (const Token* a) { type_scope->add_struct_type(a); }
-void C99Parser::add_union_type  (const Token* a) { type_scope->add_union_type(a); }
-void C99Parser::add_enum_type   (const Token* a) { type_scope->add_enum_type(a); }
-void C99Parser::add_typedef_type(const Token* a) { type_scope->add_typedef_type(a); }
+void CParser::add_class_type  (const CToken* a) { type_scope->add_class_type(a); }
+void CParser::add_struct_type (const CToken* a) { type_scope->add_struct_type(a); }
+void CParser::add_union_type  (const CToken* a) { type_scope->add_union_type(a); }
+void CParser::add_enum_type   (const CToken* a) { type_scope->add_enum_type(a); }
+void CParser::add_typedef_type(const CToken* a) { type_scope->add_typedef_type(a); }
 
 //----------------------------------------------------------------------------
 
-void C99Parser::push_scope() {
-  TypeScope* new_scope = new TypeScope();
+void CParser::push_scope() {
+  CScope* new_scope = new CScope();
   new_scope->parent = type_scope;
   type_scope = new_scope;
 }
 
-void C99Parser::pop_scope() {
-  TypeScope* old_scope = type_scope->parent;
+void CParser::pop_scope() {
+  CScope* old_scope = type_scope->parent;
   if (old_scope) {
     delete type_scope;
     type_scope = old_scope;
@@ -92,7 +92,7 @@ void C99Parser::pop_scope() {
 
 //----------------------------------------------------------------------------
 
-tspan C99Parser::match_builtin_type_base(tspan s) {
+tspan CParser::match_builtin_type_base(tspan s) {
   if (!s.is_valid() || s.is_empty()) return s.fail();
   if (SST<builtin_type_base>::match(s.a->lex->span.a, s.a->lex->span.b)) {
     return s.advance(1);
@@ -102,7 +102,7 @@ tspan C99Parser::match_builtin_type_base(tspan s) {
   }
 }
 
-tspan C99Parser::match_builtin_type_prefix(tspan s) {
+tspan CParser::match_builtin_type_prefix(tspan s) {
   if (!s.is_valid() || s.is_empty()) return s.fail();
   if (SST<builtin_type_prefix>::match(s.a->lex->span.a, s.a->lex->span.b)) {
     return s.advance(1);
@@ -112,7 +112,7 @@ tspan C99Parser::match_builtin_type_prefix(tspan s) {
   }
 }
 
-tspan C99Parser::match_builtin_type_suffix(tspan s) {
+tspan CParser::match_builtin_type_suffix(tspan s) {
   if (!s.is_valid() || s.is_empty()) return s.fail();
   if (SST<builtin_type_suffix>::match(s.a->lex->span.a, s.a->lex->span.b)) {
     return s.advance(1);
@@ -124,7 +124,7 @@ tspan C99Parser::match_builtin_type_suffix(tspan s) {
 
 //------------------------------------------------------------------------------
 
-void C99Parser::dump_tokens() {
+void CParser::dump_tokens() {
   for (auto& t : tokens) {
     t.dump_token();
   }

@@ -23,7 +23,7 @@ struct JsonParser {
   using number    = Seq<integer, Opt<fraction>, Opt<exponent>>;
   // clang-format on
 
-  static cspan match(void* ctx, cspan s) {
+  static text_span match(void* ctx, text_span s) {
     return number::match(ctx, s);
   }
 };

@@ -7,36 +7,35 @@
 #include "matcheroni/Parseroni.hpp"
 #include "matcheroni/Utilities.hpp"
 
+#include <array>
 #include <stdio.h>
 #include <string>
 #include <vector>
-#include <array>
 
-#include "examples/c99_parser/c_constants.hpp"
-#include "examples/c99_parser/SST.hpp"
-#include "examples/c99_parser/Lexeme.hpp"
-#include "examples/c99_parser/C99Lexer.hpp"
-#include "examples/c99_parser/Token.hpp"
-#include "examples/c99_parser/ParseNode.hpp"
-#include "examples/c99_parser/TypeScope.hpp"
+#include "examples/c_parser/c_constants.hpp"
+#include "examples/c_parser/CLexeme.hpp"
+#include "examples/c_parser/CLexer.hpp"
+#include "examples/c_parser/CNode.hpp"
+#include "examples/c_parser/CScope.hpp"
+#include "examples/c_parser/CToken.hpp"
+#include "examples/SST.hpp"
 
-struct C99Parser;
-struct Lexeme;
-struct C99ParseNode;
-struct SlabAlloc;
-struct Token;
-struct TypeScope;
+struct CLexeme;
+struct CNode;
+struct CParser;
+struct CScope;
+struct CToken;
 
-using tspan = matcheroni::Span<Token>;
+using tspan = matcheroni::Span<CToken>;
 
 //------------------------------------------------------------------------------
 
-class C99Parser : public matcheroni::ContextBase<C99ParseNode> {
+class CParser : public matcheroni::ContextBase<CNode> {
  public:
-  C99Parser();
+  CParser();
 
   void reset();
-  bool parse(std::vector<Lexeme>& lexemes);
+  bool parse(std::vector<CLexeme>& lexemes);
 
   tspan match_builtin_type_base  (tspan s);
   tspan match_builtin_type_prefix(tspan s);
@@ -48,17 +47,17 @@ class C99Parser : public matcheroni::ContextBase<C99ParseNode> {
   tspan match_enum_type   (tspan s);
   tspan match_typedef_type(tspan s);
 
-  void add_class_type  (const Token* a);
-  void add_struct_type (const Token* a);
-  void add_union_type  (const Token* a);
-  void add_enum_type   (const Token* a);
-  void add_typedef_type(const Token* a);
+  void add_class_type  (const CToken* a);
+  void add_struct_type (const CToken* a);
+  void add_union_type  (const CToken* a);
+  void add_enum_type   (const CToken* a);
+  void add_typedef_type(const CToken* a);
 
   void push_scope();
   void pop_scope();
 
-  void append_node(C99ParseNode* node);
-  void enclose_nodes(C99ParseNode* start, C99ParseNode* node);
+  void append_node(CNode* node);
+  void enclose_nodes(CNode* start, CNode* node);
 
   void dump_stats();
   void dump_lexemes();
@@ -68,8 +67,8 @@ class C99Parser : public matcheroni::ContextBase<C99ParseNode> {
 
   //----------------------------------------
 
-  std::vector<Token> tokens;
-  TypeScope* type_scope;
+  std::vector<CToken> tokens;
+  CScope* type_scope;
 };
 
 //------------------------------------------------------------------------------

@@ -1,33 +1,33 @@
 // SPDX-FileCopyrightText:  2023 Austin Appleby <aappleby@gmail.com>
 // SPDX-License-Identifier: MIT License
 
-#include "examples/c99_parser/c_constants.hpp"
-#include "examples/c99_parser/Lexeme.hpp"
+#include "examples/c_parser/c_constants.hpp"
+#include "examples/c_parser/CLexeme.hpp"
 
 #include <stdio.h>
 
 //------------------------------------------------------------------------------
 
-Lexeme::Lexeme(LexemeType type, matcheroni::cspan s) {
+CLexeme::CLexeme(LexemeType type, matcheroni::text_span s) {
   this->type = type;
   this->span = s;
 }
 
 //----------------------------------------------------------------------------
 
-int Lexeme::len() const {
+int CLexeme::len() const {
   return span.len();
 }
 
-bool Lexeme::is_bof() const {
+bool CLexeme::is_bof() const {
   return type == LEX_BOF;
 }
 
-bool Lexeme::is_eof() const {
+bool CLexeme::is_eof() const {
   return type == LEX_EOF;
 }
 
-bool Lexeme::is_gap() const {
+bool CLexeme::is_gap() const {
   switch(type) {
     case LEX_NEWLINE:
     case LEX_SPACE:
@@ -42,7 +42,7 @@ bool Lexeme::is_gap() const {
 
 //----------------------------------------------------------------------------
 
-const char* Lexeme::type_to_str() const {
+const char* CLexeme::type_to_str() const {
   switch(type) {
     case LEX_INVALID    : return "LEX_INVALID";
     case LEX_SPACE      : return "LEX_SPACE";
@@ -67,7 +67,7 @@ const char* Lexeme::type_to_str() const {
 
 //----------------------------------------------------------------------------
 
-uint32_t Lexeme::type_to_color() const {
+uint32_t CLexeme::type_to_color() const {
   switch(type) {
     case LEX_INVALID    : return 0x0000FF;
     case LEX_SPACE      : return 0x804040;
@@ -92,7 +92,7 @@ uint32_t Lexeme::type_to_color() const {
 
 //----------------------------------------
 
-void Lexeme::dump_lexeme() const {
+void CLexeme::dump_lexeme() const {
   if (type == LEX_BOF) {
     printf("{<bof>     }");
     return;

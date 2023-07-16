@@ -6,18 +6,17 @@
 #include "matcheroni/Matcheroni.hpp"
 #include "matcheroni/Utilities.hpp"
 
-#include "examples/c99_parser/ParseNode.hpp"
-#include "examples/c99_parser/Lexeme.hpp"
-#include "examples/c99_parser/SST.hpp"
-#include "examples/c99_parser/Trace.hpp"
-#include "examples/c99_parser/c_constants.hpp"
-#include "examples/c99_parser/C99Parser.hpp"
+#include "examples/c_parser/c_constants.hpp"
+#include "examples/c_parser/CLexeme.hpp"
+#include "examples/c_parser/CNode.hpp"
+#include "examples/c_parser/CParser.hpp"
+#include "examples/SST.hpp"
 
 #include <assert.h>
 
 using namespace matcheroni;
 
-struct Token;
+struct CToken;
 
 #if 1
 
@@ -64,8 +63,8 @@ using opt_comma_separated = Opt<comma_separated<P>>;
 // this.
 
 template <StringParam lit>
-struct Keyword : public C99ParseNode, PatternWrapper<Keyword<lit>> {
-  static_assert(SST<c99_keywords>::contains(lit.str_val));
+struct Keyword : public CNode, PatternWrapper<Keyword<lit>> {
+  static_assert(SST<c_keywords>::contains(lit.str_val));
 
   static tspan match(void* ctx, tspan s) {
     if (!s) return s.fail();
@@ -77,7 +76,7 @@ struct Keyword : public C99ParseNode, PatternWrapper<Keyword<lit>> {
 };
 
 template <StringParam lit>
-struct Literal2 : public C99ParseNode, PatternWrapper<Literal2<lit>> {
+struct Literal2 : public CNode, PatternWrapper<Literal2<lit>> {
   static tspan match(void* ctx, tspan s) {
     if (!s) return s.fail();
     if (atom_cmp(ctx, s.a, lit)) return s.fail();
@@ -94,12 +93,12 @@ struct Literal2 : public C99ParseNode, PatternWrapper<Literal2<lit>> {
 
 template <typename NodeType>
 struct NodeMaker {
-  static Token* match(void* ctx, Token* a, Token* b) {
+  static CToken* match(void* ctx, CToken* a, CToken* b) {
     if (!a || a == b) return nullptr;
 
-    print_trace_start<NodeType, Token>(a);
+    print_trace_start<NodeType, CToken>(a);
     auto end = NodeType::pattern::match(ctx, s);
-    print_trace_end<NodeType, Token>(a, end);
+    print_trace_end<NodeType, CToken>(a, end);
 
     if (end && end != a) {
       auto node = new NodeType();
@@ -111,12 +110,12 @@ struct NodeMaker {
 
 template <typename NodeType>
 struct LeafMaker {
-  static Token* match(void* ctx, Token* a, Token* b) {
+  static CToken* match(void* ctx, CToken* a, CToken* b) {
     if (!a || a == b) return nullptr;
 
-    print_trace_start<NodeType, Token>(a);
+    print_trace_start<NodeType, CToken>(a);
     auto end = NodeType::pattern::match(ctx, s);
-    print_trace_end<NodeType, Token>(a, end);
+    print_trace_end<NodeType, CToken>(a, end);
 
     if (end && end != a) {
       auto node = new NodeType();
@@ -150,45 +149,45 @@ inline tspan match_punct(void* ctx, tspan s) {
 //------------------------------------------------------------------------------
 
 template <auto P>
-struct NodeAtom : public C99ParseNode, PatternWrapper<NodeAtom<P>> {
+struct NodeAtom : public CNode, PatternWrapper<NodeAtom<P>> {
   using pattern = Atom<P>;
 };
 
 template <StringParam lit>
-struct NodeKeyword : public C99ParseNode, PatternWrapper<NodeKeyword<lit>> {
+struct NodeKeyword : public CNode, PatternWrapper<NodeKeyword<lit>> {
   using pattern = Keyword<lit>;
 };
 
 template <StringParam lit>
-struct NodeLiteral : public C99ParseNode, PatternWrapper<NodeLiteral<lit>> {
+struct NodeLiteral : public CNode, PatternWrapper<NodeLiteral<lit>> {
   using pattern = Literal2<lit>;
 };
 
 //------------------------------------------------------------------------------
 // Our builtin types are any sequence of prefixes followed by a builtin type
 
-struct NodeBuiltinType : public C99ParseNode, PatternWrapper<NodeBuiltinType> {
-  using match_prefix = Ref<&C99Parser::match_builtin_type_prefix>;
-  using match_base = Ref<&C99Parser::match_builtin_type_base>;
-  using match_suffix = Ref<&C99Parser::match_builtin_type_suffix>;
+struct NodeBuiltinType : public CNode, PatternWrapper<NodeBuiltinType> {
+  using match_prefix = Ref<&CParser::match_builtin_type_prefix>;
+  using match_base = Ref<&CParser::match_builtin_type_base>;
+  using match_suffix = Ref<&CParser::match_builtin_type_suffix>;
 
   // clang-format off
   using pattern =
   Seq<
     Any<
       Seq<
-        Capture<"prefix", match_prefix, C99ParseNode>,
+        Capture<"prefix", match_prefix, CNode>,
         And<match_base>
       >
     >,
-    Capture<"base", match_base, C99ParseNode>,
-    Opt<Capture<"suffix", match_suffix, C99ParseNode>>
+    Capture<"base", match_base, CNode>,
+    Opt<Capture<"suffix", match_suffix, CNode>>
   >;
   // clang-format on
 };
 
-struct NodeTypedefType : public C99ParseNode, PatternWrapper<NodeTypedefType> {
-  using pattern = Ref<&C99Parser::match_typedef_type>;
+struct NodeTypedefType : public CNode, PatternWrapper<NodeTypedefType> {
+  using pattern = Ref<&CParser::match_typedef_type>;
 };
 
 
@@ -199,7 +198,7 @@ struct NodeTypedefType : public C99ParseNode, PatternWrapper<NodeTypedefType> {
 // - Because "uint8_t *x = 5" gets misparsed as an expression if uint8_t matches
 // as an identifier
 
-struct NodeIdentifier : public C99ParseNode, PatternWrapper<NodeIdentifier> {
+struct NodeIdentifier : public CNode, PatternWrapper<NodeIdentifier> {
   using pattern =
   Seq<
     Not<NodeBuiltinType>,
@@ -210,26 +209,26 @@ struct NodeIdentifier : public C99ParseNode, PatternWrapper<NodeIdentifier> {
 
 //------------------------------------------------------------------------------
 
-struct NodePreproc : public C99ParseNode, PatternWrapper<NodePreproc> {
+struct NodePreproc : public CNode, PatternWrapper<NodePreproc> {
   using pattern = Atom<LEX_PREPROC>;
 };
 
 //------------------------------------------------------------------------------
 
-struct NodeConstant : public C99ParseNode, PatternWrapper<NodeConstant> {
+struct NodeConstant : public CNode, PatternWrapper<NodeConstant> {
   using pattern =
   Oneof<
-    Capture<"float",  Atom<LEX_FLOAT>,        C99ParseNode>,
-    Capture<"int",    Atom<LEX_INT>,          C99ParseNode>,
-    Capture<"char",   Atom<LEX_CHAR>,         C99ParseNode>,
-    Capture<"string", Some<Atom<LEX_STRING>>, C99ParseNode>
+    Capture<"float",  Atom<LEX_FLOAT>,        CNode>,
+    Capture<"int",    Atom<LEX_INT>,          CNode>,
+    Capture<"char",   Atom<LEX_CHAR>,         CNode>,
+    Capture<"string", Some<Atom<LEX_STRING>>, CNode>
   >;
 };
 
 //------------------------------------------------------------------------------
 
 template <StringParam lit>
-struct NodePrefixOp : public C99ParseNode, PatternWrapper<NodePrefixOp<lit>> {
+struct NodePrefixOp : public CNode, PatternWrapper<NodePrefixOp<lit>> {
   NodePrefixOp() {
     precedence = prefix_precedence(lit.str_val);
     assoc = prefix_assoc(lit.str_val);
@@ -241,7 +240,7 @@ struct NodePrefixOp : public C99ParseNode, PatternWrapper<NodePrefixOp<lit>> {
 //------------------------------------------------------------------------------
 
 template <StringParam lit>
-struct NodeBinaryOp : public C99ParseNode, PatternWrapper<NodeBinaryOp<lit>> {
+struct NodeBinaryOp : public CNode, PatternWrapper<NodeBinaryOp<lit>> {
   NodeBinaryOp() {
     precedence = binary_precedence(lit.str_val);
     assoc = binary_assoc(lit.str_val);
@@ -253,7 +252,7 @@ struct NodeBinaryOp : public C99ParseNode, PatternWrapper<NodeBinaryOp<lit>> {
 //------------------------------------------------------------------------------
 
 template <StringParam lit>
-struct NodeSuffixOp : public C99ParseNode, PatternWrapper<NodeSuffixOp<lit>> {
+struct NodeSuffixOp : public CNode, PatternWrapper<NodeSuffixOp<lit>> {
   NodeSuffixOp() {
     precedence = suffix_precedence(lit.str_val);
     assoc = suffix_assoc(lit.str_val);
@@ -265,7 +264,7 @@ struct NodeSuffixOp : public C99ParseNode, PatternWrapper<NodeSuffixOp<lit>> {
 
 //------------------------------------------------------------------------------
 
-struct NodeQualifier : public C99ParseNode, PatternWrapper<NodeQualifier> {
+struct NodeQualifier : public CNode, PatternWrapper<NodeQualifier> {
   static tspan match(void* ctx, tspan s) {
     matcheroni_assert(s.is_valid());
     auto span = s.a->lex->span;
@@ -281,7 +280,7 @@ struct NodeQualifier : public C99ParseNode, PatternWrapper<NodeQualifier> {
 
 //------------------------------------------------------------------------------
 
-struct NodeAsmSuffix : public C99ParseNode, PatternWrapper<NodeAsmSuffix> {
+struct NodeAsmSuffix : public CNode, PatternWrapper<NodeAsmSuffix> {
   using pattern =
   Seq<
     Oneof<
@@ -290,7 +289,7 @@ struct NodeAsmSuffix : public C99ParseNode, PatternWrapper<NodeAsmSuffix> {
       Keyword<"__asm__">
     >,
     Atom<'('>,
-    Capture<"code", Some<NodeAtom<LEX_STRING>>, C99ParseNode>,
+    Capture<"code", Some<NodeAtom<LEX_STRING>>, CNode>,
     Atom<')'>
   >;
 };
@@ -298,7 +297,7 @@ struct NodeAsmSuffix : public C99ParseNode, PatternWrapper<NodeAsmSuffix> {
 //------------------------------------------------------------------------------
 
 
-struct NodeAccessSpecifier : public C99ParseNode, PatternWrapper<NodeAccessSpecifier> {
+struct NodeAccessSpecifier : public CNode, PatternWrapper<NodeAccessSpecifier> {
   using pattern =
   Seq<
     Oneof<
@@ -314,11 +313,11 @@ struct NodeAccessSpecifier : public C99ParseNode, PatternWrapper<NodeAccessSpeci
 //   unary-expression
 //   ( type-name ) cast-expression
 
-struct NodeParenType : public C99ParseNode, public PatternWrapper<NodeParenType> {
+struct NodeParenType : public CNode, public PatternWrapper<NodeParenType> {
   using pattern = Seq<Atom<'('>, NodeTypeName, Atom<')'>>;
 };
 
-struct NodePrefixCast : public C99ParseNode, public PatternWrapper<NodePrefixCast> {
+struct NodePrefixCast : public CNode, public PatternWrapper<NodePrefixCast> {
   NodePrefixCast() {
     precedence = 3;
     assoc = -2;
@@ -330,12 +329,12 @@ struct NodePrefixCast : public C99ParseNode, public PatternWrapper<NodePrefixCas
 
 //------------------------------------------------------------------------------
 
-struct NodeExpressionParen : public C99ParseNode, PatternWrapper<NodeExpressionParen> {
+struct NodeExpressionParen : public CNode, PatternWrapper<NodeExpressionParen> {
   using pattern =
       DelimitedList<Atom<'('>, NodeExpression, Atom<','>, Atom<')'>>;
 };
 
-struct NodeSuffixParen : public C99ParseNode, PatternWrapper<NodeSuffixParen> {
+struct NodeSuffixParen : public CNode, PatternWrapper<NodeSuffixParen> {
   NodeSuffixParen() {
     precedence = 2;
     assoc = 2;
@@ -347,12 +346,12 @@ struct NodeSuffixParen : public C99ParseNode, PatternWrapper<NodeSuffixParen> {
 
 //------------------------------------------------------------------------------
 
-struct NodeExpressionBraces : public C99ParseNode, PatternWrapper<NodeExpressionBraces> {
+struct NodeExpressionBraces : public CNode, PatternWrapper<NodeExpressionBraces> {
   using pattern =
       DelimitedList<Atom<'{'>, NodeExpression, Atom<','>, Atom<'}'>>;
 };
 
-struct NodeSuffixBraces : public C99ParseNode, PatternWrapper<NodeSuffixBraces> {
+struct NodeSuffixBraces : public CNode, PatternWrapper<NodeSuffixBraces> {
   NodeSuffixBraces() {
     precedence = 2;
     assoc = 2;
@@ -365,7 +364,7 @@ struct NodeSuffixBraces : public C99ParseNode, PatternWrapper<NodeSuffixBraces> 
 
 //------------------------------------------------------------------------------
 
-struct NodeSuffixSubscript : public C99ParseNode, PatternWrapper<NodeSuffixSubscript> {
+struct NodeSuffixSubscript : public CNode, PatternWrapper<NodeSuffixSubscript> {
   NodeSuffixSubscript() {
     precedence = 2;
     assoc = 2;
@@ -378,7 +377,7 @@ struct NodeSuffixSubscript : public C99ParseNode, PatternWrapper<NodeSuffixSubsc
 //------------------------------------------------------------------------------
 // This is a weird ({...}) thing that GCC supports
 
-struct NodeExpressionGccCompound : public C99ParseNode, PatternWrapper<NodeExpressionGccCompound> {
+struct NodeExpressionGccCompound : public CNode, PatternWrapper<NodeExpressionGccCompound> {
   using pattern =
   Seq<
     Opt<Keyword<"__extension__">>,
@@ -390,12 +389,12 @@ struct NodeExpressionGccCompound : public C99ParseNode, PatternWrapper<NodeExpre
 
 //------------------------------------------------------------------------------
 
-struct NodeExpressionTernary : public C99ParseNode {};
-struct NodeExpressionBinary : public C99ParseNode {};
-struct NodeExpressionPrefix : public C99ParseNode {};
-struct NodeExpressionSuffix : public C99ParseNode {};
+struct NodeExpressionTernary : public CNode {};
+struct NodeExpressionBinary : public CNode {};
+struct NodeExpressionPrefix : public CNode {};
+struct NodeExpressionSuffix : public CNode {};
 
-struct NodeExpressionSizeof : public C99ParseNode, PatternWrapper<NodeExpressionSizeof> {
+struct NodeExpressionSizeof : public CNode, PatternWrapper<NodeExpressionSizeof> {
   using pattern =
   Seq<
     Keyword<"sizeof">,
@@ -407,7 +406,7 @@ struct NodeExpressionSizeof : public C99ParseNode, PatternWrapper<NodeExpression
   >;
 };
 
-struct NodeExpressionAlignof : public C99ParseNode, PatternWrapper<NodeExpressionAlignof> {
+struct NodeExpressionAlignof : public CNode, PatternWrapper<NodeExpressionAlignof> {
   using pattern =
       Seq<Keyword<"__alignof__">, Oneof<NodeParenType, NodeExpressionParen>>;
 };
@@ -432,7 +431,7 @@ struct NodeExpressionOffsetof : public ParseNode {
 //----------------------------------------
 
 template <StringParam lit>
-struct NodePrefixKeyword : public C99ParseNode, PatternWrapper<NodePrefixKeyword<lit>> {
+struct NodePrefixKeyword : public CNode, PatternWrapper<NodePrefixKeyword<lit>> {
   NodePrefixKeyword() {
     precedence = 3;
     assoc = -2;
@@ -506,7 +505,7 @@ Seq<
 
 //----------------------------------------
 
-struct NodeTernaryOp : public C99ParseNode, PatternWrapper<NodeTernaryOp> {
+struct NodeTernaryOp : public CNode, PatternWrapper<NodeTernaryOp> {
   NodeTernaryOp() {
     precedence = 16;
     assoc = -1;
@@ -518,7 +517,7 @@ struct NodeTernaryOp : public C99ParseNode, PatternWrapper<NodeTernaryOp> {
 
 //----------------------------------------
 
-struct NodeExpression : public C99ParseNode, PatternWrapper<NodeExpression> {
+struct NodeExpression : public CNode, PatternWrapper<NodeExpression> {
   static tspan match_binary_op(void* ctx, tspan s) {
     matcheroni_assert(s);
 
@@ -711,7 +710,7 @@ struct NodeExpression : public C99ParseNode, PatternWrapper<NodeExpression> {
 #if 0
     {
       printf("---EXPRESSION---\n");
-      const Token* c = a;
+      const CToken* c = a;
       while(1) {
         //c->dump_token();
         if (auto s = c->lex->span) {
@@ -735,13 +734,13 @@ struct NodeExpression : public C99ParseNode, PatternWrapper<NodeExpression> {
   //----------------------------------------
 
   static tspan match(void* ctx, tspan s) {
-    //print_trace_start<NodeExpression, Token>(a);
+    //print_trace_start<NodeExpression, CToken>(a);
     auto end = match2(ctx, s);
     if (end) {
       //auto node = new NodeExpression();
       //node->init_node(ctx, a, end - 1, a->lex->span, (end - 1)->lex->span);
     }
-    //print_trace_end<NodeExpression, Token>(a, end);
+    //print_trace_end<NodeExpression, CToken>(a, end);
     return end;
   }
 };
@@ -749,7 +748,7 @@ struct NodeExpression : public C99ParseNode, PatternWrapper<NodeExpression> {
 //------------------------------------------------------------------------------
 // 20010911-1.c - Attribute can be empty
 
-struct NodeAttribute : public C99ParseNode, public PatternWrapper<NodeAttribute> {
+struct NodeAttribute : public CNode, public PatternWrapper<NodeAttribute> {
   // clang-format off
   using pattern =
   Seq<
@@ -769,7 +768,7 @@ struct NodeAttribute : public C99ParseNode, public PatternWrapper<NodeAttribute>
 
 //------------------------------------------------------------------------------
 
-struct NodeAlignas : public C99ParseNode, public PatternWrapper<NodeAlignas> {
+struct NodeAlignas : public CNode, public PatternWrapper<NodeAlignas> {
   // clang-format off
   using pattern =
   Seq<
@@ -783,7 +782,7 @@ struct NodeAlignas : public C99ParseNode, public PatternWrapper<NodeAlignas> {
 
 //------------------------------------------------------------------------------
 
-struct NodeDeclspec : public C99ParseNode, public PatternWrapper<NodeDeclspec> {
+struct NodeDeclspec : public CNode, public PatternWrapper<NodeDeclspec> {
   // clang-format off
   using pattern =
   Seq<
@@ -805,26 +804,26 @@ struct NodeModifier : public PatternWrapper<NodeModifier> {
 
 //------------------------------------------------------------------------------
 
-struct NodeTypeDecl : public C99ParseNode, public PatternWrapper<NodeTypeDecl> {
+struct NodeTypeDecl : public CNode, public PatternWrapper<NodeTypeDecl> {
   using pattern =
       Seq<Any<NodeModifier>, NodeSpecifier, Opt<NodeAbstractDeclarator>>;
 };
 
 //------------------------------------------------------------------------------
 
-struct NodePointer : public C99ParseNode, public PatternWrapper<NodePointer> {
+struct NodePointer : public CNode, public PatternWrapper<NodePointer> {
   using pattern = Seq<Literal2<"*">, Any<Literal2<"*">, NodeModifier>>;
 };
 
 //------------------------------------------------------------------------------
 
-struct NodeEllipsis : public C99ParseNode, public PatternWrapper<NodeEllipsis> {
+struct NodeEllipsis : public CNode, public PatternWrapper<NodeEllipsis> {
   using pattern = Ref<match_punct<"...">>;
 };
 
 //------------------------------------------------------------------------------
 
-struct NodeParam : public C99ParseNode, public PatternWrapper<NodeParam> {
+struct NodeParam : public CNode, public PatternWrapper<NodeParam> {
   using pattern = Oneof<NodeEllipsis,
                         Seq<Any<NodeModifier>, NodeSpecifier, Any<NodeModifier>,
                             Opt<NodeDeclarator, NodeAbstractDeclarator>>,
@@ -833,13 +832,13 @@ struct NodeParam : public C99ParseNode, public PatternWrapper<NodeParam> {
 
 //------------------------------------------------------------------------------
 
-struct NodeParamList : public C99ParseNode, public PatternWrapper<NodeParamList> {
+struct NodeParamList : public CNode, public PatternWrapper<NodeParamList> {
   using pattern = DelimitedList<Atom<'('>, NodeParam, Atom<','>, Atom<')'>>;
 };
 
 //------------------------------------------------------------------------------
 
-struct NodeArraySuffix : public C99ParseNode, public PatternWrapper<NodeArraySuffix> {
+struct NodeArraySuffix : public CNode, public PatternWrapper<NodeArraySuffix> {
   // clang-format off
   using pattern =
   Oneof<
@@ -853,20 +852,20 @@ struct NodeArraySuffix : public C99ParseNode, public PatternWrapper<NodeArraySuf
 
 //------------------------------------------------------------------------------
 
-struct NodeTemplateArgs : public C99ParseNode, public PatternWrapper<NodeTemplateArgs> {
+struct NodeTemplateArgs : public CNode, public PatternWrapper<NodeTemplateArgs> {
   using pattern =
       DelimitedList<Atom<'<'>, NodeExpression, Atom<','>, Atom<'>'>>;
 };
 
 //------------------------------------------------------------------------------
 
-struct NodeAtomicType : public C99ParseNode, public PatternWrapper<NodeAtomicType> {
+struct NodeAtomicType : public CNode, public PatternWrapper<NodeAtomicType> {
   using pattern = Seq<Keyword<"_Atomic">, Atom<'('>, NodeTypeDecl, Atom<')'>>;
 };
 
 //------------------------------------------------------------------------------
 
-struct NodeSpecifier : public C99ParseNode, public PatternWrapper<NodeSpecifier> {
+struct NodeSpecifier : public CNode, public PatternWrapper<NodeSpecifier> {
   // clang-format off
   using pattern =
   Seq<
@@ -909,7 +908,7 @@ struct NodeSpecifier : public C99ParseNode, public PatternWrapper<NodeSpecifier>
 // (6.7.6) type-name:
 //   specifier-qualifier-list abstract-declaratoropt
 
-struct NodeTypeName : public C99ParseNode, public PatternWrapper<NodeTypeName> {
+struct NodeTypeName : public CNode, public PatternWrapper<NodeTypeName> {
   using pattern =
       Seq<Some<NodeSpecifier, NodeModifier>, Opt<NodeAbstractDeclarator>>;
 };
@@ -922,13 +921,13 @@ struct NodeTypeName : public C99ParseNode, public PatternWrapper<NodeTypeName> {
 //   declarator
 //   declaratoropt : constant-expression
 
-struct NodeBitSuffix : public C99ParseNode, public PatternWrapper<NodeBitSuffix> {
+struct NodeBitSuffix : public CNode, public PatternWrapper<NodeBitSuffix> {
   using pattern = Seq<Atom<':'>, NodeExpression>;
 };
 
 //------------------------------------------------------------------------------
 
-struct NodeAbstractDeclarator : public C99ParseNode,
+struct NodeAbstractDeclarator : public CNode,
                                 public PatternWrapper<NodeAbstractDeclarator> {
   using pattern = Seq<Opt<NodePointer>,
                       Opt<Seq<Atom<'('>, NodeAbstractDeclarator, Atom<')'>>>,
@@ -937,7 +936,7 @@ struct NodeAbstractDeclarator : public C99ParseNode,
 
 //------------------------------------------------------------------------------
 
-struct NodeDeclarator : public C99ParseNode, public PatternWrapper<NodeDeclarator> {
+struct NodeDeclarator : public CNode, public PatternWrapper<NodeDeclarator> {
   using pattern =
       Seq<Any<NodeAttribute, NodeModifier, NodePointer>,
           Oneof<NodeIdentifier, Seq<Atom<'('>, NodeDeclarator, Atom<')'>>>,
@@ -947,7 +946,7 @@ struct NodeDeclarator : public C99ParseNode, public PatternWrapper<NodeDeclarato
 
 //------------------------------------------------------------------------------
 
-struct NodeDeclaratorList : public C99ParseNode,
+struct NodeDeclaratorList : public CNode,
                             public PatternWrapper<NodeDeclaratorList> {
   // clang-format off
   using pattern =
@@ -991,27 +990,27 @@ struct NodeField : public PatternWrapper<NodeField> {
   // clang-format on
 };
 
-struct NodeFieldList : public C99ParseNode, public PatternWrapper<NodeFieldList> {
+struct NodeFieldList : public CNode, public PatternWrapper<NodeFieldList> {
   using pattern = DelimitedBlock<Atom<'{'>, NodeField, Atom<'}'>>;
 };
 
 //------------------------------------------------------------------------------
 
-struct NodeNamespace : public C99ParseNode, public PatternWrapper<NodeNamespace> {
+struct NodeNamespace : public CNode, public PatternWrapper<NodeNamespace> {
   using pattern =
       Seq<Keyword<"namespace">, Opt<NodeIdentifier>, Opt<NodeFieldList>>;
 };
 
 //------------------------------------------------------------------------------
 
-struct NodeStructType : public C99ParseNode, public PatternWrapper<NodeStructType> {
-  using pattern = Ref<&C99Parser::match_struct_type>;
+struct NodeStructType : public CNode, public PatternWrapper<NodeStructType> {
+  using pattern = Ref<&CParser::match_struct_type>;
 };
 
 struct NodeStructTypeAdder : public NodeIdentifier {
   static tspan match(void* ctx, tspan s) {
     if (auto end = NodeIdentifier::match(ctx, s)) {
-      ((C99Parser*)ctx)->add_struct_type(s.a);
+      ((CParser*)ctx)->add_struct_type(s.a);
       return end;
     } else if (auto end = NodeTypedefType::match(ctx, s)) {
       // Already typedef'd
@@ -1022,7 +1021,7 @@ struct NodeStructTypeAdder : public NodeIdentifier {
   }
 };
 
-struct NodeStruct : public C99ParseNode, public PatternWrapper<NodeStruct> {
+struct NodeStruct : public CNode, public PatternWrapper<NodeStruct> {
   // clang-format off
   using pattern =
   Seq<
@@ -1039,9 +1038,9 @@ struct NodeStruct : public C99ParseNode, public PatternWrapper<NodeStruct> {
 
 //------------------------------------------------------------------------------
 
-struct NodeUnionType : public C99ParseNode {
+struct NodeUnionType : public CNode {
   static tspan match(void* ctx, tspan s) {
-    auto context = ((C99Parser*)ctx);
+    auto context = ((CParser*)ctx);
     return context->match_union_type(s);
   }
 };
@@ -1049,7 +1048,7 @@ struct NodeUnionType : public C99ParseNode {
 struct NodeUnionTypeAdder : public NodeIdentifier {
   static tspan match(void* ctx, tspan s) {
     if (auto end = NodeIdentifier::match(ctx, s)) {
-      ((C99Parser*)ctx)->add_union_type(s.a);
+      ((CParser*)ctx)->add_union_type(s.a);
       return end;
     } else if (auto end = NodeTypedefType::match(ctx, s)) {
       // Already typedef'd
@@ -1060,7 +1059,7 @@ struct NodeUnionTypeAdder : public NodeIdentifier {
   }
 };
 
-struct NodeUnion : public C99ParseNode, public PatternWrapper<NodeUnion> {
+struct NodeUnion : public CNode, public PatternWrapper<NodeUnion> {
   // clang-format off
   using pattern =
   Seq<
@@ -1077,14 +1076,14 @@ struct NodeUnion : public C99ParseNode, public PatternWrapper<NodeUnion> {
 
 //------------------------------------------------------------------------------
 
-struct NodeClassType : public C99ParseNode, public PatternWrapper<NodeClassType> {
-  using pattern = Ref<&C99Parser::match_class_type>;
+struct NodeClassType : public CNode, public PatternWrapper<NodeClassType> {
+  using pattern = Ref<&CParser::match_class_type>;
 };
 
 struct NodeClassTypeAdder : public NodeIdentifier {
   static tspan match(void* ctx, tspan s) {
     if (auto end = NodeIdentifier::match(ctx, s)) {
-      ((C99Parser*)ctx)->add_class_type(s.a);
+      ((CParser*)ctx)->add_class_type(s.a);
       return end;
     } else if (auto end = NodeTypedefType::match(ctx, s)) {
       // Already typedef'd
@@ -1095,7 +1094,7 @@ struct NodeClassTypeAdder : public NodeIdentifier {
   }
 };
 
-struct NodeClass : public C99ParseNode, public PatternWrapper<NodeClass> {
+struct NodeClass : public CNode, public PatternWrapper<NodeClass> {
   // clang-format off
   using pattern =
   Seq<
@@ -1112,27 +1111,27 @@ struct NodeClass : public C99ParseNode, public PatternWrapper<NodeClass> {
 
 //------------------------------------------------------------------------------
 
-struct NodeTemplateParams : public C99ParseNode,
+struct NodeTemplateParams : public CNode,
                             public PatternWrapper<NodeTemplateParams> {
   using pattern =
       DelimitedList<Atom<'<'>, NodeDeclaration, Atom<','>, Atom<'>'>>;
 };
 
-struct NodeTemplate : public C99ParseNode, public PatternWrapper<NodeTemplate> {
+struct NodeTemplate : public CNode, public PatternWrapper<NodeTemplate> {
   using pattern = Seq<NodeLiteral<"template">, NodeTemplateParams, NodeClass>;
 };
 
 //------------------------------------------------------------------------------
 // FIXME should probably have a few diffeerent versions instead of all the opts
 
-struct NodeEnumType : public C99ParseNode, public PatternWrapper<NodeEnumType> {
-  using pattern = Ref<&C99Parser::match_enum_type>;
+struct NodeEnumType : public CNode, public PatternWrapper<NodeEnumType> {
+  using pattern = Ref<&CParser::match_enum_type>;
 };
 
 struct NodeEnumTypeAdder : public NodeIdentifier {
   static tspan match(void* ctx, tspan s) {
     if (auto end = NodeIdentifier::match(ctx, s)) {
-      ((C99Parser*)ctx)->add_enum_type(s.a);
+      ((CParser*)ctx)->add_enum_type(s.a);
       return end;
     } else if (auto end = NodeTypedefType::match(ctx, s)) {
       // Already typedef'd
@@ -1143,16 +1142,16 @@ struct NodeEnumTypeAdder : public NodeIdentifier {
   }
 };
 
-struct NodeEnumerator : public C99ParseNode, public PatternWrapper<NodeEnumerator> {
+struct NodeEnumerator : public CNode, public PatternWrapper<NodeEnumerator> {
   using pattern = Seq<NodeIdentifier, Opt<Seq<Atom<'='>, NodeExpression>>>;
 };
 
-struct NodeEnumerators : public C99ParseNode, public PatternWrapper<NodeEnumerators> {
+struct NodeEnumerators : public CNode, public PatternWrapper<NodeEnumerators> {
   using pattern =
       DelimitedList<Atom<'{'>, NodeEnumerator, Atom<','>, Atom<'}'>>;
 };
 
-struct NodeEnum : public C99ParseNode, public PatternWrapper<NodeEnum> {
+struct NodeEnum : public CNode, public PatternWrapper<NodeEnum> {
   // clang-format off
   using pattern =
   Seq<
@@ -1168,7 +1167,7 @@ struct NodeEnum : public C99ParseNode, public PatternWrapper<NodeEnum> {
 
 //------------------------------------------------------------------------------
 
-struct NodeDesignation : public C99ParseNode, public PatternWrapper<NodeDesignation> {
+struct NodeDesignation : public CNode, public PatternWrapper<NodeDesignation> {
   // clang-format off
   using pattern =
   Some<
@@ -1179,7 +1178,7 @@ struct NodeDesignation : public C99ParseNode, public PatternWrapper<NodeDesignat
   // clang-format on
 };
 
-struct NodeInitializerList : public C99ParseNode, public PatternWrapper<NodeInitializerList> {
+struct NodeInitializerList : public CNode, public PatternWrapper<NodeInitializerList> {
   using pattern = DelimitedList<
       Atom<'{'>,
       Seq<Opt<Seq<NodeDesignation, Atom<'='>>,
@@ -1190,7 +1189,7 @@ struct NodeInitializerList : public C99ParseNode, public PatternWrapper<NodeInit
       Atom<','>, Atom<'}'>>;
 };
 
-struct NodeSuffixInitializerList : public C99ParseNode, public PatternWrapper<NodeSuffixInitializerList> {
+struct NodeSuffixInitializerList : public CNode, public PatternWrapper<NodeSuffixInitializerList> {
   NodeSuffixInitializerList() {
     precedence = 2;
     assoc = 2;
@@ -1213,13 +1212,13 @@ struct NodeSuffixInitializerList : public C99ParseNode, public PatternWrapper<No
   // clang-format on
 };
 
-struct NodeInitializer : public C99ParseNode, public PatternWrapper<NodeInitializer> {
+struct NodeInitializer : public CNode, public PatternWrapper<NodeInitializer> {
   using pattern = Oneof<NodeInitializerList, NodeExpression>;
 };
 
 //------------------------------------------------------------------------------
 
-struct NodeFunctionIdentifier : public C99ParseNode,
+struct NodeFunctionIdentifier : public CNode,
                                 public PatternWrapper<NodeFunctionIdentifier> {
   // clang-format off
   using pattern =
@@ -1236,7 +1235,7 @@ struct NodeFunctionIdentifier : public C99ParseNode,
 // function-definition:
 //     declaration-specifiers declarator declaration-listopt compound-statement
 
-struct NodeFunctionDefinition : public C99ParseNode,
+struct NodeFunctionDefinition : public CNode,
                                 public PatternWrapper<NodeFunctionDefinition> {
   // clang-format off
   using pattern =
@@ -1258,7 +1257,7 @@ struct NodeFunctionDefinition : public C99ParseNode,
 
 //------------------------------------------------------------------------------
 
-struct NodeConstructor : public C99ParseNode, public PatternWrapper<NodeConstructor> {
+struct NodeConstructor : public CNode, public PatternWrapper<NodeConstructor> {
   // clang-format off
   using pattern =
   Seq<
@@ -1275,7 +1274,7 @@ struct NodeConstructor : public C99ParseNode, public PatternWrapper<NodeConstruc
 //------------------------------------------------------------------------------
 // FIXME this is messy
 
-struct NodeDeclaration : public C99ParseNode, public PatternWrapper<NodeDeclaration> {
+struct NodeDeclaration : public CNode, public PatternWrapper<NodeDeclaration> {
   // clang-format off
   using pattern =
   Seq<
@@ -1301,24 +1300,24 @@ struct NodeDeclaration : public C99ParseNode, public PatternWrapper<NodeDeclarat
 template <typename P>
 struct PushPopScope {
   static tspan match(void* ctx, tspan s) {
-    ((C99Parser*)ctx)->push_scope();
+    ((CParser*)ctx)->push_scope();
 
     auto end = P::match(ctx, s);
 
-    ((C99Parser*)ctx)->pop_scope();
+    ((CParser*)ctx)->pop_scope();
 
     return end;
   }
 };
 
-struct NodeStatementCompound : public C99ParseNode, public PatternWrapper<NodeStatementCompound> {
+struct NodeStatementCompound : public CNode, public PatternWrapper<NodeStatementCompound> {
   using pattern =
       PushPopScope<DelimitedBlock<Atom<'{'>, NodeStatement, Atom<'}'>>>;
 };
 
 //------------------------------------------------------------------------------
 
-struct NodeStatementFor : public C99ParseNode, public PatternWrapper<NodeStatementFor> {
+struct NodeStatementFor : public CNode, public PatternWrapper<NodeStatementFor> {
   // clang-format off
   using pattern =
   Seq<
@@ -1342,11 +1341,11 @@ struct NodeStatementFor : public C99ParseNode, public PatternWrapper<NodeStateme
 
 //------------------------------------------------------------------------------
 
-struct NodeStatementElse : public C99ParseNode, public PatternWrapper<NodeStatementElse> {
+struct NodeStatementElse : public CNode, public PatternWrapper<NodeStatementElse> {
   using pattern = Seq<Keyword<"else">, NodeStatement>;
 };
 
-struct NodeStatementIf : public C99ParseNode, public PatternWrapper<NodeStatementIf> {
+struct NodeStatementIf : public CNode, public PatternWrapper<NodeStatementIf> {
   using pattern =
       Seq<Keyword<"if">,
 
@@ -1357,13 +1356,13 @@ struct NodeStatementIf : public C99ParseNode, public PatternWrapper<NodeStatemen
 
 //------------------------------------------------------------------------------
 
-struct NodeStatementReturn : public C99ParseNode, public PatternWrapper<NodeStatementReturn> {
+struct NodeStatementReturn : public CNode, public PatternWrapper<NodeStatementReturn> {
   using pattern = Seq<Keyword<"return">, Opt<NodeExpression>, Atom<';'>>;
 };
 
 //------------------------------------------------------------------------------
 
-struct NodeStatementCase : public C99ParseNode, public PatternWrapper<NodeStatementCase> {
+struct NodeStatementCase : public CNode, public PatternWrapper<NodeStatementCase> {
   // clang-format off
   using pattern =
   Seq<
@@ -1383,7 +1382,7 @@ struct NodeStatementCase : public C99ParseNode, public PatternWrapper<NodeStatem
   // clang-format on
 };
 
-struct NodeStatementDefault : public C99ParseNode, public PatternWrapper<NodeStatementDefault> {
+struct NodeStatementDefault : public CNode, public PatternWrapper<NodeStatementDefault> {
   // clang-format off
   using pattern =
   Seq<
@@ -1400,7 +1399,7 @@ struct NodeStatementDefault : public C99ParseNode, public PatternWrapper<NodeSta
   // clang-format on
 };
 
-struct NodeStatementSwitch : public C99ParseNode, public PatternWrapper<NodeStatementSwitch> {
+struct NodeStatementSwitch : public CNode, public PatternWrapper<NodeStatementSwitch> {
   // clang-format off
   using pattern =
   Seq<
@@ -1415,7 +1414,7 @@ struct NodeStatementSwitch : public C99ParseNode, public PatternWrapper<NodeStat
 
 //------------------------------------------------------------------------------
 
-struct NodeStatementWhile : public C99ParseNode,
+struct NodeStatementWhile : public CNode,
                             public PatternWrapper<NodeStatementWhile> {
   // clang-format on
   using pattern =
@@ -1429,7 +1428,7 @@ struct NodeStatementWhile : public C99ParseNode,
 
 //------------------------------------------------------------------------------
 
-struct NodeStatementDoWhile : public C99ParseNode,
+struct NodeStatementDoWhile : public CNode,
                               public PatternWrapper<NodeStatementDoWhile> {
   // clang-format off
   using pattern =
@@ -1445,23 +1444,23 @@ struct NodeStatementDoWhile : public C99ParseNode,
 
 //------------------------------------------------------------------------------
 
-struct NodeStatementLabel : public C99ParseNode, public PatternWrapper<NodeStatementLabel> {
+struct NodeStatementLabel : public CNode, public PatternWrapper<NodeStatementLabel> {
   using pattern = Seq<NodeIdentifier, Atom<':'>, Opt<Atom<';'>>>;
 };
 
 //------------------------------------------------------------------------------
 
-struct NodeStatementBreak : public C99ParseNode, public PatternWrapper<NodeStatementBreak> {
+struct NodeStatementBreak : public CNode, public PatternWrapper<NodeStatementBreak> {
   using pattern = Seq<Keyword<"break">, Atom<';'>>;
 };
 
-struct NodeStatementContinue : public C99ParseNode, public PatternWrapper<NodeStatementContinue> {
+struct NodeStatementContinue : public CNode, public PatternWrapper<NodeStatementContinue> {
   using pattern = Seq<Keyword<"continue">, Atom<';'>>;
 };
 
 //------------------------------------------------------------------------------
 
-struct NodeAsmRef : public C99ParseNode, public PatternWrapper<NodeAsmRef> {
+struct NodeAsmRef : public CNode, public PatternWrapper<NodeAsmRef> {
   // clang-format off
   using pattern =
   Seq<
@@ -1475,13 +1474,13 @@ struct NodeAsmRef : public C99ParseNode, public PatternWrapper<NodeAsmRef> {
   // clang-format on
 };
 
-struct NodeAsmRefs : public C99ParseNode, public PatternWrapper<NodeAsmRefs> {
+struct NodeAsmRefs : public CNode, public PatternWrapper<NodeAsmRefs> {
   using pattern = comma_separated<NodeAsmRef>;
 };
 
 //------------------------------------------------------------------------------
 
-struct NodeAsmQualifiers : public C99ParseNode, public PatternWrapper<NodeAsmQualifiers> {
+struct NodeAsmQualifiers : public CNode, public PatternWrapper<NodeAsmQualifiers> {
   // clang-format off
   using pattern =
   Some<
@@ -1496,7 +1495,7 @@ struct NodeAsmQualifiers : public C99ParseNode, public PatternWrapper<NodeAsmQua
 
 //------------------------------------------------------------------------------
 
-struct NodeStatementAsm : public C99ParseNode, public PatternWrapper<NodeStatementAsm> {
+struct NodeStatementAsm : public CNode, public PatternWrapper<NodeStatementAsm> {
   // clang-format off
   using pattern =
   Seq<
@@ -1526,7 +1525,7 @@ struct NodeStatementAsm : public C99ParseNode, public PatternWrapper<NodeStateme
 
 //------------------------------------------------------------------------------
 
-struct NodeTypedef : public C99ParseNode, public PatternWrapper<NodeTypedef> {
+struct NodeTypedef : public CNode, public PatternWrapper<NodeTypedef> {
   // clang-format off
   using pattern =
   Seq<
@@ -1546,7 +1545,7 @@ struct NodeTypedef : public C99ParseNode, public PatternWrapper<NodeTypedef> {
 
   static void extract_declarator(void* ctx, NodeDeclarator* decl) {
     if (auto id = decl->child("identifier")) {
-      ((C99Parser*)ctx)->add_typedef_type(id->span.a);
+      ((CParser*)ctx)->add_typedef_type(id->span.a);
     }
 
     //for (auto child : decl) {
@@ -1567,9 +1566,9 @@ struct NodeTypedef : public C99ParseNode, public PatternWrapper<NodeTypedef> {
   }
 
   static void extract_type(void* ctx) {
-    auto context = ((C99Parser*)ctx);
+    auto context = ((CParser*)ctx);
 
-    auto node = (C99ParseNode*)context->top_tail();
+    auto node = (CNode*)context->top_tail();
 
     // node->dump_tree();
 
@@ -1610,7 +1609,7 @@ struct NodeTypedef : public C99ParseNode, public PatternWrapper<NodeTypedef> {
 
 //------------------------------------------------------------------------------
 
-struct NodeStatementGoto : public C99ParseNode, public PatternWrapper<NodeStatementGoto> {
+struct NodeStatementGoto : public CNode, public PatternWrapper<NodeStatementGoto> {
   // pr21356.c - Spec says goto should be an identifier, GCC allows expressions
   using pattern = Seq<Keyword<"goto">, NodeExpression, Atom<';'>>;
 };
@@ -1657,7 +1656,7 @@ struct NodeStatement : public PatternWrapper<NodeStatement> {
 
 //------------------------------------------------------------------------------
 
-struct NodeTranslationUnit : public C99ParseNode, public PatternWrapper<NodeTranslationUnit> {
+struct NodeTranslationUnit : public CNode, public PatternWrapper<NodeTranslationUnit> {
   // clang-format off
   using pattern =
   Any<

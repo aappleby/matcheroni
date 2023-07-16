@@ -7,20 +7,20 @@
 #include <typeinfo>
 
 #include "matcheroni/Parseroni.hpp"
-#include "examples/c99_parser/Token.hpp"
+#include "examples/c_parser/CToken.hpp"
 
-typedef matcheroni::Span<Token> tspan;
+typedef matcheroni::Span<CToken> tspan;
 
 //------------------------------------------------------------------------------
 
-struct C99ParseNode : public matcheroni::NodeBase<Token> {
+struct CNode : public matcheroni::NodeBase<CToken> {
 
-  using base = matcheroni::NodeBase<Token>;
+  using base = matcheroni::NodeBase<CToken>;
 
-  using NodeType = C99ParseNode;
+  using NodeType = CNode;
 
-  C99ParseNode* child(const char* name) {
-    return (C99ParseNode*)base::child(name);
+  CNode* child(const char* name) {
+    return (CNode*)base::child(name);
   }
 
   NodeType* node_prev() { return (NodeType*)_node_prev; }
@@ -45,7 +45,7 @@ struct C99ParseNode : public matcheroni::NodeBase<Token> {
   template <typename P>
   P* child() {
     for (auto cursor = child_head(); cursor; cursor = cursor->node_next()) {
-      if (((C99ParseNode*)cursor)->is_a<P>()) {
+      if (((CNode*)cursor)->is_a<P>()) {
         return dynamic_cast<P*>(cursor);
       }
     }
@@ -55,7 +55,7 @@ struct C99ParseNode : public matcheroni::NodeBase<Token> {
   template <typename P>
   const P* child() const {
     for (auto cursor = child_head(); cursor; cursor = cursor->node_next()) {
-      if (((C99ParseNode*)cursor)->is_a<P>()) {
+      if (((CNode*)cursor)->is_a<P>()) {
         return dynamic_cast<const P*>(cursor);
       }
     }

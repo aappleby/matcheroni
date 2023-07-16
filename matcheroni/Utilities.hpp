@@ -56,33 +56,37 @@ struct Trace {
 };
 
 //------------------------------------------------------------------------------
+// We'll be using spans of constant characters a lot, so this is a convenience
+// declaration.
 
-inline cspan to_span(const char* text) {
-  return cspan(text, text + strlen(text));
+using text_span = Span<char>;
+
+inline text_span to_span(const char* text) {
+  return text_span(text, text + strlen(text));
 }
 
-inline cspan to_span(const std::string& s) {
-  return cspan(s.data(), s.data() + s.size());
+inline text_span to_span(const std::string& s) {
+  return text_span(s.data(), s.data() + s.size());
 }
 
-inline std::string to_string(cspan s) {
+inline std::string to_string(text_span s) {
   matcheroni_assert(s.a);
   return std::string(s.a, s.b);
 }
 
-inline bool operator==(cspan a, const std::string& b) {
+inline bool operator==(text_span a, const std::string& b) {
   return to_string(a) == b;
 }
 
-inline bool operator==(const std::string& a, cspan b) {
+inline bool operator==(const std::string& a, text_span b) {
   return a == to_string(b);
 }
 
-inline bool operator!=(cspan a, const std::string& b) {
+inline bool operator!=(text_span a, const std::string& b) {
   return to_string(a) != b;
 }
 
-inline bool operator!=(const std::string& a, cspan b) {
+inline bool operator!=(const std::string& a, text_span b) {
   return a != to_string(b);
 }
 
@@ -147,7 +151,7 @@ inline void set_color(uint32_t c) {
 
 //------------------------------------------------------------------------------
 
-inline void print_flat(cspan s, size_t max_len = 0) {
+inline void print_flat(text_span s, size_t max_len = 0) {
   if (max_len == 0) max_len = s.len();
 
   if (!s.is_valid()) {
@@ -183,7 +187,7 @@ inline void print_flat(cspan s, size_t max_len = 0) {
 
 //------------------------------------------------------------------------------
 
-inline void print_bar(int depth, cspan s, const char* val,
+inline void print_bar(int depth, text_span s, const char* val,
                       const char* suffix) {
   set_color(0);
   printf("{");
@@ -207,7 +211,7 @@ inline void print_bar(int depth, cspan s, const char* val,
 
 //------------------------------------------------------------------------------
 
-inline void print_match(cspan text, cspan match) {
+inline void print_match(text_span text, text_span match) {
   printf("Match found:\n");
   print_flat(text);
   printf("\n");
@@ -230,7 +234,7 @@ inline void print_match(cspan text, cspan match) {
 
 //------------------------------------------------------------------------------
 
-inline void print_fail(cspan text, cspan tail) {
+inline void print_fail(text_span text, text_span tail) {
   printf("Match failed here:\n");
   print_flat(text);
   printf("\n");
