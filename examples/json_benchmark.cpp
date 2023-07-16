@@ -50,7 +50,7 @@ int main(int argc, char** argv) {
   double time_accum = 0;
   double line_accum = 0;
 
-  Context<TextNode>* context = new Context<TextNode>();
+  TextContext* context = new TextContext();
 
   for (auto path : paths) {
     if (verbose) {
@@ -105,7 +105,7 @@ int main(int argc, char** argv) {
 
     if (dump_tree) {
       printf("Parse tree:\n");
-      for (auto n = context->top_head(); n; n = n->node_next()) {
+      for (auto n = context->_top_head; n; n = n->node_next()) {
         print_tree(n);
       }
     }
@@ -114,8 +114,8 @@ int main(int argc, char** argv) {
       printf("Slab current      %d\n",  SlabAlloc::slabs().current_size);
       printf("Slab max          %d\n",  SlabAlloc::slabs().max_size);
       printf("Tree nodes        %ld\n", context->node_count());
-      printf("Constructor calls %ld\n", NodeBase::constructor_calls);
-      printf("Destructor calls  %ld\n", NodeBase::destructor_calls);
+      printf("Constructor calls %ld\n", NodeBase<char>::constructor_calls);
+      printf("Destructor calls  %ld\n", NodeBase<char>::destructor_calls);
     }
 
     delete [] buf;

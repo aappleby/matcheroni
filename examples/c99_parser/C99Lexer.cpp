@@ -413,7 +413,7 @@ cspan match_raw_string_literal(void* ctx, cspan s) {
   using d_char_sequence = Some<d_char>;
   using backref_type    = Opt<d_char_sequence>;
 
-  using r_terminator    = Seq<Atom<')'>, MatchBackref<"raw_delim", const char, backref_type>, Atom<'"'>>;
+  using r_terminator    = Seq<Atom<')'>, MatchBackref<"raw_delim", char, backref_type>, Atom<'"'>>;
   using r_char          = Seq<Not<r_terminator>, AnyAtom>;
   using r_char_sequence = Some<r_char>;
 
@@ -421,11 +421,11 @@ cspan match_raw_string_literal(void* ctx, cspan s) {
     Opt<encoding_prefix>,
     Atom<'R'>,
     Atom<'"'>,
-    StoreBackref<"raw_delim", const char, backref_type>,
+    StoreBackref<"raw_delim", char, backref_type>,
     Atom<'('>,
     Opt<r_char_sequence>,
     Atom<')'>,
-    MatchBackref<"raw_delim", const char, backref_type>,
+    MatchBackref<"raw_delim", char, backref_type>,
     Atom<'"'>
   >;
 

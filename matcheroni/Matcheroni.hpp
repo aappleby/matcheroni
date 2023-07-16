@@ -83,7 +83,7 @@ struct Span {
 
 // We'll be using spans of constant characters a lot, so this is a convenience
 // declaration.
-using cspan = Span<const char>;
+using cspan = Span<char>;
 
 //------------------------------------------------------------------------------
 // Matcheroni is based on building trees of "matcher" functions. A matcher
@@ -102,7 +102,7 @@ using matcher_function = Span<atom> (*)(void* ctx, Span<atom> s);
 // Matchers will often need to compare spans against null-delimited strings ala
 // strcmp(), so we provide this function for convenience.
 
-inline int strcmp_span(Span<const char> s, const char* lit) {
+inline int strcmp_span(Span<char> s, const char* lit) {
   while (1) {
     auto ca = s.a == s.b ? 0 : *s.a;
     auto cb = *lit;
@@ -304,7 +304,7 @@ struct Seq {
   template <typename atom>
   static Span<atom> match(void* ctx, Span<atom> s) {
     matcheroni_assert(s.is_valid());
-    auto end = P::match(ctx, s);
+    Span<atom> end = P::match(ctx, s);
     if (!end.is_valid()) return end;
     return Seq<rest...>::match(ctx, end);
   }

@@ -19,7 +19,7 @@ using namespace matcheroni;
 
 struct Token;
 
-#if 0
+#if 1
 
 //------------------------------------------------------------------------------
 
@@ -138,7 +138,7 @@ inline tspan match_punct(void* ctx, tspan s) {
     if (atom_cmp(ctx, s.a, LEX_PUNCT)) {
       return s.fail();
     }
-    if (atom_cmp(ctx, s.a->lex->lex->span.a, lit.str_val[i])) {
+    if (atom_cmp(ctx, s.a->lex->span.a, lit.str_val[i])) {
       return s.fail();
     }
     s.advance(1);
@@ -268,7 +268,7 @@ struct NodeSuffixOp : public C99ParseNode, PatternWrapper<NodeSuffixOp<lit>> {
 struct NodeQualifier : public C99ParseNode, PatternWrapper<NodeQualifier> {
   static tspan match(void* ctx, tspan s) {
     matcheroni_assert(s.is_valid());
-    auto span = s.a->lex->lex->span;
+    auto span = s.a->lex->span;
     if (SST<qualifiers>::match(span.a, span.b)) {
       return s.advance(1);
     }
@@ -527,7 +527,7 @@ struct NodeExpression : public C99ParseNode, PatternWrapper<NodeExpression> {
     }
 
     // clang-format off
-    switch (s.a->lex->lex->span.a[0]) {
+    switch (s.a->lex->span.a[0]) {
       case '+':
         return Oneof<NodeBinaryOp<"+=">, NodeBinaryOp<"+">>::match(ctx, s);
       case '-':
@@ -909,7 +909,7 @@ struct NodeSpecifier : public C99ParseNode, public PatternWrapper<NodeSpecifier>
 // (6.7.6) type-name:
 //   specifier-qualifier-list abstract-declaratoropt
 
-struct NodeTypeName : public C99ParseNode {
+struct NodeTypeName : public C99ParseNode, public PatternWrapper<NodeTypeName> {
   using pattern =
       Seq<Some<NodeSpecifier, NodeModifier>, Opt<NodeAbstractDeclarator>>;
 };
@@ -1546,10 +1546,11 @@ struct NodeTypedef : public C99ParseNode, public PatternWrapper<NodeTypedef> {
 
   static void extract_declarator(void* ctx, NodeDeclarator* decl) {
     if (auto id = decl->child("identifier")) {
-      ((C99Parser*)ctx)->add_typedef_type(id->lex->span.a);
+      ((C99Parser*)ctx)->add_typedef_type(id->span.a);
     }
 
-    for (auto child : decl) {
+    //for (auto child : decl) {
+    for (auto child = decl->child_head(); child; child = child->node_next()) {
       if (auto decl = child->as_a<NodeDeclarator>()) {
         extract_declarator(ctx, decl);
       }
@@ -1558,16 +1559,17 @@ struct NodeTypedef : public C99ParseNode, public PatternWrapper<NodeTypedef> {
 
   static void extract_declarator_list(void* ctx, NodeDeclaratorList* decls) {
     if (!decls) return;
-    for (auto child : decls) {
+    for (auto child = decls->child_head(); child; child = child->node_next()) {
       if (auto decl = child->as_a<NodeDeclarator>()) {
         extract_declarator(ctx, decl);
       }
     }
   }
 
-  static void extract_type(void* ctx, Token* a, Token* b) {
+  static void extract_type(void* ctx) {
     auto context = ((C99Parser*)ctx);
-    //auto node = a->lex->span;
+
+    auto node = (C99ParseNode*)context->top_tail();
 
     // node->dump_tree();
 
@@ -1599,9 +1601,9 @@ struct NodeTypedef : public C99ParseNode, public PatternWrapper<NodeTypedef> {
     matcheroni_assert(false);
   }
 
-  static Token* match(void* ctx, Token* a, Token* b) {
-    auto end = NodeMaker::match(ctx, s);
-    if (end) extract_type(ctx, s);
+  static tspan match(void* ctx, tspan s) {
+    auto end = pattern::match(ctx, s);
+    if (end) extract_type(ctx);
     return end;
   }
 };

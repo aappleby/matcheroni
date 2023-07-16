@@ -17,7 +17,7 @@ C99Parser::C99Parser() {
 //------------------------------------------------------------------------------
 
 void C99Parser::reset() {
-  Context::reset();
+  ContextBase::reset();
 
   tokens.clear();
   while (type_scope->parent) pop_scope();

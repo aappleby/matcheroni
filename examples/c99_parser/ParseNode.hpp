@@ -13,28 +13,39 @@ typedef matcheroni::Span<Token> tspan;
 
 //------------------------------------------------------------------------------
 
-struct C99ParseNode : public matcheroni::SpanNode<Token> {
+struct C99ParseNode : public matcheroni::NodeBase<Token> {
 
-  using matcheroni::SpanNode<Token>::SpanNode;
+  using base = matcheroni::NodeBase<Token>;
+
+  using NodeType = C99ParseNode;
 
   C99ParseNode* child(const char* name) {
-    return (C99ParseNode*)matcheroni::SpanNode<Token>::child(name);
+    return (C99ParseNode*)base::child(name);
   }
+
+  NodeType* node_prev() { return (NodeType*)_node_prev; }
+  NodeType* node_next() { return (NodeType*)_node_next; }
+
+  const NodeType* node_prev() const { return (NodeType*)_node_prev; }
+  const NodeType* node_next() const { return (NodeType*)_node_next; }
+
+  NodeType* child_head() { return (NodeType*)_child_head; }
+  NodeType* child_tail() { return (NodeType*)_child_tail; }
+
+  const NodeType* child_head() const { return (NodeType*)_child_head; }
+  const NodeType* child_tail() const { return (NodeType*)_child_tail; }
 
   //----------------------------------------
 
-  /*
   template <typename P>
   bool is_a() const {
     return typeid(*this) == typeid(P);
   }
-  */
 
-  /*
   template <typename P>
   P* child() {
-    for (auto cursor = head; cursor; cursor = cursor->next) {
-      if (cursor->is_a<P>()) {
+    for (auto cursor = child_head(); cursor; cursor = cursor->node_next()) {
+      if (((C99ParseNode*)cursor)->is_a<P>()) {
         return dynamic_cast<P*>(cursor);
       }
     }
@@ -43,14 +54,15 @@ struct C99ParseNode : public matcheroni::SpanNode<Token> {
 
   template <typename P>
   const P* child() const {
-    for (auto cursor = head; cursor; cursor = cursor->next) {
-      if (cursor->is_a<P>()) {
+    for (auto cursor = child_head(); cursor; cursor = cursor->node_next()) {
+      if (((C99ParseNode*)cursor)->is_a<P>()) {
         return dynamic_cast<const P*>(cursor);
       }
     }
     return nullptr;
   }
 
+  /*
   template <typename P>
   P* search() {
     if (this->is_a<P>()) return this->as_a<P>();

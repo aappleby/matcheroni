@@ -39,7 +39,7 @@ int main(int argc, char** argv) {
   // get a non-null endpoint for the match.
 
   printf("Parsing regex `%s`\n", span.a);
-  Context<TextNode>* context = new Context<TextNode>();
+  TextContext* context = new TextContext();
   auto parse_end = parse_regex(context, span);
 
   if (parse_end.a == nullptr) {
@@ -55,7 +55,7 @@ int main(int argc, char** argv) {
   printf("Parse tree:\n");
   printf("----------------------------------------\n");
   for (auto n = context->top_head(); n; n = n->node_next()) {
-    print_tree((TextNode*)n);
+    print_tree(n);
   }
   printf("----------------------------------------\n");
   printf("\n");

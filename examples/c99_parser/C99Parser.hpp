@@ -31,7 +31,7 @@ using tspan = matcheroni::Span<Token>;
 
 //------------------------------------------------------------------------------
 
-class C99Parser : public matcheroni::Context<C99ParseNode> {
+class C99Parser : public matcheroni::ContextBase<C99ParseNode> {
  public:
   C99Parser();
 

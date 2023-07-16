@@ -9,20 +9,20 @@
 
 using namespace matcheroni;
 
-struct C99ParseNode : public TextNode {
+struct TestNode : public TextNode {
   using TextNode::TextNode;
 
-  C99ParseNode* node_prev()  { return (C99ParseNode*)TextNode::node_prev(); }
-  C99ParseNode* node_next()  { return (C99ParseNode*)TextNode::node_next(); }
+  TestNode* node_prev()  { return (TestNode*)TextNode::node_prev(); }
+  TestNode* node_next()  { return (TestNode*)TextNode::node_next(); }
 
-  const C99ParseNode* node_prev() const { return (const C99ParseNode*)TextNode::node_prev(); }
-  const C99ParseNode* node_next() const { return (const C99ParseNode*)TextNode::node_next(); }
+  const TestNode* node_prev() const { return (const TestNode*)TextNode::node_prev(); }
+  const TestNode* node_next() const { return (const TestNode*)TextNode::node_next(); }
 
-  C99ParseNode* child_head() { return (C99ParseNode*)TextNode::child_head(); }
-  C99ParseNode* child_tail() { return (C99ParseNode*)TextNode::child_tail(); }
+  TestNode* child_head() { return (TestNode*)TextNode::child_head(); }
+  TestNode* child_tail() { return (TestNode*)TextNode::child_tail(); }
 
-  const C99ParseNode* child_head() const { return (const C99ParseNode*)TextNode::child_head(); }
-  const C99ParseNode* child_tail() const { return (const C99ParseNode*)TextNode::child_tail(); }
+  const TestNode* child_head() const { return (const TestNode*)TextNode::child_head(); }
+  const TestNode* child_tail() const { return (const TestNode*)TextNode::child_tail(); }
 
   void dump_tree(std::string& out) {
     if (strcmp(match_name, "atom") == 0) {
@@ -30,7 +30,7 @@ struct C99ParseNode : public TextNode {
     } else if (strcmp(match_name, "list") == 0) {
       out.push_back('(');
       for (auto c = child_head(); c; c = c->node_next()) {
-        ((C99ParseNode*)c)->dump_tree(out);
+        ((TestNode*)c)->dump_tree(out);
         if (c->node_next()) out.push_back(',');
       }
       out.push_back(')');
@@ -46,8 +46,8 @@ struct C99ParseNode : public TextNode {
 struct TinyLisp {
   static cspan match(void* ctx, cspan s) {
     return Oneof<
-      Capture<"atom", atom, C99ParseNode>,
-      Capture<"list", list, C99ParseNode>
+      Capture<"atom", atom, TestNode>,
+      Capture<"list", list, TestNode>
     >::match(ctx, s);
   }
 
@@ -72,7 +72,7 @@ void check_hash(const Context& context, uint64_t hash_a) {
 
 void test_basic() {
   printf("test_basic()\n");
-  Context<C99ParseNode> context;
+  TextContext context;
   cspan span;
   cspan tail;
 
@@ -86,7 +86,7 @@ void test_basic() {
 
     printf("Round-trip s-expression:\n");
     std::string dump;
-    context.top_head()->dump_tree(dump);
+    ((TestNode*)context.top_head())->dump_tree(dump);
     printf("Old : %s\n", text.c_str());
     printf("New : %s\n", dump.c_str());
     matcheroni_assert(text == dump && "Mismatch!");
@@ -125,18 +125,18 @@ void test_rewind() {
   using pattern =
   Oneof<
     Seq<
-      Capture<"a", Atom<'a'>, C99ParseNode>,
-      Capture<"b", Atom<'b'>, C99ParseNode>,
-      Capture<"c", Atom<'c'>, C99ParseNode>,
-      Capture<"d", Atom<'d'>, C99ParseNode>,
-      Capture<"e", Atom<'e'>, C99ParseNode>,
+      Capture<"a", Atom<'a'>, TestNode>,
+      Capture<"b", Atom<'b'>, TestNode>,
+      Capture<"c", Atom<'c'>, TestNode>,
+      Capture<"d", Atom<'d'>, TestNode>,
+      Capture<"e", Atom<'e'>, TestNode>,
 
-      Capture<"g", Atom<'g'>, C99ParseNode>
+      Capture<"g", Atom<'g'>, TestNode>
     >,
-    Capture<"lit", Lit<"abcdef">, C99ParseNode>
+    Capture<"lit", Lit<"abcdef">, TestNode>
   >;
 
-  Context<C99ParseNode> context;
+  TextContext context;
   auto tail = pattern::match(&context, span);
 
   print_match(span, span - tail);
@@ -144,10 +144,10 @@ void test_rewind() {
 
   //check_hash(context, 0x2850a87bce45242a);
 
-  printf("sizeof(ParseNode) %ld\n", sizeof(C99ParseNode));
+  printf("sizeof(ParseNode) %ld\n", sizeof(TestNode));
   printf("node count %ld\n", context.top_head()->node_count());
-  printf("constructor calls %ld\n", NodeBase::constructor_calls);
-  printf("destructor calls %ld\n", NodeBase::destructor_calls);
+  printf("constructor calls %ld\n", TextNode::constructor_calls);
+  printf("destructor calls %ld\n", TextNode::destructor_calls);
   printf("max size %d\n", SlabAlloc::slabs().max_size);
   printf("current size %d\n", SlabAlloc::slabs().current_size);
 
@@ -168,12 +168,12 @@ struct BeginEndTest {
   template<typename P>
   using suffixed =
   CaptureBegin<
-    C99ParseNode,
+    TestNode,
     P,
     Opt<
-      CaptureEnd<"plus", Atom<'+'>, C99ParseNode>,
-      CaptureEnd<"star", Atom<'*'>, C99ParseNode>,
-      CaptureEnd<"opt",  Atom<'?'>, C99ParseNode>
+      CaptureEnd<"plus", Atom<'+'>, TestNode>,
+      CaptureEnd<"star", Atom<'*'>, TestNode>,
+      CaptureEnd<"opt",  Atom<'?'>, TestNode>
     >
   >;
 
@@ -181,7 +181,7 @@ struct BeginEndTest {
   suffixed<Capture<
     "atom",
     Some<Range<'a','z'>, Range<'A','Z'>, Range<'0','9'>>,
-    C99ParseNode
+    TestNode
   >>;
 
   using car = Opt<Ref<match>>;
@@ -191,7 +191,7 @@ struct BeginEndTest {
   suffixed<Capture<
     "list",
     Seq<Atom<'['>, ws, car, cdr, ws, Atom<']'>>,
-    C99ParseNode
+    TestNode
   >>;
 };
 
@@ -200,7 +200,7 @@ void test_begin_end() {
 
   auto text = to_span("[ [abc,ab?,cdb+] , [a,b,c*,d,e,f] ]");
 
-  Context<C99ParseNode> context;
+  TextContext context;
   auto tail = BeginEndTest::match(&context, text);
 
   print_match(text, text - tail);
@@ -208,10 +208,10 @@ void test_begin_end() {
 
   check_hash(context, 0x401403cbefc2cba9);
 
-  printf("sizeof(ParseNode) %ld\n", sizeof(C99ParseNode));
+  printf("sizeof(ParseNode) %ld\n", sizeof(TestNode));
   printf("node count %ld\n", context.top_head()->node_count());
-  printf("constructor calls %ld\n", NodeBase::constructor_calls);
-  printf("destructor calls %ld\n", NodeBase::destructor_calls);
+  printf("constructor calls %ld\n", TextNode::constructor_calls);
+  printf("destructor calls %ld\n", TextNode::destructor_calls);
   printf("max size %d\n", SlabAlloc::slabs().max_size);
   printf("current size %d\n", SlabAlloc::slabs().current_size);
 
@@ -231,20 +231,20 @@ struct Pathological {
 
   using pattern =
   Oneof<
-    Capture<"plus",  Seq<Atom<'['>, Ref<match>, Atom<']'>, Atom<'+'>>, C99ParseNode>,
-    Capture<"minus", Seq<Atom<'['>, Ref<match>, Atom<']'>, Atom<'-'>>, C99ParseNode>,
-    Capture<"star",  Seq<Atom<'['>, Ref<match>, Atom<']'>, Atom<'*'>>, C99ParseNode>,
-    Capture<"slash", Seq<Atom<'['>, Ref<match>, Atom<']'>, Atom<'/'>>, C99ParseNode>,
-    Capture<"opt",   Seq<Atom<'['>, Ref<match>, Atom<']'>, Atom<'?'>>, C99ParseNode>,
-    Capture<"eq",    Seq<Atom<'['>, Ref<match>, Atom<']'>, Atom<'='>>, C99ParseNode>,
-    Capture<"none",  Seq<Atom<'['>, Ref<match>, Atom<']'>>, C99ParseNode>,
-    Capture<"atom",  Range<'a','z'>, C99ParseNode>
+    Capture<"plus",  Seq<Atom<'['>, Ref<match>, Atom<']'>, Atom<'+'>>, TestNode>,
+    Capture<"minus", Seq<Atom<'['>, Ref<match>, Atom<']'>, Atom<'-'>>, TestNode>,
+    Capture<"star",  Seq<Atom<'['>, Ref<match>, Atom<']'>, Atom<'*'>>, TestNode>,
+    Capture<"slash", Seq<Atom<'['>, Ref<match>, Atom<']'>, Atom<'/'>>, TestNode>,
+    Capture<"opt",   Seq<Atom<'['>, Ref<match>, Atom<']'>, Atom<'?'>>, TestNode>,
+    Capture<"eq",    Seq<Atom<'['>, Ref<match>, Atom<']'>, Atom<'='>>, TestNode>,
+    Capture<"none",  Seq<Atom<'['>, Ref<match>, Atom<']'>>, TestNode>,
+    Capture<"atom",  Range<'a','z'>, TestNode>
   >;
 };
 
 void test_pathological() {
   printf("test_pathological()\n");
-  Context<C99ParseNode> context;
+  TextContext context;
   cspan span;
   cspan tail;
 
@@ -269,16 +269,16 @@ void test_pathological() {
   print_context(&context);
   check_hash(context, 0x07a37a832d506209);
 
-  matcheroni_assert(NodeBase::constructor_calls == 137257);
-  matcheroni_assert(NodeBase::destructor_calls  == 137250);
+  matcheroni_assert(TextNode::constructor_calls == 137257);
+  matcheroni_assert(TextNode::destructor_calls  == 137250);
 
-  matcheroni_assert(SlabAlloc::slabs().max_size == sizeof(C99ParseNode) * 7);
-  matcheroni_assert(SlabAlloc::slabs().current_size == sizeof(C99ParseNode) * 7);
+  matcheroni_assert(SlabAlloc::slabs().max_size == sizeof(TestNode) * 7);
+  matcheroni_assert(SlabAlloc::slabs().current_size == sizeof(TestNode) * 7);
 
   //printf("sizeof(ParseNode) %ld\n", sizeof(ParseNode));
   //printf("node count %ld\n", context.top_head()->node_count());
-  //printf("constructor calls %ld\n", NodeBase::constructor_calls);
-  //printf("destructor calls %ld\n", NodeBase::destructor_calls);
+  //printf("constructor calls %ld\n", TextNode::constructor_calls);
+  //printf("destructor calls %ld\n", TextNode::destructor_calls);
   //printf("max size %d\n", SlabAlloc::slabs().max_size);
   //printf("current size %d\n", SlabAlloc::slabs().current_size);
 

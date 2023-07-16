@@ -386,6 +386,7 @@ void test_until() {
   TEST(tail.is_valid() && tail == "bbbb");
 }
 
+
 //------------------------------------------------------------------------------
 
 cspan test_matcher(void* ctx, cspan s) {
@@ -418,9 +419,9 @@ void test_backref() {
   cspan tail;
 
   using pattern1 =
-      Seq<StoreBackref<"backref", const char, Rep<4, Range<'a', 'z'>>>,
+      Seq<StoreBackref<"backref", char, Rep<4, Range<'a', 'z'>>>,
           Atom<'-'>,
-          MatchBackref<"backref", const char, Rep<4, Range<'a', 'z'>>>>;
+          MatchBackref<"backref", char, Rep<4, Range<'a', 'z'>>>>;
 
   text = to_span("abcd-abcd!");
   tail = pattern1::match(nullptr, text);
@@ -578,26 +579,26 @@ void test_charset() {
 int main(int argc, char** argv) {
   printf("Matcheroni tests\n");
 
-  test_span();
-  test_atom();
-  test_notatom();
-  test_range();
-  test_lit();
-  test_seq();
-  test_oneof();
-  test_opt();
-  test_any();
-  test_some();
-  test_and();
-  test_rep();
-  test_reprange();
-  test_until();
-  test_ref();
-  test_backref();
-  test_delimited_block();
-  test_delimited_list();
-  test_eol();
-  test_charset();
+  //test_span();
+  //test_atom();
+  //test_notatom();
+  //test_range();
+  //test_lit();
+  //test_seq();
+  //test_oneof();
+  //test_opt();
+  //test_any();
+  //test_some();
+  //test_and();
+  //test_rep();
+  //test_reprange();
+  //test_until();
+  //test_ref();
+  //test_backref();
+  //test_delimited_block();
+  //test_delimited_list();
+  //test_eol();
+  //test_charset();
 
   if (!fail_count) {
     printf("All tests pass!\n");

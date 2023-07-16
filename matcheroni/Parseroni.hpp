@@ -121,7 +121,10 @@ struct SlabAlloc {
 
 //------------------------------------------------------------------------------
 
+template<typename atom>
 struct NodeBase {
+  using SpanType = Span<atom>;
+
   NodeBase() {
     constructor_calls++;
   }
@@ -172,17 +175,26 @@ struct NodeBase {
   inline static size_t constructor_calls = 0;
   inline static size_t destructor_calls = 0;
 
+
+
   const char* match_name;
   uint64_t    flags;
   NodeBase*   _node_prev;
   NodeBase*   _node_next;
   NodeBase*   _child_head;
   NodeBase*   _child_tail;
+  SpanType    span;
 };
+
+using TextNode = NodeBase<char>;
 
 //------------------------------------------------------------------------------
 
+template<typename atom>
 struct ContextBase {
+  using NodeType = NodeBase<atom>;
+  using SpanType = Span<atom>;
+
   ContextBase() {
     SlabAlloc::slabs().reset();
   }
@@ -205,8 +217,8 @@ struct ContextBase {
     //highwater = nullptr;
 
     SlabAlloc::slabs().reset();
-    NodeBase::constructor_calls = 0;
-    NodeBase::destructor_calls = 0;
+    NodeType::constructor_calls = 0;
+    NodeType::destructor_calls = 0;
   }
 
   //----------------------------------------
@@ -219,18 +231,18 @@ struct ContextBase {
 
   //----------------------------------------
 
-  NodeBase* top_head() { return _top_head; }
-  NodeBase* top_tail() { return _top_tail; }
+  NodeType* top_head() { return _top_head; }
+  NodeType* top_tail() { return _top_tail; }
 
-  const NodeBase* top_head() const { return _top_head; }
-  const NodeBase* top_tail() const { return _top_tail; }
+  const NodeType* top_head() const { return _top_head; }
+  const NodeType* top_tail() const { return _top_tail; }
 
-  void set_head(NodeBase* head) { _top_head = head; }
-  void set_tail(NodeBase* tail) { _top_tail = tail; }
+  void set_head(NodeType* head) { _top_head = head; }
+  void set_tail(NodeType* tail) { _top_tail = tail; }
 
   //----------------------------------------
 
-  void append(NodeBase* new_node) {
+  void append(NodeType* new_node) {
     new_node->_node_prev = nullptr;
     new_node->_node_next = nullptr;
     new_node->_child_head = nullptr;
@@ -248,7 +260,7 @@ struct ContextBase {
 
   //----------------------------------------
 
-  void detach(NodeBase* n) {
+  void detach(NodeType* n) {
     if (n->_node_prev) n->_node_prev->_node_next = n->_node_next;
     if (n->_node_next) n->_node_next->_node_prev = n->_node_prev;
     if (_top_head == n) _top_head = n->_node_next;
@@ -259,7 +271,7 @@ struct ContextBase {
 
   //----------------------------------------
 
-  void splice(NodeBase* new_node, NodeBase* child_head, NodeBase* child_tail) {
+  void splice(NodeType* new_node, NodeType* child_head, NodeType* child_tail) {
     new_node->_node_prev = child_head->_node_prev;
     new_node->_node_next = child_tail->_node_next;
     new_node->_child_head = child_head;
@@ -276,8 +288,27 @@ struct ContextBase {
   }
 
   //----------------------------------------
+  // There's one critical detail we need to make the factory work correctly - if
+  // we get partway through a match and then fail for some reason, we must
+  // "rewind" our match state back to the start of the failed match. This means
+  // we must also throw away any parse nodes that were created during the failed
+  // match.
 
-  void create2(NodeBase* new_node, const char* match_name, NodeBase* old_tail) {
+  void rewind(Span<atom> s) {
+    //printf("rewind\n");
+    rewind_count++;
+    while (_top_tail && _top_tail->span.b > s.a) {
+      auto dead = _top_tail;
+      set_tail(_top_tail->_node_prev);
+#ifndef FAST_MODE
+      recycle(dead);
+#endif
+    }
+  }
+
+  //----------------------------------------
+
+  void create2(NodeType* new_node, const char* match_name, NodeType* old_tail) {
     new_node->init(match_name);
 
     // Move all nodes in (old_tail,new_tail] to be children of new_node and
@@ -293,7 +324,7 @@ struct ContextBase {
   }
 
 
-  NodeBase* enclose_bookmark(NodeBase* old_tail) {
+  NodeType* enclose_bookmark(NodeType* old_tail) {
     //----------------------------------------
     // Scan down the node list to find the bookmark
 
@@ -333,7 +364,7 @@ struct ContextBase {
   // must delete the child nodes from tail to head.
 
 #ifndef FAST_MODE
-  void recycle(NodeBase* node) {
+  void recycle(NodeType* node) {
     //printf("recycle!\n");
     if (node == nullptr) return;
 
@@ -351,72 +382,13 @@ struct ContextBase {
 
   //----------------------------------------
 
-  NodeBase* _top_head = nullptr;
-  NodeBase* _top_tail = nullptr;
+  NodeType* _top_head = nullptr;
+  NodeType* _top_tail = nullptr;
   int trace_depth = 0;
-};
-
-//------------------------------------------------------------------------------
-
-template<typename atom>
-struct SpanNode : public NodeBase {
-  using NodeBase::NodeBase;
-
-  //using ContextType = Context<SpanNode<atom>>;
-  using SpanType = Span<atom>;
-
-  SpanType span;
-
-  SpanNode* node_prev()  { return (SpanNode*)NodeBase::node_prev(); }
-  SpanNode* node_next()  { return (SpanNode*)NodeBase::node_next(); }
-
-  const SpanNode* node_prev() const { return (const SpanNode*)NodeBase::node_prev(); }
-  const SpanNode* node_next() const { return (const SpanNode*)NodeBase::node_next(); }
-
-  SpanNode* child_head() { return (SpanNode*)NodeBase::child_head(); }
-  SpanNode* child_tail() { return (SpanNode*)NodeBase::child_tail(); }
-
-  const SpanNode* child_head() const { return (const SpanNode*)NodeBase::child_head(); }
-  const SpanNode* child_tail() const { return (const SpanNode*)NodeBase::child_tail(); }
-};
-
-using TextNode = SpanNode<const char>;
-
-//------------------------------------------------------------------------------
-
-template<typename node_type>
-struct Context : public ContextBase {
-  using ContextBase::ContextBase;
-  using NodeType = node_type;
-
-  NodeType* top_head() { return (NodeType*)ContextBase::top_head(); }
-  NodeType* top_tail() { return (NodeType*)ContextBase::top_tail(); }
-  const NodeType* top_head() const { return (const NodeType*)ContextBase::top_head(); }
-  const NodeType* top_tail() const { return (const NodeType*)ContextBase::top_tail(); }
-
-  //----------------------------------------
-  // There's one critical detail we need to make the factory work correctly - if
-  // we get partway through a match and then fail for some reason, we must
-  // "rewind" our match state back to the start of the failed match. This means
-  // we must also throw away any parse nodes that were created during the failed
-  // match.
-
-  template<typename atom>
-  void rewind(Span<atom> s) {
-    //printf("rewind\n");
-    rewind_count++;
-    while (_top_tail && ((SpanNode<atom>*)_top_tail)->span.b > s.a) {
-      auto dead = _top_tail;
-      set_tail(_top_tail->_node_prev);
-#ifndef FAST_MODE
-      recycle(dead);
-#endif
-    }
-  }
-
   int rewind_count = 0;
-  //const char* highwater = nullptr;
 };
+
+using TextContext = ContextBase<char>;
 
 //------------------------------------------------------------------------------
 // Matcheroni's default rewind callback does nothing, but if we provide a
@@ -425,8 +397,8 @@ struct Context : public ContextBase {
 template <>
 inline void parser_rewind(void* ctx, cspan s) {
   if (ctx) {
-    auto context = (Context<TextNode>*)ctx;
-    ((Context<TextNode>*)ctx)->rewind(s);
+    auto context = (TextContext*)ctx;
+    context->rewind(s);
   }
 }
 
@@ -437,10 +409,10 @@ inline void parser_rewind(void* ctx, cspan s) {
 
 template<typename atom, typename NodeType>
 inline Span<atom> capture(void* ctx, Span<atom> s, const char* match_name, matcher_function<atom> match) {
-  //using ContextType = typename NodeType::ContextType;
-  using SpanType = typename NodeType::SpanType;
+  using ContextType = ContextBase<atom>;
+  using SpanType = Span<atom>;
 
-  ContextBase* context = (ContextBase*)ctx;
+  ContextType* context = (ContextType*)ctx;
 
   auto old_tail = context->top_tail();
 #ifdef PARSERONI_FAST_MODE
@@ -493,7 +465,10 @@ struct Capture {
 
 template <typename atom>
 inline Span<atom> capture_begin(void* ctx, Span<atom> s, matcher_function<atom> match) {
-  ContextBase* context = (ContextBase*)ctx;
+  using ContextType = ContextBase<atom>;
+  using SpanType = Span<atom>;
+
+  ContextType* context = (ContextType*)ctx;
 
   auto old_tail = context->top_tail();
 #ifdef PARSERONI_FAST_MODE
@@ -503,7 +478,7 @@ inline Span<atom> capture_begin(void* ctx, Span<atom> s, matcher_function<atom> 
   auto end = match(ctx, s);
   if (end.is_valid()) {
     context->enclose_bookmark(old_tail);
-    ((TextNode*)context->top_tail())->span.a = s.a;
+    context->top_tail()->span.a = s.a;
   }
   else {
     context->set_tail(old_tail);
@@ -528,10 +503,10 @@ struct CaptureBegin {
 
 template<typename atom, typename NodeType>
 inline Span<atom> capture_end(void* ctx, Span<atom> s, const char* match_name, matcher_function<atom> match) {
-  //using ContextType = typename NodeType::ContextType;
-  using SpanType = typename NodeType::SpanType;
+  using ContextType = ContextBase<atom>;
+  using SpanType = Span<atom>;
 
-  ContextBase* context = (ContextBase*)ctx;
+  ContextType* context = (ContextType*)ctx;
 
   auto end = match(ctx, s);
   if (end.is_valid()) {

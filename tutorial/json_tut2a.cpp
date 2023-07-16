@@ -103,7 +103,7 @@ int main(int argc, char** argv) {
   read(path, buf, size);
 
   printf("Parsing %s\n", path);
-  Context<TextNode>* context = new Context<TextNode>();
+  TextContext* context = new TextContext();
   auto parse_end = JsonParser::match(context, cspan(buf, buf + size));
 
   if (parse_end.is_valid()) {

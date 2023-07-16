@@ -36,13 +36,16 @@ namespace matcheroni {
 
 template <StringParam match_name, typename P>
 struct Trace {
-  static cspan match(void* ctx, cspan s) {
+  template<typename atom>
+  static Span<atom> match(void* ctx, Span<atom> s) {
+    using ContextType = ContextBase<atom>;
+    using SpanType = Span<atom>;
     //printf("match_name %s\n", match_name.str_val);
 
     matcheroni_assert(s.is_valid());
     if (s.is_empty()) return s.fail();
 
-    auto parser = (ContextBase*)ctx;
+    auto parser = (ContextType*)ctx;
     print_bar(parser->trace_depth++, s, match_name.str_val, "?");
     auto end = P::match(ctx, s);
     print_bar(--parser->trace_depth, s, match_name.str_val,
@@ -85,11 +88,12 @@ inline bool operator!=(const std::string& a, cspan b) {
 
 //------------------------------------------------------------------------------
 
+#if 0
 template<typename NodeType>
 struct NodeIterator {
-  NodeIterator(NodeBase* cursor) : n(cursor) {}
+  NodeIterator(NodeType* cursor) : n(cursor) {}
   NodeIterator& operator++() {
-    n = (NodeType*)n->node_next;
+    n = (NodeType*)n->node_next();
     return *this;
   }
   bool operator!=(NodeIterator& b) const { return n != b.n; }
@@ -99,7 +103,7 @@ struct NodeIterator {
 
 template<typename NodeType>
 inline NodeIterator<NodeType> begin(NodeType* parent) {
-  return NodeIterator<NodeType>(parent->child_head);
+  return NodeIterator<NodeType>(parent->child_head());
 }
 
 template<typename NodeType>
@@ -111,7 +115,7 @@ template<typename NodeType>
 struct ConstNodeIterator {
   ConstNodeIterator(const NodeType* cursor) : n(cursor) {}
   ConstNodeIterator& operator++() {
-    n = n->node_next;
+    n = (NodeType*)n->node_next();
     return *this;
   }
   bool operator!=(const ConstNodeIterator& b) const { return n != b.n; }
@@ -121,13 +125,14 @@ struct ConstNodeIterator {
 
 template<typename NodeType>
 inline ConstNodeIterator<NodeType> begin(const NodeType* parent) {
-  return ConstNodeIterator<NodeType>(parent->child_head);
+  return ConstNodeIterator<NodeType>(parent->child_head());
 }
 
 template<typename NodeType>
 inline ConstNodeIterator<NodeType> end(const NodeType* parent) {
   return ConstNodeIterator<NodeType>(nullptr);
 }
+#endif
 
 //------------------------------------------------------------------------------
 
@@ -268,7 +273,8 @@ inline void print_escaped(const char* s, int len, unsigned int color) {
 //------------------------------------------------------------------------------
 // Prints a text representation of the parse tree.
 
-inline void print_tree(const TextNode* node, int depth = 0) {
+template<typename NodeType>
+inline void print_tree(const NodeType* node, int depth = 0) {
   print_bar(depth, node->span, node->match_name, "");
   for (auto c = node->child_head(); c; c = c->node_next()) {
     print_tree(c, depth + 1);
