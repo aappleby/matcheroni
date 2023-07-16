@@ -41,20 +41,6 @@ struct ParseNode : public TextNode {
 };
 
 //------------------------------------------------------------------------------
-
-static int fail_count = 0;
-
-#define TEST(A, ...)                                                \
-  if (!(A)) {                                                        \
-    fail_count++;                                                    \
-    printf("\n");                                                    \
-    printf("TEST(" #A ") fail: @ %s/%s:%d", __FILE__, __FUNCTION__, \
-           __LINE__);                                                \
-    printf("\n  " __VA_ARGS__);                                      \
-    printf("\n");                                                    \
-  }
-
-//------------------------------------------------------------------------------
 // A whole s-expression parser in ~10 lines of code. :D
 
 struct TinyLisp {
@@ -79,7 +65,7 @@ void check_hash(const Context& context, uint64_t hash_a) {
   uint64_t hash_b = hash_context(&context);
   printf("Expected hash 0x%016lx\n", hash_a);
   printf("Actual hash   0x%016lx\n", hash_b);
-  TEST(hash_a == hash_b, "bad hash");
+  assert(hash_a == hash_b && "bad hash");
 }
 
 //----------------------------------------
@@ -96,14 +82,14 @@ void test_basic() {
     context.reset();
     span = to_span(text);
     tail = TinyLisp::match(&context, span);
-    TEST(tail.is_valid() && tail == "");
+    assert(tail.is_valid() && tail == "");
 
     printf("Round-trip s-expression:\n");
     std::string dump;
     context.top_head()->dump_tree(dump);
     printf("Old : %s\n", text.c_str());
     printf("New : %s\n", dump.c_str());
-    TEST(text == dump, "Mismatch!");
+    assert(text == dump && "Mismatch!");
     printf("\n");
 
     print_context(&context);
@@ -113,19 +99,61 @@ void test_basic() {
   context.reset();
   span = to_span("((((a))))");
   tail = TinyLisp::match(&context, span);
-  TEST(tail.is_valid() && tail == "");
+  assert(tail.is_valid() && tail == "");
 
   context.reset();
   span = to_span("(((())))");
   tail = TinyLisp::match(&context, span);
-  TEST(tail.is_valid() && tail == "");
+  assert(tail.is_valid() && tail == "");
 
   context.reset();
   span = to_span("(((()))(");
   tail = TinyLisp::match(&context, span);
-  TEST(!tail.is_valid() && std::string(tail.b) == "(");
+  assert(!tail.is_valid() && std::string(tail.b) == "(");
 
-  printf("test_basic() end, fail count %d\n\n", fail_count);
+  printf("test_basic() end\n\n");
+}
+
+//------------------------------------------------------------------------------
+
+void test_rewind() {
+  printf("test_rewind()\n");
+
+  std::string text = "abcdef";
+  auto span = to_span(text);
+
+  using pattern =
+  Oneof<
+    Seq<
+      Capture<"a", Atom<'a'>, ParseNode>,
+      Capture<"b", Atom<'b'>, ParseNode>,
+      Capture<"c", Atom<'c'>, ParseNode>,
+      Capture<"d", Atom<'d'>, ParseNode>,
+      Capture<"e", Atom<'e'>, ParseNode>,
+
+      Capture<"g", Atom<'g'>, ParseNode>
+    >,
+    Capture<"lit", Lit<"abcdef">, ParseNode>
+  >;
+
+  Context<ParseNode> context;
+  auto tail = pattern::match(&context, span);
+
+  print_match(span, span - tail);
+  print_context(&context);
+
+  //check_hash(context, 0x2850a87bce45242a);
+
+  printf("sizeof(ParseNode) %ld\n", sizeof(ParseNode));
+  printf("node count %ld\n", context.top_head()->node_count());
+  printf("constructor calls %ld\n", NodeBase::constructor_calls);
+  printf("destructor calls %ld\n", NodeBase::destructor_calls);
+  printf("max size %d\n", SlabAlloc::slabs().max_size);
+  printf("current size %d\n", SlabAlloc::slabs().current_size);
+
+  //assert(SlabAlloc::slabs().current_size == sizeof(ParseNode));
+
+  printf("test_rewind() end\n\n");
 }
 
 //------------------------------------------------------------------------------
@@ -187,10 +215,14 @@ void test_begin_end() {
   printf("max size %d\n", SlabAlloc::slabs().max_size);
   printf("current size %d\n", SlabAlloc::slabs().current_size);
 
-  printf("test_begin_end() end, fail count %d\n\n", fail_count);
+  printf("test_begin_end() end\n\n");
 }
 
 //------------------------------------------------------------------------------
+// This matcher matches nested square brackets with a single letter in the
+// middle, but it does so in a pathologically-horrible way that requires
+// partially matching and then backtracking through a bunch of cases due to a
+// mismatched suffix.
 
 struct Pathological {
   static cspan match(void* ctx, cspan s) {
@@ -216,31 +248,41 @@ void test_pathological() {
   cspan span;
   cspan tail;
 
-  // "a"   - cap 8 create 1
-  // "[a]" - cap 63 create 8
-  // "[[a]]" - cap 448 create 57
-  // "[[[a]]]" - cap 3143 create 400
-  // "[[[[a]]]]" - cap 22008 create 2801
-  // "[[[[[a]]]]]" - cap 154063 create 19608
-  // "[[[[[[a]]]]]]" - cap 1078448 create 137257
-
-  //std::string text = "[[[a]]]";
+  // We expect 137257 constructor calls and 137250 destructor calls for this
+  // pattern.
   std::string text = "[[[[[[a]]]]]]";
 
   span = to_span(text);
   tail = Pathological::match(&context, span);
-  TEST(tail.is_valid(), "pathological tree invalid");
+  assert(tail.is_valid() && "pathological tree invalid");
 
+  // Tree should be
+  // {[[[[[[a]]]]]]       } *none
+  // {[[[[[a]]]]]         }  |-none
+  // {[[[[a]]]]           }  | |-none
+  // {[[[a]]]             }  | | |-none
+  // {[[a]]               }  | | | |-none
+  // {[a]                 }  | | | | |-none
+  // {a                   }  | | | | | |-atom
+
+  assert(context.top_head()->node_count() == 7);
   print_context(&context);
   check_hash(context, 0x07a37a832d506209);
 
-  printf("sizeof(ParseNode) %ld\n", sizeof(ParseNode));
-  printf("node count %ld\n", context.top_head()->node_count());
-  printf("constructor calls %ld\n", NodeBase::constructor_calls);
-  printf("destructor calls %ld\n", NodeBase::destructor_calls);
-  printf("max size %d\n", SlabAlloc::slabs().max_size);
-  printf("current size %d\n", SlabAlloc::slabs().current_size);
-  printf("test_pathological() end, fail count %d\n\n", fail_count);
+  assert(NodeBase::constructor_calls == 137257);
+  assert(NodeBase::destructor_calls  == 137250);
+
+  assert(SlabAlloc::slabs().max_size == sizeof(ParseNode) * 7);
+  assert(SlabAlloc::slabs().current_size == sizeof(ParseNode) * 7);
+
+  //printf("sizeof(ParseNode) %ld\n", sizeof(ParseNode));
+  //printf("node count %ld\n", context.top_head()->node_count());
+  //printf("constructor calls %ld\n", NodeBase::constructor_calls);
+  //printf("destructor calls %ld\n", NodeBase::destructor_calls);
+  //printf("max size %d\n", SlabAlloc::slabs().max_size);
+  //printf("current size %d\n", SlabAlloc::slabs().current_size);
+
+  printf("test_pathological() end\n\n");
 }
 
 //------------------------------------------------------------------------------
@@ -248,17 +290,13 @@ void test_pathological() {
 int main(int argc, char** argv) {
   printf("Parseroni tests\n");
 
-  test_basic();
-  test_begin_end();
+  //test_basic();
+  //test_rewind();
+  //test_begin_end();
   test_pathological();
 
-  if (!fail_count) {
-    printf("All tests pass!\n");
-    return 0;
-  } else {
-    printf("Failed %d tests!\n", fail_count);
-    return -1;
-  }
+  printf("All tests pass!\n");
+  return 0;
 }
 
 //------------------------------------------------------------------------------

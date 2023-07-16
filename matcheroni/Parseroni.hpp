@@ -69,7 +69,7 @@ struct SlabAlloc {
   void add_slab() {
     if (top_slab && top_slab->next) {
       top_slab = top_slab->next;
-      // DCHECK(top_slab->cursor == 0);
+      assert(top_slab->cursor == 0);
       return;
     }
 
@@ -303,6 +303,7 @@ struct ContextBase {
         break;
       }
     }
+
     if (c == nullptr) {
       // No bookmark = no capture, but _not_ a failure
       return c;
@@ -326,16 +327,6 @@ struct ContextBase {
     return c;
   }
 
-
-  /*
-  template <typename NodeType>
-  NodeType* create(const char* match_name, NodeBase* old_tail) {
-    auto new_node = new NodeType();
-    create2(new_node, match_name, old_tail);
-    return new_node;
-  }
-  */
-
   //----------------------------------------
   // Nodes _must_ be deleted in the reverse order they were allocated.
   // In practice, this means we must delete the "parent" node first and then
@@ -343,6 +334,7 @@ struct ContextBase {
 
 #ifndef FAST_MODE
   void recycle(NodeBase* node) {
+    //printf("recycle!\n");
     if (node == nullptr) return;
 
     auto tail = node->_child_tail;
@@ -358,27 +350,6 @@ struct ContextBase {
 #endif
 
   //----------------------------------------
-  // There's one critical detail we need to make the factory work correctly - if
-  // we get partway through a match and then fail for some reason, we must
-  // "rewind" our match state back to the start of the failed match. This means
-  // we must also throw away any parse nodes that were created during the failed
-  // match.
-
-#if 0
-  template<typename atom>
-  void rewind(Span<atom> s) {
-    //printf("rewind\n");
-    while (top_tail && (top_tail->span.b > s.a)) {
-      auto dead = top_tail;
-      top_tail = top_tail->node_prev;
-#ifndef FAST_MODE
-      recycle(dead);
-#endif
-    }
-  }
-#endif
-
-  //----------------------------------------
 
   NodeBase* _top_head = nullptr;
   NodeBase* _top_tail = nullptr;
@@ -387,26 +358,11 @@ struct ContextBase {
 
 //------------------------------------------------------------------------------
 
-template<typename node_type>
-struct Context : public ContextBase {
-  using ContextBase::ContextBase;
-  using NodeType = node_type;
-
-  NodeType* top_head() { return (NodeType*)ContextBase::top_head(); }
-  NodeType* top_tail() { return (NodeType*)ContextBase::top_tail(); }
-  const NodeType* top_head() const { return (const NodeType*)ContextBase::top_head(); }
-  const NodeType* top_tail() const { return (const NodeType*)ContextBase::top_tail(); }
-
-  //const char* highwater = nullptr;
-};
-
-//------------------------------------------------------------------------------
-
 template<typename atom>
 struct SpanNode : public NodeBase {
   using NodeBase::NodeBase;
 
-  using ContextType = Context<SpanNode<atom>>;
+  //using ContextType = Context<SpanNode<atom>>;
   using SpanType = Span<atom>;
 
   SpanType span;
@@ -427,33 +383,52 @@ struct SpanNode : public NodeBase {
 using TextNode = SpanNode<const char>;
 
 //------------------------------------------------------------------------------
-// Matcheroni's default rewind callback does nothing, but if we provide a
-// specialized version of it Matcheroni will call it as needed.
 
-template <typename atom>
-inline void parser_rewind(void* ctx, cspan s) {
-  // FIXME rewind not happening...
-  printf("parser_rewind\n");
-}
+template<typename node_type>
+struct Context : public ContextBase {
+  using ContextBase::ContextBase;
+  using NodeType = node_type;
 
-#if 0
-template <typename atom>
-inline void parser_rewind(void* ctx, cspan s) {
-  if (ctx) {
-    auto context = (Context*)ctx;
-    //((Context*)ctx)->rewind(s);
+  NodeType* top_head() { return (NodeType*)ContextBase::top_head(); }
+  NodeType* top_tail() { return (NodeType*)ContextBase::top_tail(); }
+  const NodeType* top_head() const { return (const NodeType*)ContextBase::top_head(); }
+  const NodeType* top_tail() const { return (const NodeType*)ContextBase::top_tail(); }
 
+  //----------------------------------------
+  // There's one critical detail we need to make the factory work correctly - if
+  // we get partway through a match and then fail for some reason, we must
+  // "rewind" our match state back to the start of the failed match. This means
+  // we must also throw away any parse nodes that were created during the failed
+  // match.
+
+  template<typename atom>
+  void rewind(Span<atom> s) {
     //printf("rewind\n");
-    while (ctx->top_tail && (ctx->top_tail->span.b > s.a)) {
-      auto dead = top_tail;
-      top_tail = top_tail->node_prev;
+    rewind_count++;
+    while (_top_tail && ((SpanNode<atom>*)_top_tail)->span.b > s.a) {
+      auto dead = _top_tail;
+      set_tail(_top_tail->_node_prev);
 #ifndef FAST_MODE
       recycle(dead);
 #endif
+    }
+  }
 
+  int rewind_count = 0;
+  //const char* highwater = nullptr;
+};
+
+//------------------------------------------------------------------------------
+// Matcheroni's default rewind callback does nothing, but if we provide a
+// specialized version of it Matcheroni will call it as needed.
+
+template <>
+inline void parser_rewind(void* ctx, cspan s) {
+  if (ctx) {
+    auto context = (Context<TextNode>*)ctx;
+    ((Context<TextNode>*)ctx)->rewind(s);
   }
 }
-#endif
 
 //------------------------------------------------------------------------------
 // To convert our pattern matches to parse nodes, we create a Factory<>
@@ -462,10 +437,10 @@ inline void parser_rewind(void* ctx, cspan s) {
 
 template<typename atom, typename NodeType>
 inline Span<atom> capture(void* ctx, Span<atom> s, const char* match_name, matcher_function<atom> match) {
-  using ContextType = typename NodeType::ContextType;
+  //using ContextType = typename NodeType::ContextType;
   using SpanType = typename NodeType::SpanType;
 
-  ContextType* context = (ContextType*)ctx;
+  ContextBase* context = (ContextBase*)ctx;
 
   auto old_tail = context->top_tail();
 #ifdef PARSERONI_FAST_MODE
@@ -475,13 +450,15 @@ inline Span<atom> capture(void* ctx, Span<atom> s, const char* match_name, match
   auto end = match(context, s);
 
   if (end.is_valid()) {
+    //printf("Capture %s\n", match_name);
     SpanType node_span = {s.a, end.a};
     auto new_node = new NodeType();
     context->create2(new_node, match_name, old_tail);
     new_node->span = node_span;
   }
   else {
-    context->set_tail(old_tail);
+    // We don't set the tail back here, rewind will do it.
+    //context->set_tail(old_tail);
 #ifdef PARSERONI_FAST_MODE
     SlabAlloc::slabs().restore_state(old_state);
 #endif
@@ -551,10 +528,10 @@ struct CaptureBegin {
 
 template<typename atom, typename NodeType>
 inline Span<atom> capture_end(void* ctx, Span<atom> s, const char* match_name, matcher_function<atom> match) {
-  using ContextType = typename NodeType::ContextType;
+  //using ContextType = typename NodeType::ContextType;
   using SpanType = typename NodeType::SpanType;
 
-  ContextType* context = (ContextType*)ctx;
+  ContextBase* context = (ContextBase*)ctx;
 
   auto end = match(ctx, s);
   if (end.is_valid()) {

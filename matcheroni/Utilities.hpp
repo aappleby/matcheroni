@@ -37,7 +37,9 @@ namespace matcheroni {
 template <StringParam match_name, typename P>
 struct Trace {
   static cspan match(void* ctx, cspan s) {
-    CHECK(s.is_valid());
+    //printf("match_name %s\n", match_name.str_val);
+
+    assert(s.is_valid());
     if (s.is_empty()) return s.fail();
 
     auto parser = (ContextBase*)ctx;

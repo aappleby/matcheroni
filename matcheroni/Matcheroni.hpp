@@ -9,14 +9,9 @@
 // SPDX-FileCopyrightText:  2023 Austin Appleby <aappleby@gmail.com>
 // SPDX-License-Identifier: MIT License
 
-#ifndef MATCHERONI_H_
-#define MATCHERONI_H_
-
+#pragma once
 #include <stdio.h>
 #include <assert.h>
-
-#define CHECK(A)   assert(A)
-#define DCHECK(A)  assert(A)
 
 namespace matcheroni {
 
@@ -36,14 +31,25 @@ struct Span {
   }
 
   Span advance(int offset) const {
-    CHECK(a);
+    assert(a);
     return {a + offset, b};
   }
 
-  Span operator-(Span s) const {
-    CHECK(a <= s.a);
-    CHECK(b == s.b);
-    return Span(a, s.a);
+  Span operator-(Span y) const {
+    auto x = *this;
+
+    if (x.a == y.a && x.b >= y.b) {
+      // chop the front off
+      return Span(y.b, x.b);
+    }
+
+    if (x.b == y.b && x.a <= y.a) {
+      // chop the back off
+      return Span(x.a, y.a);
+    }
+
+    assert(false);
+    return fail();
   }
 
   bool operator==(const Span& c) const { return a == c.a && b == c.b; }
@@ -63,12 +69,12 @@ struct Span {
   }
 
   size_t len() const {
-    CHECK(a);
+    assert(a);
     return b - a;
   }
 
-  const atom* a = 0;
-  const atom* b = 0;
+  const atom* a;
+  const atom* b;
 };
 
 // We'll be using spans of constant characters a lot, so this is a convenience
@@ -143,7 +149,7 @@ template <auto C, auto... rest>
 struct Atom<C, rest...> {
   template <typename atom>
   static Span<atom> match(void* ctx, Span<atom> s) {
-    CHECK(s.is_valid());
+    assert(s.is_valid());
     if (s.is_empty()) return s.fail();
 
     if (atom_cmp(ctx, s.a, C) == 0) {
@@ -158,7 +164,7 @@ template <auto C>
 struct Atom<C> {
   template <typename atom>
   static Span<atom> match(void* ctx, Span<atom> s) {
-    CHECK(s.is_valid());
+    assert(s.is_valid());
     if (s.is_empty()) return s.fail();
 
     if (atom_cmp(ctx, s.a, C) == 0) {
@@ -177,7 +183,7 @@ template <auto C, auto... rest>
 struct NotAtom {
   template <typename atom>
   static Span<atom> match(void* ctx, Span<atom> s) {
-    CHECK(s.is_valid());
+    assert(s.is_valid());
     if (s.is_empty()) return s.fail();
 
     if (atom_cmp(ctx, s.a, C) == 0) {
@@ -191,7 +197,7 @@ template <auto C>
 struct NotAtom<C> {
   template <typename atom>
   static Span<atom> match(void* ctx, Span<atom> s) {
-    CHECK(s.is_valid());
+    assert(s.is_valid());
     if (s.is_empty()) return s.fail();
 
     if (atom_cmp(ctx, s.a, C) == 0) {
@@ -208,7 +214,7 @@ struct NotAtom<C> {
 struct AnyAtom {
   template <typename atom>
   static Span<atom> match(void* ctx, Span<atom> s) {
-    CHECK(s.is_valid());
+    assert(s.is_valid());
     if (s.is_empty()) return s.fail();
     return s.advance(1);
   }
@@ -221,7 +227,7 @@ template <auto RA, decltype(RA) RB>
 struct Range {
   template <typename atom>
   static Span<atom> match(void* ctx, Span<atom> s) {
-    CHECK(s.is_valid());
+    assert(s.is_valid());
     if (s.is_empty()) return s.fail();
     if (atom_cmp(ctx, s.a, RA) < 0) return s.fail();
     if (atom_cmp(ctx, s.a, RB) > 0) return s.fail();
@@ -237,7 +243,7 @@ template <auto RA, decltype(RA) RB>
 struct NotRange {
   template <typename atom>
   static Span<atom> match(void* ctx, Span<atom> s) {
-    CHECK(s.is_valid());
+    assert(s.is_valid());
     if (s.is_empty()) return s.fail();
     if (atom_cmp(ctx, s.a, RA) < 0) return s.advance(1);
     if (atom_cmp(ctx, s.a, RB) > 0) return s.advance(1);
@@ -264,27 +270,14 @@ struct StringParam {
 
 // Lit<"foo">::match("foobar") == "bar"
 
-inline cspan match_lit(void* ctx, cspan s, const char* lit, int len) {
-  CHECK(s.is_valid());
+inline cspan match_lit(void* ctx, cspan s, const char* lit, size_t len) {
+  assert(s.is_valid());
   if (len > s.len()) return s.fail();
 
-  /*
-  for (int i = 0; i < len; i++) {
-    if (atom_cmp(ctx, &s.a[i], lit[i])) {
-      return s.advance(i).fail();
-    }
-  }
-  return s.advance(len);
-  */
-
-  for (int i = 0; i < len; i++) {
-    if (*s.a != *lit) {
-      return s.fail();
-    }
-    else {
-      s = s.advance(1);
-      lit++;
-    }
+  for (size_t i = 0; i < len; i++) {
+    if (*s.a != *lit) return s.fail();
+    s = s.advance(1);
+    lit++;
   }
   return s;
 }
@@ -306,7 +299,7 @@ template <typename P, typename... rest>
 struct Seq {
   template <typename atom>
   static Span<atom> match(void* ctx, Span<atom> s) {
-    CHECK(s.is_valid());
+    assert(s.is_valid());
     auto end = P::match(ctx, s);
     if (!end.is_valid()) return end;
     return Seq<rest...>::match(ctx, end);
@@ -317,7 +310,7 @@ template <typename P>
 struct Seq<P> {
   template <typename atom>
   static Span<atom> match(void* ctx, Span<atom> s) {
-    CHECK(s.is_valid());
+    assert(s.is_valid());
     return P::match(ctx, s);
   }
 };
@@ -334,7 +327,7 @@ template <typename P, typename... rest>
 struct Oneof {
   template <typename atom>
   static Span<atom> match(void* ctx, Span<atom> s) {
-    CHECK(s.is_valid());
+    assert(s.is_valid());
 
     auto c = P::match(ctx, s);
     if (c.is_valid()) {
@@ -357,7 +350,7 @@ template <typename P>
 struct Oneof<P> {
   template <typename atom>
   static Span<atom> match(void* ctx, Span<atom> s) {
-    CHECK(s.is_valid());
+    assert(s.is_valid());
 
     return P::match(ctx, s);
   }
@@ -373,7 +366,7 @@ template <typename... rest>
 struct Opt {
   template <typename atom>
   static Span<atom> match(void* ctx, Span<atom> s) {
-    CHECK(s.is_valid());
+    assert(s.is_valid());
 
     auto c = Oneof<rest...>::match(ctx, s);
     if (c.is_valid()) {
@@ -399,7 +392,7 @@ template <typename... rest>
 struct Any {
   template <typename atom>
   static Span<atom> match(void* ctx, Span<atom> s) {
-    CHECK(s.is_valid());
+    assert(s.is_valid());
     if (s.is_empty()) return s;
 
     while (1) {
@@ -421,7 +414,7 @@ struct Any {
 struct Nothing {
   template <typename atom>
   static Span<atom> match(void* ctx, Span<atom> s) {
-    CHECK(s.is_valid());
+    assert(s.is_valid());
     return s;
   }
 };
@@ -436,7 +429,7 @@ template <typename... rest>
 struct Some {
   template <typename atom>
   static Span<atom> match(void* ctx, Span<atom> s) {
-    CHECK(s.is_valid());
+    assert(s.is_valid());
     auto c = Any<rest...>::match(ctx, s);
     return (c == s) ? s.fail() : c;
   }
@@ -453,7 +446,7 @@ template <typename P>
 struct And {
   template <typename atom>
   static Span<atom> match(void* ctx, Span<atom> s) {
-    CHECK(s.is_valid());
+    assert(s.is_valid());
     auto c = P::match(ctx, s);
     /*+*/ parser_rewind(ctx, s);
     return c.is_valid() ? s : c;
@@ -470,7 +463,7 @@ template <typename P>
 struct Not {
   template <typename atom>
   static Span<atom> match(void* ctx, Span<atom> s) {
-    CHECK(s.is_valid());
+    assert(s.is_valid());
     auto c = P::match(ctx, s);
     /*+*/ parser_rewind(ctx, s);
     return c.is_valid() ? s.fail() : s;
@@ -488,7 +481,7 @@ template <typename P, typename... rest>
 struct SeqOpt {
   template <typename atom>
   static Span<atom> match(void* ctx, Span<atom> s) {
-    CHECK(s.is_valid());
+    assert(s.is_valid());
 
     if (auto c = P::match(ctx, s)) {
       s = c;
@@ -502,7 +495,7 @@ template <typename P>
 struct SeqOpt<P> {
   template <typename atom>
   static Span<atom> match(void* ctx, Span<atom> s) {
-    CHECK(s.is_valid());
+    assert(s.is_valid());
 
     if (auto c = P::match(ctx, s)) {
       s = c;
@@ -524,7 +517,7 @@ template <typename... rest>
 struct NotEmpty {
   template <typename atom>
   static Span<atom> match(void* ctx, Span<atom> s) {
-    CHECK(s.is_valid());
+    assert(s.is_valid());
     auto end = Seq<rest...>::match(ctx, s);
     return end == s ? s.fail() : end;
   }
@@ -537,7 +530,7 @@ template <int N, typename P>
 struct Rep {
   template <typename atom>
   static Span<atom> match(void* ctx, Span<atom> s) {
-    CHECK(s.is_valid());
+    assert(s.is_valid());
     for (auto i = 0; i < N; i++) {
       s = P::match(ctx, s);
       if (!s.is_valid()) break;
@@ -553,7 +546,7 @@ template <int M, int N, typename P>
 struct RepRange {
   template <typename atom>
   static Span<atom> match(void* ctx, Span<atom> s) {
-    CHECK(s.is_valid());
+    assert(s.is_valid());
     s = Rep<M, P>::match(ctx, s);
     if (!s.is_valid()) return s;
 
@@ -578,7 +571,7 @@ template<typename P>
 struct Until {
   template<typename atom>
   static Span<atom> match(void* ctx, Span<atom> s) {
-    CHECK(s.is_valid());
+    assert(s.is_valid());
     while(1) {
       if (s.is_empty()) return s;
       auto end = P::match(ctx, s);
@@ -675,7 +668,7 @@ struct Ref;
 template <typename atom, Span<atom> (*F)(void* ctx, Span<atom> s)>
 struct Ref<F> {
   static Span<atom> match(void* ctx, Span<atom> s) {
-    CHECK(s.is_valid());
+    assert(s.is_valid());
     return F(ctx, s);
   }
 };
@@ -683,7 +676,7 @@ struct Ref<F> {
 template <typename T, typename atom, Span<atom> (T::*F)(Span<atom> s)>
 struct Ref<F> {
   static Span<atom> match(void* ctx, Span<atom> s) {
-    CHECK(s.is_valid());
+    assert(s.is_valid());
     return (((T*)ctx)->*F)(s);
   }
 };
@@ -702,7 +695,7 @@ struct StoreBackref {
   inline static Span<atom> ref;
 
   static Span<atom> match(void* ctx, Span<atom> s) {
-    CHECK(s.is_valid());
+    assert(s.is_valid());
     auto c = P::match(ctx, s);
     if (!c.is_valid()) {
       ref = Span<atom>();
@@ -716,7 +709,7 @@ struct StoreBackref {
 template <StringParam name, typename atom, typename P>
 struct MatchBackref {
   static Span<atom> match(void* ctx, Span<atom> s) {
-    CHECK(s.is_valid());
+    assert(s.is_valid());
 
     auto ref = StoreBackref<name, atom, P>::ref;
     if (!ref.is_valid() || ref.is_empty()) return s.fail();
@@ -739,7 +732,7 @@ template <typename ldelim, typename body, typename rdelim>
 struct DelimitedBlock {
   template <typename atom>
   static Span<atom> match(void* ctx, Span<atom> s) {
-    CHECK(s.is_valid());
+    assert(s.is_valid());
 
     s = ldelim::match(ctx, s);
     if (!s.is_valid()) return s;
@@ -764,7 +757,7 @@ struct DelimitedList {
 
   template <typename atom>
   static Span<atom> match(void* ctx, Span<atom> s) {
-    CHECK(s.is_valid());
+    assert(s.is_valid());
 
     s = ldelim::match(ctx, s);
     if (!s.is_valid()) return s;
@@ -790,7 +783,7 @@ struct DelimitedList {
 struct EOL {
   template <typename atom>
   static Span<atom> match(void* ctx, Span<atom> s) {
-    CHECK(s.is_valid());
+    assert(s.is_valid());
     if (s.is_empty()) return s;
     if (s.a[0] == atom('\n')) return s;
     return s.fail();
@@ -814,7 +807,7 @@ template<typename P>
 struct Search {
   template<typename atom>
   static SearchResult search(void* ctx, Span<atom> s) {
-    CHECK(s.is_valid());
+    assert(s.is_valid());
 
     auto cursor = s;
     while(1) {
@@ -839,7 +832,7 @@ template <StringParam chars>
 struct Charset {
   template <typename atom>
   static Span<atom> match(void* ctx, Span<atom> s) {
-    CHECK(s.is_valid());
+    assert(s.is_valid());
 
     for (auto i = 0; i < chars.str_len; i++) {
       if (s.a[0] == chars.str_val[i]) {
@@ -934,5 +927,3 @@ struct PatternWrapper {
 //------------------------------------------------------------------------------
 
 };  // namespace matcheroni
-
-#endif  // #ifndef MATCHERONI_H_

@@ -1,13 +1,11 @@
 #-------------------------------------------------------------------------------
 # Configuration
 
-# DEBUG enables DCHECK()
 # Turning tracing on will generate _ton_ of spam in the C99 demo.
 # Turning EXTRA_DEBUG on will generate even more spam.
 
 ### Debug build
 #build_mode = -g -O0 -Wall -Werror -Wno-unused-variable
-#defs = ${defs} -DDEBUG
 #defs = ${defs} -DMATCHERONI_ENABLE_TRACE
 #defs = ${defs} -DEXTRA_DEBUG
 
@@ -16,7 +14,7 @@
 
 ### -O3 needs LTO to maximize performance
 ### LTO breaks "size obj/examples/json_parser.o"
-build_mode = -O3 -Wl,-s
+build_mode = -O3
 
 includes = -I.
 

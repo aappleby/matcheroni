@@ -655,7 +655,7 @@ struct NodeExpression : public ParseNode, PatternWrapper<NodeExpression> {
         node->init(na->tok_a(), nb->tok_b());
       }
       else if (ox->precedence == oy->precedence) {
-        DCHECK(ox->assoc == oy->assoc);
+        assert(ox->assoc == oy->assoc);
 
         if (ox->assoc == 1) {
           // Left to right
@@ -670,7 +670,7 @@ struct NodeExpression : public ParseNode, PatternWrapper<NodeExpression> {
           node->init(nb->tok_a(), nc->tok_b());
         }
         else {
-          CHECK(false);
+          assert(false);
         }
       }
       else {
@@ -1595,7 +1595,7 @@ struct NodeTypedef : public ParseNode, public PatternWrapper<NodeTypedef> {
       return;
     }
 
-    CHECK(false);
+    assert(false);
   }
 
   static Token* match(void* ctx, Token* a, Token* b) {

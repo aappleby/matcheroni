@@ -61,7 +61,7 @@ bool C99Lexer::lex(const std::string& text) {
       break;
     }
 
-    s.a = lex.span.b;
+    s = s - lex.span;
   }
 
 
