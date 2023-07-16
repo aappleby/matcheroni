@@ -68,11 +68,11 @@ lex_span CParser::match_typedef_type(lex_span s) {
   return type_scope->has_typedef_type(this, s) ? s.advance(1) : s.fail();
 }
 
-void CParser::add_class_type  (const CToken* a) { type_scope->add_class_type(a); }
-void CParser::add_struct_type (const CToken* a) { type_scope->add_struct_type(a); }
-void CParser::add_union_type  (const CToken* a) { type_scope->add_union_type(a); }
-void CParser::add_enum_type   (const CToken* a) { type_scope->add_enum_type(a); }
-void CParser::add_typedef_type(const CToken* a) { type_scope->add_typedef_type(a); }
+void CParser::add_class_type  (const CLexeme* a) { type_scope->add_class_type(a); }
+void CParser::add_struct_type (const CLexeme* a) { type_scope->add_struct_type(a); }
+void CParser::add_union_type  (const CLexeme* a) { type_scope->add_union_type(a); }
+void CParser::add_enum_type   (const CLexeme* a) { type_scope->add_enum_type(a); }
+void CParser::add_typedef_type(const CLexeme* a) { type_scope->add_typedef_type(a); }
 
 //----------------------------------------------------------------------------
 
@@ -94,7 +94,7 @@ void CParser::pop_scope() {
 
 lex_span CParser::match_builtin_type_base(lex_span s) {
   if (!s.is_valid() || s.is_empty()) return s.fail();
-  if (SST<builtin_type_base>::match(s.a->lex->span.a, s.a->lex->span.b)) {
+  if (SST<builtin_type_base>::match(s.a->span.a, s.a->span.b)) {
     return s.advance(1);
   }
   else {
@@ -104,7 +104,7 @@ lex_span CParser::match_builtin_type_base(lex_span s) {
 
 lex_span CParser::match_builtin_type_prefix(lex_span s) {
   if (!s.is_valid() || s.is_empty()) return s.fail();
-  if (SST<builtin_type_prefix>::match(s.a->lex->span.a, s.a->lex->span.b)) {
+  if (SST<builtin_type_prefix>::match(s.a->span.a, s.a->span.b)) {
     return s.advance(1);
   }
   else {
@@ -114,7 +114,7 @@ lex_span CParser::match_builtin_type_prefix(lex_span s) {
 
 lex_span CParser::match_builtin_type_suffix(lex_span s) {
   if (!s.is_valid() || s.is_empty()) return s.fail();
-  if (SST<builtin_type_suffix>::match(s.a->lex->span.a, s.a->lex->span.b)) {
+  if (SST<builtin_type_suffix>::match(s.a->span.a, s.a->span.b)) {
     return s.advance(1);
   }
   else {

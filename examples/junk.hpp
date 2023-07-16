@@ -1,11 +1,11 @@
 #if 0
-void CToken::dump_token() const {
+void CLexeme::dump_token() const {
   // Dump token
   printf("tok @ %p :", this);
 
   printf(" %14.14s ", type_to_str());
   set_color(type_to_color());
-  lex->dump_lexeme();
+  dump_lexeme();
   set_color(0);
 
   printf("    span %14p ", span);

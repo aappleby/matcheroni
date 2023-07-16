@@ -7,15 +7,15 @@
 #include <typeinfo>
 
 #include "matcheroni/Parseroni.hpp"
-#include "examples/c_parser/CToken.hpp"
+#include "examples/c_parser/CLexeme.hpp"
 
-typedef matcheroni::Span<CToken> lex_span;
+typedef matcheroni::Span<CLexeme> lex_span;
 
 //------------------------------------------------------------------------------
 
-struct CNode : public matcheroni::NodeBase<CToken> {
+struct CNode : public matcheroni::NodeBase<CLexeme> {
 
-  using base = matcheroni::NodeBase<CToken>;
+  using base = matcheroni::NodeBase<CLexeme>;
 
   using NodeType = CNode;
 

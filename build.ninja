@@ -119,7 +119,6 @@ build obj/c_parser/CLexer.o  : compile_cpp examples/c_parser/CLexer.cpp
 build obj/c_parser/CNode.o   : compile_cpp examples/c_parser/CNode.cpp
 build obj/c_parser/CParser.o : compile_cpp examples/c_parser/CParser.cpp
 build obj/c_parser/CScope.o  : compile_cpp examples/c_parser/CScope.cpp
-build obj/c_parser/CToken.o  : compile_cpp examples/c_parser/CToken.cpp
 
 #build obj/c_parser/c_lexer_test.o  : compile_cpp examples/c_parser/c_lexer_test.cpp
 #build obj/c_parser/c_parser_test.o : compile_cpp examples/c_parser/c_parser_test.cpp
@@ -130,8 +129,7 @@ build obj/c_parser/CToken.o  : compile_cpp examples/c_parser/CToken.cpp
 #  obj/c_parser/CLexer.o $
 #  obj/c_parser/CNode.o $
 #  obj/c_parser/CParser.o $
-#  obj/c_parser/CScope.o $
-#  obj/c_parser/CToken.o
+#  obj/c_parser/CScope.o
 
 
 

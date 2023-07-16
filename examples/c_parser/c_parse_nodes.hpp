@@ -16,10 +16,6 @@
 
 using namespace matcheroni;
 
-struct CToken;
-
-#if 1
-
 //------------------------------------------------------------------------------
 
 struct NodeAbstractDeclarator;
@@ -93,16 +89,16 @@ struct Literal2 : public CNode, PatternWrapper<Literal2<lit>> {
 
 template <typename NodeType>
 struct NodeMaker {
-  static CToken* match(void* ctx, CToken* a, CToken* b) {
+  static CLexeme* match(void* ctx, CLexeme* a, CLexeme* b) {
     if (!a || a == b) return nullptr;
 
-    print_trace_start<NodeType, CToken>(a);
+    print_trace_start<NodeType, CLexeme>(a);
     auto end = NodeType::pattern::match(ctx, s);
-    print_trace_end<NodeType, CToken>(a, end);
+    print_trace_end<NodeType, CLexeme>(a, end);
 
     if (end && end != a) {
       auto node = new NodeType();
-      node->init_node(ctx, a, end - 1, a->lex->span, (end - 1)->lex->span);
+      node->init_node(ctx, a, end - 1, a->span, (end - 1)->span);
     }
     return end;
   }
@@ -110,12 +106,12 @@ struct NodeMaker {
 
 template <typename NodeType>
 struct LeafMaker {
-  static CToken* match(void* ctx, CToken* a, CToken* b) {
+  static CLexeme* match(void* ctx, CLexeme* a, CLexeme* b) {
     if (!a || a == b) return nullptr;
 
-    print_trace_start<NodeType, CToken>(a);
+    print_trace_start<NodeType, CLexeme>(a);
     auto end = NodeType::pattern::match(ctx, s);
-    print_trace_end<NodeType, CToken>(a, end);
+    print_trace_end<NodeType, CLexeme>(a, end);
 
     if (end && end != a) {
       auto node = new NodeType();
@@ -137,7 +133,7 @@ inline lex_span match_punct(void* ctx, lex_span s) {
     if (atom_cmp(ctx, *s.a, LEX_PUNCT)) {
       return s.fail();
     }
-    if (atom_cmp(ctx, *(s.a->lex->span.a), lit.str_val[i])) {
+    if (atom_cmp(ctx, *(s.a->span.a), lit.str_val[i])) {
       return s.fail();
     }
     s.advance(1);
@@ -267,7 +263,7 @@ struct NodeSuffixOp : public CNode, PatternWrapper<NodeSuffixOp<lit>> {
 struct NodeQualifier : public CNode, PatternWrapper<NodeQualifier> {
   static lex_span match(void* ctx, lex_span s) {
     matcheroni_assert(s.is_valid());
-    auto span = s.a->lex->span;
+    auto span = s.a->span;
     if (SST<qualifiers>::match(span.a, span.b)) {
       return s.advance(1);
     }
@@ -526,7 +522,7 @@ struct NodeExpression : public CNode, PatternWrapper<NodeExpression> {
     }
 
     // clang-format off
-    switch (s.a->lex->span.a[0]) {
+    switch (s.a->span.a[0]) {
       case '+':
         return Oneof<NodeBinaryOp<"+=">, NodeBinaryOp<"+">>::match(ctx, s);
       case '-':
@@ -594,27 +590,27 @@ struct NodeExpression : public CNode, PatternWrapper<NodeExpression> {
       {
         auto c = tok_a;
         while (c && c < tok_b) {
-          c->lex->span->dump_tree(0, 1);
+          c->span->dump_tree(0, 1);
           c = c->step_right();
         }
         printf("\n");
       }
 
       auto c = tok_a;
-      while (c && c->lex->span->precedence && c < tok_b) {
+      while (c && c->span->precedence && c < tok_b) {
         c = c->step_right();
       }
 
       c->dump_token();
 
       // ran out of units?
-      if (c->lex->span->precedence) break;
+      if (c->span->precedence) break;
 
       auto l = c - 1;
       if (l && l >= tok_a) {
-        if (l->lex->span->assoc == -2) {
+        if (l->span->assoc == -2) {
           auto node = new NodeExpressionPrefix();
-          node->init_node(ctx, l, c, l->lex->span, c->lex->span);
+          node->init_node(ctx, l, c, l->span, c->span);
           continue;
         }
       }
@@ -634,7 +630,7 @@ struct NodeExpression : public CNode, PatternWrapper<NodeExpression> {
       NodeOpBinary* oy = nullptr;
       ParseNode*    nc = nullptr;
 
-      nc = (cursor - 1)->lex->span->as_a<ParseNode>();
+      nc = (cursor - 1)->span->as_a<ParseNode>();
       oy = nc ? nc->left_neighbor()->as_a<NodeOpBinary>()   : nullptr;
       nb = oy ? oy->left_neighbor()->as_a<ParseNode>() : nullptr;
       ox = nb ? nb->left_neighbor()->as_a<NodeOpBinary>()   : nullptr;
@@ -687,7 +683,7 @@ struct NodeExpression : public CNode, PatternWrapper<NodeExpression> {
       NodeOpBinary* oy = nullptr;
       ParseNode*    nc = nullptr;
 
-      nc = (cursor - 1)->lex->span->as_a<ParseNode>();
+      nc = (cursor - 1)->span->as_a<ParseNode>();
       oy = nc ? nc->left_neighbor()->as_a<NodeOpBinary>()   : nullptr;
       nb = oy ? oy->left_neighbor()->as_a<ParseNode>() : nullptr;
 
@@ -710,13 +706,13 @@ struct NodeExpression : public CNode, PatternWrapper<NodeExpression> {
 #if 0
     {
       printf("---EXPRESSION---\n");
-      const CToken* c = a;
+      const CLexeme* c = a;
       while(1) {
         //c->dump_token();
-        if (auto s = c->lex->span) {
+        if (auto s = c->span) {
           dump_tree(s, 1, 0);
         }
-        if (auto end = c->lex->span->tok_b()) {
+        if (auto end = c->span->tok_b()) {
           c = end + 1;
         }
         else {
@@ -734,13 +730,13 @@ struct NodeExpression : public CNode, PatternWrapper<NodeExpression> {
   //----------------------------------------
 
   static lex_span match(void* ctx, lex_span s) {
-    //print_trace_start<NodeExpression, CToken>(a);
+    //print_trace_start<NodeExpression, CLexeme>(a);
     auto end = match2(ctx, s);
     if (end) {
       //auto node = new NodeExpression();
-      //node->init_node(ctx, a, end - 1, a->lex->span, (end - 1)->lex->span);
+      //node->init_node(ctx, a, end - 1, a->span, (end - 1)->span);
     }
-    //print_trace_end<NodeExpression, CToken>(a, end);
+    //print_trace_end<NodeExpression, CLexeme>(a, end);
     return end;
   }
 };
@@ -1677,5 +1673,3 @@ struct NodeTranslationUnit : public CNode, public PatternWrapper<NodeTranslation
 };
 
 //------------------------------------------------------------------------------
-
-#endif

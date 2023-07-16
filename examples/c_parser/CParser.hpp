@@ -17,16 +17,14 @@
 #include "examples/c_parser/CLexer.hpp"
 #include "examples/c_parser/CNode.hpp"
 #include "examples/c_parser/CScope.hpp"
-#include "examples/c_parser/CToken.hpp"
 #include "examples/SST.hpp"
 
 struct CLexeme;
 struct CNode;
 struct CParser;
 struct CScope;
-struct CToken;
 
-using lex_span = matcheroni::Span<CToken>;
+using lex_span = matcheroni::Span<CLexeme>;
 
 //------------------------------------------------------------------------------
 
@@ -47,11 +45,11 @@ class CParser : public matcheroni::ContextBase<CNode> {
   lex_span match_enum_type   (lex_span s);
   lex_span match_typedef_type(lex_span s);
 
-  void add_class_type  (const CToken* a);
-  void add_struct_type (const CToken* a);
-  void add_union_type  (const CToken* a);
-  void add_enum_type   (const CToken* a);
-  void add_typedef_type(const CToken* a);
+  void add_class_type  (const CLexeme* a);
+  void add_struct_type (const CLexeme* a);
+  void add_union_type  (const CLexeme* a);
+  void add_enum_type   (const CLexeme* a);
+  void add_typedef_type(const CLexeme* a);
 
   void push_scope();
   void pop_scope();
@@ -67,7 +65,7 @@ class CParser : public matcheroni::ContextBase<CNode> {
 
   //----------------------------------------
 
-  std::vector<CToken> tokens;
+  std::vector<CLexeme> tokens;
   CScope* type_scope;
 };
 
