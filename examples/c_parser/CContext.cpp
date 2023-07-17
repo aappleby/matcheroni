@@ -27,10 +27,10 @@ void CContext::reset() {
 //------------------------------------------------------------------------------
 
 #if 0
-bool CContext::parse(std::vector<CToken>& lexemes) {
+bool CContext::parse(std::vector<CToken>& tokens) {
 
-  for (auto i = 0; i < lexemes.size(); i++) {
-    auto l = &lexemes[i];
+  for (auto i = 0; i < tokens.size(); i++) {
+    auto l = &tokens[i];
     if (!l->is_gap()) {
       tokens.push_back(Token(l));
     }
@@ -94,7 +94,7 @@ void CContext::pop_scope() {
 
 lex_span CContext::match_builtin_type_base(lex_span s) {
   if (!s.is_valid() || s.is_empty()) return s.fail();
-  if (SST<builtin_type_base>::match(s.a->span.a, s.a->span.b)) {
+  if (SST<builtin_type_base>::match(s.a->a, s.a->b)) {
     return s.advance(1);
   }
   else {
@@ -104,7 +104,7 @@ lex_span CContext::match_builtin_type_base(lex_span s) {
 
 lex_span CContext::match_builtin_type_prefix(lex_span s) {
   if (!s.is_valid() || s.is_empty()) return s.fail();
-  if (SST<builtin_type_prefix>::match(s.a->span.a, s.a->span.b)) {
+  if (SST<builtin_type_prefix>::match(s.a->a, s.a->b)) {
     return s.advance(1);
   }
   else {
@@ -114,7 +114,7 @@ lex_span CContext::match_builtin_type_prefix(lex_span s) {
 
 lex_span CContext::match_builtin_type_suffix(lex_span s) {
   if (!s.is_valid() || s.is_empty()) return s.fail();
-  if (SST<builtin_type_suffix>::match(s.a->span.a, s.a->span.b)) {
+  if (SST<builtin_type_suffix>::match(s.a->a, s.a->b)) {
     return s.advance(1);
   }
   else {

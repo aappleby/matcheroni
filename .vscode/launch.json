@@ -25,12 +25,49 @@
       "cwd": "${workspaceFolder}",
     },
 
+    //--------------------------------------------------------------------------
+    // C lexer/parser tests
+
+    {
+      "name": "c_lexer_test",
+      "preLaunchTask": "build_matcheroni",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/bin/examples/c_lexer/c_lexer_test",
+      "cwd": "${workspaceFolder}",
+      "setupCommands": [
+        //{
+            //"description": "Enable pretty-printing for gdb",
+            //"text": "-enable-pretty-printing",
+            //"ignoreFailures": true
+        //}
+      ],
+    },
+
+    {
+      "name": "c_lexer_benchmark",
+      "preLaunchTask": "build_matcheroni",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/bin/examples/c_lexer/c_lexer_benchmark",
+      "cwd": "${workspaceFolder}",
+    },
+
     {
       "name": "c_parser_test",
       "preLaunchTask": "build_matcheroni",
       "type": "cppdbg",
       "request": "launch",
-      "program": "${workspaceFolder}/bin/tests/c_parser_test",
+      "program": "${workspaceFolder}/bin/examples/c_parser/c_parser_test",
+      "cwd": "${workspaceFolder}",
+    },
+
+    {
+      "name": "c_parser_benchmark",
+      "preLaunchTask": "build_matcheroni",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/bin/examples/c_parser/c_parser_benchmark",
       "cwd": "${workspaceFolder}",
       //"args" : ["tests"],
       //"args" : ["mini_tests"],

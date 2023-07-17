@@ -5,28 +5,6 @@
 #include <array>
 
 //------------------------------------------------------------------------------
-
-enum LexemeType {
-  LEX_INVALID = 0,
-  LEX_SPACE,
-  LEX_NEWLINE,
-  LEX_STRING,
-  LEX_KEYWORD,
-  LEX_IDENTIFIER,
-  LEX_COMMENT,
-  LEX_PREPROC,
-  LEX_FLOAT,
-  LEX_INT,
-  LEX_PUNCT,
-  LEX_CHAR,
-  LEX_SPLICE,
-  LEX_FORMFEED,
-  LEX_BOF,
-  LEX_EOF,
-  LEX_LAST
-};
-
-//------------------------------------------------------------------------------
 // MUST BE SORTED CASE-SENSITIVE
 
 // This is all the reserved words from GCC. Will probably have to remove some

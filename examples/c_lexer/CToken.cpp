@@ -1,23 +1,21 @@
 // SPDX-FileCopyrightText:  2023 Austin Appleby <aappleby@gmail.com>
 // SPDX-License-Identifier: MIT License
 
-#include "examples/c_parser/c_constants.hpp"
-#include "examples/c_parser/CToken.hpp"
+#include "examples/c_lexer/CToken.hpp"
 
 #include <stdio.h>
 
+using namespace matcheroni;
+
 //------------------------------------------------------------------------------
 
-CToken::CToken(LexemeType type, matcheroni::TextSpan s) {
+CToken::CToken(LexemeType type, TextSpan s) {
   this->type = type;
-  this->span = s;
+  this->a = s.a;
+  this->b = s.b;
 }
 
 //----------------------------------------------------------------------------
-
-int CToken::len() const {
-  return span.len();
-}
 
 bool CToken::is_bof() const {
   return type == LEX_BOF;
@@ -83,42 +81,42 @@ uint32_t CToken::type_to_color() const {
     case LEX_CHAR       : return 0x44DDDD;
     case LEX_SPLICE     : return 0x00CCFF;
     case LEX_FORMFEED   : return 0xFF00FF;
-    case LEX_BOF        : return 0x00FF00;
-    case LEX_EOF        : return 0x0000FF;
+    case LEX_BOF        : return 0x80FF80;
+    case LEX_EOF        : return 0x8080FF;
     case LEX_LAST       : return 0xFF00FF;
   }
-  return 0x0000FF;
+  return 0xFF00FF;
 }
 
-//----------------------------------------
+//----------------------------------------------------------------------------
 
-void CToken::dump_lexeme() const {
-  if (type == LEX_BOF) {
-    printf("{<bof>     }");
-    return;
-  }
-  if (type == LEX_EOF) {
-    printf("{<eof>     }");
-    return;
+void CToken::dump() const {
+  const int span_len = 20;
+  std::string dump = "";
+
+  if (type == LEX_BOF) dump = "<bof>";
+  if (type == LEX_EOF) dump = "<eof>";
+
+  for (auto c = a; c < b; c++) {
+    if      (*c == '\n') dump += "\\n";
+    else if (*c == '\t') dump += "\\t";
+    else if (*c == '\r') dump += "\\r";
+    else                 dump += *c;
+    if (dump.size() >= span_len) break;
   }
 
-  int len = span.len();
-  const int span_len = 16;
-  if (len > span_len) len = span_len;
-  printf("{");
-  for (int i = 0; i < len; i++) {
-    auto c = span.a[i];
-    if (c == '\n' || c == '\t' || c == '\r') {
-      putc('@', stdout);
-    }
-    else {
-      putc(span.a[i], stdout);
-    }
+  dump = '`' + dump + '`';
+  if (dump.size() > span_len) {
+    dump.resize(span_len - 4);
+    dump = dump + "...`";
   }
-  for (int i = len; i < span_len; i++) {
-    printf(" ");
-  }
-  printf("}");
+  while (dump.size() < span_len) dump += " ";
+
+  set_color(type_to_color());
+  printf("%-14.14s ", type_to_str());
+  set_color(0);
+  printf("%s", dump.c_str());
+  set_color(0);
 }
 
 //----------------------------------------------------------------------------

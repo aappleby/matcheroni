@@ -4,8 +4,8 @@
 #include "matcheroni/Matcheroni.hpp"
 #include "matcheroni/Utilities.hpp"
 
-#include "examples/c_parser/CLexer.hpp"
-#include "examples/c_parser/CToken.hpp"
+#include "examples/c_lexer/CLexer.hpp"
+#include "examples/c_lexer/CToken.hpp"
 
 #include <filesystem>
 #include <stdint.h>    // for uint8_t
@@ -18,24 +18,6 @@
 
 using namespace matcheroni;
 
-/*
-void test_match_string() {
-  const char* text1 = "asdfasdf \"Hello World\" 123456789";
-  matcheroni_assert("\"Hello World\"" == get_first_match(text1, match_string));
-
-  const char* text2 = "asdfasdf \"Hello\nWorld\" 123456789";
-  matcheroni_assert("\"Hello\nWorld\"" == get_first_match(text2, match_string));
-
-  const char* text3 = "asdfasdf \"Hello\\\"World\" 123456789";
-  matcheroni_assert("\"Hello\\\"World\"" == get_first_match(text3, match_string));
-
-  const char* text4 = "asdfasdf \"Hello\\\\World\" 123456789";
-  matcheroni_assert("\"Hello\\\\World\"" == get_first_match(text4, match_string));
-
-  printf("test_match_string() pass\n");
-}
-*/
-
 //------------------------------------------------------------------------------
 
 int total_files = 0;
@@ -46,8 +28,6 @@ std::vector<std::string> bad_files;
 std::vector<std::string> skipped_files;
 
 double lex_time = 0;
-
-const char* current_filename = nullptr;
 
 std::vector<std::string> negative_test_cases = {
   "/objc/",                           // Objective C
@@ -121,93 +101,9 @@ std::vector<std::string> negative_test_cases = {
 
 //------------------------------------------------------------------------------
 
-bool test_lex(const std::string& path, const std::string& text, bool echo) {
-  current_filename = path.c_str();
+bool test_lex(CLexer& lexer, const std::string& path, size_t size, bool echo) {
 
-  const char* text_a = text.data();
-  const char* text_b = text_a + text.size() - 1;
-  const char* cursor = text_a;
-
-  bool lex_ok = true;
-
-  //----------------------------------------
-
-  auto time_a = timestamp_ms();
-  while(cursor) {
-
-    auto lexeme = next_lexeme(nullptr, cursor, text_b);
-
-    if (lexeme.is_eof()) {
-      break;
-    }
-    else if (lexeme.type != LEX_INVALID) {
-      if (lexeme.span_b > text_b) {
-        printf("#### READ OFF THE END DURING %d\n", lexeme.type);
-        printf("File %s:\n", path.c_str());
-        printf("Cursor {%.40s}\n", cursor);
-        exit(1);
-      }
-
-      if (echo) {
-        //set_color(lexeme.color());
-        if (lexeme.type == LEX_NEWLINE) {
-          printf("\\n");
-          fwrite(cursor, 1, lexeme.span_b - cursor, stdout);
-        }
-        else if (lexeme.type == LEX_SPACE) {
-          for (int i = 0; i < (lexeme.span_b - cursor); i++) putc('.', stdout);
-        }
-        else {
-          fwrite(cursor, 1, lexeme.span_b - cursor, stdout);
-        }
-      }
-      cursor = lexeme.span_b;
-    }
-    else {
-      lex_ok = false;
-      printf("\n");
-      printf("File %s:\n", path.c_str());
-      printf("Could not match\n");
-
-      for (int i = 0; i < 40; i++) {
-        if (!cursor[i]) break;
-        if (cursor[i] == '\r') printf("{\\r}");
-        else if (cursor[i] == '\n') printf("{\\n}");
-        else if (cursor[i] == '\t') printf("{\\t}");
-        else putc(cursor[i], stdout);
-      }
-      printf("\n");
-
-      for (int i = 0; i < 40; i++) {
-        if (!cursor[i]) break;
-        printf("%02x ", uint8_t(cursor[i]));
-      }
-      printf("\n");
-      bad_files.push_back(path);
-      break;
-    }
-  }
-  auto time_b = timestamp_ms();
-
-  //----------------------------------------
-
-  if (cursor != text_b) {
-    printf("???\n");
-  }
-
-  if (lex_ok) lex_time += time_b - time_a;
-
-  if (echo) {
-    set_color(0);
-  }
-
-  return lex_ok;
-}
-
-//------------------------------------------------------------------------------
-
-void test_lex(const std::string& path, size_t size, bool echo) {
-
+  /*
   std::string text;
   text.resize(size + 1);
   memset(text.data(), 0, size + 1);
@@ -219,6 +115,11 @@ void test_lex(const std::string& path, size_t size, bool echo) {
   total_bytes += size;
   text[size] = 0;
   fclose(f);
+  */
+  std::string text;
+  read(path.c_str(), text);
+  total_bytes += text.size();
+  text.push_back(0);
 
   bool skip = false;
   // Filter out all the header files that are actually assembly
@@ -230,11 +131,23 @@ void test_lex(const std::string& path, size_t size, bool echo) {
 
   if (skip) {
     skipped_files.push_back(path);
-    return;
+    return false;
   }
 
   source_files++;
-  test_lex(path, text, echo);
+
+  lexer.reset();
+
+  lex_time -= timestamp_ms();
+  bool lex_ok = lexer.lex(to_span(text));
+  lex_time += timestamp_ms();
+
+  if (!lex_ok) {
+    printf("Lexing failed for file %s:\n", path.c_str());
+    bad_files.push_back(path);
+  }
+
+  return lex_ok;
 }
 
 //------------------------------------------------------------------------------
@@ -245,6 +158,7 @@ int main(int argc, char** argv) {
   using rdit = std::filesystem::recursive_directory_iterator;
   const char* base_path = argc > 1 ? argv[1] : ".";
 
+  CLexer lexer;
   bool echo = false;
 
   printf("Lexing source files in %s\n", base_path);
@@ -272,7 +186,7 @@ int main(int argc, char** argv) {
       }
       if (skip) continue;
 
-      test_lex(path, size, echo);
+      test_lex(lexer, path, size, echo);
     }
   }
   auto time_b = timestamp_ms();
@@ -287,8 +201,6 @@ int main(int argc, char** argv) {
   printf("Files skipped %ld\n", skipped_files.size());
   printf("Files with lex errors %ld\n", bad_files.size());
   printf("\n");
-
-  //dump_lexer_stats();
 
   return 0;
 }

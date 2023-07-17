@@ -5,17 +5,20 @@
 
 #include <vector>
 #include <string>
-#include "examples/c_parser/CToken.hpp"
+#include "examples/c_lexer/CToken.hpp"
+#include "matcheroni/Matcheroni.hpp"
 
 //------------------------------------------------------------------------------
 
 struct CLexer {
   CLexer();
   void reset();
-  bool lex(const std::string& text);
+  bool lex(matcheroni::TextSpan text);
   void dump_lexemes();
 
-  std::vector<CToken> lexemes;
+  std::vector<CToken> tokens;
 };
+
+CToken next_lexeme(void* ctx, matcheroni::TextSpan s);
 
 //------------------------------------------------------------------------------

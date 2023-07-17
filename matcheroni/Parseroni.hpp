@@ -394,8 +394,7 @@ struct ContextBase {
 };
 
 //------------------------------------------------------------------------------
-// We'll be using spans of constant characters a lot, so this is a convenience
-// declaration.
+// We'll be parsing text a lot, so these are convenience declarations.
 
 using TextSpan = Span<char>;
 using TextNode = NodeBase<char>;
@@ -413,9 +412,9 @@ inline void parser_rewind(void* ctx, TextSpan s) {
 }
 
 //------------------------------------------------------------------------------
-// To convert our pattern matches to parse nodes, we create a Factory<>
+// To convert our pattern matches to parse nodes, we create a Capture<>
 // matcher that constructs a new NodeType() for a successful match, attaches
-// any sub-nodes to it, and places it on a node list.
+// any sub-nodes to it, and places it on the context's node list.
 
 template<typename atom, typename NodeType>
 inline Span<atom> capture(void* ctx, Span<atom> s, const char* match_name, matcher_function<atom> match) {
@@ -439,7 +438,6 @@ inline Span<atom> capture(void* ctx, Span<atom> s, const char* match_name, match
   }
   else {
     // We don't set the tail back here, rewind will do it.
-    //context->set_tail(old_tail);
 #ifdef PARSERONI_FAST_MODE
     LinearAlloc::inst().restore_state(old_state);
 #endif
@@ -490,7 +488,6 @@ inline Span<atom> capture_begin(void* ctx, Span<atom> s, matcher_function<atom> 
     context->top_tail()->span.a = s.a;
   }
   else {
-    context->set_tail(old_tail);
 #ifdef PARSERONI_FAST_MODE
     LinearAlloc::inst().restore_state(old_state);
 #endif

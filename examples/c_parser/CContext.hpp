@@ -33,7 +33,7 @@ class CContext : public matcheroni::ContextBase<CNode> {
   CContext();
 
   void reset();
-  bool parse(std::vector<CToken>& lexemes);
+  bool parse(std::vector<CToken>& tokens);
 
   lex_span match_builtin_type_base  (lex_span s);
   lex_span match_builtin_type_prefix(lex_span s);

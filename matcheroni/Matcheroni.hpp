@@ -55,7 +55,10 @@ struct Span {
   bool is_empty() const { return a && a == b; }
   bool is_valid() const { return a; }
 
-  operator bool() const { return a && b && a < b; }
+  // this must be the same as is_valid() otherwise
+  // if (auto end = match()) {}
+  // fails if end is EOF
+  operator bool() const { return a; }
 
   template<typename atom2>
   operator Span<const atom2>() const {
@@ -92,7 +95,8 @@ using matcher_function = Span<atom> (*)(void* ctx, Span<atom> s);
 // Matchers will often need to compare spans against null-delimited strings ala
 // strcmp(), so we provide this function for convenience.
 
-inline int strcmp_span(Span<char> s, const char* lit) {
+inline int strcmp_span(const Span<char>& s2, const char* lit) {
+  Span<char> s = s2;
   while (1) {
     auto ca = s.a == s.b ? 0 : *s.a;
     auto cb = *lit;
@@ -102,7 +106,7 @@ inline int strcmp_span(Span<char> s, const char* lit) {
   }
 }
 
-inline int strcmp_span(Span<char> a, Span<char> b) {
+inline int strcmp_span(const Span<char>& a, const Span<char>& b) {
   if (int c = a.len() - b.len()) return c;
   for (size_t i = 0; i < a.len(); i++) {
     if (auto c = a.a[i] - b.a[i]) return c;
@@ -266,7 +270,7 @@ struct StringParam {
   constexpr static auto str_len = N - 1;
   char str_val[N];
 
-  Span<char> span() {
+  Span<char> span() const {
     return Span<char>(str_val, str_val + str_len);
   }
 };
