@@ -43,10 +43,10 @@ void CLexer::reset() { tokens.clear(); }
 
 bool CLexer::lex(TextSpan text) {
   tokens.push_back(CToken(LEX_BOF, TextSpan(text.a, text.a)));
-  //TextContext ctx;
 
   while (text) {
-    auto token = next_lexeme(/*&ctx*/ nullptr, text);
+    // Don't pass a context here or we will slow way down doing rewinds
+    auto token = next_lexeme(nullptr, text);
     tokens.push_back(token);
     if (token.type == LEX_INVALID) {
       return false;
