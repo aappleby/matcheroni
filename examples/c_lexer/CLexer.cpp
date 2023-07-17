@@ -43,11 +43,14 @@ void CLexer::reset() { tokens.clear(); }
 
 bool CLexer::lex(TextSpan text) {
   tokens.push_back(CToken(LEX_BOF, TextSpan(text.a, text.a)));
+  //TextContext ctx;
 
   while (text) {
-    auto token = next_lexeme(nullptr, text);
+    auto token = next_lexeme(/*&ctx*/ nullptr, text);
     tokens.push_back(token);
-    if (token.type == LEX_INVALID) return false;
+    if (token.type == LEX_INVALID) {
+      return false;
+    }
     if (token.type == LEX_EOF) break;
     text.a = token.b;
   }
@@ -95,6 +98,10 @@ CToken next_lexeme(void* ctx, TextSpan s) {
   if (auto end = match_splice(ctx, s)) return CToken(LEX_SPLICE, s - end);
   if (auto end = match_formfeed(ctx, s)) return CToken(LEX_FORMFEED, s - end);
   if (auto end = match_eof(ctx, s)) return CToken(LEX_EOF, s - end);
+
+  {
+    if (auto end = match_string(ctx, s)) return CToken(LEX_STRING, s - end);
+  }
 
   return CToken(LEX_INVALID, s.fail());
 }
@@ -410,11 +417,18 @@ TextSpan match_raw_string_literal(void* ctx, TextSpan s) {
   using d_char_sequence = Some<d_char>;
   using backref_type    = Opt<d_char_sequence>;
 
-  using r_terminator    = Seq<Atom<')'>, MatchBackref<"raw_delim", char, backref_type>, Atom<'"'>>;
+  using r_terminator =
+  Seq<
+    Atom<')'>,
+    MatchBackref<"raw_delim", char, backref_type>,
+    Atom<'"'>
+  >;
+
   using r_char          = Seq<Not<r_terminator>, AnyAtom>;
   using r_char_sequence = Some<r_char>;
 
-  using raw_string_literal = Seq<
+  using raw_string_literal =
+  Seq<
     Opt<encoding_prefix>,
     Atom<'R'>,
     Atom<'"'>,

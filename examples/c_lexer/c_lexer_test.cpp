@@ -5,8 +5,6 @@
 
 #include "examples/c_lexer/CLexer.hpp"
 
-#include <assert.h>
-
 using namespace matcheroni;
 
 //------------------------------------------------------------------------------
@@ -29,7 +27,10 @@ void test_match_string() {
 }
 */
 
-const char* some_text =
+const char* some_text = R"(
+  some text)";
+
+/*
 R"(
 #include <stdio.h>
 
@@ -38,6 +39,7 @@ int main(int argc, char** argv) {
   return 0;
 }
 )";
+*/
 
 int main(int argc, char** argv) {
 

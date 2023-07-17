@@ -12,22 +12,12 @@
 #include <stdio.h>
 #include <stdlib.h>    // for exit
 #include <string.h>    // for memset
-#include <assert.h>
 #include <string>
 #include <vector>
 
 using namespace matcheroni;
 
 //------------------------------------------------------------------------------
-
-int total_files = 0;
-int total_bytes = 0;
-int source_files = 0;
-
-std::vector<std::string> bad_files;
-std::vector<std::string> skipped_files;
-
-double lex_time = 0;
 
 std::vector<std::string> negative_test_cases = {
   "/objc/",                           // Objective C
@@ -101,108 +91,136 @@ std::vector<std::string> negative_test_cases = {
 
 //------------------------------------------------------------------------------
 
-bool test_lex(CLexer& lexer, const std::string& path, size_t size, bool echo) {
-
-  /*
-  std::string text;
-  text.resize(size + 1);
-  memset(text.data(), 0, size + 1);
-  FILE* f = fopen(path.c_str(), "rb");
-  if (!f) {
-    printf("Could not open %s!\n", path.c_str());
-  }
-  auto r = fread(text.data(), 1, size, f);
-  total_bytes += size;
-  text[size] = 0;
-  fclose(f);
-  */
-  std::string text;
-  read(path.c_str(), text);
-  total_bytes += text.size();
-  text.push_back(0);
-
-  bool skip = false;
-  // Filter out all the header files that are actually assembly
-  if (text.find("__ASSEMBLY__") != std::string::npos) skip = true;
-  if (text.find("__ASSEMBLER__") != std::string::npos) skip = true;
-  if (text.find("@function") != std::string::npos) skip = true;
-  if (text.find("@progbits") != std::string::npos) skip = true;
-  if (text.find(".macro") != std::string::npos) skip = true;
-
-  if (skip) {
-    skipped_files.push_back(path);
-    return false;
-  }
-
-  source_files++;
-
-  lexer.reset();
-
-  lex_time -= timestamp_ms();
-  bool lex_ok = lexer.lex(to_span(text));
-  lex_time += timestamp_ms();
-
-  if (!lex_ok) {
-    printf("Lexing failed for file %s:\n", path.c_str());
-    bad_files.push_back(path);
-  }
-
-  return lex_ok;
-}
-
-//------------------------------------------------------------------------------
-
 int main(int argc, char** argv) {
-  printf("Matcheroni Demo\n");
+  printf("Matcheroni C Lexer Benchmark\n");
 
-  using rdit = std::filesystem::recursive_directory_iterator;
   const char* base_path = argc > 1 ? argv[1] : ".";
 
-  CLexer lexer;
-  bool echo = false;
-
-  printf("Lexing source files in %s\n", base_path);
   auto time_a = timestamp_ms();
+
+  //----------------------------------------
+  // Scan the directory and prune it down to only valid C source files.
+
+  int total_files = 0;
+  int total_lines = 0;
+  std::vector<std::string> source_files;
+  std::vector<std::string> failed_files;
+  std::vector<std::string> bad_files;
+  std::vector<std::string> skipped_files;
+
+  printf("Scanning source files in %s\n", base_path);
+  using rdit = std::filesystem::recursive_directory_iterator;
   for (const auto& f : rdit(base_path)) {
-    if (f.is_regular_file()) {
-      total_files++;
-      auto& path = f.path().native();
-      auto size = f.file_size();
+    if (!f.is_regular_file()) continue;
+    total_files++;
+    auto& path = f.path().native();
 
-      bool is_source =
-        path.ends_with(".c") ||
-        path.ends_with(".cpp") ||
-        path.ends_with(".h") ||
-        path.ends_with(".hpp");
-      if (!is_source) continue;
+    // Filter out all non-C files
+    bool is_source =
+      path.ends_with(".c") ||
+      path.ends_with(".cpp") ||
+      path.ends_with(".h") ||
+      path.ends_with(".hpp");
+    if (!is_source) {
+      skipped_files.push_back(path);
+      continue;
+    }
 
-      bool skip = false;
-      for (const auto& f : negative_test_cases) {
-        if (path.find(f) != std::string::npos) {
-          skipped_files.push_back(path);
-          skip = true;
-          break;
-        }
+    // Filter out all the files on our known-bad list
+    bool skip = false;
+    for (const auto& f : negative_test_cases) {
+      if (path.find(f) != std::string::npos) {
+        skip = true;
+        break;
       }
-      if (skip) continue;
+    }
 
-      test_lex(lexer, path, size, echo);
+    if (skip) {
+      printf("Known bad file - %s\n", path.c_str());
+      bad_files.push_back(path);
+      continue;
+    }
+
+    std::string text;
+    read(path.c_str(), text);
+
+    // Filter out all the files that are actually assembly
+    // We split the string constants so we don't mark _this_ source file as
+    // unlexable :D
+    if (text.find("__ASSE" "MBLY__") != std::string::npos) skip = true;
+    if (text.find("__ASSE" "MBLER__") != std::string::npos) skip = true;
+    if (text.find("@fun" "ction") != std::string::npos) skip = true;
+    if (text.find("@prog" "bits") != std::string::npos) skip = true;
+    if (text.find(".ma" "cro") != std::string::npos) skip = true;
+
+    if (skip) {
+      printf("File contains assembly - %s\n", path.c_str());
+      bad_files.push_back(path);
+      continue;
+    }
+
+    for (auto c : text) if (c == '\n') total_lines++;
+    source_files.push_back(f.path());
+
+    //if (source_files.size() == 100) break;
+  }
+
+  //----------------------------------------
+  // Lex all the good files
+
+  //source_files = {
+  //  "./examples/c_lexer/c_lexer_test.cpp"
+  //};
+
+  CLexer lexer;
+  std::string text;
+  int total_bytes = 0;
+  double lex_time = 0;
+  bool any_fail = false;
+  int count = 0;
+
+  printf("\n");
+  printf("Lexing %ld source files in %s\n", source_files.size(), base_path);
+  for (const auto& path : source_files) {
+    text.clear();
+    lexer.reset();
+
+    //printf("%05d: Lexing %s\n", count++, path.c_str());
+
+    read(path.c_str(), text);
+    total_bytes += text.size();
+
+    lex_time -= timestamp_ms();
+    bool lex_ok = lexer.lex(to_span(text));
+    lex_time += timestamp_ms();
+    if (!lex_ok) {
+      failed_files.push_back(path);
+      printf("Lexing failed for file %s:\n", path.c_str());
     }
   }
+
+  //----------------------------------------
+  // Report stats
+
   auto time_b = timestamp_ms();
   auto total_time = time_b - time_a;
 
   printf("\n");
-  printf("Total time %f msec\n", total_time);
-  printf("Lex time %f msec\n", lex_time);
+  printf("Total time  %f msec\n", total_time);
+  printf("Lex time    %f msec\n", lex_time);
   printf("Total files %d\n", total_files);
-  printf("Total source files %d\n", source_files);
+  printf("Total lines %d\n", total_lines);
   printf("Total bytes %d\n", total_bytes);
-  printf("Files skipped %ld\n", skipped_files.size());
-  printf("Files with lex errors %ld\n", bad_files.size());
+  printf("File rate   %f\n", 1000.0 * double(total_files) / double(lex_time));
+  printf("Line rate   %f\n", 1000.0 * double(total_lines) / double(lex_time));
+  printf("Byte rate   %f\n", 1000.0 * double(total_bytes) / double(lex_time));
+  printf("Total source files    %ld\n", source_files.size());
+  printf("Total failures        %ld\n", failed_files.size());
+  printf("Total known-bad files %ld\n", bad_files.size());
+  printf("Total skipped files   %ld\n", skipped_files.size());
   printf("\n");
 
-  return 0;
+  return failed_files.size() ? -1 : 0;
 }
 
 //------------------------------------------------------------------------------

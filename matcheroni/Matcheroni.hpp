@@ -708,10 +708,14 @@ struct StoreBackref {
     matcheroni_assert(s.is_valid());
     auto c = P::match(ctx, s);
     if (!c.is_valid()) {
-      ref = Span<atom>();
+      ref = s.fail();
       return c;
     }
     ref = {s.a, c.a};
+
+    //printf("Backref: `");
+    //for (auto d = s.a; d < c.a; d++) putc(*d, stdout);
+    //printf("`\n");
     return c;
   }
 };
@@ -722,7 +726,7 @@ struct MatchBackref {
     matcheroni_assert(s.is_valid());
 
     auto ref = StoreBackref<name, atom, P>::ref;
-    if (!ref.is_valid() || ref.is_empty()) return s.fail();
+    if (!ref.is_valid()) return s.fail();
 
     for (size_t i = 0; i < ref.len(); i++) {
       if (s.is_empty()) return s.fail();

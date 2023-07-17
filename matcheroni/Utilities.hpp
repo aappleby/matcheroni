@@ -13,7 +13,6 @@
 #include <sys/stat.h>
 #include <time.h>      // for clock_gettime, CLOCK_PROCESS_CP...
 #include <typeinfo>    // for type_info
-#include <assert.h>
 
 namespace matcheroni {
 
@@ -252,8 +251,7 @@ inline void print_flat(TextSpan s, size_t max_len = 0) {
 
 //------------------------------------------------------------------------------
 
-inline void print_bar(int depth, TextSpan s, const char* val,
-                      const char* suffix) {
+inline void print_bar(int depth, TextSpan s, const char* val, const char* suffix) {
   set_color(0);
   printf("{");
   set_color(0xAAFFAA);

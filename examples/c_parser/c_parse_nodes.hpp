@@ -7,12 +7,10 @@
 #include "matcheroni/Utilities.hpp"
 
 #include "examples/c_parser/c_constants.hpp"
-#include "examples/c_parser/CToken.hpp"
+#include "examples/c_lexer/CToken.hpp"
 #include "examples/c_parser/CNode.hpp"
 #include "examples/c_parser/CContext.hpp"
 #include "examples/SST.hpp"
-
-#include <assert.h>
 
 using namespace matcheroni;
 
@@ -1056,7 +1054,7 @@ struct NodeClass : public CNode, public PatternWrapper<NodeClass> {
     NodeLiteral<"class">,
     Any<Capture<"attribute", NodeAttribute, CNode>>,
     Opt<NodeClassTypeAdder>,
-    Opt<Capture<"body", NodeFieldList, CNode>,
+    Opt<Capture<"body", NodeFieldList, CNode>>,
     Any<Capture<"attribute", NodeAttribute, CNode>>,
     Opt<Capture<"decls", NodeDeclaratorList, CNode>>
   >;
@@ -1113,7 +1111,7 @@ struct NodeEnumerator : public CNode, public PatternWrapper<NodeEnumerator> {
     Opt<
       Seq<
         Atom<'='>,
-        Capture<"value", NodeExpression, CNode>,
+        Capture<"value", NodeExpression, CNode>
       >
     >
   >;

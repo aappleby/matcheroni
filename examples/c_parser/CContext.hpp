@@ -13,8 +13,8 @@
 #include <vector>
 
 #include "examples/c_parser/c_constants.hpp"
-#include "examples/c_parser/CToken.hpp"
-#include "examples/c_parser/CLexer.hpp"
+#include "examples/c_lexer/CToken.hpp"
+#include "examples/c_lexer/CLexer.hpp"
 #include "examples/c_parser/CNode.hpp"
 #include "examples/c_parser/CScope.hpp"
 #include "examples/SST.hpp"

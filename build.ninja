@@ -5,7 +5,7 @@
 # Turning EXTRA_DEBUG on will generate even more spam.
 
 ### Debug build
-build_mode = -g -O0 -Wall -Werror -Wno-unused-variable -Wno-unused-local-typedefs -Wno-unused-but-set-variable
+#build_mode = -g -O0 -Wall -Werror -Wno-unused-variable -Wno-unused-local-typedefs -Wno-unused-but-set-variable
 #defs = ${defs} -DMATCHERONI_ENABLE_TRACE
 #defs = ${defs} -DEXTRA_DEBUG
 
@@ -14,7 +14,7 @@ build_mode = -g -O0 -Wall -Werror -Wno-unused-variable -Wno-unused-local-typedef
 
 ### -O3 needs LTO to maximize performance
 ### LTO breaks "size obj/examples/json_parser.o"
-#build_mode = -O3
+build_mode = -g -flto -O3
 
 includes = -I.
 
@@ -58,8 +58,8 @@ build bin/matcheroni/matcheroni_test   : link obj/matcheroni/matcheroni_test.o
 build obj/matcheroni/parseroni_test.o  : compile_cpp matcheroni/parseroni_test.cpp
 build bin/matcheroni/parseroni_test    : link obj/matcheroni/parseroni_test.o
 
-#build bin/matcheroni/matcheroni_test_pass : run_test bin/matcheroni/matcheroni_test
-#build bin/matcheroni/parseroni_test_pass  : run_test bin/matcheroni/parseroni_test
+build bin/matcheroni/matcheroni_test_pass : run_test bin/matcheroni/matcheroni_test
+build bin/matcheroni/parseroni_test_pass  : run_test bin/matcheroni/parseroni_test
 
 #-------------------------------------------------------------------------------
 # Regex parser example
@@ -100,13 +100,11 @@ build obj/examples/json/json_benchmark.o  : compile_cpp examples/json/json_bench
 build bin/examples/json/json_benchmark    : link obj/examples/json/json_parser.o obj/examples/json/json_benchmark.o
 
 # json_demo = link(
-#   compile_cpp("json_parser.cpp"),
-#   compile_cpp("json_demo.cpp")
+#   compile_cpp(json_parser.cpp, json_demo.cpp),
 # );
 #
 # json_benchmark = link(
-#   compile_cpp("json_parser.cpp"),
-#   compile_cpp("json_benchmark.cpp")
+#   compile_cpp(json_parser.cpp, json_benchmark.cpp),
 # );
 
 #-------------------------------------------------------------------------------
@@ -150,7 +148,7 @@ link $
 #build obj/examples/c_parser/CNode.o    : compile_cpp examples/c_parser/CNode.cpp
 #build obj/examples/c_parser/CContext.o : compile_cpp examples/c_parser/CContext.cpp
 #build obj/examples/c_parser/CScope.o   : compile_cpp examples/c_parser/CScope.cpp
-#
+
 #build obj/examples/c_parser.a : $
 #static_lib $
 #  obj/examples/c_parser/CContext.o $

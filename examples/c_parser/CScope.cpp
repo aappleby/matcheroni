@@ -4,7 +4,7 @@
 #include "examples/c_parser/CScope.hpp"
 
 #include "examples/c_parser/c_constants.hpp"
-#include "examples/c_parser/CToken.hpp"
+#include "examples/c_lexer/CToken.hpp"
 
 void CScope::clear() {
   class_types.clear();

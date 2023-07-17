@@ -1,7 +1,6 @@
 #include "matcheroni/Matcheroni.hpp"
 #include "matcheroni/Utilities.hpp"
 
-#include <assert.h>
 #include <stdio.h>
 #include <string.h>
 #include <string>
