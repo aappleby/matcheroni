@@ -3,7 +3,7 @@
 
 #pragma once
 #include "matcheroni/Matcheroni.hpp"  // for Span
-#include "matcheroni/Parseroni.hpp"
+//#include "matcheroni/Parseroni.hpp"
 
 #include <stdint.h>
 #include <stdio.h>
@@ -55,6 +55,7 @@ struct InstanceCounter {
 // Uncomment this to print a full trace of the regex matching process. Note -
 // the trace will be _very_ long, even for small regexes.
 
+#if 0
 template <StringParam match_name, typename P>
 struct Trace {
   template<typename atom>
@@ -75,6 +76,7 @@ struct Trace {
     return end;
   }
 };
+#endif
 
 #if 0
 inline static int indent_depth = 0;

@@ -50,6 +50,7 @@ struct CToken : public matcheroni::TextSpan {
 
 //------------------------------------------------------------------------------
 
+#if 0
 template <>
 inline int matcheroni::atom_cmp(void* ctx, const CToken& a, const LexemeType& b) {
   if (int c = int(a.type) - int(b)) return c;
@@ -67,5 +68,6 @@ template<>
 inline int matcheroni::atom_cmp(void* ctx, const CToken& a, const TextSpan& b) {
   return strcmp_span(a, b);
 }
+#endif
 
 //------------------------------------------------------------------------------

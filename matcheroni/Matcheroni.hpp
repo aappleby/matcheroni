@@ -78,6 +78,8 @@ struct Span {
   const atom* b;
 };
 
+using TextSpan = Span<char>;
+
 //------------------------------------------------------------------------------
 // Matcheroni is based on building trees of "matcher" functions. A matcher
 // function takes a span of "atoms" (could be characters, could be some
@@ -88,8 +90,8 @@ struct Span {
 // Matcher functions accept an opaque context pointer 'ctx', which can be used
 // to pass in a pointer to application-specific state.
 
-template <typename atom>
-using matcher_function = Span<atom> (*)(void* ctx, Span<atom> s);
+template <typename context, typename atom>
+using matcher_function = Span<atom> (*)(context& ctx, Span<atom> s);
 
 //------------------------------------------------------------------------------
 // Matchers will often need to compare spans against null-delimited strings ala
@@ -123,10 +125,10 @@ inline int strcmp_span(const Span<char>& a, const Span<char>& b) {
 // constant types, Matcheroni will use your code instead. Your ()
 // should return <0 for a<b, ==0 for a==b, and >0 for a>b.
 
-template <typename atom1, typename atom2>
-inline int atom_cmp(void* ctx, const atom1& a, const atom2& b) {
-  return int(a - b);
-}
+//template <typename atom1, typename atom2>
+//inline int atom_cmp(context& ctx, const atom1& a, const atom2& b) {
+//  return int(a - b);
+//}
 
 //------------------------------------------------------------------------------
 // Matcheroni also needs a way to tell the host application to "rewind" its
@@ -137,8 +139,8 @@ inline int atom_cmp(void* ctx, const atom1& a, const atom2& b) {
 // By default this does nothing, but if you specialize this for your atom type
 // Matcheroni will call that instead.
 
-template <typename atom>
-inline void parser_rewind(void* ctx, Span<atom> s) {}
+//template <typename atom>
+//inline void parser_rewind(context& ctx, Span<atom> s) {}
 
 //------------------------------------------------------------------------------
 // The most fundamental unit of matching is a single atom. For convenience, we
@@ -153,12 +155,12 @@ struct Atom;
 
 template <auto C, auto... rest>
 struct Atom<C, rest...> {
-  template <typename atom>
-  static Span<atom> match(void* ctx, Span<atom> s) {
+  template <typename context, typename atom>
+  static Span<atom> match(context& ctx, Span<atom> s) {
     matcheroni_assert(s.is_valid());
     if (s.is_empty()) return s.fail();
 
-    if (atom_cmp(ctx, *s.a, C) == 0) {
+    if (ctx.compare(*s.a, C) == 0) {
       return s.advance(1);
     } else {
       return Atom<rest...>::match(ctx, s);
@@ -168,12 +170,12 @@ struct Atom<C, rest...> {
 
 template <auto C>
 struct Atom<C> {
-  template <typename atom>
-  static Span<atom> match(void* ctx, Span<atom> s) {
+  template <typename context, typename atom>
+  static Span<atom> match(context& ctx, Span<atom> s) {
     matcheroni_assert(s.is_valid());
     if (s.is_empty()) return s.fail();
 
-    if (atom_cmp(ctx, *s.a, C) == 0) {
+    if (ctx.compare(*s.a, C) == 0) {
       return s.advance(1);
     } else {
       return s.fail();
@@ -187,12 +189,12 @@ struct Atom<C> {
 
 template <auto C, auto... rest>
 struct NotAtom {
-  template <typename atom>
-  static Span<atom> match(void* ctx, Span<atom> s) {
+  template <typename context, typename atom>
+  static Span<atom> match(context& ctx, Span<atom> s) {
     matcheroni_assert(s.is_valid());
     if (s.is_empty()) return s.fail();
 
-    if (atom_cmp(ctx, *s.a, C) == 0) {
+    if (ctx.compare(*s.a, C) == 0) {
       return s.fail();
     }
     return NotAtom<rest...>::match(ctx, s);
@@ -201,12 +203,12 @@ struct NotAtom {
 
 template <auto C>
 struct NotAtom<C> {
-  template <typename atom>
-  static Span<atom> match(void* ctx, Span<atom> s) {
+  template <typename context, typename atom>
+  static Span<atom> match(context& ctx, Span<atom> s) {
     matcheroni_assert(s.is_valid());
     if (s.is_empty()) return s.fail();
 
-    if (atom_cmp(ctx, *s.a, C) == 0) {
+    if (ctx.compare(*s.a, C) == 0) {
       return s.fail();
     } else {
       return s.advance(1);
@@ -218,8 +220,8 @@ struct NotAtom<C> {
 // AnyAtom is equivalent to '.' in regex.
 
 struct AnyAtom {
-  template <typename atom>
-  static Span<atom> match(void* ctx, Span<atom> s) {
+  template <typename context, typename atom>
+  static Span<atom> match(context& ctx, Span<atom> s) {
     matcheroni_assert(s.is_valid());
     if (s.is_empty()) return s.fail();
     return s.advance(1);
@@ -231,12 +233,12 @@ struct AnyAtom {
 
 template <auto RA, decltype(RA) RB>
 struct Range {
-  template <typename atom>
-  static Span<atom> match(void* ctx, Span<atom> s) {
+  template <typename context, typename atom>
+  static Span<atom> match(context& ctx, Span<atom> s) {
     matcheroni_assert(s.is_valid());
     if (s.is_empty()) return s.fail();
-    if (atom_cmp(ctx, *s.a, RA) < 0) return s.fail();
-    if (atom_cmp(ctx, *s.a, RB) > 0) return s.fail();
+    if (ctx.compare(*s.a, RA) < 0) return s.fail();
+    if (ctx.compare(*s.a, RB) > 0) return s.fail();
     return s.advance(1);
   }
 };
@@ -247,12 +249,12 @@ struct Range {
 
 template <auto RA, decltype(RA) RB>
 struct NotRange {
-  template <typename atom>
-  static Span<atom> match(void* ctx, Span<atom> s) {
+  template <typename context, typename atom>
+  static Span<atom> match(context& ctx, Span<atom> s) {
     matcheroni_assert(s.is_valid());
     if (s.is_empty()) return s.fail();
-    if (atom_cmp(ctx, *s.a, RA) < 0) return s.advance(1);
-    if (atom_cmp(ctx, *s.a, RB) > 0) return s.advance(1);
+    if (ctx.compare(*s.a, RA) < 0) return s.advance(1);
+    if (ctx.compare(*s.a, RB) > 0) return s.advance(1);
     return s.fail();
   }
 };
@@ -280,12 +282,13 @@ struct StringParam {
 
 // Lit<"foo">::match("foobar") == "bar"
 
-inline Span<char> match_lit(void* ctx, Span<char> s, const char* lit, size_t len) {
+template <typename context>
+inline Span<char> match_lit(context& ctx, Span<char> s, const char* lit, size_t len) {
   matcheroni_assert(s.is_valid());
   if (len > s.len()) return s.fail();
 
   for (size_t i = 0; i < len; i++) {
-    if (*s.a != *lit) return s.fail();
+    if (ctx.compare(*s.a, *lit)) return s.fail();
     s = s.advance(1);
     lit++;
   }
@@ -294,10 +297,12 @@ inline Span<char> match_lit(void* ctx, Span<char> s, const char* lit, size_t len
 
 template <StringParam lit>
 struct Lit {
-  static Span<char> match(void* ctx, Span<char> s) {
+  template <typename context>
+  static Span<char> match(context& ctx, Span<char> s) {
     return match_lit(ctx, s, lit.str_val, lit.str_len);
   }
 };
+
 
 //------------------------------------------------------------------------------
 // 'Seq' (sequence) succeeds if all of its sub-matchers succeed in order.
@@ -307,8 +312,8 @@ struct Lit {
 
 template <typename P, typename... rest>
 struct Seq {
-  template <typename atom>
-  static Span<atom> match(void* ctx, Span<atom> s) {
+  template <typename context, typename atom>
+  static Span<atom> match(context& ctx, Span<atom> s) {
     matcheroni_assert(s.is_valid());
     Span<atom> end = P::match(ctx, s);
     if (!end.is_valid()) return end;
@@ -318,12 +323,13 @@ struct Seq {
 
 template <typename P>
 struct Seq<P> {
-  template <typename atom>
-  static Span<atom> match(void* ctx, Span<atom> s) {
+  template <typename context, typename atom>
+  static Span<atom> match(context& ctx, Span<atom> s) {
     matcheroni_assert(s.is_valid());
     return P::match(ctx, s);
   }
 };
+
 
 //------------------------------------------------------------------------------
 // 'Oneof' returns the first match in a set of matchers, equivalent to (A|B|C)
@@ -335,8 +341,8 @@ struct Seq<P> {
 
 template <typename P, typename... rest>
 struct Oneof {
-  template <typename atom>
-  static Span<atom> match(void* ctx, Span<atom> s) {
+  template <typename context, typename atom>
+  static Span<atom> match(context& ctx, Span<atom> s) {
     matcheroni_assert(s.is_valid());
 
     auto c = P::match(ctx, s);
@@ -344,7 +350,7 @@ struct Oneof {
       return c;
     }
 
-    /*+*/ parser_rewind(ctx, s);
+    /*+*/ ctx.rewind(s);
     auto d = Oneof<rest...>::match(ctx, s);
 
     if (d.is_valid()) {
@@ -358,8 +364,8 @@ struct Oneof {
 
 template <typename P>
 struct Oneof<P> {
-  template <typename atom>
-  static Span<atom> match(void* ctx, Span<atom> s) {
+  template <typename context, typename atom>
+  static Span<atom> match(context& ctx, Span<atom> s) {
     matcheroni_assert(s.is_valid());
 
     return P::match(ctx, s);
@@ -374,15 +380,15 @@ struct Oneof<P> {
 
 template <typename... rest>
 struct Opt {
-  template <typename atom>
-  static Span<atom> match(void* ctx, Span<atom> s) {
+  template <typename context, typename atom>
+  static Span<atom> match(context& ctx, Span<atom> s) {
     matcheroni_assert(s.is_valid());
 
     auto c = Oneof<rest...>::match(ctx, s);
     if (c.is_valid()) {
       return c;
     } else {
-      /*+*/ parser_rewind(ctx, s);
+      /*+*/ ctx.rewind(s);
       return s;
     }
   }
@@ -400,8 +406,8 @@ struct Opt {
 
 template <typename... rest>
 struct Any {
-  template <typename atom>
-  static Span<atom> match(void* ctx, Span<atom> s) {
+  template <typename context, typename atom>
+  static Span<atom> match(context& ctx, Span<atom> s) {
     matcheroni_assert(s.is_valid());
     if (s.is_empty()) return s;
 
@@ -412,7 +418,7 @@ struct Any {
     }
 
     // Fixme Does this _really_ need a rewind?
-    /*+*/ parser_rewind(ctx, s);
+    /*+*/ ctx.rewind(s);
 
     return s;
   }
@@ -422,8 +428,8 @@ struct Any {
 // Nothing always succeeds in matching nothing. Makes a good placeholder. :)
 
 struct Nothing {
-  template <typename atom>
-  static Span<atom> match(void* ctx, Span<atom> s) {
+  template <typename context, typename atom>
+  static Span<atom> match(context& ctx, Span<atom> s) {
     matcheroni_assert(s.is_valid());
     return s;
   }
@@ -437,8 +443,8 @@ struct Nothing {
 
 template <typename... rest>
 struct Some {
-  template <typename atom>
-  static Span<atom> match(void* ctx, Span<atom> s) {
+  template <typename context, typename atom>
+  static Span<atom> match(context& ctx, Span<atom> s) {
     matcheroni_assert(s.is_valid());
     auto c = Any<rest...>::match(ctx, s);
     return (c == s) ? s.fail() : c;
@@ -454,11 +460,11 @@ struct Some {
 
 template <typename P>
 struct And {
-  template <typename atom>
-  static Span<atom> match(void* ctx, Span<atom> s) {
+  template <typename context, typename atom>
+  static Span<atom> match(context& ctx, Span<atom> s) {
     matcheroni_assert(s.is_valid());
     auto c = P::match(ctx, s);
-    /*+*/ parser_rewind(ctx, s);
+    /*+*/ ctx.rewind(s);
     return c.is_valid() ? s : c;
   }
 };
@@ -471,11 +477,11 @@ struct And {
 
 template <typename P>
 struct Not {
-  template <typename atom>
-  static Span<atom> match(void* ctx, Span<atom> s) {
+  template <typename context, typename atom>
+  static Span<atom> match(context& ctx, Span<atom> s) {
     matcheroni_assert(s.is_valid());
     auto c = P::match(ctx, s);
-    /*+*/ parser_rewind(ctx, s);
+    /*+*/ ctx.rewind(s);
     return c.is_valid() ? s.fail() : s;
   }
 };
@@ -489,8 +495,8 @@ struct Not {
 
 template <typename P, typename... rest>
 struct SeqOpt {
-  template <typename atom>
-  static Span<atom> match(void* ctx, Span<atom> s) {
+  template <typename context, typename atom>
+  static Span<atom> match(context& ctx, Span<atom> s) {
     matcheroni_assert(s.is_valid());
 
     if (auto c = P::match(ctx, s)) {
@@ -503,8 +509,8 @@ struct SeqOpt {
 
 template <typename P>
 struct SeqOpt<P> {
-  template <typename atom>
-  static Span<atom> match(void* ctx, Span<atom> s) {
+  template <typename context, typename atom>
+  static Span<atom> match(context& ctx, Span<atom> s) {
     matcheroni_assert(s.is_valid());
 
     if (auto c = P::match(ctx, s)) {
@@ -525,8 +531,8 @@ struct SeqOpt<P> {
 
 template <typename... rest>
 struct NotEmpty {
-  template <typename atom>
-  static Span<atom> match(void* ctx, Span<atom> s) {
+  template <typename context, typename atom>
+  static Span<atom> match(context& ctx, Span<atom> s) {
     matcheroni_assert(s.is_valid());
     auto end = Seq<rest...>::match(ctx, s);
     return end == s ? s.fail() : end;
@@ -538,8 +544,8 @@ struct NotEmpty {
 
 template <int N, typename P>
 struct Rep {
-  template <typename atom>
-  static Span<atom> match(void* ctx, Span<atom> s) {
+  template <typename context, typename atom>
+  static Span<atom> match(context& ctx, Span<atom> s) {
     matcheroni_assert(s.is_valid());
     for (auto i = 0; i < N; i++) {
       s = P::match(ctx, s);
@@ -554,8 +560,8 @@ struct Rep {
 
 template <int M, int N, typename P>
 struct RepRange {
-  template <typename atom>
-  static Span<atom> match(void* ctx, Span<atom> s) {
+  template <typename context, typename atom>
+  static Span<atom> match(context& ctx, Span<atom> s) {
     matcheroni_assert(s.is_valid());
     s = Rep<M, P>::match(ctx, s);
     if (!s.is_valid()) return s;
@@ -579,14 +585,14 @@ struct RepRange {
 
 template<typename P>
 struct Until {
-  template<typename atom>
-  static Span<atom> match(void* ctx, Span<atom> s) {
+  template<typename context, typename atom>
+  static Span<atom> match(context& ctx, Span<atom> s) {
     matcheroni_assert(s.is_valid());
     while(1) {
       if (s.is_empty()) return s;
       auto end = P::match(ctx, s);
       if (end.is_valid()) {
-        parser_rewind(ctx, s);
+        ctx.rewind(s);
         return s;
       }
       s = s.advance(1);
@@ -601,7 +607,7 @@ struct Until {
 template<typename P, typename T>
 struct SomeUntil {
   template<typename atom>
-  static atom* match(void* ctx, Span<atom> s) {
+  static atom* match(context& ctx, Span<atom> s) {
     auto c = AnyUntil<P,T>::match(ctx, a, b);
     return c == a ? nullptr : c;
   }
@@ -611,7 +617,7 @@ struct SomeUntil {
 template<typename P, typename T>
 struct AnyUntil {
   template<typename atom>
-  static atom* match(void* ctx, Span<atom> s) {
+  static atom* match(context& ctx, Span<atom> s) {
     while(a < b) {
       if (T::match(ctx, a, b)) return a;
       if (auto end = P::match(ctx, a, b)) {
@@ -629,7 +635,7 @@ struct AnyUntil {
 template<typename P, typename T>
 struct SomeUnless {
   template<typename atom>
-  static atom* match(void* ctx, Span<atom> s) {
+  static atom* match(context& ctx, Span<atom> s) {
     auto c = AnyUnless<P,T>::match(ctx, a, b);
     return c == a ? s.fail() : {c, a};
   }
@@ -639,7 +645,7 @@ struct SomeUnless {
 template<typename P, typename T>
 struct AnyUnless {
   template<typename atom>
-  static atom* match(void* ctx, Span<atom> s) {
+  static atom* match(context& ctx, Span<atom> s) {
     while(a < b) {
       if (T::match(ctx, a, b)) return a;
       if (auto end = P::match(ctx, a, b)) {
@@ -661,7 +667,7 @@ struct AnyUnless {
 // 'Ref' can also be used to call member functions. You _MUST_ pass a pointer
 // to an object via the 'ctx' parameter when using these.
 
-// Span<atom> my_special_matcher(void* ctx, Span<atom> s);
+// Span<atom> my_special_matcher(context& ctx, Span<atom> s);
 // using pattern = Ref<my_special_matcher>;
 
 // struct Foo {
@@ -675,19 +681,19 @@ struct AnyUnless {
 template <auto F>
 struct Ref;
 
-template <typename atom, Span<atom> (*F)(void* ctx, Span<atom> s)>
+template <typename context, typename atom, Span<atom> (*F)(context& ctx, Span<atom> s)>
 struct Ref<F> {
-  static Span<atom> match(void* ctx, Span<atom> s) {
+  static Span<atom> match(context& ctx, Span<atom> s) {
     matcheroni_assert(s.is_valid());
     return F(ctx, s);
   }
 };
 
-template <typename T, typename atom, Span<atom> (T::*F)(Span<atom> s)>
+template <typename context, typename atom, Span<atom> (context::*F)(Span<atom> s)>
 struct Ref<F> {
-  static Span<atom> match(void* ctx, Span<atom> s) {
+  static Span<atom> match(context& ctx, Span<atom> s) {
     matcheroni_assert(s.is_valid());
-    return (((T*)ctx)->*F)(s);
+    return (ctx.*F)(s);
   }
 };
 
@@ -704,7 +710,8 @@ template <StringParam name, typename atom, typename P>
 struct StoreBackref {
   inline static Span<atom> ref;
 
-  static Span<atom> match(void* ctx, Span<atom> s) {
+  template<typename context>
+  static Span<atom> match(context& ctx, Span<atom> s) {
     matcheroni_assert(s.is_valid());
     auto c = P::match(ctx, s);
     if (!c.is_valid()) {
@@ -722,7 +729,9 @@ struct StoreBackref {
 
 template <StringParam name, typename atom, typename P>
 struct MatchBackref {
-  static Span<atom> match(void* ctx, Span<atom> s) {
+
+  template<typename context>
+  static Span<atom> match(context& ctx, Span<atom> s) {
     matcheroni_assert(s.is_valid());
 
     auto ref = StoreBackref<name, atom, P>::ref;
@@ -730,7 +739,7 @@ struct MatchBackref {
 
     for (size_t i = 0; i < ref.len(); i++) {
       if (s.is_empty()) return s.fail();
-      if (atom_cmp(ctx, *s.a, ref.a[i]) != 0) return s.fail();
+      if (ctx.compare(*s.a, ref.a[i]) != 0) return s.fail();
       s = s.advance(1);
     }
 
@@ -744,8 +753,8 @@ struct MatchBackref {
 
 template <typename ldelim, typename body, typename rdelim>
 struct DelimitedBlock {
-  template <typename atom>
-  static Span<atom> match(void* ctx, Span<atom> s) {
+  template <typename context, typename atom>
+  static Span<atom> match(context& ctx, Span<atom> s) {
     matcheroni_assert(s.is_valid());
 
     s = ldelim::match(ctx, s);
@@ -769,8 +778,8 @@ template <typename ldelim, typename item, typename separator, typename rdelim>
 struct DelimitedList {
   // Might be faster to do this in terms of comma_separated, etc?
 
-  template <typename atom>
-  static Span<atom> match(void* ctx, Span<atom> s) {
+  template <typename context, typename atom>
+  static Span<atom> match(context& ctx, Span<atom> s) {
     matcheroni_assert(s.is_valid());
 
     s = ldelim::match(ctx, s);
@@ -795,8 +804,8 @@ struct DelimitedList {
 // 'EOL' matches newline and EOF, but does not advance past it.
 
 struct EOL {
-  template <typename atom>
-  static Span<atom> match(void* ctx, Span<atom> s) {
+  template <typename context, typename atom>
+  static Span<atom> match(context& ctx, Span<atom> s) {
     matcheroni_assert(s.is_valid());
     if (s.is_empty()) return s;
     if (s.a[0] == atom('\n')) return s;
@@ -820,7 +829,7 @@ struct SearchResult {
 template<typename P>
 struct Search {
   template<typename atom>
-  static SearchResult search(void* ctx, Span<atom> s) {
+  static SearchResult search(context& ctx, Span<atom> s) {
     matcheroni_assert(s.is_valid());
 
     auto cursor = s;
@@ -844,12 +853,12 @@ struct Search {
 
 template <StringParam chars>
 struct Charset {
-  template <typename atom>
-  static Span<atom> match(void* ctx, Span<atom> s) {
+  template <typename context, typename atom>
+  static Span<atom> match(context& ctx, Span<atom> s) {
     matcheroni_assert(s.is_valid());
 
     for (auto i = 0; i < chars.str_len; i++) {
-      if (s.a[0] == chars.str_val[i]) {
+      if (ctx.compare(s.a[0], chars.str_val[i]) == 0) {
         return s.advance(1);
       }
     }
@@ -887,13 +896,13 @@ struct Charset {
 template<typename P, typename... rest>
 struct Map {
   template<typename atom>
-  static Span<atom> match(void* ctx, Span<atom> s) {
+  static Span<atom> match(context& ctx, Span<atom> s) {
     if (P::match_key(a, b)) {
-      parser_rewind(ctx, s);
+      ctx.rewind(s);
       return P::match(ctx, a, b);
     }
     else {
-      parser_rewind(ctx, s);
+      ctx.rewind(s);
       return Map<rest...>::match(ctx, a, b);
     }
   }
@@ -902,7 +911,7 @@ struct Map {
 template <typename P>
 struct Map<P> {
   template<typename atom>
-  static Span<atom> match(void* ctx, Span<atom> s) {
+  static Span<atom> match(context& ctx, Span<atom> s) {
     return P::match(ctx, a, b);
   }
 };
@@ -910,12 +919,12 @@ struct Map<P> {
 template <typename K, typename V>
 struct KeyVal {
   template<typename atom>
-  static Span<atom> match_key(void* ctx, Span<atom> s) {
+  static Span<atom> match_key(context& ctx, Span<atom> s) {
     return K::match(ctx, a, b);
   }
 
   template<typename atom>
-  static Span<atom> match(void* ctx, Span<atom> s) {
+  static Span<atom> match(context& ctx, Span<atom> s) {
     return V::match(ctx, a, b);
   }
 };
@@ -932,8 +941,8 @@ struct KeyVal {
 
 template <typename T>
 struct PatternWrapper {
-  template <typename atom>
-  static Span<atom> match(void* ctx, Span<atom> s) {
+  template <typename context, typename atom>
+  static Span<atom> match(context& ctx, Span<atom> s) {
     return T::pattern::match(ctx, s);
   }
 };

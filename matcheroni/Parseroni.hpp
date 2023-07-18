@@ -387,7 +387,6 @@ struct ContextBase {
 //------------------------------------------------------------------------------
 // We'll be parsing text a lot, so these are convenience declarations.
 
-using TextSpan = Span<char>;
 using TextNode = NodeBase<char>;
 using TextContext = ContextBase<char>;
 
