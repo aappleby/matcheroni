@@ -13,17 +13,17 @@ using namespace matcheroni;
 struct TestNode : public TextNode, public InstanceCounter<TestNode> {
   using TextNode::TextNode;
 
-  TestNode* node_prev()  { return (TestNode*)TextNode::node_prev(); }
-  TestNode* node_next()  { return (TestNode*)TextNode::node_next(); }
+  TestNode* node_prev()  { return (TestNode*)_node_prev; }
+  TestNode* node_next()  { return (TestNode*)_node_next; }
 
-  const TestNode* node_prev() const { return (const TestNode*)TextNode::node_prev(); }
-  const TestNode* node_next() const { return (const TestNode*)TextNode::node_next(); }
+  const TestNode* node_prev() const { return (const TestNode*)_node_prev; }
+  const TestNode* node_next() const { return (const TestNode*)_node_next; }
 
-  TestNode* child_head() { return (TestNode*)TextNode::child_head(); }
-  TestNode* child_tail() { return (TestNode*)TextNode::child_tail(); }
+  TestNode* child_head() { return (TestNode*)_child_head; }
+  TestNode* child_tail() { return (TestNode*)_child_tail; }
 
-  const TestNode* child_head() const { return (const TestNode*)TextNode::child_head(); }
-  const TestNode* child_tail() const { return (const TestNode*)TextNode::child_tail(); }
+  const TestNode* child_head() const { return (const TestNode*)_child_head; }
+  const TestNode* child_tail() const { return (const TestNode*)_child_tail; }
 };
 
 //----------------------------------------
@@ -34,7 +34,7 @@ void dump_tree(TestNode* n, std::string& out) {
   } else if (strcmp(n->match_name, "list") == 0) {
     out.push_back('(');
     for (auto c = n->child_head(); c; c = c->node_next()) {
-      dump_tree(((TestNode*)c), out);
+      dump_tree(c, out);
       if (c->node_next()) out.push_back(',');
     }
     out.push_back(')');

@@ -62,10 +62,11 @@ struct Trace {
     matcheroni_assert(s.is_valid());
     if (s.is_empty()) return s.fail();
 
-    print_bar(ctx.trace_depth++, s, match_name.str_val, "?");
+    auto name = match_name.str_val;
+
+    print_bar(ctx.trace_depth++, s, name, "?");
     auto end = P::match(ctx, s);
-    print_bar(--ctx.trace_depth, s, match_name.str_val,
-              end.is_valid() ? "OK" : "X");
+    print_bar(--ctx.trace_depth, s, name, end.is_valid() ? "OK" : "X");
 
     return end;
   }
@@ -178,7 +179,7 @@ template<typename NodeType>
 struct NodeIterator {
   NodeIterator(NodeType* cursor) : n(cursor) {}
   NodeIterator& operator++() {
-    n = (NodeType*)n->node_next();
+    n = n->node_next();
     return *this;
   }
   bool operator!=(NodeIterator& b) const { return n != b.n; }
@@ -200,7 +201,7 @@ template<typename NodeType>
 struct ConstNodeIterator {
   ConstNodeIterator(const NodeType* cursor) : n(cursor) {}
   ConstNodeIterator& operator++() {
-    n = (NodeType*)n->node_next();
+    n = n->node_next();
     return *this;
   }
   bool operator!=(const ConstNodeIterator& b) const { return n != b.n; }

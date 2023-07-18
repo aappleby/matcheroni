@@ -187,7 +187,7 @@ int test_parser(int argc, char** argv) {
       file_fail++;
       printf("\n");
       //context.dump_tokens();
-      if (context._top_head) ((CNode*)context._top_head)->dump_tree(0, 0);
+      if (context.top_head()) context.top_head()->dump_tree(0, 0);
       printf("\n");
       printf("\n");
       printf("fail!\n");
@@ -199,7 +199,7 @@ int test_parser(int argc, char** argv) {
     if (verbose) {
       printf("\n");
       printf("Dumping tree:\n");
-      if (context._top_head) ((CNode*)context._top_head)->dump_tree(0, 0);
+      if (context.top_head()) context.top_head()->dump_tree(0, 0);
       printf("\n");
     }
   }
@@ -235,10 +235,7 @@ int test_parser(int argc, char** argv) {
   printf("Parsing time   %f msec\n", parse_time);
   printf("Cleanup time   %f msec\n", cleanup_time);
   printf("\n");
-  //printf("Total nodes    %ld\n", CNode::constructor_calls);
   printf("Node pool      %d bytes\n", LinearAlloc::inst().max_size);
-  //printf("Rewind count   %d\n", CContext::rewind_count);
-  //printf("Didn't rewind  %d\n", CContext::didnt_rewind);
   printf("File pass      %d\n", file_pass);
   printf("File fail      %d\n", file_fail);
   printf("File skip      %d\n", file_skip);

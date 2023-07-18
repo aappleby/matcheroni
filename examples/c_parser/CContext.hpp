@@ -24,13 +24,53 @@ struct CNode;
 struct CContext;
 struct CScope;
 
-using lex_span = matcheroni::Span<CToken>;
+using TokSpan = matcheroni::Span<CToken>;
 
 //------------------------------------------------------------------------------
 
 class CContext : public matcheroni::NodeContext<CToken> {
  public:
   CContext();
+
+  int compare(const char& a, const char& b) {
+    return int(a - b);
+  }
+
+  int compare(const CToken& a, const LexemeType& b) {
+    if (int c = int(a.type) - int(b)) return c;
+    return 0;
+  }
+
+  int compare(const CToken& a, const char& b) {
+    if (int c = a.len() - 1) return c;
+    if (int c = a.a[0] - b) return c;
+    return 0;
+  }
+
+  int compare(const CToken& a, const matcheroni::TextSpan& b) {
+    return strcmp_span(a, b);
+  }
+
+#if 0
+template <>
+inline int matcheroni::atom_cmp(void* ctx, const CToken& a, const LexemeType& b) {
+  if (int c = int(a.type) - int(b)) return c;
+  return 0;
+}
+
+template <>
+inline int matcheroni::atom_cmp(void* ctx, const CToken& a, const char& b) {
+  if (int c = a.len() - 1) return c;
+  if (int c = a.a[0] - b) return c;
+  return 0;
+}
+
+template<>
+inline int matcheroni::atom_cmp(void* ctx, const CToken& a, const TextSpan& b) {
+  return strcmp_span(a, b);
+}
+#endif
+
 
   CNode* top_head() { return (CNode*)_top_head; }
   CNode* top_tail() { return (CNode*)_top_tail; }
@@ -44,15 +84,15 @@ class CContext : public matcheroni::NodeContext<CToken> {
   void reset();
   bool parse(std::vector<CToken>& lexemes);
 
-  lex_span match_builtin_type_base  (lex_span s);
-  lex_span match_builtin_type_prefix(lex_span s);
-  lex_span match_builtin_type_suffix(lex_span s);
+  TokSpan match_builtin_type_base  (TokSpan s);
+  TokSpan match_builtin_type_prefix(TokSpan s);
+  TokSpan match_builtin_type_suffix(TokSpan s);
 
-  lex_span match_class_type  (lex_span s);
-  lex_span match_struct_type (lex_span s);
-  lex_span match_union_type  (lex_span s);
-  lex_span match_enum_type   (lex_span s);
-  lex_span match_typedef_type(lex_span s);
+  TokSpan match_class_type  (TokSpan s);
+  TokSpan match_struct_type (TokSpan s);
+  TokSpan match_union_type  (TokSpan s);
+  TokSpan match_enum_type   (TokSpan s);
+  TokSpan match_typedef_type(TokSpan s);
 
   void add_class_type  (const CToken* a);
   void add_struct_type (const CToken* a);
@@ -69,40 +109,6 @@ class CContext : public matcheroni::NodeContext<CToken> {
   void dump_stats();
   void dump_lexemes();
   //void dump_tokens();
-
-#if 0
-  void rewind(SpanType s) {
-    printf("\n\n");
-    printf("CContext::rewind()\n");
-
-    for (auto c = top_head(); c; c = c->node_next()) {
-      c->dump_tree(0, 0);
-    }
-
-    rewind_count++;
-    while (top_tail()) {
-      if ((top_tail()->span.b > s.a) ||
-          (top_tail()->span.is_empty() && top_tail()->span.b == s.a)) {
-        auto dead = top_tail();
-        set_tail(top_tail()->node_prev());
-#ifndef FAST_MODE
-        recycle(dead);
-#endif
-      }
-      else {
-        break;
-      }
-    }
-
-    printf("\n");
-    for (auto c = top_head(); c; c = c->node_next()) {
-      c->dump_tree(0, 0);
-    }
-
-    printf("CContext::rewind() done\n");
-    printf("\n\n");
-  }
-#endif
 
   //----------------------------------------
 

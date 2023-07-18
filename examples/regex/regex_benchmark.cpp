@@ -79,18 +79,7 @@ void benchmark_baseline(const char* path) {
 
 #ifdef REGEX_BENCHMARK_MATCHERONI
 
-struct DummyContext {
-  template <typename atom1, typename atom2>
-  inline int compare(const atom1& a, const atom2& b) {
-    return int(a - b);
-  }
-
-  template<typename atom>
-  inline void rewind(Span<atom> s) {
-  }
-};
-
-DummyContext ctx;
+ContextBase ctx;
 
 template<typename P>
 void benchmark_pattern(TextSpan s) {

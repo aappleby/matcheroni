@@ -9,7 +9,7 @@
 #include "matcheroni/Parseroni.hpp"
 #include "examples/c_lexer/CToken.hpp"
 
-typedef matcheroni::Span<CToken> lex_span;
+typedef matcheroni::Span<CToken> TokSpan;
 
 //------------------------------------------------------------------------------
 
@@ -23,17 +23,17 @@ struct CNode : public matcheroni::NodeBase<CToken> {
     return (CNode*)base::child(name);
   }
 
-  NodeType* node_prev() { return (NodeType*)_node_prev; }
-  NodeType* node_next() { return (NodeType*)_node_next; }
+  CNode* node_prev() { return (CNode*)_node_prev; }
+  CNode* node_next() { return (CNode*)_node_next; }
 
-  const NodeType* node_prev() const { return (NodeType*)_node_prev; }
-  const NodeType* node_next() const { return (NodeType*)_node_next; }
+  const CNode* node_prev() const { return (CNode*)_node_prev; }
+  const CNode* node_next() const { return (CNode*)_node_next; }
 
-  NodeType* child_head() { return (NodeType*)_child_head; }
-  NodeType* child_tail() { return (NodeType*)_child_tail; }
+  CNode* child_head() { return (CNode*)_child_head; }
+  CNode* child_tail() { return (CNode*)_child_tail; }
 
-  const NodeType* child_head() const { return (NodeType*)_child_head; }
-  const NodeType* child_tail() const { return (NodeType*)_child_tail; }
+  const CNode* child_head() const { return (CNode*)_child_head; }
+  const CNode* child_tail() const { return (CNode*)_child_tail; }
 
   //----------------------------------------
 
@@ -45,7 +45,7 @@ struct CNode : public matcheroni::NodeBase<CToken> {
   template <typename P>
   P* child() {
     for (auto cursor = child_head(); cursor; cursor = cursor->node_next()) {
-      if (((CNode*)cursor)->is_a<P>()) {
+      if (cursor->is_a<P>()) {
         return dynamic_cast<P*>(cursor);
       }
     }
@@ -55,7 +55,7 @@ struct CNode : public matcheroni::NodeBase<CToken> {
   template <typename P>
   const P* child() const {
     for (auto cursor = child_head(); cursor; cursor = cursor->node_next()) {
-      if (((CNode*)cursor)->is_a<P>()) {
+      if (cursor->is_a<P>()) {
         return dynamic_cast<const P*>(cursor);
       }
     }

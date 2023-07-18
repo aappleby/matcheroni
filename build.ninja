@@ -5,7 +5,7 @@
 # Turning EXTRA_DEBUG on will generate even more spam.
 
 ### Debug build
-#build_mode = -g -O0 -Wall -Werror -Wno-unused-variable -Wno-unused-local-typedefs -Wno-unused-but-set-variable
+build_mode = -g -O0 -Wall -Werror -Wno-unused-variable -Wno-unused-local-typedefs -Wno-unused-but-set-variable
 #defs = ${defs} -DMATCHERONI_ENABLE_TRACE
 #defs = ${defs} -DEXTRA_DEBUG
 
@@ -16,7 +16,7 @@
 ### -flto _doubles_ the speed of CLexer. :O
 ### -flto _halves_ the speed of Matcheroni's IP4 matcher, weird.
 ### LTO breaks "size obj/examples/json_parser.o"
-build_mode = -g -flto -O3
+#build_mode = -g -flto -O3
 
 includes = -I.
 

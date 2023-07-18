@@ -28,7 +28,7 @@ struct Span {
   constexpr Span() : a(nullptr), b(nullptr) {}
   constexpr Span(const atom* a, const atom* b) : a(a), b(b) {}
 
-  Span advance(int offset) const {
+  [[nodiscard]] Span advance(int offset) const {
     matcheroni_assert(a);
     return {a + offset, b};
   }
@@ -58,14 +58,17 @@ struct Span {
   // this must be the same as is_valid() otherwise
   // if (auto end = match()) {}
   // fails if end is EOF
-  operator bool() const { return a; }
+
+  // DO NOT IMPLEMENT THIS it reacts strangely with
+  // if (ctx.compare(tok_a, lit_span)) return s.fail();
+  //operator bool() const { return a; }
 
   template<typename atom2>
   operator Span<const atom2>() const {
     return Span<const atom2>(a, b);
   }
 
-  Span fail() const {
+  [[nodiscard]] Span fail() const {
     return a ? Span(nullptr, a) : Span(a, b);
   }
 
@@ -366,6 +369,27 @@ struct Oneof<P> {
 };
 
 //------------------------------------------------------------------------------
+// Matches exactly one instance of P. Yes, this is effectively a do-nothing
+// matcher. It exists only to make things like the pattern below read better.
+
+// using pattern =
+// Seq<
+//   Any <A>,
+//   Opt <B>,
+//   One <C>,
+//   Some<D>,
+//   One <E>
+// >;
+
+template<typename P>
+struct One {
+  template <typename context, typename atom>
+  static Span<atom> match(context& ctx, Span<atom> s) {
+    return P::match(ctx, s);
+  }
+};
+
+//------------------------------------------------------------------------------
 // 'Opt' matches 'optional' patterns, equivalent to '?' in regex.
 
 // Opt<Atom<'a'>>::match("abcd") == "bcd"
@@ -492,7 +516,8 @@ struct SeqOpt {
   static Span<atom> match(context& ctx, Span<atom> s) {
     matcheroni_assert(s.is_valid());
 
-    if (auto c = P::match(ctx, s)) {
+    auto c = P::match(ctx, s);
+    if (c.is_valid()) {
       s = c;
     }
 
@@ -506,7 +531,8 @@ struct SeqOpt<P> {
   static Span<atom> match(context& ctx, Span<atom> s) {
     matcheroni_assert(s.is_valid());
 
-    if (auto c = P::match(ctx, s)) {
+    auto c = P::match(ctx, s);
+    if (c.is_valid()) {
       s = c;
     }
 

@@ -7,7 +7,7 @@
 
 struct CToken;
 struct CContext;
-typedef matcheroni::Span<CToken> lex_span;
+typedef matcheroni::Span<CToken> TokSpan;
 
 //------------------------------------------------------------------------------
 
@@ -16,14 +16,14 @@ struct CScope {
   using token_list = std::vector<const CToken*>;
 
   void clear();
-  bool has_type(CContext& ctx, lex_span s, token_list& types);
+  bool has_type(CContext& ctx, TokSpan s, token_list& types);
   void add_type(CContext& ctx, const CToken* a, token_list& types);
 
-  bool has_class_type  (CContext& ctx, lex_span s);
-  bool has_struct_type (CContext& ctx, lex_span s);
-  bool has_union_type  (CContext& ctx, lex_span s);
-  bool has_enum_type   (CContext& ctx, lex_span s);
-  bool has_typedef_type(CContext& ctx, lex_span s);
+  bool has_class_type  (CContext& ctx, TokSpan s);
+  bool has_struct_type (CContext& ctx, TokSpan s);
+  bool has_union_type  (CContext& ctx, TokSpan s);
+  bool has_enum_type   (CContext& ctx, TokSpan s);
+  bool has_typedef_type(CContext& ctx, TokSpan s);
 
   void add_class_type  (CContext& ctx, const CToken* a);
   void add_struct_type (CContext& ctx, const CToken* a);

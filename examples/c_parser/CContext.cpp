@@ -37,7 +37,7 @@ bool CContext::parse(std::vector<CToken>& lexemes) {
   // Skip over BOF, stop before EOF
   auto tok_a = tokens.data() + 1;
   auto tok_b = tokens.data() + tokens.size() - 1;
-  lex_span s(tok_a, tok_b);
+  TokSpan s(tok_a, tok_b);
 
   for (auto c = s.a; c < s.b; c++) {
     c->dump();
@@ -50,23 +50,23 @@ bool CContext::parse(std::vector<CToken>& lexemes) {
 
 //------------------------------------------------------------------------------
 
-lex_span CContext::match_class_type(lex_span s) {
+TokSpan CContext::match_class_type(TokSpan s) {
   return type_scope->has_class_type(*this, s) ? s.advance(1) : s.fail();
 }
 
-lex_span CContext::match_struct_type(lex_span s) {
+TokSpan CContext::match_struct_type(TokSpan s) {
   return type_scope->has_struct_type(*this, s) ? s.advance(1) : s.fail();
 }
 
-lex_span CContext::match_union_type(lex_span s) {
+TokSpan CContext::match_union_type(TokSpan s) {
   return type_scope->has_union_type(*this, s) ? s.advance(1) : s.fail();
 }
 
-lex_span CContext::match_enum_type(lex_span s) {
+TokSpan CContext::match_enum_type(TokSpan s) {
   return type_scope->has_enum_type(*this, s) ? s.advance(1) : s.fail();
 }
 
-lex_span CContext::match_typedef_type(lex_span s) {
+TokSpan CContext::match_typedef_type(TokSpan s) {
   return type_scope->has_typedef_type(*this, s) ? s.advance(1) : s.fail();
 }
 
@@ -94,7 +94,7 @@ void CContext::pop_scope() {
 
 //----------------------------------------------------------------------------
 
-lex_span CContext::match_builtin_type_base(lex_span s) {
+TokSpan CContext::match_builtin_type_base(TokSpan s) {
   if (!s.is_valid() || s.is_empty()) return s.fail();
   if (SST<builtin_type_base>::match(s.a->a, s.a->b)) {
     return s.advance(1);
@@ -104,7 +104,7 @@ lex_span CContext::match_builtin_type_base(lex_span s) {
   }
 }
 
-lex_span CContext::match_builtin_type_prefix(lex_span s) {
+TokSpan CContext::match_builtin_type_prefix(TokSpan s) {
   if (!s.is_valid() || s.is_empty()) return s.fail();
   if (SST<builtin_type_prefix>::match(s.a->a, s.a->b)) {
     return s.advance(1);
@@ -114,7 +114,7 @@ lex_span CContext::match_builtin_type_prefix(lex_span s) {
   }
 }
 
-lex_span CContext::match_builtin_type_suffix(lex_span s) {
+TokSpan CContext::match_builtin_type_suffix(TokSpan s) {
   if (!s.is_valid() || s.is_empty()) return s.fail();
   if (SST<builtin_type_suffix>::match(s.a->a, s.a->b)) {
     return s.advance(1);

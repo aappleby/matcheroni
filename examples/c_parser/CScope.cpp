@@ -15,7 +15,7 @@ void CScope::clear() {
   typedef_types.clear();
 }
 
-bool CScope::has_type(CContext& ctx, lex_span s, token_list& types) {
+bool CScope::has_type(CContext& ctx, TokSpan s, token_list& types) {
   if(ctx.compare(*s.a, LEX_IDENTIFIER)) {
     return false;
   }
@@ -44,11 +44,11 @@ void CScope::add_type(CContext& ctx, const CToken* a, token_list& types) {
 
 //----------------------------------------
 
-bool CScope::has_class_type  (CContext& ctx, lex_span s) { if (has_type(ctx, s, class_types  )) return true; if (parent) return parent->has_class_type  (ctx, s); else return false; }
-bool CScope::has_struct_type (CContext& ctx, lex_span s) { if (has_type(ctx, s, struct_types )) return true; if (parent) return parent->has_struct_type (ctx, s); else return false; }
-bool CScope::has_union_type  (CContext& ctx, lex_span s) { if (has_type(ctx, s, union_types  )) return true; if (parent) return parent->has_union_type  (ctx, s); else return false; }
-bool CScope::has_enum_type   (CContext& ctx, lex_span s) { if (has_type(ctx, s, enum_types   )) return true; if (parent) return parent->has_enum_type   (ctx, s); else return false; }
-bool CScope::has_typedef_type(CContext& ctx, lex_span s) { if (has_type(ctx, s, typedef_types)) return true; if (parent) return parent->has_typedef_type(ctx, s); else return false; }
+bool CScope::has_class_type  (CContext& ctx, TokSpan s) { if (has_type(ctx, s, class_types  )) return true; if (parent) return parent->has_class_type  (ctx, s); else return false; }
+bool CScope::has_struct_type (CContext& ctx, TokSpan s) { if (has_type(ctx, s, struct_types )) return true; if (parent) return parent->has_struct_type (ctx, s); else return false; }
+bool CScope::has_union_type  (CContext& ctx, TokSpan s) { if (has_type(ctx, s, union_types  )) return true; if (parent) return parent->has_union_type  (ctx, s); else return false; }
+bool CScope::has_enum_type   (CContext& ctx, TokSpan s) { if (has_type(ctx, s, enum_types   )) return true; if (parent) return parent->has_enum_type   (ctx, s); else return false; }
+bool CScope::has_typedef_type(CContext& ctx, TokSpan s) { if (has_type(ctx, s, typedef_types)) return true; if (parent) return parent->has_typedef_type(ctx, s); else return false; }
 
 void CScope::add_class_type  (CContext& ctx, const CToken* a) { return add_type(ctx, a, class_types  ); }
 void CScope::add_struct_type (CContext& ctx, const CToken* a) { return add_type(ctx, a, struct_types ); }

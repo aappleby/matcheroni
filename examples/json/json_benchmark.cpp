@@ -128,7 +128,6 @@ int main(int argc, char** argv) {
   printf("Byte rate  %f\n", byte_accum / (time_accum / 1000.0));
   printf("Line rate  %f\n", line_accum / (time_accum / 1000.0));
   printf("Rep time   %f\n", time_accum / reps);
-  printf("Rewinds    %d\n", ctx.rewind_count);
   printf("\n");
 
   return 0;

@@ -9,18 +9,7 @@ using namespace matcheroni;
 
 //------------------------------------------------------------------------------
 
-struct DummyContext {
-  template <typename atom1, typename atom2>
-  inline int compare(const atom1& a, const atom2& b) {
-    return int(a - b);
-  }
-
-  template<typename atom>
-  inline void rewind(Span<atom> s) {
-  }
-};
-
-DummyContext ctx;
+ContextBase ctx;
 
 //------------------------------------------------------------------------------
 
@@ -387,7 +376,7 @@ void test_until() {
 
 //------------------------------------------------------------------------------
 
-TextSpan test_matcher(DummyContext& ctx, TextSpan s) {
+TextSpan test_matcher(ContextBase& ctx, TextSpan s) {
   matcheroni_assert(s.is_valid());
   if (s.is_empty()) return s.fail();
   return s.a[0] == 'a' ? s.advance(1) : s.fail();

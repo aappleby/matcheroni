@@ -296,8 +296,7 @@ struct NodeContext : public ContextBase {
   // match.
 
   void rewind(Span<atom> s) {
-    rewind_count++;
-    while (_top_tail && (_top_tail->span.b > s.a || (_top_tail->span.is_empty() && _top_tail->span.b == s.a))) {
+    while (_top_tail && (_top_tail->span.a >= s.a)) {
       auto dead = _top_tail;
       set_tail(_top_tail->_node_prev);
 #ifndef FAST_MODE
@@ -388,7 +387,6 @@ struct NodeContext : public ContextBase {
   NodeType* _top_tail = nullptr;
   const atom* _highwater = nullptr;
   int trace_depth = 0;
-  int rewind_count = 0;
 };
 
 //------------------------------------------------------------------------------
