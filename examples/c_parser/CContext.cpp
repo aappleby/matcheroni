@@ -17,7 +17,7 @@ CContext::CContext() {
 //------------------------------------------------------------------------------
 
 void CContext::reset() {
-  ContextBase::reset();
+  NodeContext::reset();
 
   tokens.clear();
   while (type_scope->parent) pop_scope();

@@ -81,15 +81,21 @@ struct Span {
 using TextSpan = Span<char>;
 
 //------------------------------------------------------------------------------
+// Matchers require a context object to perform two essential functions -
+// compare atoms, and rewind any internal state when a partial match fails.
 
-struct Context {
+// This context base class implements a trivial compare() that works for any
+// atom types that support '-' and can be converted to integers, and rewind()
+// does nothing here because ContextBase has no internal state.
+
+struct ContextBase {
   template <typename atom1, typename atom2>
-  inline int compare(const atom1& a, const atom2& b) {
+  int compare(const atom1& a, const atom2& b) {
     return int(a - b);
   }
 
   template<typename atom>
-  inline void rewind(Span<atom> s) {
+  void rewind(Span<atom> s) {
   }
 };
 
@@ -668,19 +674,19 @@ struct AnyUnless {
 template <auto F>
 struct Ref;
 
-template <typename context, typename atom, Span<atom> (*F)(context& ctx, Span<atom> s)>
-struct Ref<F> {
+template <typename context, typename atom, Span<atom> (*func)(context& ctx, Span<atom> s)>
+struct Ref<func> {
   static Span<atom> match(context& ctx, Span<atom> s) {
     matcheroni_assert(s.is_valid());
-    return F(ctx, s);
+    return func(ctx, s);
   }
 };
 
-template <typename context, typename atom, Span<atom> (context::*F)(Span<atom> s)>
-struct Ref<F> {
+template <typename context, typename atom, Span<atom> (context::*func)(Span<atom> s)>
+struct Ref<func> {
   static Span<atom> match(context& ctx, Span<atom> s) {
     matcheroni_assert(s.is_valid());
-    return (ctx.*F)(s);
+    return (ctx.*func)(s);
   }
 };
 

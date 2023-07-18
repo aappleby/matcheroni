@@ -28,7 +28,7 @@ using lex_span = matcheroni::Span<CToken>;
 
 //------------------------------------------------------------------------------
 
-class CContext : public matcheroni::ContextBase<CToken> {
+class CContext : public matcheroni::NodeContext<CToken> {
  public:
   CContext();
 

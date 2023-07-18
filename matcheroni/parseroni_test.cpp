@@ -45,8 +45,8 @@ void dump_tree(TestNode* n, std::string& out) {
 
 //----------------------------------------
 
-template<typename Context>
-void check_hash(Context& ctx, uint64_t hash_a) {
+template<typename context>
+void check_hash(context& ctx, uint64_t hash_a) {
   uint64_t hash_b = hash_context(ctx);
   printf("Expected hash 0x%016lx\n", hash_a);
   printf("Actual hash   0x%016lx\n", hash_b);

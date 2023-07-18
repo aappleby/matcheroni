@@ -359,8 +359,8 @@ inline void print_escaped(const char* s, int len, unsigned int color) {
 //------------------------------------------------------------------------------
 // Prints a text representation of the parse tree.
 
-template<typename NodeType>
-inline void print_tree(const NodeType* node, int depth = 0) {
+template<typename node_type>
+inline void print_tree(const node_type* node, int depth = 0) {
   print_bar(depth, node->span, node->match_name, "");
   for (auto c = node->child_head(); c; c = c->node_next()) {
     print_tree(c, depth + 1);
@@ -458,8 +458,8 @@ inline void read(const char* path, char*& text_out, size_t& size_out) {
 
 //------------------------------------------------------------------------------
 
-template<typename NodeType>
-inline uint64_t hash_tree(const NodeType* node, int depth = 0) {
+template<typename node_type>
+inline uint64_t hash_tree(const node_type* node, int depth = 0) {
   uint64_t h = 1 + depth * 0x87654321;
 
   for (auto c = node->match_name; *c; c++) {

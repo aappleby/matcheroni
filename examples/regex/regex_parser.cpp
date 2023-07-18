@@ -15,10 +15,10 @@
 
 using namespace matcheroni;
 
-template<StringParam match_name, typename pattern, typename NodeType>
+template<StringParam match_name, typename pattern, typename node_type>
 struct Capture3 {
   static TextSpan match(TextContext& ctx, TextSpan s) {
-    return Capture<match_name, pattern, NodeType>::match(ctx, s);
+    return Capture<match_name, pattern, node_type>::match(ctx, s);
   }
 };
 

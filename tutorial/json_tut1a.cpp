@@ -23,7 +23,7 @@ struct JsonParser {
   using number    = Seq<integer, Opt<fraction>, Opt<exponent>>;
   // clang-format on
 
-  static TextSpan match(Context& ctx, TextSpan s) {
+  static TextSpan match(ContextBase& ctx, TextSpan s) {
     return number::match(ctx, s);
   }
 };
@@ -31,7 +31,7 @@ struct JsonParser {
 //------------------------------------------------------------------------------
 
 int main(int argc, char** argv) {
-  Context ctx;
+  ContextBase ctx;
   auto text = to_span(R"(-123456.678 Hello World)");
   auto tail = JsonParser::match(ctx, text);
 

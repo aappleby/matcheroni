@@ -18,7 +18,7 @@ template <StringParam match_name, typename P>
 struct Trace2 {
   template<typename atom>
   static Span<atom> match(void* ctx, Span<atom> s) {
-    using ContextType = ContextBase<atom>;
+    using ContextType = NodeContext<atom>;
     using SpanType = Span<atom>;
 
     ContextType* context = (ContextType*)ctx;

@@ -189,14 +189,14 @@ struct NodeBase {
 //------------------------------------------------------------------------------
 
 template<typename atom>
-struct ContextBase {
+struct NodeContext : public ContextBase {
   using NodeType = NodeBase<atom>;
   using SpanType = Span<atom>;
 
-  ContextBase() {
+  NodeContext() {
   }
 
-  virtual ~ContextBase() {
+  virtual ~NodeContext() {
     reset();
   }
 
@@ -395,16 +395,16 @@ struct ContextBase {
 // We'll be parsing text a lot, so these are convenience declarations.
 
 using TextNode = NodeBase<char>;
-using TextContext = ContextBase<char>;
+using TextContext = NodeContext<char>;
 
 //------------------------------------------------------------------------------
 // To convert our pattern matches to parse nodes, we create a Capture<>
 // matcher that constructs a new NodeType() for a successful match, attaches
 // any sub-nodes to it, and places it on the context's node list.
 
-template<typename context, typename atom, typename NodeType>
+template<typename context, typename atom, typename node_type>
 inline Span<atom> capture(context& ctx, Span<atom> s, const char* match_name, matcher_function<context, atom> match) {
-  using ContextType = ContextBase<atom>;
+  using ContextType = NodeContext<atom>;
   using SpanType = Span<atom>;
 
   auto old_tail = ctx.top_tail();
@@ -417,7 +417,7 @@ inline Span<atom> capture(context& ctx, Span<atom> s, const char* match_name, ma
   if (end.is_valid()) {
     //printf("Capture %s\n", match_name);
     SpanType node_span = {s.a, end.a};
-    auto new_node = new NodeType();
+    auto new_node = new node_type();
     ctx.create2(new_node, match_name, node_span, 0, old_tail);
   }
   else {
@@ -430,11 +430,11 @@ inline Span<atom> capture(context& ctx, Span<atom> s, const char* match_name, ma
   return end;
 }
 
-template <StringParam match_name, typename pattern, typename NodeType>
+template <StringParam match_name, typename pattern, typename node_type>
 struct Capture {
   template<typename context, typename atom>
   static Span<atom> match(context& ctx, Span<atom> s) {
-    return capture<context, atom, NodeType>(ctx, s, match_name.str_val, pattern::match);
+    return capture<context, atom, node_type>(ctx, s, match_name.str_val, pattern::match);
   }
 };
 
@@ -478,7 +478,7 @@ inline Span<atom> capture_begin(context& ctx, Span<atom> s, matcher_function<con
 
 //----------------------------------------
 
-template <typename NodeType, typename... rest>
+template <typename node_type, typename... rest>
 struct CaptureBegin {
   template<typename context, typename atom>
   static Span<atom> match(context& ctx, Span<atom> s) {
@@ -488,15 +488,15 @@ struct CaptureBegin {
 
 //----------------------------------------
 
-template<typename context, typename atom, typename NodeType>
+template<typename context, typename atom, typename node_type>
 inline Span<atom> capture_end(context& ctx, Span<atom> s, const char* match_name, matcher_function<context, atom> match) {
-  using ContextType = ContextBase<atom>;
+  using ContextType = NodeContext<atom>;
   using SpanType = Span<atom>;
 
   auto end = match(ctx, s);
   if (end.is_valid()) {
     SpanType new_span(end.a, end.a);
-    auto new_node = new NodeType();
+    auto new_node = new node_type();
     ctx.create2(new_node, match_name, new_span, /*flags*/ 1, ctx.top_tail());
   }
   return end;
@@ -504,11 +504,11 @@ inline Span<atom> capture_end(context& ctx, Span<atom> s, const char* match_name
 
 //----------------------------------------
 
-template<StringParam match_name, typename P, typename NodeType>
+template<StringParam match_name, typename P, typename node_type>
 struct CaptureEnd {
   template<typename context, typename atom>
   static Span<atom> match(context& ctx, Span<atom> s) {
-    return capture_end<context, atom, NodeType>(ctx, s, match_name.str_val, P::match);
+    return capture_end<context, atom, node_type>(ctx, s, match_name.str_val, P::match);
   }
 };
 

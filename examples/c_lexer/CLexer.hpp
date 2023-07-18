@@ -19,6 +19,6 @@ struct CLexer {
   std::vector<CToken> tokens;
 };
 
-CToken next_lexeme(matcheroni::Context& ctx, matcheroni::TextSpan s);
+CToken next_lexeme(matcheroni::ContextBase& ctx, matcheroni::TextSpan s);
 
 //------------------------------------------------------------------------------
