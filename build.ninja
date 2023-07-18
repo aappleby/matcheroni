@@ -143,6 +143,8 @@ link $
   obj/examples/c_lexer/c_lexer_test.o $
   obj/examples/c_lexer.a
 
+build bin/examples/c_lexer/c_lexer_test_pass : run_test bin/examples/c_lexer/c_lexer_test
+
 build obj/examples/c_lexer/c_lexer_benchmark.o : compile_cpp examples/c_lexer/c_lexer_benchmark.cpp
 build bin/examples/c_lexer/c_lexer_benchmark : $
 link $
@@ -169,12 +171,16 @@ link $
   obj/examples/c_lexer.a $
   obj/examples/c_parser.a
 
+build bin/examples/c_parser/c_parser_test_pass  : run_test bin/examples/c_parser/c_parser_test
+
 build obj/examples/c_parser/c_parser_benchmark.o : compile_cpp examples/c_parser/c_parser_benchmark.cpp
 build bin/examples/c_parser/c_parser_benchmark : $
 link $
   obj/examples/c_parser/c_parser_benchmark.o $
   obj/examples/c_lexer.a $
   obj/examples/c_parser.a
+
+#-------------------------------------------------------------------------------
 
 #build obj/c_parser/c_reference_hax.o : compile_cpp examples/c_parser/c_reference_hax.cpp
 #build obj/c_parser/c_reference.o     : compile_cpp examples/c_parser/c_reference.cpp

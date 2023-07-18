@@ -34,8 +34,8 @@ struct TraceToken {
 
 
 template <StringParam match_name, typename pattern>
-using Cap = TraceToken<match_name, Capture<match_name, pattern, CNode>>;
-//using Cap = Capture<match_name, pattern, CNode>;
+//using Cap = TraceToken<match_name, Capture<match_name, pattern, CNode>>;
+using Cap = Capture<match_name, pattern, CNode>;
 
 //------------------------------------------------------------------------------
 
