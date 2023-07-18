@@ -15,7 +15,7 @@
 using namespace matcheroni;
 
 template <StringParam match_name, typename P>
-struct Trace2 {
+struct TraceToken {
   template<typename atom>
   static Span<atom> match(CContext& ctx, Span<atom> s) {
     matcheroni_assert(s.is_valid());
@@ -34,7 +34,7 @@ struct Trace2 {
 
 
 template <StringParam match_name, typename pattern>
-using Cap = Trace2<match_name, Capture<match_name, pattern, CNode>>;
+using Cap = TraceToken<match_name, Capture<match_name, pattern, CNode>>;
 //using Cap = Capture<match_name, pattern, CNode>;
 
 //------------------------------------------------------------------------------

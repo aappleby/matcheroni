@@ -28,7 +28,7 @@ using TokSpan = matcheroni::Span<CToken>;
 
 //------------------------------------------------------------------------------
 
-class CContext : public matcheroni::NodeContext<CToken> {
+class CContext : public matcheroni::NodeContext<TokSpan, CNode> {
  public:
   CContext();
 
@@ -48,48 +48,6 @@ class CContext : public matcheroni::NodeContext<CToken> {
   static bool atom_eq(const CToken& a, const matcheroni::TextSpan& b) {
     return strcmp_span(a, b) == 0;
   }
-
-  /*
-  int compare(const char& a, const char& b) {
-    return int(a - b);
-  }
-
-  int compare(const CToken& a, const LexemeType& b) {
-    if (int c = int(a.type) - int(b)) return c;
-    return 0;
-  }
-
-  int compare(const CToken& a, const char& b) {
-    if (int c = a.len() - 1) return c;
-    if (int c = a.a[0] - b) return c;
-    return 0;
-  }
-
-  int compare(const CToken& a, const matcheroni::TextSpan& b) {
-    return strcmp_span(a, b);
-  }
-  */
-
-#if 0
-template <>
-inline int matcheroni::atom_cmp(void* ctx, const CToken& a, const LexemeType& b) {
-  if (int c = int(a.type) - int(b)) return c;
-  return 0;
-}
-
-template <>
-inline int matcheroni::atom_cmp(void* ctx, const CToken& a, const char& b) {
-  if (int c = a.len() - 1) return c;
-  if (int c = a.a[0] - b) return c;
-  return 0;
-}
-
-template<>
-inline int matcheroni::atom_cmp(void* ctx, const CToken& a, const TextSpan& b) {
-  return strcmp_span(a, b);
-}
-#endif
-
 
   CNode* top_head() { return (CNode*)_top_head; }
   CNode* top_tail() { return (CNode*)_top_tail; }

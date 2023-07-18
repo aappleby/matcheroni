@@ -39,7 +39,7 @@ struct InstanceCounter {
 };
 
 //------------------------------------------------------------------------------
-// To debug our patterns, we create a Trace<> matcher that prints out a
+// To debug our patterns, we create a TraceText<> matcher that prints out a
 // diagram of the current match context, the matchers being tried, and
 // whether they succeeded.
 
@@ -56,7 +56,7 @@ struct InstanceCounter {
 // the trace will be _very_ long, even for small regexes.
 
 template <StringParam match_name, typename P>
-struct Trace {
+struct TraceText {
   template<typename context, typename atom>
   static Span<atom> match(context& ctx, Span<atom> s) {
     matcheroni_assert(s.is_valid());
@@ -128,7 +128,7 @@ void print_trace_end(atom* a, atom* end) {
 //------------------------------------------------------------------------------
 
 template<typename NodeType>
-struct Trace {
+struct TraceOld {
   template<typename atom>
   static atom* match(void* ctx, atom* a, atom* b) {
     print_trace_start<NodeType, atom>(a);

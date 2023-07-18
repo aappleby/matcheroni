@@ -28,10 +28,36 @@ struct Span {
   constexpr Span() : a(nullptr), b(nullptr) {}
   constexpr Span(const atom* a, const atom* b) : a(a), b(b) {}
 
+  size_t len() const {
+    matcheroni_assert(a);
+    return b - a;
+  }
+
+  //----------------------------------------
+
+  // json_tut2a fails if I remove this?
+  bool operator==(const Span& c) const { return a == c.a && b == c.b; }
+
+  bool is_empty() const { return a && a == b; }
+  bool is_valid() const { return a; }
+
+  // this must be the same as is_valid() otherwise
+  // if (auto end = match()) {}
+  // fails if end is EOF
+  operator bool() const { return a; }
+
+  //----------------------------------------
+
+  [[nodiscard]] Span fail() const {
+    return a ? Span(nullptr, a) : Span(a, b);
+  }
+
   [[nodiscard]] Span advance(int offset) const {
     matcheroni_assert(a);
     return {a + offset, b};
   }
+
+  //----------------------------------------
 
   Span operator-(Span y) const {
     auto x = *this;
@@ -50,66 +76,11 @@ struct Span {
     return fail();
   }
 
-  bool operator==(const Span& c) const { return a == c.a && b == c.b; }
-
-  bool is_empty() const { return a && a == b; }
-  bool is_valid() const { return a; }
-
-  // this must be the same as is_valid() otherwise
-  // if (auto end = match()) {}
-  // fails if end is EOF
-
-  // DO NOT IMPLEMENT THIS it reacts strangely with
-  // if (!ctx.atom_eq(tok_a, lit_span)) return s.fail();
-  //operator bool() const { return a; }
-
-  template<typename atom2>
-  operator Span<const atom2>() const {
-    return Span<const atom2>(a, b);
-  }
-
-  [[nodiscard]] Span fail() const {
-    return a ? Span(nullptr, a) : Span(a, b);
-  }
-
-  size_t len() const {
-    matcheroni_assert(a);
-    return b - a;
-  }
+  //----------------------------------------
 
   const atom* a;
   const atom* b;
 };
-
-
-//------------------------------------------------------------------------------
-// Matchers require a context object to perform two essential functions -
-// compare atoms, and rewind any internal state when a partial match fails.
-
-// This context base class implements a trivial compare() that works for any
-// atom types that support '-' and can be converted to integers, and rewind()
-// does nothing here because TextContext has no internal state.
-
-struct TextContext {
-
-  bool atom_eq(char a, char b) { return a == b; }
-  bool atom_lt(char a, char b) { return a < b; }
-  bool atom_gt(char a, char b) { return a > b; }
-
-  /*
-  int compare(const char& a, const char& b) {
-    return int(a - b);
-  }
-  */
-
-  template<typename atom>
-  void rewind(Span<atom> s) {
-  }
-
-  int trace_depth = 0;
-};
-
-using TextSpan = Span<char>;
 
 //------------------------------------------------------------------------------
 // Matcheroni is based on building trees of "matcher" functions. A matcher
@@ -118,11 +89,35 @@ using TextSpan = Span<char>;
 // remaining text if a match was found, or a span containing a nullptr and the
 // point at which the match failed.
 
-// Matcher functions accept an opaque context pointer 'ctx', which can be used
-// to pass in a pointer to application-specific state.
+// Matcher functions accept a "context" object which stores persistent state
+// across matcher calls.
+
+// Matcher functions can also be member functions _of_ the context object,
+// which works equally well.
 
 template <typename context, typename atom>
 using matcher_function = Span<atom> (*)(context& ctx, Span<atom> s);
+
+//------------------------------------------------------------------------------
+// Matchers require a context object to perform two essential functions -
+// compare atoms and rewind any internal state when a partial match fails.
+
+// Since we will be matching text 99% of the time, this context class provides
+// the minimal amount of code needed to run and debug Matcheroni patterns.
+
+struct TextContext {
+
+  static bool atom_eq(char a, char b) { return a == b; }
+  static bool atom_lt(char a, char b) { return a < b; }
+  static bool atom_gt(char a, char b) { return a > b; }
+
+  // Rewind does nothing as it doesn't interact with trace_depth.
+  template<typename atom> void rewind(Span<atom> s) {}
+
+  int trace_depth = 0;
+};
+
+using TextSpan = Span<char>;
 
 //------------------------------------------------------------------------------
 // Matchers will often need to compare spans against null-delimited strings ala
@@ -165,7 +160,7 @@ struct Atom<C, rest...> {
     matcheroni_assert(s.is_valid());
     if (s.is_empty()) return s.fail();
 
-    if (!ctx.atom_eq(*s.a, C) == 0) {
+    if (ctx.atom_eq(*s.a, C)) {
       return s.advance(1);
     } else {
       return Atom<rest...>::match(ctx, s);
@@ -180,7 +175,7 @@ struct Atom<C> {
     matcheroni_assert(s.is_valid());
     if (s.is_empty()) return s.fail();
 
-    if (!ctx.atom_eq(*s.a, C) == 0) {
+    if (ctx.atom_eq(*s.a, C)) {
       return s.advance(1);
     } else {
       return s.fail();
@@ -199,7 +194,7 @@ struct NotAtom {
     matcheroni_assert(s.is_valid());
     if (s.is_empty()) return s.fail();
 
-    if (!ctx.atom_eq(*s.a, C) == 0) {
+    if (ctx.atom_eq(*s.a, C)) {
       return s.fail();
     }
     return NotAtom<rest...>::match(ctx, s);
@@ -213,7 +208,7 @@ struct NotAtom<C> {
     matcheroni_assert(s.is_valid());
     if (s.is_empty()) return s.fail();
 
-    if (!ctx.atom_eq(*s.a, C) == 0) {
+    if (ctx.atom_eq(*s.a, C)) {
       return s.fail();
     } else {
       return s.advance(1);

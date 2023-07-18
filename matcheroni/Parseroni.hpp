@@ -188,10 +188,8 @@ struct NodeBase {
 
 //------------------------------------------------------------------------------
 
-template<typename atom>
+template<typename SpanType, typename NodeType>
 struct NodeContext {
-  using NodeType = NodeBase<atom>;
-  using SpanType = Span<atom>;
 
   NodeContext() {
   }
@@ -205,7 +203,7 @@ struct NodeContext {
     while (c) {
       auto prev = c->_node_prev;
       recycle(c);
-      c = prev;
+      c = (NodeType*)prev;
     }
 
     _top_head = nullptr;
@@ -288,10 +286,10 @@ struct NodeContext {
   // we must also throw away any parse nodes that were created during the failed
   // match.
 
-  void rewind(Span<atom> s) {
+  void rewind(SpanType s) {
     while (_top_tail && (_top_tail->span.a >= s.a)) {
       auto dead = _top_tail;
-      set_tail(_top_tail->_node_prev);
+      set_tail((NodeType*)_top_tail->_node_prev);
 #ifndef FAST_MODE
       recycle(dead);
 #endif
@@ -313,7 +311,7 @@ struct NodeContext {
     } else {
       auto child_head = old_tail ? old_tail->_node_next : _top_head;
       auto child_tail = _top_tail;
-      splice(new_node, child_head, child_tail);
+      splice(new_node, (NodeType*)child_head, child_tail);
     }
   }
 
@@ -368,7 +366,7 @@ struct NodeContext {
 
     while (tail) {
       auto prev = tail->_node_prev;
-      recycle(tail);
+      recycle((NodeType*)tail);
       tail = prev;
     }
   }
@@ -378,7 +376,7 @@ struct NodeContext {
 
   NodeType* _top_head = nullptr;
   NodeType* _top_tail = nullptr;
-  const atom* _highwater = nullptr;
+  const SpanType::AtomType* _highwater = nullptr;
   int trace_depth = 0;
 };
 
@@ -387,11 +385,11 @@ struct NodeContext {
 
 using TextNode = NodeBase<char>;
 
-struct TextNodeContext : public NodeContext<char> {
+struct TextNodeContext : public NodeContext<TextSpan, TextNode> {
 
-  bool atom_eq(char a, char b) { return a == b; }
-  bool atom_lt(char a, char b) { return a < b; }
-  bool atom_gt(char a, char b) { return a > b; }
+  static bool atom_eq(char a, char b) { return a == b; }
+  static bool atom_lt(char a, char b) { return a < b; }
+  static bool atom_gt(char a, char b) { return a > b; }
 
   TextNode* top_head() { return _top_head; }
   TextNode* top_tail() { return _top_tail; }
@@ -410,8 +408,6 @@ struct TextNodeContext : public NodeContext<char> {
 
 template<typename context, typename atom, typename node_type>
 inline Span<atom> capture(context& ctx, Span<atom> s, const char* match_name, matcher_function<context, atom> match) {
-  using ContextType = NodeContext<atom>;
-  using SpanType = Span<atom>;
 
   auto old_tail = ctx.top_tail();
 #ifdef PARSERONI_FAST_MODE
@@ -422,7 +418,7 @@ inline Span<atom> capture(context& ctx, Span<atom> s, const char* match_name, ma
 
   if (end.is_valid()) {
     //printf("Capture %s\n", match_name);
-    SpanType node_span = {s.a, end.a};
+    Span<atom> node_span = {s.a, end.a};
     auto new_node = new node_type();
     ctx.create2(new_node, match_name, node_span, 0, old_tail);
   }
@@ -496,12 +492,10 @@ struct CaptureBegin {
 
 template<typename context, typename atom, typename node_type>
 inline Span<atom> capture_end(context& ctx, Span<atom> s, const char* match_name, matcher_function<context, atom> match) {
-  using ContextType = NodeContext<atom>;
-  using SpanType = Span<atom>;
 
   auto end = match(ctx, s);
   if (end.is_valid()) {
-    SpanType new_span(end.a, end.a);
+    Span<atom> new_span(end.a, end.a);
     auto new_node = new node_type();
     ctx.create2(new_node, match_name, new_span, /*flags*/ 1, ctx.top_tail());
   }

@@ -19,7 +19,7 @@ using namespace matcheroni;
 //------------------------------------------------------------------------------
 // To build a parse tree, we wrap the patterns we want to create nodes for
 // in a Capture<> matcher that will invoke our node factory. We can also wrap
-// them in a Trace<> matcher if we want to debug our patterns.
+// them in a TraceText<> matcher if we want to debug our patterns.
 
 struct JsonParser {
   // clang-format off

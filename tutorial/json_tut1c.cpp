@@ -35,11 +35,11 @@ struct JsonParser {
   static TextSpan value(TextContext& ctx, TextSpan s) {
     return
     Oneof<
-      Trace<"array",   array>,
-      Trace<"number",  number>,
-      Trace<"object",  object>,
-      Trace<"string",  string>,
-      Trace<"keyword", keyword>
+      TraceText<"array",   array>,
+      TraceText<"number",  number>,
+      TraceText<"object",  object>,
+      TraceText<"string",  string>,
+      TraceText<"keyword", keyword>
     >::match(ctx, s);
   }
 
@@ -47,25 +47,25 @@ struct JsonParser {
   Seq<
     Atom<'['>,
     ws,
-    list<Trace<"element", Ref<value>>>,
+    list<TraceText<"element", Ref<value>>>,
     ws,
     Atom<']'>
   >;
 
   using pair =
   Seq<
-    Trace<"key", string>,
+    TraceText<"key", string>,
     ws,
     Atom<':'>,
     ws,
-    Trace<"val", Ref<value>>
+    TraceText<"val", Ref<value>>
   >;
 
   using object =
   Seq<
     Atom<'{'>,
     ws,
-    list<Trace<"pair", pair>>,
+    list<TraceText<"pair", pair>>,
     ws,
     Atom<'}'>
   >;
