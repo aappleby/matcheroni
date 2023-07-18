@@ -26,7 +26,6 @@ void CContext::reset() {
 
 //------------------------------------------------------------------------------
 
-/*
 bool CContext::parse(std::vector<CToken>& lexemes) {
 
   for (auto& t : lexemes) {
@@ -48,7 +47,6 @@ bool CContext::parse(std::vector<CToken>& lexemes) {
   auto end = NodeTranslationUnit::match(*this, s);
   return end.is_valid();
 }
-*/
 
 //------------------------------------------------------------------------------
 

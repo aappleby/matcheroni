@@ -162,19 +162,19 @@ static_lib $
   obj/examples/c_parser/CNode.o $
   obj/examples/c_parser/CScope.o
 
-#build obj/examples/c_parser/c_parser_test.o : compile_cpp examples/c_parser/c_parser_test.cpp
-#build bin/examples/c_parser/c_parser_test : $
-#link $
-#  obj/examples/c_parser/c_parser_test.o $
-#  obj/examples/c_lexer.a $
-#  obj/examples/c_parser.a
-#
-#build obj/examples/c_parser/c_parser_benchmark.o : compile_cpp examples/c_parser/c_parser_benchmark.cpp
-#build bin/examples/c_parser/c_parser_benchmark : $
-#link $
-#  obj/examples/c_parser/c_parser_benchmark.o $
-#  obj/examples/c_lexer.a $
-#  obj/examples/c_parser.a
+build obj/examples/c_parser/c_parser_test.o : compile_cpp examples/c_parser/c_parser_test.cpp
+build bin/examples/c_parser/c_parser_test : $
+link $
+  obj/examples/c_parser/c_parser_test.o $
+  obj/examples/c_lexer.a $
+  obj/examples/c_parser.a
+
+build obj/examples/c_parser/c_parser_benchmark.o : compile_cpp examples/c_parser/c_parser_benchmark.cpp
+build bin/examples/c_parser/c_parser_benchmark : $
+link $
+  obj/examples/c_parser/c_parser_benchmark.o $
+  obj/examples/c_lexer.a $
+  obj/examples/c_parser.a
 
 #build obj/c_parser/c_reference_hax.o : compile_cpp examples/c_parser/c_reference_hax.cpp
 #build obj/c_parser/c_reference.o     : compile_cpp examples/c_parser/c_reference.cpp

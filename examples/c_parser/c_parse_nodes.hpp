@@ -366,9 +366,6 @@ struct NodeExpressionGccCompound : public CNode, PatternWrapper<NodeExpressionGc
   >;
 };
 
-#if 0
-
-
 //------------------------------------------------------------------------------
 
 struct NodeExpressionTernary : public CNode {};
@@ -1086,7 +1083,7 @@ struct NodeStructType : public CNode, public PatternWrapper<NodeStructType> {
 struct NodeStructTypeAdder : public NodeIdentifier {
   static lex_span match(CContext& ctx, lex_span s) {
     if (auto end = NodeIdentifier::match(ctx, s)) {
-      ((CContext*)ctx)->add_struct_type(s.a);
+      ctx.add_struct_type(s.a);
       return end;
     } else if (auto end = NodeTypedefType::match(ctx, s)) {
       // Already typedef'd
@@ -1116,15 +1113,14 @@ struct NodeStruct : public CNode, public PatternWrapper<NodeStruct> {
 
 struct NodeUnionType : public CNode {
   static lex_span match(CContext& ctx, lex_span s) {
-    auto context = ((CContext*)ctx);
-    return context->match_union_type(s);
+    return ctx.match_union_type(s);
   }
 };
 
 struct NodeUnionTypeAdder : public NodeIdentifier {
   static lex_span match(CContext& ctx, lex_span s) {
     if (auto end = NodeIdentifier::match(ctx, s)) {
-      ((CContext*)ctx)->add_union_type(s.a);
+      ctx.add_union_type(s.a);
       return end;
     } else if (auto end = NodeTypedefType::match(ctx, s)) {
       // Already typedef'd
@@ -1159,7 +1155,7 @@ struct NodeClassType : public CNode, public PatternWrapper<NodeClassType> {
 struct NodeClassTypeAdder : public NodeIdentifier {
   static lex_span match(CContext& ctx, lex_span s) {
     if (auto end = NodeIdentifier::match(ctx, s)) {
-      ((CContext*)ctx)->add_class_type(s.a);
+      ctx.add_class_type(s.a);
       return end;
     } else if (auto end = NodeTypedefType::match(ctx, s)) {
       // Already typedef'd
@@ -1217,7 +1213,7 @@ struct NodeEnumType : public CNode, public PatternWrapper<NodeEnumType> {
 struct NodeEnumTypeAdder : public NodeIdentifier {
   static lex_span match(CContext& ctx, lex_span s) {
     if (auto end = NodeIdentifier::match(ctx, s)) {
-      ((CContext*)ctx)->add_enum_type(s.a);
+      ctx.add_enum_type(s.a);
       return end;
     } else if (auto end = NodeTypedefType::match(ctx, s)) {
       // Already typedef'd
@@ -1411,12 +1407,9 @@ struct NodeDeclaration : public CNode, public PatternWrapper<NodeDeclaration> {
 template <typename P>
 struct PushPopScope {
   static lex_span match(CContext& ctx, lex_span s) {
-    ((CContext*)ctx)->push_scope();
-
+    ctx.push_scope();
     auto end = P::match(ctx, s);
-
-    ((CContext*)ctx)->pop_scope();
-
+    ctx.pop_scope();
     return end;
   }
 };
@@ -1698,7 +1691,7 @@ struct NodeTypedef : public CNode, public PatternWrapper<NodeTypedef> {
 
   static void extract_declarator(CContext& ctx, NodeDeclarator* decl) {
     if (auto id = decl->child("identifier")) {
-      ((CContext*)ctx)->add_typedef_type(id->span.a);
+      ctx.add_typedef_type(id->span.a);
     }
 
     //for (auto child : decl) {
@@ -1718,10 +1711,8 @@ struct NodeTypedef : public CNode, public PatternWrapper<NodeTypedef> {
     }
   }
 
-  static void extract_type(void* ctx) {
-    auto context = ((CContext*)ctx);
-
-    auto node = (CNode*)context->top_tail();
+  static void extract_type(CContext& ctx) {
+    auto node = ctx.top_tail();
 
     // node->dump_tree();
 
@@ -1830,4 +1821,3 @@ struct NodeTranslationUnit : public CNode, public PatternWrapper<NodeTranslation
 };
 
 //------------------------------------------------------------------------------
-#endif
