@@ -30,7 +30,7 @@ struct JsonParser {
   template<typename P>
   using comma_separated = Seq<P, Any<Seq<ws, Atom<','>, ws, P>>>;
 
-  static TextSpan value(void* ctx, TextSpan s) {
+  static TextSpan value(TextContext& ctx, TextSpan s) {
     return Oneof<
       Capture<"array",   array,   TextNode>,
       Capture<"number",  number,  TextNode>,
@@ -70,13 +70,13 @@ struct JsonParser {
   // clang-format on
   //----------------------------------------
 
-  static TextSpan match(void* ctx, TextSpan s) {
+  static TextSpan match(TextContext& ctx, TextSpan s) {
     return Seq<ws, Ref<value>, ws>::match(ctx, s);
   }
 };
 
 
-TextSpan parse_json(void* ctx, TextSpan s) {
+TextSpan parse_json(TextContext& ctx, TextSpan s) {
   return JsonParser::match(ctx, s);
 }
 

@@ -16,21 +16,13 @@
 
 using namespace matcheroni;
 
-#if 1
 // Debug config
 constexpr bool verbose   = true;
 constexpr bool dump_tree = true;
 const int warmup = 0;
 const int reps = 1;
-#else
-// Benchmark config
-constexpr bool verbose   = false;
-constexpr bool dump_tree = false;
-const int warmup = 10;
-const int reps = 10;
-#endif
 
-TextSpan parse_json(void* ctx, TextSpan s);
+TextSpan parse_json(TextContext& ctx, TextSpan s);
 
 //------------------------------------------------------------------------------
 
@@ -52,7 +44,7 @@ int main(int argc, char** argv) {
   double time_accum = 0;
   double line_accum = 0;
 
-  TextContext* context = new TextContext();
+  TextContext ctx;
 
   for (auto path : paths) {
     if (verbose) {
@@ -79,10 +71,10 @@ int main(int argc, char** argv) {
     double path_time_accum = 0;
 
     for (int rep = 0; rep < (warmup + reps); rep++) {
-      context->reset();
+      ctx.reset();
 
       double time_a = timestamp_ms();
-      parse_end = parse_json(context, text);
+      parse_end = parse_json(ctx, text);
       double time_b = timestamp_ms();
 
       if (rep >= warmup) path_time_accum += time_b - time_a;
@@ -95,7 +87,7 @@ int main(int argc, char** argv) {
     if (parse_end.a < text.b) {
       printf("Parse failed!\n");
       printf("Failure near `");
-      //print_flat(TextSpan(context->highwater, text.b), 20);
+      //print_flat(TextSpan(ctx.highwater, text.b), 20);
       printf("`\n");
       continue;
     }
@@ -107,7 +99,7 @@ int main(int argc, char** argv) {
 
     if (dump_tree) {
       printf("Parse tree:\n");
-      for (auto n = context->top_head(); n; n = n->node_next()) {
+      for (auto n = ctx.top_head(); n; n = n->node_next()) {
         print_tree(n);
       }
     }
@@ -115,7 +107,7 @@ int main(int argc, char** argv) {
     if (verbose) {
       printf("Slab current      %d\n",  LinearAlloc::inst().current_size);
       printf("Slab max          %d\n",  LinearAlloc::inst().max_size);
-      printf("Tree nodes        %ld\n", context->node_count());
+      printf("Tree nodes        %ld\n", ctx.node_count());
       //printf("Constructor calls %ld\n", NodeBase<char>::constructor_calls);
       //printf("Destructor calls  %ld\n", NodeBase<char>::destructor_calls);
     }
@@ -132,8 +124,6 @@ int main(int argc, char** argv) {
   printf("Line rate  %f\n", line_accum / (time_accum / 1000.0));
   printf("Rep time   %f\n", time_accum / reps);
   printf("\n");
-
-  delete context;
 
   return 0;
 }
