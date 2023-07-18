@@ -26,6 +26,7 @@ void CContext::reset() {
 
 //------------------------------------------------------------------------------
 
+/*
 bool CContext::parse(std::vector<CToken>& lexemes) {
 
   for (auto& t : lexemes) {
@@ -44,37 +45,38 @@ bool CContext::parse(std::vector<CToken>& lexemes) {
     printf("\n");
   }
 
-  auto end = NodeTranslationUnit::match(this, s);
+  auto end = NodeTranslationUnit::match(*this, s);
   return end.is_valid();
 }
+*/
 
 //------------------------------------------------------------------------------
 
 lex_span CContext::match_class_type(lex_span s) {
-  return type_scope->has_class_type(this, s) ? s.advance(1) : s.fail();
+  return type_scope->has_class_type(*this, s) ? s.advance(1) : s.fail();
 }
 
 lex_span CContext::match_struct_type(lex_span s) {
-  return type_scope->has_struct_type(this, s) ? s.advance(1) : s.fail();
+  return type_scope->has_struct_type(*this, s) ? s.advance(1) : s.fail();
 }
 
 lex_span CContext::match_union_type(lex_span s) {
-  return type_scope->has_union_type(this, s) ? s.advance(1) : s.fail();
+  return type_scope->has_union_type(*this, s) ? s.advance(1) : s.fail();
 }
 
 lex_span CContext::match_enum_type(lex_span s) {
-  return type_scope->has_enum_type(this, s) ? s.advance(1) : s.fail();
+  return type_scope->has_enum_type(*this, s) ? s.advance(1) : s.fail();
 }
 
 lex_span CContext::match_typedef_type(lex_span s) {
-  return type_scope->has_typedef_type(this, s) ? s.advance(1) : s.fail();
+  return type_scope->has_typedef_type(*this, s) ? s.advance(1) : s.fail();
 }
 
-void CContext::add_class_type  (const CToken* a) { type_scope->add_class_type(a); }
-void CContext::add_struct_type (const CToken* a) { type_scope->add_struct_type(a); }
-void CContext::add_union_type  (const CToken* a) { type_scope->add_union_type(a); }
-void CContext::add_enum_type   (const CToken* a) { type_scope->add_enum_type(a); }
-void CContext::add_typedef_type(const CToken* a) { type_scope->add_typedef_type(a); }
+void CContext::add_class_type  (const CToken* a) { type_scope->add_class_type(*this, a); }
+void CContext::add_struct_type (const CToken* a) { type_scope->add_struct_type(*this, a); }
+void CContext::add_union_type  (const CToken* a) { type_scope->add_union_type(*this, a); }
+void CContext::add_enum_type   (const CToken* a) { type_scope->add_enum_type(*this, a); }
+void CContext::add_typedef_type(const CToken* a) { type_scope->add_typedef_type(*this, a); }
 
 //----------------------------------------------------------------------------
 
@@ -123,15 +125,5 @@ lex_span CContext::match_builtin_type_suffix(lex_span s) {
     return s.fail();
   }
 }
-
-//------------------------------------------------------------------------------
-
-#if 0
-void CContext::dump_tokens() {
-  for (auto& t : tokens) {
-    t.dump_token();
-  }
-}
-#endif
 
 //------------------------------------------------------------------------------

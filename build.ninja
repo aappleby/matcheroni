@@ -153,15 +153,15 @@ link $
 # C parser example (not finished)
 
 build obj/examples/c_parser/CNode.o    : compile_cpp examples/c_parser/CNode.cpp
-#build obj/examples/c_parser/CContext.o : compile_cpp examples/c_parser/CContext.cpp
-#build obj/examples/c_parser/CScope.o   : compile_cpp examples/c_parser/CScope.cpp
-#
-#build obj/examples/c_parser.a : $
-#static_lib $
-#  obj/examples/c_parser/CContext.o $
-#  obj/examples/c_parser/CNode.o $
-#  obj/examples/c_parser/CScope.o
-#
+build obj/examples/c_parser/CContext.o : compile_cpp examples/c_parser/CContext.cpp
+build obj/examples/c_parser/CScope.o   : compile_cpp examples/c_parser/CScope.cpp
+
+build obj/examples/c_parser.a : $
+static_lib $
+  obj/examples/c_parser/CContext.o $
+  obj/examples/c_parser/CNode.o $
+  obj/examples/c_parser/CScope.o
+
 #build obj/examples/c_parser/c_parser_test.o : compile_cpp examples/c_parser/c_parser_test.cpp
 #build bin/examples/c_parser/c_parser_test : $
 #link $

@@ -17,30 +17,21 @@ using namespace matcheroni;
 template <StringParam match_name, typename P>
 struct Trace2 {
   template<typename atom>
-  static Span<atom> match(void* ctx, Span<atom> s) {
-    using ContextType = NodeContext<atom>;
-    using SpanType = Span<atom>;
-
-    ContextType* context = (ContextType*)ctx;
-    //printf("match_name %s\n", match_name.str_val);
-
+  static Span<atom> match(CContext& ctx, Span<atom> s) {
     matcheroni_assert(s.is_valid());
     if (s.is_empty()) return s.fail();
 
-    auto parser = (ContextType*)ctx;
-    print_bar(parser->trace_depth++, TextSpan(s.a->a, s.b->b), match_name.str_val, "?");
-    auto end = P::match(ctx, s);
-    print_bar(--parser->trace_depth, TextSpan(s.a->a, s.b->b), match_name.str_val,
-              end.is_valid() ? "OK" : "X");
+    auto text = TextSpan(s.a->a, (s.b - 1)->b);
+    auto name = match_name.str_val;
 
-    //printf("%p %p\n", s.a->a, s.a->b);
-    //printf("%p %p\n", s.b->a, s.b->b);
-    //printf("%p %p\n", end.a->a, end.a->b);
-    //printf("%p %p\n", end.b->a, end.b->b);
+    print_bar(ctx.trace_depth++, text, name, "?");
+    auto end = P::match(ctx, s);
+    print_bar(--ctx.trace_depth, text, name, end.is_valid() ? "OK" : "X");
 
     return end;
   }
 };
+
 
 template <StringParam match_name, typename pattern>
 //using Capture2 = Trace2<match_name, Capture<match_name, pattern, CNode>>;
@@ -85,27 +76,27 @@ using opt_comma_separated = Opt<comma_separated<P>>;
 //------------------------------------------------------------------------------
 // Matches string literals as if they were atoms. Does ___NOT___ match the
 // trailing null.
-// You'll need to define atom_cmp(void* ctx, atom& a, StringParam<N>& b) to use
+// You'll need to define atom_cmp(CContext& ctx, atom& a, StringParam<N>& b) to use
 // this.
 
 template <StringParam lit>
 struct Keyword : public CNode, PatternWrapper<Keyword<lit>> {
   static_assert(SST<c_keywords>::contains(lit.str_val));
 
-  static lex_span match(void* ctx, lex_span s) {
+  static lex_span match(CContext& ctx, lex_span s) {
     if (!s) return s.fail();
-    if (atom_cmp(ctx, *s.a, LEX_KEYWORD)) return s.fail();
+    if (ctx.compare(*s.a, LEX_KEYWORD)) return s.fail();
     /*+*/ ctx.rewind(s);
-    if (atom_cmp(ctx, *s.a, lit.span())) return s.fail();
+    if (ctx.compare(*s.a, lit.span())) return s.fail();
     return s.advance(1);
   }
 };
 
 template <StringParam lit>
 struct Literal2 : public CNode, PatternWrapper<Literal2<lit>> {
-  static lex_span match(void* ctx, lex_span s) {
+  static lex_span match(CContext& ctx, lex_span s) {
     if (!s) return s.fail();
-    if (atom_cmp(ctx, *s.a, lit.span())) return s.fail();
+    if (ctx.compare(*s.a, lit.span())) return s.fail();
     return s.advance(1);
   }
 };
@@ -113,15 +104,15 @@ struct Literal2 : public CNode, PatternWrapper<Literal2<lit>> {
 //------------------------------------------------------------------------------
 
 template <StringParam lit>
-inline lex_span match_punct(void* ctx, lex_span s) {
+inline lex_span match_punct(CContext& ctx, lex_span s) {
   if (!s) return s.fail();
   if (s.len() < lit.str_len) return s.fail();
 
   for (auto i = 0; i < lit.str_len; i++) {
-    if (atom_cmp(ctx, *s.a, LEX_PUNCT)) {
+    if (ctx.compare(*s.a, LEX_PUNCT)) {
       return s.fail();
     }
-    if (atom_cmp(ctx, *(s.a->a), lit.str_val[i])) {
+    if (ctx.compare(*(s.a->a), lit.str_val[i])) {
       return s.fail();
     }
     s.advance(1);
@@ -173,7 +164,6 @@ struct NodeBuiltinType : public CNode, PatternWrapper<NodeBuiltinType> {
 struct NodeTypedefType : public CNode, PatternWrapper<NodeTypedefType> {
   using pattern = Ref<&CContext::match_typedef_type>;
 };
-
 
 //------------------------------------------------------------------------------
 // Excluding builtins and typedefs from being identifiers changes the total
@@ -249,7 +239,7 @@ struct NodeSuffixOp : public CNode, PatternWrapper<NodeSuffixOp<lit>> {
 //------------------------------------------------------------------------------
 
 struct NodeQualifier : public CNode, PatternWrapper<NodeQualifier> {
-  static lex_span match(void* ctx, lex_span s) {
+  static lex_span match(CContext& ctx, lex_span s) {
     matcheroni_assert(s.is_valid());
     TextSpan span = *(s.a);
     if (SST<qualifiers>::match(span.a, span.b)) {
@@ -375,6 +365,9 @@ struct NodeExpressionGccCompound : public CNode, PatternWrapper<NodeExpressionGc
     Atom<')'>
   >;
 };
+
+#if 0
+
 
 //------------------------------------------------------------------------------
 
@@ -526,10 +519,10 @@ struct NodeTernaryOp : public CNode, PatternWrapper<NodeTernaryOp> {
 //----------------------------------------
 
 struct NodeExpression : public CNode, PatternWrapper<NodeExpression> {
-  static lex_span match_binary_op(void* ctx, lex_span s) {
+  static lex_span match_binary_op(CContext& ctx, lex_span s) {
     matcheroni_assert(s);
 
-    if (atom_cmp(ctx, *s.a, LEX_PUNCT)) {
+    if (ctx.compare(*s.a, LEX_PUNCT)) {
       return s.fail();
     }
 
@@ -584,7 +577,7 @@ struct NodeExpression : public CNode, PatternWrapper<NodeExpression> {
   subtraction.
   */
 
-  static lex_span match2(void* ctx, lex_span s) {
+  static lex_span match2(CContext& ctx, lex_span s) {
 
     using pattern =
         Seq<unit_pattern, Any<Seq<Ref<match_binary_op>, unit_pattern>>>;
@@ -741,7 +734,7 @@ struct NodeExpression : public CNode, PatternWrapper<NodeExpression> {
 
   //----------------------------------------
 
-  static lex_span match(void* ctx, lex_span s) {
+  static lex_span match(CContext& ctx, lex_span s) {
     //print_trace_start<NodeExpression, CToken>(a);
     auto end = match2(ctx, s);
     if (end) {
@@ -1091,7 +1084,7 @@ struct NodeStructType : public CNode, public PatternWrapper<NodeStructType> {
 };
 
 struct NodeStructTypeAdder : public NodeIdentifier {
-  static lex_span match(void* ctx, lex_span s) {
+  static lex_span match(CContext& ctx, lex_span s) {
     if (auto end = NodeIdentifier::match(ctx, s)) {
       ((CContext*)ctx)->add_struct_type(s.a);
       return end;
@@ -1122,14 +1115,14 @@ struct NodeStruct : public CNode, public PatternWrapper<NodeStruct> {
 //------------------------------------------------------------------------------
 
 struct NodeUnionType : public CNode {
-  static lex_span match(void* ctx, lex_span s) {
+  static lex_span match(CContext& ctx, lex_span s) {
     auto context = ((CContext*)ctx);
     return context->match_union_type(s);
   }
 };
 
 struct NodeUnionTypeAdder : public NodeIdentifier {
-  static lex_span match(void* ctx, lex_span s) {
+  static lex_span match(CContext& ctx, lex_span s) {
     if (auto end = NodeIdentifier::match(ctx, s)) {
       ((CContext*)ctx)->add_union_type(s.a);
       return end;
@@ -1164,7 +1157,7 @@ struct NodeClassType : public CNode, public PatternWrapper<NodeClassType> {
 };
 
 struct NodeClassTypeAdder : public NodeIdentifier {
-  static lex_span match(void* ctx, lex_span s) {
+  static lex_span match(CContext& ctx, lex_span s) {
     if (auto end = NodeIdentifier::match(ctx, s)) {
       ((CContext*)ctx)->add_class_type(s.a);
       return end;
@@ -1222,7 +1215,7 @@ struct NodeEnumType : public CNode, public PatternWrapper<NodeEnumType> {
 };
 
 struct NodeEnumTypeAdder : public NodeIdentifier {
-  static lex_span match(void* ctx, lex_span s) {
+  static lex_span match(CContext& ctx, lex_span s) {
     if (auto end = NodeIdentifier::match(ctx, s)) {
       ((CContext*)ctx)->add_enum_type(s.a);
       return end;
@@ -1417,7 +1410,7 @@ struct NodeDeclaration : public CNode, public PatternWrapper<NodeDeclaration> {
 
 template <typename P>
 struct PushPopScope {
-  static lex_span match(void* ctx, lex_span s) {
+  static lex_span match(CContext& ctx, lex_span s) {
     ((CContext*)ctx)->push_scope();
 
     auto end = P::match(ctx, s);
@@ -1703,7 +1696,7 @@ struct NodeTypedef : public CNode, public PatternWrapper<NodeTypedef> {
   >;
   // clang-format on
 
-  static void extract_declarator(void* ctx, NodeDeclarator* decl) {
+  static void extract_declarator(CContext& ctx, NodeDeclarator* decl) {
     if (auto id = decl->child("identifier")) {
       ((CContext*)ctx)->add_typedef_type(id->span.a);
     }
@@ -1716,7 +1709,7 @@ struct NodeTypedef : public CNode, public PatternWrapper<NodeTypedef> {
     }
   }
 
-  static void extract_declarator_list(void* ctx, NodeDeclaratorList* decls) {
+  static void extract_declarator_list(CContext& ctx, NodeDeclaratorList* decls) {
     if (!decls) return;
     for (auto child = decls->child_head(); child; child = child->node_next()) {
       if (auto decl = child->as_a<NodeDeclarator>()) {
@@ -1760,7 +1753,7 @@ struct NodeTypedef : public CNode, public PatternWrapper<NodeTypedef> {
     matcheroni_assert(false);
   }
 
-  static lex_span match(void* ctx, lex_span s) {
+  static lex_span match(CContext& ctx, lex_span s) {
     auto end = pattern::match(ctx, s);
     if (end) extract_type(ctx);
     return end;
@@ -1837,3 +1830,4 @@ struct NodeTranslationUnit : public CNode, public PatternWrapper<NodeTranslation
 };
 
 //------------------------------------------------------------------------------
+#endif
