@@ -81,6 +81,19 @@ struct Span {
 using TextSpan = Span<char>;
 
 //------------------------------------------------------------------------------
+
+struct Context {
+  template <typename atom1, typename atom2>
+  inline int compare(const atom1& a, const atom2& b) {
+    return int(a - b);
+  }
+
+  template<typename atom>
+  inline void rewind(Span<atom> s) {
+  }
+};
+
+//------------------------------------------------------------------------------
 // Matcheroni is based on building trees of "matcher" functions. A matcher
 // function takes a span of "atoms" (could be characters, could be some
 // application-specific type) as input and returns either a span containing the

@@ -112,15 +112,20 @@ build bin/examples/json/json_benchmark    : link obj/examples/json/json_parser.o
 #-------------------------------------------------------------------------------
 # Tutorial examples
 
-#build obj/tutorial/json_tut1a.o : compile_cpp tutorial/json_tut1a.cpp
-#build obj/tutorial/json_tut1b.o : compile_cpp tutorial/json_tut1b.cpp
-#build obj/tutorial/json_tut1c.o : compile_cpp tutorial/json_tut1c.cpp
-#build obj/tutorial/json_tut2a.o : compile_cpp tutorial/json_tut2a.cpp
+build obj/tutorial/json_tut1a.o : compile_cpp tutorial/json_tut1a.cpp
+build obj/tutorial/json_tut1b.o : compile_cpp tutorial/json_tut1b.cpp
+build obj/tutorial/json_tut1c.o : compile_cpp tutorial/json_tut1c.cpp
+build obj/tutorial/json_tut2a.o : compile_cpp tutorial/json_tut2a.cpp
 
-#build bin/tutorial/json_tut1a   : link obj/tutorial/json_tut1a.o
-#build bin/tutorial/json_tut1b   : link obj/tutorial/json_tut1b.o
-#build bin/tutorial/json_tut1c   : link obj/tutorial/json_tut1c.o
-#build bin/tutorial/json_tut2a   : link obj/tutorial/json_tut2a.o
+build bin/tutorial/json_tut1a   : link obj/tutorial/json_tut1a.o
+build bin/tutorial/json_tut1b   : link obj/tutorial/json_tut1b.o
+build bin/tutorial/json_tut1c   : link obj/tutorial/json_tut1c.o
+build bin/tutorial/json_tut2a   : link obj/tutorial/json_tut2a.o
+
+build bin/tutorial/json_tut1a_pass : run_test bin/tutorial/json_tut1a
+build bin/tutorial/json_tut1b_pass : run_test bin/tutorial/json_tut1b
+build bin/tutorial/json_tut1c_pass : run_test bin/tutorial/json_tut1c
+build bin/tutorial/json_tut2a_pass : run_test bin/tutorial/json_tut2a
 
 #-------------------------------------------------------------------------------
 # C lexer example (not finished)

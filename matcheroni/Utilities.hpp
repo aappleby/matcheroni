@@ -55,28 +55,21 @@ struct InstanceCounter {
 // Uncomment this to print a full trace of the regex matching process. Note -
 // the trace will be _very_ long, even for small regexes.
 
-#if 0
 template <StringParam match_name, typename P>
 struct Trace {
-  template<typename atom>
-  static Span<atom> match(void* ctx, Span<atom> s) {
-    using ContextType = ContextBase<atom>;
-    using SpanType = Span<atom>;
-    //printf("match_name %s\n", match_name.str_val);
-
+  template<typename context, typename atom>
+  static Span<atom> match(context& ctx, Span<atom> s) {
     matcheroni_assert(s.is_valid());
     if (s.is_empty()) return s.fail();
 
-    auto parser = (ContextType*)ctx;
-    print_bar(parser->trace_depth++, s, match_name.str_val, "?");
+    print_bar(ctx.trace_depth++, s, match_name.str_val, "?");
     auto end = P::match(ctx, s);
-    print_bar(--parser->trace_depth, s, match_name.str_val,
+    print_bar(--ctx.trace_depth, s, match_name.str_val,
               end.is_valid() ? "OK" : "X");
 
     return end;
   }
 };
-#endif
 
 #if 0
 inline static int indent_depth = 0;

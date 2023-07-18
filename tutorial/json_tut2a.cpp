@@ -43,7 +43,7 @@ struct JsonParser {
   template<typename P>
   using list = Opt<Seq<P, Any<Seq<ws, Atom<','>, ws, P>>>>;
 
-  static TextSpan value(void* ctx, TextSpan s) {
+  static TextSpan value(TextContext& ctx, TextSpan s) {
     using value =
     Oneof<
       Capture<"array",   array,   TextNode>,
@@ -82,33 +82,32 @@ struct JsonParser {
     Atom<'}'>
   >;
 
-  static TextSpan match(void* ctx, TextSpan s) {
+  static TextSpan match(TextContext& ctx, TextSpan s) {
     return Seq<ws, Ref<value>, ws>::match(ctx, s);
   }
 };
 
 //------------------------------------------------------------------------------
 
+const char* text = R"(
+{
+  "foo" : "bar",
+  "baz" : [1, 2, 3, -5.238492834e-123],
+  "blep" : true,
+  "blap" : false,
+  "blop" : null
+}
+)";
+
 int main(int argc, char** argv) {
-  if (argc < 2) {
-    printf("Usage: json_tutorial <filename>\n");
-    return 1;
-  }
+  TextContext ctx;
+  TextSpan span = to_span(text);
 
-  auto path = argv[1];
-
-  printf("Loading %s\n", path);
-  char* buf = nullptr;
-  size_t size = 0;
-  read(path, buf, size);
-
-  printf("Parsing %s\n", path);
-  TextContext* context = new TextContext();
-  auto parse_end = JsonParser::match(context, TextSpan(buf, buf + size));
+  auto parse_end = JsonParser::match(ctx, span);
 
   if (parse_end.is_valid()) {
     printf("Parse tree:\n");
-    for (auto n = context->top_head(); n; n = n->node_next()) {
+    for (auto n = ctx.top_head(); n; n = n->node_next()) {
       print_tree((TextNode*)n);
     }
   }
@@ -117,8 +116,6 @@ int main(int argc, char** argv) {
     return -1;
   }
 
-  delete [] buf;
-  delete context;
   return 0;
 }
 
