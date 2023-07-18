@@ -14,14 +14,9 @@ typedef matcheroni::Span<CToken> TokSpan;
 //------------------------------------------------------------------------------
 
 struct CNode : public matcheroni::NodeBase<CToken> {
-
   using base = matcheroni::NodeBase<CToken>;
 
-  using NodeType = CNode;
-
-  CNode* child(const char* name) {
-    return (CNode*)base::child(name);
-  }
+  CNode* child(const char* name) { return (CNode*)base::child(name); }
 
   CNode* node_prev() { return (CNode*)_node_prev; }
   CNode* node_next() { return (CNode*)_node_next; }

@@ -60,7 +60,7 @@ struct Span {
   // fails if end is EOF
 
   // DO NOT IMPLEMENT THIS it reacts strangely with
-  // if (ctx.compare(tok_a, lit_span)) return s.fail();
+  // if (!ctx.atom_eq(tok_a, lit_span)) return s.fail();
   //operator bool() const { return a; }
 
   template<typename atom2>
@@ -91,13 +91,22 @@ struct Span {
 // does nothing here because TextContext has no internal state.
 
 struct TextContext {
+
+  bool atom_eq(char a, char b) { return a == b; }
+  bool atom_lt(char a, char b) { return a < b; }
+  bool atom_gt(char a, char b) { return a > b; }
+
+  /*
   int compare(const char& a, const char& b) {
     return int(a - b);
   }
+  */
 
   template<typename atom>
   void rewind(Span<atom> s) {
   }
+
+  int trace_depth = 0;
 };
 
 using TextSpan = Span<char>;
@@ -156,7 +165,7 @@ struct Atom<C, rest...> {
     matcheroni_assert(s.is_valid());
     if (s.is_empty()) return s.fail();
 
-    if (ctx.compare(*s.a, C) == 0) {
+    if (!ctx.atom_eq(*s.a, C) == 0) {
       return s.advance(1);
     } else {
       return Atom<rest...>::match(ctx, s);
@@ -171,7 +180,7 @@ struct Atom<C> {
     matcheroni_assert(s.is_valid());
     if (s.is_empty()) return s.fail();
 
-    if (ctx.compare(*s.a, C) == 0) {
+    if (!ctx.atom_eq(*s.a, C) == 0) {
       return s.advance(1);
     } else {
       return s.fail();
@@ -190,7 +199,7 @@ struct NotAtom {
     matcheroni_assert(s.is_valid());
     if (s.is_empty()) return s.fail();
 
-    if (ctx.compare(*s.a, C) == 0) {
+    if (!ctx.atom_eq(*s.a, C) == 0) {
       return s.fail();
     }
     return NotAtom<rest...>::match(ctx, s);
@@ -204,7 +213,7 @@ struct NotAtom<C> {
     matcheroni_assert(s.is_valid());
     if (s.is_empty()) return s.fail();
 
-    if (ctx.compare(*s.a, C) == 0) {
+    if (!ctx.atom_eq(*s.a, C) == 0) {
       return s.fail();
     } else {
       return s.advance(1);
@@ -233,8 +242,8 @@ struct Range {
   static Span<atom> match(context& ctx, Span<atom> s) {
     matcheroni_assert(s.is_valid());
     if (s.is_empty()) return s.fail();
-    if (ctx.compare(*s.a, RA) < 0) return s.fail();
-    if (ctx.compare(*s.a, RB) > 0) return s.fail();
+    if (ctx.atom_lt(*s.a, RA)) return s.fail();
+    if (ctx.atom_gt(*s.a, RB)) return s.fail();
     return s.advance(1);
   }
 };
@@ -249,8 +258,8 @@ struct NotRange {
   static Span<atom> match(context& ctx, Span<atom> s) {
     matcheroni_assert(s.is_valid());
     if (s.is_empty()) return s.fail();
-    if (ctx.compare(*s.a, RA) < 0) return s.advance(1);
-    if (ctx.compare(*s.a, RB) > 0) return s.advance(1);
+    if (ctx.atom_lt(*s.a, RA)) return s.advance(1);
+    if (ctx.atom_gt(*s.a, RB)) return s.advance(1);
     return s.fail();
   }
 };
@@ -284,7 +293,7 @@ inline Span<char> match_lit(context& ctx, Span<char> s, const char* lit, size_t 
   if (len > s.len()) return s.fail();
 
   for (size_t i = 0; i < len; i++) {
-    if (ctx.compare(*s.a, *lit)) return s.fail();
+    if (!ctx.atom_eq(*s.a, *lit)) return s.fail();
     s = s.advance(1);
     lit++;
   }
@@ -758,7 +767,7 @@ struct MatchBackref {
 
     for (size_t i = 0; i < ref.len(); i++) {
       if (s.is_empty()) return s.fail();
-      if (ctx.compare(*s.a, ref.a[i]) != 0) return s.fail();
+      if (!ctx.atom_eq(*s.a, ref.a[i]) != 0) return s.fail();
       s = s.advance(1);
     }
 
@@ -877,7 +886,7 @@ struct Charset {
     matcheroni_assert(s.is_valid());
 
     for (auto i = 0; i < chars.str_len; i++) {
-      if (ctx.compare(s.a[0], chars.str_val[i]) == 0) {
+      if (!ctx.atom_eq(s.a[0], chars.str_val[i]) == 0) {
         return s.advance(1);
       }
     }

@@ -189,7 +189,7 @@ struct NodeBase {
 //------------------------------------------------------------------------------
 
 template<typename atom>
-struct NodeContext : public TextContext {
+struct NodeContext {
   using NodeType = NodeBase<atom>;
   using SpanType = Span<atom>;
 
@@ -213,13 +213,6 @@ struct NodeContext : public TextContext {
     _highwater = nullptr;
 
     assert(LinearAlloc::inst().is_empty());
-  }
-
-  //----------------------------------------
-
-  template <typename atom1, typename atom2>
-  inline int compare(const atom1& a, const atom2& b) {
-    return int(a - b);
   }
 
   //----------------------------------------
@@ -393,7 +386,22 @@ struct NodeContext : public TextContext {
 // We'll be parsing text a lot, so these are convenience declarations.
 
 using TextNode = NodeBase<char>;
-using TextNodeContext = NodeContext<char>;
+
+struct TextNodeContext : public NodeContext<char> {
+
+  bool atom_eq(char a, char b) { return a == b; }
+  bool atom_lt(char a, char b) { return a < b; }
+  bool atom_gt(char a, char b) { return a > b; }
+
+  TextNode* top_head() { return _top_head; }
+  TextNode* top_tail() { return _top_tail; }
+
+  const TextNode* top_head() const { return _top_head; }
+  const TextNode* top_tail() const { return _top_tail; }
+
+  void set_head(TextNode* head) { _top_head = head; }
+  void set_tail(TextNode* tail) { _top_tail = tail; }
+};
 
 //------------------------------------------------------------------------------
 // To convert our pattern matches to parse nodes, we create a Capture<>

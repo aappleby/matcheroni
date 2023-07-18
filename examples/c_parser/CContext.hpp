@@ -32,6 +32,24 @@ class CContext : public matcheroni::NodeContext<CToken> {
  public:
   CContext();
 
+  static bool atom_eq(char a, char b) {
+    return a == b;
+  }
+
+  static bool atom_eq(const CToken& a, const LexemeType& b) {
+    return a.type == b;
+  }
+
+  static bool atom_eq(const CToken& a, const char& b) {
+    if (a.len() != 1) return false;
+    return a.a[0] == b;
+  }
+
+  static bool atom_eq(const CToken& a, const matcheroni::TextSpan& b) {
+    return strcmp_span(a, b) == 0;
+  }
+
+  /*
   int compare(const char& a, const char& b) {
     return int(a - b);
   }
@@ -50,6 +68,7 @@ class CContext : public matcheroni::NodeContext<CToken> {
   int compare(const CToken& a, const matcheroni::TextSpan& b) {
     return strcmp_span(a, b);
   }
+  */
 
 #if 0
 template <>

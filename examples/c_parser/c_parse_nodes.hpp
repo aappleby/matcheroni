@@ -85,9 +85,9 @@ struct Keyword : public CNode, PatternWrapper<Keyword<lit>> {
 
   static TokSpan match(CContext& ctx, TokSpan s) {
     if (!s.is_valid()) return s.fail();
-    if (ctx.compare(*s.a, LEX_KEYWORD)) return s.fail();
+    if (!ctx.atom_eq(*s.a, LEX_KEYWORD)) return s.fail();
     /*+*/ ctx.rewind(s);
-    if (ctx.compare(*s.a, lit.span())) return s.fail();
+    if (!ctx.atom_eq(*s.a, lit.span())) return s.fail();
     return s.advance(1);
   }
 };
@@ -96,7 +96,7 @@ template <StringParam lit>
 struct Literal2 : public CNode, PatternWrapper<Literal2<lit>> {
   static TokSpan match(CContext& ctx, TokSpan s) {
     if (!s.is_valid()) return s.fail();
-    if (ctx.compare(*s.a, lit.span())) return s.fail();
+    if (!ctx.atom_eq(*s.a, lit.span())) return s.fail();
     return s.advance(1);
   }
 };
@@ -109,7 +109,7 @@ struct Literal3 : public CNode, PatternWrapper<Literal2<lit>> {
     const CToken& tok_a = *s.a;
     Span lit_span = lit.span();
 
-    if (ctx.compare(tok_a, lit_span)) return s.fail();
+    if (!ctx.atom_eq(tok_a, lit_span)) return s.fail();
     return s.advance(1);
   }
 };
@@ -127,8 +127,8 @@ inline TokSpan match_punct(CContext& ctx, TokSpan s) {
 
   for (auto i = 0; i < lit.str_len; i++) {
     const CToken& tok_a = s.a[0];
-    if (ctx.compare(tok_a, LEX_PUNCT)) return s.fail();
-    if (ctx.compare(tok_a.a[0], lit.str_val[i])) return s.fail();
+    if (!ctx.atom_eq(tok_a, LEX_PUNCT)) return s.fail();
+    if (!ctx.atom_eq(tok_a.a[0], lit.str_val[i])) return s.fail();
     s = s.advance(1);
   }
 
@@ -533,7 +533,7 @@ struct NodeExpression : public CNode, PatternWrapper<NodeExpression> {
   static TokSpan match_binary_op(CContext& ctx, TokSpan s) {
     matcheroni_assert(s.is_valid());
 
-    if (ctx.compare(*s.a, LEX_PUNCT)) {
+    if (!ctx.atom_eq(*s.a, LEX_PUNCT)) {
       return s.fail();
     }
 

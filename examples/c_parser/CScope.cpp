@@ -16,13 +16,13 @@ void CScope::clear() {
 }
 
 bool CScope::has_type(CContext& ctx, TokSpan s, token_list& types) {
-  if(ctx.compare(*s.a, LEX_IDENTIFIER)) {
+  if(!ctx.atom_eq(*s.a, LEX_IDENTIFIER)) {
     return false;
   }
   /*+*/ctx.rewind(s);
 
   for (const auto c : types) {
-    if (ctx.compare(*s.a, *c) == 0) {
+    if (ctx.atom_eq(*s.a, *c)) {
       return true;
     }
     else {
@@ -33,10 +33,10 @@ bool CScope::has_type(CContext& ctx, TokSpan s, token_list& types) {
 }
 
 void CScope::add_type(CContext& ctx, const CToken* a, token_list& types) {
-  matcheroni_assert(ctx.compare(*a, LEX_IDENTIFIER) == 0);
+  matcheroni_assert(ctx.atom_eq(*a, LEX_IDENTIFIER));
 
   for (const auto& c : types) {
-    if (ctx.compare(*a, *c) == 0) return;
+    if (ctx.atom_eq(*a, *c)) return;
   }
 
   types.push_back(a);
