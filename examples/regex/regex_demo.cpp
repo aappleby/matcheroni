@@ -25,6 +25,7 @@ TextSpan parse_regex(TextContext& ctx, TextSpan s);
 // attempts to parse it, and then prints out the resulting parse tree.
 
 int main(int argc, char** argv) {
+  printf("Regex Demo\n");
 
   if (argc < 2) {
     printf("Usage: regex_demo \"<your regex>\"\n");

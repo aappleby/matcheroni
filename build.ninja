@@ -14,6 +14,7 @@ build_mode = -g -O0 -Wall -Werror -Wno-unused-variable -Wno-unused-local-typedef
 
 ### -O3 needs LTO to maximize performance
 ### -flto _doubles_ the speed of CLexer. :O
+### -flto _halves_ the speed of Matcheroni's IP4 matcher, weird.
 ### LTO breaks "size obj/examples/json_parser.o"
 #build_mode = -g -flto -O3
 
@@ -85,10 +86,10 @@ build bin/matcheroni/parseroni_test_pass  : run_test bin/matcheroni/parseroni_te
 
 build obj/examples/regex/regex_parser.o : compile_cpp examples/regex/regex_parser.cpp
 build obj/examples/regex/regex_demo.o   : compile_cpp examples/regex/regex_demo.cpp
-#build bin/examples/regex/regex_demo     : link obj/examples/regex/regex_parser.o obj/examples/regex/regex_demo.o
+build bin/examples/regex/regex_demo     : link obj/examples/regex/regex_parser.o obj/examples/regex/regex_demo.o
 
-#build obj/examples/regex/regex_benchmark.o : compile_cpp examples/regex/regex_benchmark.cpp
-#build bin/examples/regex/regex_benchmark   : link obj/examples/regex/regex_parser.o obj/examples/regex/regex_benchmark.o
+build obj/examples/regex/regex_benchmark.o : compile_cpp examples/regex/regex_benchmark.cpp
+build bin/examples/regex/regex_benchmark   : link obj/examples/regex/regex_parser.o obj/examples/regex/regex_benchmark.o
 
 #-------------------------------------------------------------------------------
 # JSON parser example

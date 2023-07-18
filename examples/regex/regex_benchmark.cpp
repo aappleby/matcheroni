@@ -79,6 +79,19 @@ void benchmark_baseline(const char* path) {
 
 #ifdef REGEX_BENCHMARK_MATCHERONI
 
+struct DummyContext {
+  template <typename atom1, typename atom2>
+  inline int compare(const atom1& a, const atom2& b) {
+    return int(a - b);
+  }
+
+  template<typename atom>
+  inline void rewind(Span<atom> s) {
+  }
+};
+
+DummyContext ctx;
+
 template<typename P>
 void benchmark_pattern(TextSpan s) {
   int matches = 0;
@@ -86,7 +99,7 @@ void benchmark_pattern(TextSpan s) {
 
   time -= timestamp_ms();
   while(s.a != s.b) {
-    auto end = P::match(nullptr, s);
+    auto end = P::match(ctx, s);
     if (end.is_valid()) {
       matches++;
       s.a = end.a;
@@ -162,6 +175,7 @@ void benchmark_matcheroni(const char* path) {
   printf("IP4:   ");
   benchmark_pattern<matcheroni_ip4_pattern>(s);
 }
+
 #endif
 
 //------------------------------------------------------------------------------
