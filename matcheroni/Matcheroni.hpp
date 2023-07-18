@@ -10,8 +10,8 @@
 // SPDX-License-Identifier: MIT License
 
 #pragma once
-#include <stdio.h>
-#include <assert.h>
+#include <stdio.h>   // for size_t
+#include <assert.h>  // for assert
 
 // Assertions can actually speed things up as they mark code paths as dead
 #define matcheroni_assert(A) assert(A)
@@ -20,6 +20,9 @@
 namespace matcheroni {
 
 //------------------------------------------------------------------------------
+// Matcheroni operates on spans of atoms, usually (but not always) characters.
+// Valid spans have non-null a and b pointers, empty spans have equal non-null
+// a and b pointers.
 
 template <typename atom>
 struct Span {
@@ -35,8 +38,9 @@ struct Span {
 
   //----------------------------------------
 
-  // json_tut2a fails if I remove this?
-  bool operator==(const Span& c) const { return a == c.a && b == c.b; }
+  bool operator==(const Span& c) const {
+    return a == c.a && b == c.b;
+  }
 
   bool is_empty() const { return a && a == b; }
   bool is_valid() const { return a; }
@@ -83,11 +87,34 @@ struct Span {
 };
 
 //------------------------------------------------------------------------------
+// Matchers will often need to compare spans against null-delimited strings ala
+// strcmp(), so we provide this function for convenience.
+
+inline int strcmp_span(const Span<char>& s2, const char* lit) {
+  Span<char> s = s2;
+  while (1) {
+    auto ca = s.a == s.b ? 0 : *s.a;
+    auto cb = *lit;
+    if (ca != cb || ca == 0) return ca - cb;
+    s.a++;
+    lit++;
+  }
+}
+
+inline int strcmp_span(const Span<char>& a, const Span<char>& b) {
+  if (int c = a.len() - b.len()) return c;
+  for (size_t i = 0; i < a.len(); i++) {
+    if (auto c = a.a[i] - b.a[i]) return c;
+  }
+  return 0;
+}
+
+//------------------------------------------------------------------------------
 // Matcheroni is based on building trees of "matcher" functions. A matcher
 // function takes a span of "atoms" (could be characters, could be some
 // application-specific type) as input and returns either a span containing the
-// remaining text if a match was found, or a span containing a nullptr and the
-// point at which the match failed.
+// _remaining_text_ if a match was found, or a span containing a nullptr and
+// the point at which the match failed.
 
 // Matcher functions accept a "context" object which stores persistent state
 // across matcher calls.
@@ -120,29 +147,13 @@ struct TextContext {
 using TextSpan = Span<char>;
 
 //------------------------------------------------------------------------------
-// Matchers will often need to compare spans against null-delimited strings ala
-// strcmp(), so we provide this function for convenience.
+// Matcheroni consists of a base set of matcher functions wrapped in templated
+// structs. Wrapping them this way allows us to compose functions using
+// nested templates:
+//
+// using pattern = Seq<Atom<'f'>, Atom<'o'>, Atom<'o'>>;
+// TextSpan end = pattern::match(ctx, text);
 
-inline int strcmp_span(const Span<char>& s2, const char* lit) {
-  Span<char> s = s2;
-  while (1) {
-    auto ca = s.a == s.b ? 0 : *s.a;
-    auto cb = *lit;
-    if (ca != cb || ca == 0) return ca - cb;
-    s.a++;
-    lit++;
-  }
-}
-
-inline int strcmp_span(const Span<char>& a, const Span<char>& b) {
-  if (int c = a.len() - b.len()) return c;
-  for (size_t i = 0; i < a.len(); i++) {
-    if (auto c = a.a[i] - b.a[i]) return c;
-  }
-  return 0;
-}
-
-//------------------------------------------------------------------------------
 // The most fundamental unit of matching is a single atom. For convenience, we
 // implement the Atom matcher so that it can handle small sets of atoms.
 
@@ -318,6 +329,10 @@ struct Seq {
     Span<atom> end = P::match(ctx, s);
     if (!end.is_valid()) return end;
     return Seq<rest...>::match(ctx, end);
+
+    // FIXME would this be faster?
+    //if (!s) return s;
+    //return Seq<rest...>::match(ctx, P::match(ctx, s));
   }
 };
 
@@ -327,6 +342,10 @@ struct Seq<P> {
   static Span<atom> match(context& ctx, Span<atom> s) {
     matcheroni_assert(s.is_valid());
     return P::match(ctx, s);
+
+    // FIXME would this be faster?
+    //if (!s) return s;
+    //return P::match(ctx, s);
   }
 };
 

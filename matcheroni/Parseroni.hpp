@@ -316,38 +316,54 @@ struct NodeContext {
   }
 
 
-  NodeType* enclose_bookmark(NodeType* old_tail) {
+  NodeType* enclose_bookmark(NodeType* old_tail, SpanType bounds) {
     //----------------------------------------
     // Scan down the node list to find the bookmark
 
-    auto c = old_tail ? old_tail->node_next() : top_head();
-    for (; c; c = c->node_next()) {
-      if (c->flags & 1) {
+    auto node_b = old_tail ? old_tail->node_next() : top_head();
+    for (; node_b; node_b = node_b->node_next()) {
+      if (node_b->flags & 1) {
         break;
       }
     }
 
-    if (c == nullptr) {
+    if (node_b == nullptr) {
       // No bookmark = no capture, but _not_ a failure
-      return c;
+      return node_b;
     }
+
+    /*
+    // FIXME - this might be faster than tracking old_tail? Benchmark it.
+    // Could use it for create2 also
+    auto node_a = node_b;
+    while(1) {
+      auto prev = node_a->node_prev();
+      if (!prev) break;
+      if (prev->span.b <= bounds.a) {
+        break;
+      }
+      node_a = prev;
+    }
+    */
 
     //----------------------------------------
     // Resize the bookmark's span and clear its bookmark flag
 
-    c->flags &= ~1;
+    node_b->span = bounds;
+    node_b->flags &= ~1;
 
     //----------------------------------------
     // Enclose its children
 
-    if (c->node_prev() != old_tail) {
+    if (node_b->node_prev() != old_tail) {
       auto child_head = old_tail ? old_tail->node_next() : top_head();
-      auto child_tail = c->node_prev();
-      detach(c);
-      splice(c, child_head, child_tail);
+      //auto child_head = node_a;
+      auto child_tail = node_b->node_prev();
+      detach(node_b);
+      splice(node_b, child_head, child_tail);
     }
 
-    return c;
+    return node_b;
   }
 
   //----------------------------------------
@@ -467,8 +483,8 @@ inline Span<atom> capture_begin(context& ctx, Span<atom> s, matcher_function<con
 
   auto end = match(ctx, s);
   if (end.is_valid()) {
-    ctx.enclose_bookmark(old_tail);
-    ctx.top_tail()->span.a = s.a;
+    Span<atom> bounds(s.a, end.a);
+    ctx.enclose_bookmark(old_tail, bounds);
   }
   else {
 #ifdef PARSERONI_FAST_MODE
