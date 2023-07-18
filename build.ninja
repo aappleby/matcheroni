@@ -130,29 +130,29 @@ build bin/tutorial/json_tut2a_pass : run_test bin/tutorial/json_tut2a
 #-------------------------------------------------------------------------------
 # C lexer example (not finished)
 
-#build obj/examples/c_lexer/CLexer.o : compile_cpp examples/c_lexer/CLexer.cpp
-#build obj/examples/c_lexer/CToken.o : compile_cpp examples/c_lexer/CToken.cpp
-#
-#build obj/examples/c_lexer.a : static_lib $
-#  obj/examples/c_lexer/CLexer.o $
-#  obj/examples/c_lexer/CToken.o
-#
-#build obj/examples/c_lexer/c_lexer_test.o : compile_cpp examples/c_lexer/c_lexer_test.cpp
-#build bin/examples/c_lexer/c_lexer_test : $
-#link $
-#  obj/examples/c_lexer/c_lexer_test.o $
-#  obj/examples/c_lexer.a
-#
-#build obj/examples/c_lexer/c_lexer_benchmark.o : compile_cpp examples/c_lexer/c_lexer_benchmark.cpp
-#build bin/examples/c_lexer/c_lexer_benchmark : $
-#link $
-#  obj/examples/c_lexer/c_lexer_benchmark.o $
-#  obj/examples/c_lexer.a
+build obj/examples/c_lexer/CLexer.o : compile_cpp examples/c_lexer/CLexer.cpp
+build obj/examples/c_lexer/CToken.o : compile_cpp examples/c_lexer/CToken.cpp
+
+build obj/examples/c_lexer.a : static_lib $
+  obj/examples/c_lexer/CLexer.o $
+  obj/examples/c_lexer/CToken.o
+
+build obj/examples/c_lexer/c_lexer_test.o : compile_cpp examples/c_lexer/c_lexer_test.cpp
+build bin/examples/c_lexer/c_lexer_test : $
+link $
+  obj/examples/c_lexer/c_lexer_test.o $
+  obj/examples/c_lexer.a
+
+build obj/examples/c_lexer/c_lexer_benchmark.o : compile_cpp examples/c_lexer/c_lexer_benchmark.cpp
+build bin/examples/c_lexer/c_lexer_benchmark : $
+link $
+  obj/examples/c_lexer/c_lexer_benchmark.o $
+  obj/examples/c_lexer.a
 
 #-------------------------------------------------------------------------------
 # C parser example (not finished)
 
-#build obj/examples/c_parser/CNode.o    : compile_cpp examples/c_parser/CNode.cpp
+build obj/examples/c_parser/CNode.o    : compile_cpp examples/c_parser/CNode.cpp
 #build obj/examples/c_parser/CContext.o : compile_cpp examples/c_parser/CContext.cpp
 #build obj/examples/c_parser/CScope.o   : compile_cpp examples/c_parser/CScope.cpp
 #
