@@ -46,8 +46,8 @@ void dump_tree(TestNode* n, std::string& out) {
 //----------------------------------------
 
 template<typename Context>
-void check_hash(const Context& context, uint64_t hash_a) {
-  uint64_t hash_b = hash_context(&context);
+void check_hash(Context& ctx, uint64_t hash_a) {
+  uint64_t hash_b = hash_context(ctx);
   printf("Expected hash 0x%016lx\n", hash_a);
   printf("Actual hash   0x%016lx\n", hash_b);
   matcheroni_assert(hash_a == hash_b && "bad hash");
@@ -68,7 +68,7 @@ void reset_everything() {
 // A mini s-expression parser in ~10 lines of code. :D
 
 struct SExpression {
-  static TextSpan match(void* ctx, TextSpan s) {
+  static TextSpan match(TextContext& ctx, TextSpan s) {
     return Oneof<
       Capture<"atom", atom, TestNode>,
       Capture<"list", list, TestNode>
@@ -90,22 +90,22 @@ void test_basic() {
 
   {
     // Check than we can round-trip a s-expression
-    TextContext context;
-    context.reset();
+    TextContext ctx;
+    ctx.reset();
     auto text = to_span("(abcd,efgh,(ab),(a,(bc,de)),ghijk)");
-    auto tail = SExpression::match(&context, text);
+    auto tail = SExpression::match(ctx, text);
     matcheroni_assert(tail.is_valid() && tail == "");
 
     printf("Round-trip s-expression:\n");
     std::string dump;
-    dump_tree((TestNode*)context.top_head(), dump);
+    dump_tree((TestNode*)ctx.top_head(), dump);
     printf("Old : %s\n", text.a);
     printf("New : %s\n", dump.c_str());
     matcheroni_assert(text == dump && "Mismatch!");
     printf("\n");
 
-    print_context(&context);
-    check_hash(context, 0x7073c4e1b84277f0);
+    print_context(ctx);
+    check_hash(ctx, 0x7073c4e1b84277f0);
 
     matcheroni_assert(LinearAlloc::inst().max_size == sizeof(TestNode) * 11);
     matcheroni_assert(LinearAlloc::inst().current_size == sizeof(TestNode) * 11);
@@ -113,23 +113,23 @@ void test_basic() {
     matcheroni_assert(InstanceCounter<TestNode>::dead == 0);
   }
 
-  TextContext context;
+  TextContext ctx;
   TextSpan span;
   TextSpan tail;
 
-  context.reset();
+  ctx.reset();
   span = to_span("((((a))))");
-  tail = SExpression::match(&context, span);
+  tail = SExpression::match(ctx, span);
   matcheroni_assert(tail.is_valid() && tail == "");
 
-  context.reset();
+  ctx.reset();
   span = to_span("(((())))");
-  tail = SExpression::match(&context, span);
+  tail = SExpression::match(ctx, span);
   matcheroni_assert(tail.is_valid() && tail == "");
 
-  context.reset();
+  ctx.reset();
   span = to_span("(((()))(");
-  tail = SExpression::match(&context, span);
+  tail = SExpression::match(ctx, span);
   matcheroni_assert(!tail.is_valid() && std::string(tail.b) == "(");
 
   printf("test_basic() end\n\n");
@@ -155,13 +155,13 @@ void test_rewind() {
     Capture<"lit", Lit<"abcdef">, TestNode>
   >;
 
-  TextContext context;
+  TextContext ctx;
 
   auto text = to_span("abcdef");
-  auto tail = pattern::match(&context, text);
+  auto tail = pattern::match(ctx, text);
   print_match(text, text - tail);
-  print_context(&context);
-  check_hash(context, 0x2850a87bce45242a);
+  print_context(ctx);
+  check_hash(ctx, 0x2850a87bce45242a);
 
   matcheroni_assert(InstanceCounter<TestNode>::live == 1);
   matcheroni_assert(InstanceCounter<TestNode>::dead == 5);
@@ -174,7 +174,8 @@ void test_rewind() {
 //------------------------------------------------------------------------------
 
 struct BeginEndTest {
-  static TextSpan match(void* ctx, TextSpan s) {
+
+  static TextSpan match(TextContext& ctx, TextSpan s) {
     return Oneof<
       suffixed<Capture<"atom", atom, TestNode>>,
       suffixed<Capture<"list", list, TestNode>>
@@ -208,13 +209,13 @@ void test_begin_end() {
   printf("test_begin_end()\n");
   reset_everything();
 
-  TextContext context;
+  TextContext ctx;
 
   auto text = to_span("[ [abc,ab?,cdb+] , [a,b,c*,d,e,f] ]");
-  auto tail = BeginEndTest::match(&context, text);
+  auto tail = BeginEndTest::match(ctx, text);
   print_match(text, text - tail);
-  print_context(&context);
-  check_hash(context, 0x401403cbefc2cba9);
+  print_context(ctx);
+  check_hash(ctx, 0x401403cbefc2cba9);
 
   matcheroni_assert(InstanceCounter<TestNode>::live == 15);
   matcheroni_assert(InstanceCounter<TestNode>::dead == 0);
@@ -231,7 +232,7 @@ void test_begin_end() {
 // mismatched suffix.
 
 struct Pathological {
-  static TextSpan match(void* ctx, TextSpan s) {
+  static TextSpan match(TextContext& ctx, TextSpan s) {
     return pattern::match(ctx, s);
   }
 
@@ -254,7 +255,7 @@ void test_pathological() {
   printf("test_pathological()\n");
   reset_everything();
 
-  TextContext context;
+  TextContext ctx;
   TextSpan span;
   TextSpan tail;
 
@@ -262,7 +263,7 @@ void test_pathological() {
   std::string text = "[[[[[[a]]]]]]";
 
   span = to_span(text);
-  tail = Pathological::match(&context, span);
+  tail = Pathological::match(ctx, span);
   matcheroni_assert(tail.is_valid() && "pathological tree invalid");
 
   // Tree should be
@@ -274,8 +275,8 @@ void test_pathological() {
   // {[a]                 }  | | | | |-none
   // {a                   }  | | | | | |-atom
 
-  print_context(&context);
-  check_hash(context, 0x07a37a832d506209);
+  print_context(ctx);
+  check_hash(ctx, 0x07a37a832d506209);
 
   matcheroni_assert(InstanceCounter<TestNode>::live == 7);
   matcheroni_assert(InstanceCounter<TestNode>::dead == 137250);

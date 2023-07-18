@@ -18,7 +18,7 @@ bool CScope::has_type(void* ctx, lex_span s, token_list& types) {
   if(matcheroni::atom_cmp(ctx, *s.a, LEX_IDENTIFIER)) {
     return false;
   }
-  /*+*/parser_rewind(ctx, s);
+  /*+*/ctx.rewind(s);
 
   for (const auto c : types) {
     if (matcheroni::atom_cmp(ctx, *s.a, *c) == 0) {

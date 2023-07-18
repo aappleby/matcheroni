@@ -374,9 +374,9 @@ inline void print_tree(const NodeType* node, int depth = 0) {
   }
 }
 
-template<typename ContextType>
-inline void print_context(const ContextType* context, int depth = 0) {
-  for (auto node = context->top_head(); node; node = node->node_next()) {
+template<typename context>
+inline void print_context(const context& ctx, int depth = 0) {
+  for (auto node = ctx.top_head(); node; node = node->node_next()) {
     print_tree(node);
   }
 }
@@ -484,10 +484,10 @@ inline uint64_t hash_tree(const NodeType* node, int depth = 0) {
   return h;
 }
 
-template<typename ContextType>
-inline uint64_t hash_context(const ContextType* context) {
+template<typename context>
+inline uint64_t hash_context(context& ctx) {
   uint64_t h = 123456789;
-  for (auto node = context->top_head(); node; node = node->node_next()) {
+  for (auto node = ctx.top_head(); node; node = node->node_next()) {
     h = (h * 373781549) ^ hash_tree(node);
   }
   return h;

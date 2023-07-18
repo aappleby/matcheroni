@@ -95,7 +95,7 @@ struct Keyword : public CNode, PatternWrapper<Keyword<lit>> {
   static lex_span match(void* ctx, lex_span s) {
     if (!s) return s.fail();
     if (atom_cmp(ctx, *s.a, LEX_KEYWORD)) return s.fail();
-    /*+*/ parser_rewind(ctx, s);
+    /*+*/ ctx.rewind(s);
     if (atom_cmp(ctx, *s.a, lit.span())) return s.fail();
     return s.advance(1);
   }

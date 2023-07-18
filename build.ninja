@@ -56,8 +56,8 @@ rule iwyu
 build obj/matcheroni/matcheroni_test.o : compile_cpp matcheroni/matcheroni_test.cpp
 build bin/matcheroni/matcheroni_test   : link obj/matcheroni/matcheroni_test.o
 
-#build obj/matcheroni/parseroni_test.o  : compile_cpp matcheroni/parseroni_test.cpp
-#build bin/matcheroni/parseroni_test    : link obj/matcheroni/parseroni_test.o
+build obj/matcheroni/parseroni_test.o  : compile_cpp matcheroni/parseroni_test.cpp
+build bin/matcheroni/parseroni_test    : link obj/matcheroni/parseroni_test.o
 
 #build bin/matcheroni/matcheroni_test_pass : run_test bin/matcheroni/matcheroni_test
 #build bin/matcheroni/parseroni_test_pass  : run_test bin/matcheroni/parseroni_test

@@ -217,6 +217,13 @@ struct ContextBase {
 
   //----------------------------------------
 
+  template <typename atom1, typename atom2>
+  inline int compare(const atom1& a, const atom2& b) {
+    return int(a - b);
+  }
+
+  //----------------------------------------
+
   size_t node_count() {
     size_t accum = 0;
     for (auto c = _top_head; c; c = c->_node_next) accum += c->node_count();
@@ -390,41 +397,28 @@ struct ContextBase {
 using TextNode = NodeBase<char>;
 using TextContext = ContextBase<char>;
 
-// Matcheroni's default rewind callback does nothing, but if we provide a
-// specialized version of it Matcheroni will call it as needed.
-
-template <>
-inline void parser_rewind(void* ctx, TextSpan s) {
-  if (ctx) {
-    auto context = (TextContext*)ctx;
-    context->rewind(s);
-  }
-}
-
 //------------------------------------------------------------------------------
 // To convert our pattern matches to parse nodes, we create a Capture<>
 // matcher that constructs a new NodeType() for a successful match, attaches
 // any sub-nodes to it, and places it on the context's node list.
 
-template<typename atom, typename NodeType>
-inline Span<atom> capture(void* ctx, Span<atom> s, const char* match_name, matcher_function<atom> match) {
+template<typename context, typename atom, typename NodeType>
+inline Span<atom> capture(context& ctx, Span<atom> s, const char* match_name, matcher_function<context, atom> match) {
   using ContextType = ContextBase<atom>;
   using SpanType = Span<atom>;
 
-  ContextType* context = (ContextType*)ctx;
-
-  auto old_tail = context->top_tail();
+  auto old_tail = ctx.top_tail();
 #ifdef PARSERONI_FAST_MODE
   auto old_state = LinearAlloc::inst().save_state();
 #endif
 
-  auto end = match(context, s);
+  auto end = match(ctx, s);
 
   if (end.is_valid()) {
     //printf("Capture %s\n", match_name);
     SpanType node_span = {s.a, end.a};
     auto new_node = new NodeType();
-    context->create2(new_node, match_name, node_span, 0, old_tail);
+    ctx.create2(new_node, match_name, node_span, 0, old_tail);
   }
   else {
     // We don't set the tail back here, rewind will do it.
@@ -438,9 +432,9 @@ inline Span<atom> capture(void* ctx, Span<atom> s, const char* match_name, match
 
 template <StringParam match_name, typename pattern, typename NodeType>
 struct Capture {
-  template<typename atom>
-  static Span<atom> match(void* ctx, Span<atom> s) {
-    return capture<atom, NodeType>(ctx, s, match_name.str_val, pattern::match);
+  template<typename context, typename atom>
+  static Span<atom> match(context& ctx, Span<atom> s) {
+    return capture<context, atom, NodeType>(ctx, s, match_name.str_val, pattern::match);
   }
 };
 
@@ -460,22 +454,19 @@ struct Capture {
 // If no CaptureEnd is hit inside a CaptureBegin, the capture does not occur
 // but this is _not_ an error.
 
-template <typename atom>
-inline Span<atom> capture_begin(void* ctx, Span<atom> s, matcher_function<atom> match) {
-  using ContextType = ContextBase<atom>;
+template <typename context, typename atom>
+inline Span<atom> capture_begin(context& ctx, Span<atom> s, matcher_function<context, atom> match) {
   using SpanType = Span<atom>;
 
-  ContextType* context = (ContextType*)ctx;
-
-  auto old_tail = context->top_tail();
+  auto old_tail = ctx.top_tail();
 #ifdef PARSERONI_FAST_MODE
     auto old_state = LinearAlloc::inst().save_state();
 #endif
 
   auto end = match(ctx, s);
   if (end.is_valid()) {
-    context->enclose_bookmark(old_tail);
-    context->top_tail()->span.a = s.a;
+    ctx.enclose_bookmark(old_tail);
+    ctx.top_tail()->span.a = s.a;
   }
   else {
 #ifdef PARSERONI_FAST_MODE
@@ -489,26 +480,24 @@ inline Span<atom> capture_begin(void* ctx, Span<atom> s, matcher_function<atom> 
 
 template <typename NodeType, typename... rest>
 struct CaptureBegin {
-  template<typename atom>
-  static Span<atom> match(void* ctx, Span<atom> s) {
-    return capture_begin(ctx, s, Seq<rest...>::match);
+  template<typename context, typename atom>
+  static Span<atom> match(context& ctx, Span<atom> s) {
+    return capture_begin<context, atom>(ctx, s, Seq<rest...>::match);
   }
 };
 
 //----------------------------------------
 
-template<typename atom, typename NodeType>
-inline Span<atom> capture_end(void* ctx, Span<atom> s, const char* match_name, matcher_function<atom> match) {
+template<typename context, typename atom, typename NodeType>
+inline Span<atom> capture_end(context& ctx, Span<atom> s, const char* match_name, matcher_function<context, atom> match) {
   using ContextType = ContextBase<atom>;
   using SpanType = Span<atom>;
-
-  ContextType* context = (ContextType*)ctx;
 
   auto end = match(ctx, s);
   if (end.is_valid()) {
     SpanType new_span(end.a, end.a);
     auto new_node = new NodeType();
-    context->create2(new_node, match_name, new_span, /*flags*/ 1, context->top_tail());
+    ctx.create2(new_node, match_name, new_span, /*flags*/ 1, ctx.top_tail());
   }
   return end;
 }
@@ -517,9 +506,9 @@ inline Span<atom> capture_end(void* ctx, Span<atom> s, const char* match_name, m
 
 template<StringParam match_name, typename P, typename NodeType>
 struct CaptureEnd {
-  template<typename atom>
-  static Span<atom> match(void* ctx, Span<atom> s) {
-    return capture_end<atom, NodeType>(ctx, s, match_name.str_val, P::match);
+  template<typename context, typename atom>
+  static Span<atom> match(context& ctx, Span<atom> s) {
+    return capture_end<context, atom, NodeType>(ctx, s, match_name.str_val, P::match);
   }
 };
 

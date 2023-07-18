@@ -117,32 +117,6 @@ inline int strcmp_span(const Span<char>& a, const Span<char>& b) {
 }
 
 //------------------------------------------------------------------------------
-// Matcheroni needs some way to compare atoms against constants. By default, it
-// uses a generic atom_cmp function to compute the integer difference between
-// the atom and the constant.
-
-// If you specialize the function below for your various atom types and
-// constant types, Matcheroni will use your code instead. Your ()
-// should return <0 for a<b, ==0 for a==b, and >0 for a>b.
-
-//template <typename atom1, typename atom2>
-//inline int atom_cmp(context& ctx, const atom1& a, const atom2& b) {
-//  return int(a - b);
-//}
-
-//------------------------------------------------------------------------------
-// Matcheroni also needs a way to tell the host application to "rewind" its
-// state when an intermediate match fails - this can be used to clean up any
-// intermediate data structures that were created during the failed partial
-// match.
-
-// By default this does nothing, but if you specialize this for your atom type
-// Matcheroni will call that instead.
-
-//template <typename atom>
-//inline void parser_rewind(context& ctx, Span<atom> s) {}
-
-//------------------------------------------------------------------------------
 // The most fundamental unit of matching is a single atom. For convenience, we
 // implement the Atom matcher so that it can handle small sets of atoms.
 

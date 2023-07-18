@@ -70,8 +70,6 @@ class CContext : public matcheroni::ContextBase<CToken> {
   void dump_lexemes();
   //void dump_tokens();
 
-  //void parser_rewind(lex_span s);
-
 #if 0
   void rewind(SpanType s) {
     printf("\n\n");
@@ -111,14 +109,5 @@ class CContext : public matcheroni::ContextBase<CToken> {
   std::vector<CToken> tokens;
   CScope* type_scope;
 };
-
-template <>
-inline void matcheroni::parser_rewind(void* ctx, lex_span s) {
-  if (ctx) {
-    auto context = (CContext*)ctx;
-    context->rewind(s);
-  }
-}
-
 
 //------------------------------------------------------------------------------
