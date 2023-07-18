@@ -16,7 +16,7 @@
     {
       "type": "shell",
       "label": "build_matcheroni_test",
-      "command": "ninja bin/tests/matcheroni_test",
+      "command": "ninja bin/matcheroni/matcheroni_test",
       "problemMatcher": "$gcc",
       "group": {
         "kind": "build",
@@ -26,7 +26,7 @@
     {
       "type": "shell",
       "label": "build_parseroni_test",
-      "command": "ninja bin/tests/parseroni_test",
+      "command": "ninja bin/matcheroni/parseroni_test",
       "problemMatcher": "$gcc",
       "group": {
         "kind": "build",

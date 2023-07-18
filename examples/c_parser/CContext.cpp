@@ -26,13 +26,11 @@ void CContext::reset() {
 
 //------------------------------------------------------------------------------
 
-#if 0
-bool CContext::parse(std::vector<CToken>& tokens) {
+bool CContext::parse(std::vector<CToken>& lexemes) {
 
-  for (auto i = 0; i < tokens.size(); i++) {
-    auto l = &tokens[i];
-    if (!l->is_gap()) {
-      tokens.push_back(Token(l));
+  for (auto& t : lexemes) {
+    if (!t.is_gap()) {
+      tokens.push_back(t);
     }
   }
 
@@ -41,10 +39,14 @@ bool CContext::parse(std::vector<CToken>& tokens) {
   auto tok_b = tokens.data() + tokens.size() - 1;
   lex_span s(tok_a, tok_b);
 
+  for (auto c = s.a; c < s.b; c++) {
+    c->dump();
+    printf("\n");
+  }
+
   auto end = NodeTranslationUnit::match(this, s);
   return end.is_valid();
 }
-#endif
 
 //------------------------------------------------------------------------------
 

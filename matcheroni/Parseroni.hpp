@@ -117,6 +117,10 @@ struct LinearAlloc {
     return inst;
   }
 
+  bool is_empty() const {
+    return current_size == 0;
+  }
+
   Slab* top_slab = nullptr;
   int current_size = 0;
   int max_size = 0;
@@ -129,13 +133,8 @@ template<typename atom>
 struct NodeBase {
   using SpanType = Span<atom>;
 
-  NodeBase() {
-    constructor_calls++;
-  }
-
-  virtual ~NodeBase() {
-    destructor_calls++;
-  }
+  NodeBase() {}
+  virtual ~NodeBase() {}
 
   static void* operator new     (size_t s)          { return LinearAlloc::inst().alloc(s); }
   static void* operator new[]   (size_t s)          { return LinearAlloc::inst().alloc(s); }
@@ -177,9 +176,6 @@ struct NodeBase {
 
   //----------------------------------------
 
-  inline static size_t constructor_calls = 0;
-  inline static size_t destructor_calls = 0;
-
   const char* match_name;
   SpanType    span;
   uint64_t    flags;
@@ -198,12 +194,10 @@ struct ContextBase {
   using SpanType = Span<atom>;
 
   ContextBase() {
-    LinearAlloc::inst().reset();
   }
 
   virtual ~ContextBase() {
     reset();
-    LinearAlloc::inst().destroy();
   }
 
   void reset() {
@@ -218,9 +212,7 @@ struct ContextBase {
     _top_tail = nullptr;
     _highwater = nullptr;
 
-    LinearAlloc::inst().reset();
-    NodeType::constructor_calls = 0;
-    NodeType::destructor_calls = 0;
+    assert(LinearAlloc::inst().is_empty());
   }
 
   //----------------------------------------
@@ -297,9 +289,8 @@ struct ContextBase {
   // match.
 
   void rewind(Span<atom> s) {
-    //printf("rewind\n");
     rewind_count++;
-    while (_top_tail && _top_tail->span.b > s.a) {
+    while (_top_tail && (_top_tail->span.b > s.a || (_top_tail->span.is_empty() && _top_tail->span.b == s.a))) {
       auto dead = _top_tail;
       set_tail(_top_tail->_node_prev);
 #ifndef FAST_MODE

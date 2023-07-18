@@ -87,6 +87,9 @@ std::vector<std::string> negative_test_cases = {
   "boot/ppc_asm.h", // assembly
   "openacc_lib.h", // ...fortran?
   "encoding-issues-", // embedded nuls
+  "pr57824.c", // raw multiline string inside a #pragma
+  "raw-string-directive-2.c", // raw multiline string inside a #pragma
+  "raw-string-directive-1.c", // raw multiline string inside a #pragma
 };
 
 //------------------------------------------------------------------------------
@@ -101,7 +104,6 @@ int main(int argc, char** argv) {
   //----------------------------------------
   // Scan the directory and prune it down to only valid C source files.
 
-  int total_files = 0;
   int total_lines = 0;
   std::vector<std::string> source_files;
   std::vector<std::string> failed_files;
@@ -112,7 +114,6 @@ int main(int argc, char** argv) {
   using rdit = std::filesystem::recursive_directory_iterator;
   for (const auto& f : rdit(base_path)) {
     if (!f.is_regular_file()) continue;
-    total_files++;
     auto& path = f.path().native();
 
     // Filter out all non-C files
@@ -136,7 +137,7 @@ int main(int argc, char** argv) {
     }
 
     if (skip) {
-      printf("Known bad file - %s\n", path.c_str());
+      //printf("Known bad file - %s\n", path.c_str());
       bad_files.push_back(path);
       continue;
     }
@@ -154,7 +155,7 @@ int main(int argc, char** argv) {
     if (text.find(".ma" "cro") != std::string::npos) skip = true;
 
     if (skip) {
-      printf("File contains assembly - %s\n", path.c_str());
+      //printf("File contains assembly - %s\n", path.c_str());
       bad_files.push_back(path);
       continue;
     }
@@ -208,13 +209,12 @@ int main(int argc, char** argv) {
   printf("\n");
   printf("Total time  %f msec\n", total_time);
   printf("Lex time    %f msec\n", lex_time);
-  printf("Total files %d\n", total_files);
+  printf("Total files %ld\n", source_files.size());
   printf("Total lines %d\n", total_lines);
   printf("Total bytes %d\n", total_bytes);
-  printf("File rate   %f\n", 1000.0 * double(total_files) / double(lex_time));
+  printf("File rate   %f\n", 1000.0 * double(source_files.size()) / double(lex_time));
   printf("Line rate   %f\n", 1000.0 * double(total_lines) / double(lex_time));
   printf("Byte rate   %f\n", 1000.0 * double(total_bytes) / double(lex_time));
-  printf("Total source files    %ld\n", source_files.size());
   printf("Total failures        %ld\n", failed_files.size());
   printf("Total known-bad files %ld\n", bad_files.size());
   printf("Total skipped files   %ld\n", skipped_files.size());

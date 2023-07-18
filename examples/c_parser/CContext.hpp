@@ -28,12 +28,21 @@ using lex_span = matcheroni::Span<CToken>;
 
 //------------------------------------------------------------------------------
 
-class CContext : public matcheroni::ContextBase<CNode> {
+class CContext : public matcheroni::ContextBase<CToken> {
  public:
   CContext();
 
+  CNode* top_head() { return (CNode*)_top_head; }
+  CNode* top_tail() { return (CNode*)_top_tail; }
+
+  const CNode* top_head() const { return (CNode*)_top_head; }
+  const CNode* top_tail() const { return (CNode*)_top_tail; }
+
+  void set_head(CNode* head) { _top_head = head; }
+  void set_tail(CNode* tail) { _top_tail = tail; }
+
   void reset();
-  bool parse(std::vector<CToken>& tokens);
+  bool parse(std::vector<CToken>& lexemes);
 
   lex_span match_builtin_type_base  (lex_span s);
   lex_span match_builtin_type_prefix(lex_span s);
@@ -61,12 +70,55 @@ class CContext : public matcheroni::ContextBase<CNode> {
   void dump_lexemes();
   //void dump_tokens();
 
-  void parser_rewind(lex_span s);
+  //void parser_rewind(lex_span s);
+
+#if 0
+  void rewind(SpanType s) {
+    printf("\n\n");
+    printf("CContext::rewind()\n");
+
+    for (auto c = top_head(); c; c = c->node_next()) {
+      c->dump_tree(0, 0);
+    }
+
+    rewind_count++;
+    while (top_tail()) {
+      if ((top_tail()->span.b > s.a) ||
+          (top_tail()->span.is_empty() && top_tail()->span.b == s.a)) {
+        auto dead = top_tail();
+        set_tail(top_tail()->node_prev());
+#ifndef FAST_MODE
+        recycle(dead);
+#endif
+      }
+      else {
+        break;
+      }
+    }
+
+    printf("\n");
+    for (auto c = top_head(); c; c = c->node_next()) {
+      c->dump_tree(0, 0);
+    }
+
+    printf("CContext::rewind() done\n");
+    printf("\n\n");
+  }
+#endif
 
   //----------------------------------------
 
   std::vector<CToken> tokens;
   CScope* type_scope;
 };
+
+template <>
+inline void matcheroni::parser_rewind(void* ctx, lex_span s) {
+  if (ctx) {
+    auto context = (CContext*)ctx;
+    context->rewind(s);
+  }
+}
+
 
 //------------------------------------------------------------------------------

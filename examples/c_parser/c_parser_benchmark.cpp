@@ -5,9 +5,11 @@
 
 #include "matcheroni/Utilities.hpp"
 
-#include "examples/c_parser/CLexer.hpp"
+#include "examples/c_lexer/CLexer.hpp"
 #include "examples/c_parser/CContext.hpp"
 #include "examples/c_parser/CNode.hpp"
+
+using namespace matcheroni;
 
 //------------------------------------------------------------------------------
 // File filters
@@ -83,13 +85,13 @@ bool should_skip(const std::string& path) {
 //------------------------------------------------------------------------------
 
 int test_parser(int argc, char** argv) {
-  printf("Matcheroni c_parser_test\n");
+  printf("Matcheroni c_parser_benchmark\n");
 
   std::vector<std::string> paths;
   const char* base_path = argc > 1 ? argv[1] : "tests";
 
   CLexer lexer;
-  CContext parser;
+  CContext context;
 
   bool verbose = false;
   double io_time = 0;
@@ -113,6 +115,9 @@ int test_parser(int argc, char** argv) {
 
 #else
 
+  // Load all the files, filtering out files that use the preprocessor or that
+  // use builtin macros like va_arg.
+
   printf("Parsing all source files in %s\n", base_path);
   using rdit = std::filesystem::recursive_directory_iterator;
   for (const auto& f : rdit(base_path)) {
@@ -126,8 +131,6 @@ int test_parser(int argc, char** argv) {
   }
 #endif
 
-  // Load all the files, filtering out files that use the preprocessor or that
-  // use builtin macros like va_arg.
 
   std::string text;
   text.reserve(65536);
@@ -137,7 +140,7 @@ int test_parser(int argc, char** argv) {
       // printf("Cleaning up\n");
       cleanup_time -= timestamp_ms();
       lexer.reset();
-      parser.reset();
+      context.reset();
       cleanup_time += timestamp_ms();
     }
 
@@ -156,7 +159,7 @@ int test_parser(int argc, char** argv) {
     {
       // printf("Lexing %s\n", path.c_str());
       lex_time -= timestamp_ms();
-      lexer.lex(text);
+      lexer.lex(to_span(text));
       lex_time += timestamp_ms();
     }
 
@@ -177,14 +180,14 @@ int test_parser(int argc, char** argv) {
 
     printf("%04d: Parsing %s\n", file_pass, path.c_str());
     parse_time -= timestamp_ms();
-    bool parse_ok = parser.parse(lexer.tokens);
+    bool parse_ok = context.parse(lexer.tokens);
     parse_time += timestamp_ms();
 
     if (!parse_ok) {
       file_fail++;
       printf("\n");
-      parser.dump_tokens();
-      if (parser.root) parser.root->dump_tree(0, 0);
+      //context.dump_tokens();
+      if (context._top_head) ((CNode*)context._top_head)->dump_tree(0, 0);
       printf("\n");
       printf("\n");
       printf("fail!\n");
@@ -196,7 +199,7 @@ int test_parser(int argc, char** argv) {
     if (verbose) {
       printf("\n");
       printf("Dumping tree:\n");
-      parser.root->dump_tree(0, 0);
+      if (context._top_head) ((CNode*)context._top_head)->dump_tree(0, 0);
       printf("\n");
     }
   }
@@ -210,11 +213,13 @@ int test_parser(int argc, char** argv) {
 
   // current torture test nodes - 531557
 
-  if (file_pass == 10000 && CNode::constructor_count != 520803633) {
+  /*
+  if (file_pass == 10000 && CNode::constructor_calls != 520803633) {
     set_color(0x008080FF);
     printf("############## NODE COUNT MISMATCH\n");
     set_color(0);
   }
+  */
 
   printf("Total time     %f msec\n", total_time);
   printf("Total bytes    %d\n", file_bytes);
@@ -230,10 +235,10 @@ int test_parser(int argc, char** argv) {
   printf("Parsing time   %f msec\n", parse_time);
   printf("Cleanup time   %f msec\n", cleanup_time);
   printf("\n");
-  printf("Total nodes    %d\n", CNode::constructor_count);
-  printf("Node pool      %ld bytes\n", LinearAlloc::inst().max_size);
-  printf("Rewind count   %d\n", CContext::rewind_count);
-  printf("Didn't rewind  %d\n", CContext::didnt_rewind);
+  //printf("Total nodes    %ld\n", CNode::constructor_calls);
+  printf("Node pool      %d bytes\n", LinearAlloc::inst().max_size);
+  //printf("Rewind count   %d\n", CContext::rewind_count);
+  //printf("Didn't rewind  %d\n", CContext::didnt_rewind);
   printf("File pass      %d\n", file_pass);
   printf("File fail      %d\n", file_fail);
   printf("File skip      %d\n", file_skip);

@@ -8,7 +8,9 @@
 
 using namespace matcheroni;
 
-struct TestNode : public TextNode {
+//------------------------------------------------------------------------------
+
+struct TestNode : public TextNode, public InstanceCounter<TestNode> {
   using TextNode::TextNode;
 
   TestNode* node_prev()  { return (TestNode*)TextNode::node_prev(); }
@@ -22,40 +24,24 @@ struct TestNode : public TextNode {
 
   const TestNode* child_head() const { return (const TestNode*)TextNode::child_head(); }
   const TestNode* child_tail() const { return (const TestNode*)TextNode::child_tail(); }
+};
 
-  void dump_tree(std::string& out) {
-    if (strcmp(match_name, "atom") == 0) {
-      for (auto c = span.a; c < span.b; c++) out.push_back(*c);
-    } else if (strcmp(match_name, "list") == 0) {
-      out.push_back('(');
-      for (auto c = child_head(); c; c = c->node_next()) {
-        ((TestNode*)c)->dump_tree(out);
-        if (c->node_next()) out.push_back(',');
-      }
-      out.push_back(')');
-    } else {
-      matcheroni_assert(false);
+//----------------------------------------
+
+void dump_tree(TestNode* n, std::string& out) {
+  if (strcmp(n->match_name, "atom") == 0) {
+    for (auto c = n->span.a; c < n->span.b; c++) out.push_back(*c);
+  } else if (strcmp(n->match_name, "list") == 0) {
+    out.push_back('(');
+    for (auto c = n->child_head(); c; c = c->node_next()) {
+      dump_tree(((TestNode*)c), out);
+      if (c->node_next()) out.push_back(',');
     }
+    out.push_back(')');
+  } else {
+    matcheroni_assert(false);
   }
-};
-
-//------------------------------------------------------------------------------
-// A whole s-expression parser in ~10 lines of code. :D
-
-struct TinyLisp {
-  static TextSpan match(void* ctx, TextSpan s) {
-    return Oneof<
-      Capture<"atom", atom, TestNode>,
-      Capture<"list", list, TestNode>
-    >::match(ctx, s);
-  }
-
-  using ws = Any<Atom<' ', '\n', '\r', '\t'>>;
-  using atom = Some<NotAtom<'(', ')', ' ', '\n', '\r', '\t', ','>>;
-  using car = Opt<Ref<match>>;
-  using cdr = Any<Seq<ws, Atom<','>, ws, Ref<match>>>;
-  using list = Seq<Atom<'('>, ws, car, cdr, ws, Atom<')'>>;
-};
+}
 
 //----------------------------------------
 
@@ -69,49 +55,81 @@ void check_hash(const Context& context, uint64_t hash_a) {
 
 //----------------------------------------
 
+void reset_everything() {
+  LinearAlloc::inst().reset();
+  InstanceCounter<TestNode>::reset();
+  matcheroni_assert(InstanceCounter<TestNode>::live == 0);
+  matcheroni_assert(InstanceCounter<TestNode>::dead == 0);
+  matcheroni_assert(LinearAlloc::inst().current_size == 0);
+  matcheroni_assert(LinearAlloc::inst().max_size == 0);
+}
+
+//------------------------------------------------------------------------------
+// A mini s-expression parser in ~10 lines of code. :D
+
+struct SExpression {
+  static TextSpan match(void* ctx, TextSpan s) {
+    return Oneof<
+      Capture<"atom", atom, TestNode>,
+      Capture<"list", list, TestNode>
+    >::match(ctx, s);
+  }
+
+  using ws   = Any<Atom<' ', '\n', '\r', '\t'>>;
+  using atom = Some<NotAtom<'(', ')', ' ', '\n', '\r', '\t', ','>>;
+  using car  = Opt<Ref<match>>;
+  using cdr  = Any<Seq<ws, Atom<','>, ws, Ref<match>>>;
+  using list = Seq<Atom<'('>, ws, car, cdr, ws, Atom<')'>>;
+};
+
+//----------------------------------------
+
 void test_basic() {
   printf("test_basic()\n");
-  TextContext context;
-  TextSpan span;
-  TextSpan tail;
+  reset_everything();
 
   {
     // Check than we can round-trip a s-expression
-    std::string text = "(abcd,efgh,(ab),(a,(bc,de)),ghijk)";
+    TextContext context;
     context.reset();
-    span = to_span(text);
-    tail = TinyLisp::match(&context, span);
+    auto text = to_span("(abcd,efgh,(ab),(a,(bc,de)),ghijk)");
+    auto tail = SExpression::match(&context, text);
     matcheroni_assert(tail.is_valid() && tail == "");
 
     printf("Round-trip s-expression:\n");
     std::string dump;
-    ((TestNode*)context.top_head())->dump_tree(dump);
-    printf("Old : %s\n", text.c_str());
+    dump_tree((TestNode*)context.top_head(), dump);
+    printf("Old : %s\n", text.a);
     printf("New : %s\n", dump.c_str());
     matcheroni_assert(text == dump && "Mismatch!");
     printf("\n");
 
     print_context(&context);
     check_hash(context, 0x7073c4e1b84277f0);
+
+    matcheroni_assert(LinearAlloc::inst().max_size == sizeof(TestNode) * 11);
+    matcheroni_assert(LinearAlloc::inst().current_size == sizeof(TestNode) * 11);
+    matcheroni_assert(InstanceCounter<TestNode>::live == 11);
+    matcheroni_assert(InstanceCounter<TestNode>::dead == 0);
   }
 
-  auto& alloc = LinearAlloc::inst();
-  matcheroni_assert(alloc.max_size == sizeof(TestNode) * 11);
-  matcheroni_assert(alloc.current_size == sizeof(TestNode) * 11);
+  TextContext context;
+  TextSpan span;
+  TextSpan tail;
 
   context.reset();
   span = to_span("((((a))))");
-  tail = TinyLisp::match(&context, span);
+  tail = SExpression::match(&context, span);
   matcheroni_assert(tail.is_valid() && tail == "");
 
   context.reset();
   span = to_span("(((())))");
-  tail = TinyLisp::match(&context, span);
+  tail = SExpression::match(&context, span);
   matcheroni_assert(tail.is_valid() && tail == "");
 
   context.reset();
   span = to_span("(((()))(");
-  tail = TinyLisp::match(&context, span);
+  tail = SExpression::match(&context, span);
   matcheroni_assert(!tail.is_valid() && std::string(tail.b) == "(");
 
   printf("test_basic() end\n\n");
@@ -121,9 +139,7 @@ void test_basic() {
 
 void test_rewind() {
   printf("test_rewind()\n");
-
-  std::string text = "abcdef";
-  auto span = to_span(text);
+  reset_everything();
 
   using pattern =
   Oneof<
@@ -140,25 +156,17 @@ void test_rewind() {
   >;
 
   TextContext context;
-  auto tail = pattern::match(&context, span);
 
-  print_match(span, span - tail);
+  auto text = to_span("abcdef");
+  auto tail = pattern::match(&context, text);
+  print_match(text, text - tail);
   print_context(&context);
-
   check_hash(context, 0x2850a87bce45242a);
 
-  auto& alloc = LinearAlloc::inst();
-  matcheroni_assert(alloc.current_size == sizeof(TestNode) * 1);
-  matcheroni_assert(alloc.max_size == sizeof(TestNode) * 5);
-
-  printf("sizeof(ParseNode) %ld\n", sizeof(TestNode));
-  printf("node count %ld\n", context.top_head()->node_count());
-  printf("constructor calls %ld\n", TextNode::constructor_calls);
-  printf("destructor calls %ld\n", TextNode::destructor_calls);
-  printf("max size %d\n", LinearAlloc::inst().max_size);
-  printf("current size %d\n", LinearAlloc::inst().current_size);
-
-  //matcheroni_assert(LinearAlloc::inst().current_size == sizeof(ParseNode));
+  matcheroni_assert(InstanceCounter<TestNode>::live == 1);
+  matcheroni_assert(InstanceCounter<TestNode>::dead == 5);
+  matcheroni_assert(LinearAlloc::inst().current_size == sizeof(TestNode) * 1);
+  matcheroni_assert(LinearAlloc::inst().max_size == sizeof(TestNode) * 5);
 
   printf("test_rewind() end\n\n");
 }
@@ -167,11 +175,14 @@ void test_rewind() {
 
 struct BeginEndTest {
   static TextSpan match(void* ctx, TextSpan s) {
-    return Oneof<atom, list>::match(ctx, s);
+    return Oneof<
+      suffixed<Capture<"atom", atom, TestNode>>,
+      suffixed<Capture<"list", list, TestNode>>
+    >::match(ctx, s);
   }
 
-  using ws = Any<Atom<' ', '\n', '\r', '\t'>>;
-
+  // suffixed<> wraps the previously-matched node in another node if it has
+  // a suffix. Slightly brain-hurty.
   template<typename P>
   using suffixed =
   CaptureBegin<
@@ -184,47 +195,31 @@ struct BeginEndTest {
     >
   >;
 
-  using atom =
-  suffixed<Capture<
-    "atom",
-    Some<Range<'a','z'>, Range<'A','Z'>, Range<'0','9'>>,
-    TestNode
-  >>;
-
-  using car = Opt<Ref<match>>;
-  using cdr = Any<Seq<ws, Atom<','>, ws, Ref<match>>>;
-
-  using list =
-  suffixed<Capture<
-    "list",
-    Seq<Atom<'['>, ws, car, cdr, ws, Atom<']'>>,
-    TestNode
-  >>;
+  using ws   = Any<Atom<' ', '\n', '\r', '\t'>>;
+  using atom = Some<Range<'a','z'>, Range<'A','Z'>, Range<'0','9'>>;
+  using car  = Opt<Ref<match>>;
+  using cdr  = Any<Seq<ws, Atom<','>, ws, Ref<match>>>;
+  using list = Seq<Atom<'['>, ws, car, cdr, ws, Atom<']'>>;
 };
+
+//------------------------------------------------------------------------------
 
 void test_begin_end() {
   printf("test_begin_end()\n");
-
-  auto text = to_span("[ [abc,ab?,cdb+] , [a,b,c*,d,e,f] ]");
+  reset_everything();
 
   TextContext context;
-  auto tail = BeginEndTest::match(&context, text);
 
+  auto text = to_span("[ [abc,ab?,cdb+] , [a,b,c*,d,e,f] ]");
+  auto tail = BeginEndTest::match(&context, text);
   print_match(text, text - tail);
   print_context(&context);
-
   check_hash(context, 0x401403cbefc2cba9);
 
-  auto& alloc = LinearAlloc::inst();
-  matcheroni_assert(alloc.max_size == sizeof(TestNode) * 15);
-  matcheroni_assert(alloc.current_size == sizeof(TestNode) * 15);
-
-  printf("sizeof(ParseNode) %ld\n", sizeof(TestNode));
-  printf("node count %ld\n", context.top_head()->node_count());
-  printf("constructor calls %ld\n", TextNode::constructor_calls);
-  printf("destructor calls %ld\n", TextNode::destructor_calls);
-  printf("max size %d\n", LinearAlloc::inst().max_size);
-  printf("current size %d\n", LinearAlloc::inst().current_size);
+  matcheroni_assert(InstanceCounter<TestNode>::live == 15);
+  matcheroni_assert(InstanceCounter<TestNode>::dead == 0);
+  matcheroni_assert(LinearAlloc::inst().max_size == sizeof(TestNode) * 15);
+  matcheroni_assert(LinearAlloc::inst().current_size == sizeof(TestNode) * 15);
 
   printf("test_begin_end() end\n\n");
 }
@@ -253,15 +248,17 @@ struct Pathological {
   >;
 };
 
+//----------------------------------------
+
 void test_pathological() {
   printf("test_pathological()\n");
+  reset_everything();
 
   TextContext context;
   TextSpan span;
   TextSpan tail;
 
-  // We expect 137257 constructor calls and 137250 destructor calls for this
-  // pattern.
+  // Matching this pattern should produce 7 live nodes and 137250 dead nodes.
   std::string text = "[[[[[[a]]]]]]";
 
   span = to_span(text);
@@ -277,25 +274,13 @@ void test_pathological() {
   // {[a]                 }  | | | | |-none
   // {a                   }  | | | | | |-atom
 
-  matcheroni_assert(context.top_head()->node_count() == 7);
   print_context(&context);
   check_hash(context, 0x07a37a832d506209);
 
-  matcheroni_assert(TextNode::constructor_calls == 137257);
-  matcheroni_assert(TextNode::destructor_calls  == 137250);
-
-  auto& alloc = LinearAlloc::inst();
-
-  printf("sizeof(TestNode) %ld\n", sizeof(TestNode));
-  printf("node count %ld\n", context.top_head()->node_count());
-  printf("constructor calls %ld\n", TextNode::constructor_calls);
-  printf("destructor calls %ld\n", TextNode::destructor_calls);
-  printf("max size %d\n", alloc.max_size);
-  printf("current size %d\n", alloc.current_size);
-
-  matcheroni_assert(alloc.max_size == sizeof(TestNode) * 7);
-  matcheroni_assert(alloc.current_size == sizeof(TestNode) * 7);
-
+  matcheroni_assert(InstanceCounter<TestNode>::live == 7);
+  matcheroni_assert(InstanceCounter<TestNode>::dead == 137250);
+  matcheroni_assert(LinearAlloc::inst().max_size == sizeof(TestNode) * 7);
+  matcheroni_assert(LinearAlloc::inst().current_size == sizeof(TestNode) * 7);
 
   printf("test_pathological() end\n\n");
 }
@@ -305,10 +290,15 @@ void test_pathological() {
 int main(int argc, char** argv) {
   printf("Parseroni tests\n");
 
+  printf("//----------------------------------------\n");
   test_basic();
+  printf("//----------------------------------------\n");
   test_rewind();
+  printf("//----------------------------------------\n");
   test_begin_end();
+  printf("//----------------------------------------\n");
   test_pathological();
+  printf("//----------------------------------------\n");
 
   printf("All tests pass!\n");
   return 0;

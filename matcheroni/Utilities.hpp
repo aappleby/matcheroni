@@ -17,6 +17,28 @@
 namespace matcheroni {
 
 //------------------------------------------------------------------------------
+
+template<typename T>
+struct InstanceCounter {
+  InstanceCounter() {
+    live++;
+  }
+
+  ~InstanceCounter() {
+    live--;
+    dead++;
+  }
+
+  inline static void reset() {
+    live = 0;
+    dead = 0;
+  }
+
+  inline static size_t live = 0;
+  inline static size_t dead = 0;
+};
+
+//------------------------------------------------------------------------------
 // To debug our patterns, we create a Trace<> matcher that prints out a
 // diagram of the current match context, the matchers being tried, and
 // whether they succeeded.
@@ -218,6 +240,8 @@ inline void set_color(uint32_t c) {
 inline void print_flat(TextSpan s, size_t max_len = 0) {
   if (max_len == 0) max_len = s.len();
 
+  //printf("%p %p len %ld\n", s.a, s.b, s.len());
+
   if (!s.is_valid()) {
     printf("<invalid>");
     for (size_t i = 0; i < max_len - strlen("<invalid>"); i++) putc(' ', stdout);
@@ -255,7 +279,7 @@ inline void print_bar(int depth, TextSpan s, const char* val, const char* suffix
   set_color(0);
   printf("{");
   set_color(0xAAFFAA);
-  print_flat(s, 20);
+  print_flat(s, 40);
   set_color(0);
   printf("}");
 

@@ -116,8 +116,8 @@ int main(int argc, char** argv) {
       printf("Slab current      %d\n",  LinearAlloc::inst().current_size);
       printf("Slab max          %d\n",  LinearAlloc::inst().max_size);
       printf("Tree nodes        %ld\n", context->node_count());
-      printf("Constructor calls %ld\n", NodeBase<char>::constructor_calls);
-      printf("Destructor calls  %ld\n", NodeBase<char>::destructor_calls);
+      //printf("Constructor calls %ld\n", NodeBase<char>::constructor_calls);
+      //printf("Destructor calls  %ld\n", NodeBase<char>::destructor_calls);
     }
 
     delete [] buf;

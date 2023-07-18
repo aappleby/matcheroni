@@ -85,6 +85,8 @@ struct CNode : public matcheroni::NodeBase<CToken> {
     return dynamic_cast<const P*>(this);
   }
 
+  void dump_tree(int max_depth = 0, int indentation = 0);
+
   //----------------------------------------
 
   int precedence = 0;

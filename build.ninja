@@ -5,7 +5,7 @@
 # Turning EXTRA_DEBUG on will generate even more spam.
 
 ### Debug build
-#build_mode = -g -O0 -Wall -Werror -Wno-unused-variable -Wno-unused-local-typedefs -Wno-unused-but-set-variable
+build_mode = -g -O0 -Wall -Werror -Wno-unused-variable -Wno-unused-local-typedefs -Wno-unused-but-set-variable
 #defs = ${defs} -DMATCHERONI_ENABLE_TRACE
 #defs = ${defs} -DEXTRA_DEBUG
 
@@ -13,8 +13,9 @@
 #build_mode = -Os -fdata-sections -ffunction-sections -Wl,--gc-sections -Wl,-s
 
 ### -O3 needs LTO to maximize performance
+### -flto _doubles_ the speed of CLexer. :O
 ### LTO breaks "size obj/examples/json_parser.o"
-build_mode = -g -flto -O3
+#build_mode = -g -flto -O3
 
 includes = -I.
 
@@ -145,25 +146,29 @@ link $
 #-------------------------------------------------------------------------------
 # C parser example (not finished)
 
-#build obj/examples/c_parser/CNode.o    : compile_cpp examples/c_parser/CNode.cpp
-#build obj/examples/c_parser/CContext.o : compile_cpp examples/c_parser/CContext.cpp
-#build obj/examples/c_parser/CScope.o   : compile_cpp examples/c_parser/CScope.cpp
+build obj/examples/c_parser/CNode.o    : compile_cpp examples/c_parser/CNode.cpp
+build obj/examples/c_parser/CContext.o : compile_cpp examples/c_parser/CContext.cpp
+build obj/examples/c_parser/CScope.o   : compile_cpp examples/c_parser/CScope.cpp
 
-#build obj/examples/c_parser.a : $
-#static_lib $
-#  obj/examples/c_parser/CContext.o $
-#  obj/examples/c_parser/CNode.o $
-#  obj/examples/c_parser/CScope.o
-#
-#build obj/examples/c_parser/c_parser_test.o : compile_cpp examples/c_parser/c_parser_test.cpp
-#
-#build bin/examples/c_parser/c_parser_test : $
-#link $
-#  obj/examples/c_parser/c_parser_test.o $
-#  obj/examples/c_lexer.a $
-#  obj/examples/c_parser.a
+build obj/examples/c_parser.a : $
+static_lib $
+  obj/examples/c_parser/CContext.o $
+  obj/examples/c_parser/CNode.o $
+  obj/examples/c_parser/CScope.o
 
-#build obj/c_parser/c_parser_benchmark.o : compile_cpp examples/c_parser/c_parser_benchmark.cpp
+build obj/examples/c_parser/c_parser_test.o : compile_cpp examples/c_parser/c_parser_test.cpp
+build bin/examples/c_parser/c_parser_test : $
+link $
+  obj/examples/c_parser/c_parser_test.o $
+  obj/examples/c_lexer.a $
+  obj/examples/c_parser.a
+
+build obj/examples/c_parser/c_parser_benchmark.o : compile_cpp examples/c_parser/c_parser_benchmark.cpp
+build bin/examples/c_parser/c_parser_benchmark : $
+link $
+  obj/examples/c_parser/c_parser_benchmark.o $
+  obj/examples/c_lexer.a $
+  obj/examples/c_parser.a
 
 #build obj/c_parser/c_reference_hax.o : compile_cpp examples/c_parser/c_reference_hax.cpp
 #build obj/c_parser/c_reference.o     : compile_cpp examples/c_parser/c_reference.cpp

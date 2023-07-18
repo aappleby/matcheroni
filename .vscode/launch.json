@@ -30,7 +30,7 @@
       "preLaunchTask": "build_parseroni_test",
       "type": "cppdbg",
       "request": "launch",
-      "program": "${workspaceFolder}/bin/tests/parseroni_test",
+      "program": "${workspaceFolder}/bin/matcheroni/parseroni_test",
       "cwd": "${workspaceFolder}",
     },
 
@@ -58,9 +58,9 @@
         "text": "-enable-pretty-printing",
         "ignoreFailures": true
       }],
-      //"args" : ["../csmith_files"],
+      "args" : ["../csmith_files"],
       //"args" : ["../gcc/gcc/testsuite/gcc.c-torture"],
-      "args" : ["../gcc/gcc"],
+      //"args" : ["../gcc/gcc"],
     },
 
     {
@@ -93,7 +93,7 @@
       "preLaunchTask": "build_matcheroni",
       "type": "cppdbg",
       "request": "launch",
-      "program": "${workspaceFolder}/bin/examples/regex_demo",
+      "program": "${workspaceFolder}/bin/examples/regex/regex_demo",
       "cwd": "${workspaceFolder}",
       "args" : ["regex_demo.txt"],
     },
@@ -103,7 +103,7 @@
       "preLaunchTask": "build_matcheroni",
       "type": "cppdbg",
       "request": "launch",
-      "program": "${workspaceFolder}/bin/examples/regex_benchmark",
+      "program": "${workspaceFolder}/bin/examples/regex/regex_benchmark",
       "cwd": "${workspaceFolder}",
     },
 
@@ -115,7 +115,7 @@
       "preLaunchTask": "build_matcheroni",
       "type": "cppdbg",
       "request": "launch",
-      "program": "${workspaceFolder}/bin/examples/json_demo",
+      "program": "${workspaceFolder}/bin/examples/json/json_demo",
       "cwd": "${workspaceFolder}",
       "args" : ["data/json_demo.json"],
     },
@@ -125,7 +125,7 @@
       "preLaunchTask": "build_matcheroni",
       "type": "cppdbg",
       "request": "launch",
-      "program": "${workspaceFolder}/bin/examples/json_benchmark",
+      "program": "${workspaceFolder}/bin/examples/json/json_benchmark",
       "cwd": "${workspaceFolder}",
     },
 
