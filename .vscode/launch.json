@@ -95,7 +95,8 @@
       "request": "launch",
       "program": "${workspaceFolder}/bin/examples/regex/regex_demo",
       "cwd": "${workspaceFolder}",
-      "args" : ["regex_demo.txt"],
+      //"args" : ["regex_demo.txt"],
+      "args" : ["(^\\d+\\s+(very)?\\s+(good|bad)\\s+[a-z]*$)"],
     },
 
     {
