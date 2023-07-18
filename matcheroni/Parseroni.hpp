@@ -189,7 +189,7 @@ struct NodeBase {
 //------------------------------------------------------------------------------
 
 template<typename atom>
-struct NodeContext : public ContextBase {
+struct NodeContext : public TextContext {
   using NodeType = NodeBase<atom>;
   using SpanType = Span<atom>;
 
@@ -393,7 +393,7 @@ struct NodeContext : public ContextBase {
 // We'll be parsing text a lot, so these are convenience declarations.
 
 using TextNode = NodeBase<char>;
-using TextContext = NodeContext<char>;
+using TextNodeContext = NodeContext<char>;
 
 //------------------------------------------------------------------------------
 // To convert our pattern matches to parse nodes, we create a Capture<>

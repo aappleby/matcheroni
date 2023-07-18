@@ -79,7 +79,7 @@ void benchmark_baseline(const char* path) {
 
 #ifdef REGEX_BENCHMARK_MATCHERONI
 
-ContextBase ctx;
+TextContext ctx;
 
 template<typename P>
 void benchmark_pattern(TextSpan s) {

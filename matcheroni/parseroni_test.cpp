@@ -68,7 +68,7 @@ void reset_everything() {
 // A mini s-expression parser in ~10 lines of code. :D
 
 struct SExpression {
-  static TextSpan match(TextContext& ctx, TextSpan s) {
+  static TextSpan match(TextNodeContext& ctx, TextSpan s) {
     return Oneof<
       Capture<"atom", atom, TestNode>,
       Capture<"list", list, TestNode>
@@ -90,7 +90,7 @@ void test_basic() {
 
   {
     // Check than we can round-trip a s-expression
-    TextContext ctx;
+    TextNodeContext ctx;
     ctx.reset();
     auto text = to_span("(abcd,efgh,(ab),(a,(bc,de)),ghijk)");
     auto tail = SExpression::match(ctx, text);
@@ -113,7 +113,7 @@ void test_basic() {
     matcheroni_assert(InstanceCounter<TestNode>::dead == 0);
   }
 
-  TextContext ctx;
+  TextNodeContext ctx;
   TextSpan span;
   TextSpan tail;
 
@@ -155,7 +155,7 @@ void test_rewind() {
     Capture<"lit", Lit<"abcdef">, TestNode>
   >;
 
-  TextContext ctx;
+  TextNodeContext ctx;
 
   auto text = to_span("abcdef");
   auto tail = pattern::match(ctx, text);
@@ -175,7 +175,7 @@ void test_rewind() {
 
 struct BeginEndTest {
 
-  static TextSpan match(TextContext& ctx, TextSpan s) {
+  static TextSpan match(TextNodeContext& ctx, TextSpan s) {
     return Oneof<
       suffixed<Capture<"atom", atom, TestNode>>,
       suffixed<Capture<"list", list, TestNode>>
@@ -209,7 +209,7 @@ void test_begin_end() {
   printf("test_begin_end()\n");
   reset_everything();
 
-  TextContext ctx;
+  TextNodeContext ctx;
 
   auto text = to_span("[ [abc,ab?,cdb+] , [a,b,c*,d,e,f] ]");
   auto tail = BeginEndTest::match(ctx, text);
@@ -232,7 +232,7 @@ void test_begin_end() {
 // mismatched suffix.
 
 struct Pathological {
-  static TextSpan match(TextContext& ctx, TextSpan s) {
+  static TextSpan match(TextNodeContext& ctx, TextSpan s) {
     return pattern::match(ctx, s);
   }
 
@@ -255,7 +255,7 @@ void test_pathological() {
   printf("test_pathological()\n");
   reset_everything();
 
-  TextContext ctx;
+  TextNodeContext ctx;
   TextSpan span;
   TextSpan tail;
 

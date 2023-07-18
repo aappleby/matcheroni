@@ -81,7 +81,6 @@ struct Span {
   const atom* b;
 };
 
-using TextSpan = Span<char>;
 
 //------------------------------------------------------------------------------
 // Matchers require a context object to perform two essential functions -
@@ -89,11 +88,10 @@ using TextSpan = Span<char>;
 
 // This context base class implements a trivial compare() that works for any
 // atom types that support '-' and can be converted to integers, and rewind()
-// does nothing here because ContextBase has no internal state.
+// does nothing here because TextContext has no internal state.
 
-struct ContextBase {
-  template <typename atom1, typename atom2>
-  int compare(const atom1& a, const atom2& b) {
+struct TextContext {
+  int compare(const char& a, const char& b) {
     return int(a - b);
   }
 
@@ -101,6 +99,8 @@ struct ContextBase {
   void rewind(Span<atom> s) {
   }
 };
+
+using TextSpan = Span<char>;
 
 //------------------------------------------------------------------------------
 // Matcheroni is based on building trees of "matcher" functions. A matcher

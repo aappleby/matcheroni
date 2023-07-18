@@ -9,7 +9,7 @@ using namespace matcheroni;
 
 //------------------------------------------------------------------------------
 
-ContextBase ctx;
+TextContext ctx;
 
 //------------------------------------------------------------------------------
 
@@ -376,7 +376,7 @@ void test_until() {
 
 //------------------------------------------------------------------------------
 
-TextSpan test_matcher(ContextBase& ctx, TextSpan s) {
+TextSpan test_matcher(TextContext& ctx, TextSpan s) {
   matcheroni_assert(s.is_valid());
   if (s.is_empty()) return s.fail();
   return s.a[0] == 'a' ? s.advance(1) : s.fail();

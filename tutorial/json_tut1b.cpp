@@ -29,7 +29,7 @@ struct JsonParser {
   using keyword   = Oneof<Lit<"true">, Lit<"false">, Lit<"null">>;
   // clang-format on
 
-  static TextSpan match(ContextBase& ctx, TextSpan s) {
+  static TextSpan match(TextContext& ctx, TextSpan s) {
     return Oneof<number, string, keyword>::match(ctx, s);
   }
 };
@@ -37,7 +37,7 @@ struct JsonParser {
 //------------------------------------------------------------------------------
 
 int main(int argc, char** argv) {
-  ContextBase ctx;
+  TextContext ctx;
   auto text = to_span(R"("Hello World")");
   auto tail = JsonParser::match(ctx, text);
 

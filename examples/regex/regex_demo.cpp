@@ -18,7 +18,7 @@
 
 using namespace matcheroni;
 
-TextSpan parse_regex(TextContext& ctx, TextSpan s);
+TextSpan parse_regex(TextNodeContext& ctx, TextSpan s);
 
 //------------------------------------------------------------------------------
 // The demo app accepts a quoted regex as its first command line argument,
@@ -40,7 +40,7 @@ int main(int argc, char** argv) {
   // get a non-null endpoint for the match.
 
   printf("Parsing regex `%s`\n", span.a);
-  TextContext ctx;
+  TextNodeContext ctx;
   auto parse_end = parse_regex(ctx, span);
 
   if (parse_end.a == nullptr) {

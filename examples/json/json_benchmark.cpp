@@ -30,7 +30,7 @@ const int warmup = 10;
 const int reps = 10;
 #endif
 
-TextSpan parse_json(TextContext& ctx, TextSpan s);
+TextSpan parse_json(TextNodeContext& ctx, TextSpan s);
 
 //------------------------------------------------------------------------------
 
@@ -51,7 +51,7 @@ int main(int argc, char** argv) {
   double time_accum = 0;
   double line_accum = 0;
 
-  TextContext ctx;
+  TextNodeContext ctx;
 
   for (auto path : paths) {
     if (verbose) {

@@ -17,7 +17,7 @@ using namespace matcheroni;
 
 template<StringParam match_name, typename pattern, typename node_type>
 struct Capture3 {
-  static TextSpan match(TextContext& ctx, TextSpan s) {
+  static TextSpan match(TextNodeContext& ctx, TextSpan s) {
     return Capture<match_name, pattern, node_type>::match(ctx, s);
   }
 };
@@ -26,34 +26,34 @@ struct Capture3 {
 // To match anything at all, we first need to tell Matcheroni how to compare
 // one atom of our input sequence against a constant.
 
-static TextSpan match_regex(TextContext& ctx, TextSpan s);
+static TextSpan match_regex(TextNodeContext& ctx, TextSpan s);
 
 // Our 'control' characters consist of all atoms with special regex meanings.
 
 struct cchar {
   using pattern = Atom<'\\', '(', ')', '|', '$', '.', '+', '*', '?', '[', ']', '^'>;
-  static TextSpan match(TextContext& ctx, TextSpan s) { return pattern::match(ctx, s); }
+  static TextSpan match(TextNodeContext& ctx, TextSpan s) { return pattern::match(ctx, s); }
 };
 
 // Our 'plain' characters are every character that's not a control character.
 
 struct pchar {
   using pattern = Seq<Not<cchar>, AnyAtom>;
-  static TextSpan match(TextContext& ctx, TextSpan s) { return pattern::match(ctx, s); }
+  static TextSpan match(TextNodeContext& ctx, TextSpan s) { return pattern::match(ctx, s); }
 };
 
 // Plain text is any span of plain characters not followed by an operator.
 
 struct text {
   using pattern = Some<Seq<pchar, Not<Atom<'*', '+', '?'>>>>;
-  static TextSpan match(TextContext& ctx, TextSpan s) { return pattern::match(ctx, s); }
+  static TextSpan match(TextNodeContext& ctx, TextSpan s) { return pattern::match(ctx, s); }
 };
 
 // Our 'meta' characters are anything after a backslash.
 
 struct mchar {
   using pattern = Seq<Atom<'\\'>, AnyAtom>;
-  static TextSpan match(TextContext& ctx, TextSpan s) { return pattern::match(ctx, s); }
+  static TextSpan match(TextNodeContext& ctx, TextSpan s) { return pattern::match(ctx, s); }
 };
 
 // A character range is a beginning character and an end character separated
@@ -66,12 +66,12 @@ struct range {
     Atom<'-'>,
     Capture3<"end", pchar, TextNode>
   >;
-  static TextSpan match(TextContext& ctx, TextSpan s) { return pattern::match(ctx, s); }
+  static TextSpan match(TextNodeContext& ctx, TextSpan s) { return pattern::match(ctx, s); }
 };
 
 // The contents of a matcher set must be ranges or individual characters.
 struct set_body {
-  static TextSpan match(TextContext& ctx, TextSpan s) {
+  static TextSpan match(TextNodeContext& ctx, TextSpan s) {
     return
     Some<
       Capture3<"range", range, TextNode>,
@@ -96,7 +96,7 @@ struct unit {
     Capture3<"char",    pchar, TextNode>,
     Capture3<"meta",    mchar, TextNode>
   >;
-  static TextSpan match(TextContext& ctx, TextSpan s) { return pattern::match(ctx, s); }
+  static TextSpan match(TextNodeContext& ctx, TextSpan s) { return pattern::match(ctx, s); }
 };
 
 // A 'simple' regex is text, line end markers, a unit w/ operator, or a bare
@@ -112,7 +112,7 @@ struct simple {
     Capture3<"opt",  Seq<unit, Atom<'?'>>, TextNode>,
     unit
   >;
-  static TextSpan match(TextContext& ctx, TextSpan s) {
+  static TextSpan match(TextNodeContext& ctx, TextSpan s) {
     return pattern::match(ctx, s);
   }
 };
@@ -128,13 +128,13 @@ struct oneof {
       Capture3<"option", simple, TextNode>
     >>
   >;
-  static TextSpan match(TextContext& ctx, TextSpan s) {
+  static TextSpan match(TextNodeContext& ctx, TextSpan s) {
     return pattern::match(ctx, s);
   }
 };
 
 // This is the top level of our regex parser.
-static TextSpan match_regex(TextContext& ctx, TextSpan s) {
+static TextSpan match_regex(TextNodeContext& ctx, TextSpan s) {
   // A 'top-level' regex is either a simple regex or a one-of regex.
   using regex_top =
   Oneof<
@@ -145,7 +145,7 @@ static TextSpan match_regex(TextContext& ctx, TextSpan s) {
 }
 
 __attribute__((noinline))
-TextSpan parse_regex(TextContext& ctx, TextSpan s) {
+TextSpan parse_regex(TextNodeContext& ctx, TextSpan s) {
   return match_regex(ctx, s);
   //return s.fail();
 }

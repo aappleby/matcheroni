@@ -43,7 +43,7 @@ struct JsonParser {
   template<typename P>
   using list = Opt<Seq<P, Any<Seq<ws, Atom<','>, ws, P>>>>;
 
-  static TextSpan value(TextContext& ctx, TextSpan s) {
+  static TextSpan value(TextNodeContext& ctx, TextSpan s) {
     using value =
     Oneof<
       Capture<"array",   array,   TextNode>,
@@ -82,7 +82,7 @@ struct JsonParser {
     Atom<'}'>
   >;
 
-  static TextSpan match(TextContext& ctx, TextSpan s) {
+  static TextSpan match(TextNodeContext& ctx, TextSpan s) {
     return Seq<ws, Ref<value>, ws>::match(ctx, s);
   }
 };
@@ -100,7 +100,7 @@ const char* text = R"(
 )";
 
 int main(int argc, char** argv) {
-  TextContext ctx;
+  TextNodeContext ctx;
   TextSpan span = to_span(text);
 
   auto parse_end = JsonParser::match(ctx, span);
