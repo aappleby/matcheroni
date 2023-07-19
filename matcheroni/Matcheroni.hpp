@@ -32,7 +32,7 @@ struct Span {
   constexpr Span(const atom* a, const atom* b) : a(a), b(b) {}
 
   size_t len() const {
-    matcheroni_assert(a);
+    matcheroni_assert(is_valid());
     return b - a;
   }
 
@@ -40,6 +40,11 @@ struct Span {
 
   bool operator==(const Span& c) const {
     return a == c.a && b == c.b;
+  }
+
+  bool operator==(const char* text) {
+    matcheroni_assert(is_valid());
+    return strcmp_span(*this, text) == 0;
   }
 
   bool is_empty() const { return a && a == b; }
@@ -59,25 +64,6 @@ struct Span {
   [[nodiscard]] Span advance(int offset) const {
     matcheroni_assert(a);
     return {a + offset, b};
-  }
-
-  //----------------------------------------
-
-  Span operator-(Span y) const {
-    auto x = *this;
-
-    if (x.a == y.a && x.b >= y.b) {
-      // chop the front off
-      return Span(y.b, x.b);
-    }
-
-    if (x.b == y.b && x.a <= y.a) {
-      // chop the back off
-      return Span(x.a, y.a);
-    }
-
-    matcheroni_assert(false);
-    return fail();
   }
 
   //----------------------------------------
@@ -141,6 +127,7 @@ struct TextContext {
   // Rewind does nothing as it doesn't interact with trace_depth.
   template<typename atom> void rewind(Span<atom> s) {}
 
+  // Tracing requires us to keep track of the nesting depth in the context.
   int trace_depth = 0;
 };
 

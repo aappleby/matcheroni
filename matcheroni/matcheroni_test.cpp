@@ -26,23 +26,19 @@ static int fail_count = 0;
 //------------------------------------------------------------------------------
 
 void test_span() {
-  auto span1 = to_span("Hello World");
-  auto span2 = span1.advance(strlen("Hello"));
-  TEST((span1 - span2) == "Hello");
+  auto span = to_span("CDE");
 
-  auto span3 = to_span("CDE");
+  TEST(strcmp_span(span, "CD") > 0);
+  TEST(strcmp_span(span, "BC") > 0);
+  TEST(strcmp_span(span, "DE") < 0);
 
-  TEST(strcmp_span(span3, "CD") > 0);
-  TEST(strcmp_span(span3, "BC") > 0);
-  TEST(strcmp_span(span3, "DE") < 0);
+  TEST(strcmp_span(span, "CDE") == 0);
+  TEST(strcmp_span(span, "BCD") > 0);
+  TEST(strcmp_span(span, "DEF") < 0);
 
-  TEST(strcmp_span(span3, "CDE") == 0);
-  TEST(strcmp_span(span3, "BCD") > 0);
-  TEST(strcmp_span(span3, "DEF") < 0);
-
-  TEST(strcmp_span(span3, "CDEF") < 0);
-  TEST(strcmp_span(span3, "BCDE") > 0);
-  TEST(strcmp_span(span3, "DEFG") < 0);
+  TEST(strcmp_span(span, "CDEF") < 0);
+  TEST(strcmp_span(span, "BCDE") > 0);
+  TEST(strcmp_span(span, "DEFG") < 0);
 }
 
 //------------------------------------------------------------------------------

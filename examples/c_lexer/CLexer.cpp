@@ -65,19 +65,17 @@ bool CLexer::lex(TextSpan text) {
 CToken next_lexeme(TextContext& ctx, TextSpan s) {
   TextSpan end;
 
-  end = match_space(ctx, s);   if (end.is_valid()) return CToken(LEX_SPACE, s - end);
-  end = match_newline(ctx, s); if (end.is_valid()) return CToken(LEX_NEWLINE, s - end);
-  end = match_string(ctx, s);  if (end.is_valid()) return CToken(LEX_STRING, s - end);
+  if (auto end = match_space(ctx, s)  ) return CToken(LEX_SPACE, TextSpan(s.a, end.a));
+  if (auto end = match_newline(ctx, s)) return CToken(LEX_NEWLINE, TextSpan(s.a, end.a));
+  if (auto end = match_string(ctx, s) ) return CToken(LEX_STRING, TextSpan(s.a, end.a));
 
   // Match char needs to come before match identifier because of its possible
   // L'_' prefix...
-  end = match_char(ctx, s);
-  if (end.is_valid()) return CToken(LEX_CHAR, s - end);
+  if (auto end = match_char(ctx, s)   ) return CToken(LEX_CHAR, TextSpan(s.a, end.a));
 
   {
-    end = match_identifier(ctx, s);
-    if (end.is_valid()) {
-      auto tok_span = s - end;
+    if (auto end = match_identifier(ctx, s)) {
+      auto tok_span = TextSpan(s.a, end.a);
       if (SST<c_keywords>::match(tok_span.a, tok_span.b)) {
         return CToken(LEX_KEYWORD, tok_span);
       } else {
@@ -86,15 +84,15 @@ CToken next_lexeme(TextContext& ctx, TextSpan s) {
     }
   }
 
-  end = match_comment(ctx, s);    if (end.is_valid()) return CToken(LEX_COMMENT, s - end);
-  end = match_preproc(ctx, s);    if (end.is_valid()) return CToken(LEX_PREPROC, s - end);
-  end = match_float(ctx, s);      if (end.is_valid()) return CToken(LEX_FLOAT, s - end);
-  end = match_int(ctx, s);        if (end.is_valid()) return CToken(LEX_INT, s - end);
-  end = match_punct(ctx, s);      if (end.is_valid()) return CToken(LEX_PUNCT, s - end);
-  end = match_splice(ctx, s);     if (end.is_valid()) return CToken(LEX_SPLICE, s - end);
-  end = match_formfeed(ctx, s);   if (end.is_valid()) return CToken(LEX_FORMFEED, s - end);
-  end = match_eof(ctx, s);        if (end.is_valid()) return CToken(LEX_EOF, s - end);
-  end = match_string(ctx, s);     if (end.is_valid()) return CToken(LEX_STRING, s - end);
+  if (auto end = match_comment(ctx, s) ) return CToken(LEX_COMMENT, TextSpan(s.a, end.a));
+  if (auto end = match_preproc(ctx, s) ) return CToken(LEX_PREPROC, TextSpan(s.a, end.a));
+  if (auto end = match_float(ctx, s)   ) return CToken(LEX_FLOAT, TextSpan(s.a, end.a));
+  if (auto end = match_int(ctx, s)     ) return CToken(LEX_INT, TextSpan(s.a, end.a));
+  if (auto end = match_punct(ctx, s)   ) return CToken(LEX_PUNCT, TextSpan(s.a, end.a));
+  if (auto end = match_splice(ctx, s)  ) return CToken(LEX_SPLICE, TextSpan(s.a, end.a));
+  if (auto end = match_formfeed(ctx, s)) return CToken(LEX_FORMFEED, TextSpan(s.a, end.a));
+  if (auto end = match_eof(ctx, s)     ) return CToken(LEX_EOF, TextSpan(s.a, end.a));
+  if (auto end = match_string(ctx, s)  ) return CToken(LEX_STRING, TextSpan(s.a, end.a));
 
   return CToken(LEX_INVALID, s.fail());
 }
