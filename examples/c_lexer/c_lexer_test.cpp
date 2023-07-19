@@ -44,7 +44,11 @@ int main(int argc, char** argv) {
 
   CLexer lexer;
   lexer.lex(to_span(raw_text));
-  lexer.dump_lexemes();
+
+  for (auto& l : lexer.tokens) {
+    l.dump();
+    printf("\n");
+  }
 
   return 0;
 }

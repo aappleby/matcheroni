@@ -89,7 +89,7 @@ struct JsonParser {
 
 //------------------------------------------------------------------------------
 
-const char* text = R"(
+const char* json = R"(
 {
   "foo" : "bar",
   "baz" : [1, 2, 3, -5.238492834e-123],
@@ -101,20 +101,9 @@ const char* text = R"(
 
 int main(int argc, char** argv) {
   TextNodeContext ctx;
-  TextSpan span = to_span(text);
-
-  auto parse_end = JsonParser::match(ctx, span);
-
-  if (parse_end.is_valid()) {
-    printf("Parse tree:\n");
-    for (auto n = ctx.top_head(); n; n = n->node_next()) {
-      print_tree((TextNode*)n);
-    }
-  }
-  else {
-    printf("Parse failed!\n");
-    return -1;
-  }
+  TextSpan text = to_span(json);
+  auto tail = JsonParser::match(ctx, text);
+  print_summary(text, tail, ctx, 40);
 
   return 0;
 }

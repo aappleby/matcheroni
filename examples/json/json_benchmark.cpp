@@ -106,9 +106,7 @@ int main(int argc, char** argv) {
 
     if (dump_tree) {
       printf("Parse tree:\n");
-      for (auto n = ctx.top_head(); n; n = n->node_next()) {
-        print_tree(n);
-      }
+      print_context(text, ctx, 40);
     }
 
     if (verbose) {

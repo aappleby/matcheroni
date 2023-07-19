@@ -156,12 +156,11 @@ int test_parser(int argc, char** argv) {
       io_time += timestamp_ms();
     }
 
-    {
-      // printf("Lexing %s\n", path.c_str());
-      lex_time -= timestamp_ms();
-      lexer.lex(to_span(text));
-      lex_time += timestamp_ms();
-    }
+    // printf("Lexing %s\n", path.c_str());
+    lex_time -= timestamp_ms();
+    auto span = to_span(text);
+    lexer.lex(span);
+    lex_time += timestamp_ms();
 
     // Filter all files containing preproc, but not if they're a csmith file
     if (path.find("csmith") == std::string::npos) {
@@ -186,8 +185,7 @@ int test_parser(int argc, char** argv) {
     if (!parse_ok) {
       file_fail++;
       printf("\n");
-      //context.dump_tokens();
-      if (context.top_head()) context.top_head()->dump_tree(0, 0);
+      //print_context(span, context, 40);
       printf("\n");
       printf("\n");
       printf("fail!\n");
@@ -199,7 +197,7 @@ int test_parser(int argc, char** argv) {
     if (verbose) {
       printf("\n");
       printf("Dumping tree:\n");
-      if (context.top_head()) context.top_head()->dump_tree(0, 0);
+      //print_context(span, context, 40);
       printf("\n");
     }
   }

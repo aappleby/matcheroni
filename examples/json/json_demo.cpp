@@ -99,17 +99,13 @@ int main(int argc, char** argv) {
 
     if (dump_tree) {
       printf("Parse tree:\n");
-      for (auto n = ctx.top_head(); n; n = n->node_next()) {
-        print_tree(n);
-      }
+      print_context(text, ctx, 40);
     }
 
     if (verbose) {
       printf("Slab current      %d\n",  LinearAlloc::inst().current_size);
       printf("Slab max          %d\n",  LinearAlloc::inst().max_size);
       printf("Tree nodes        %ld\n", ctx.node_count());
-      //printf("Constructor calls %ld\n", NodeBase<char>::constructor_calls);
-      //printf("Destructor calls  %ld\n", NodeBase<char>::destructor_calls);
     }
 
     delete [] buf;

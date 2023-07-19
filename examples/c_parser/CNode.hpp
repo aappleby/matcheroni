@@ -13,8 +13,8 @@ typedef matcheroni::Span<CToken> TokSpan;
 
 //------------------------------------------------------------------------------
 
-struct CNode : public matcheroni::NodeBase<CToken> {
-  using base = matcheroni::NodeBase<CToken>;
+struct CNode : public matcheroni::NodeBase<TokSpan> {
+  using base = matcheroni::NodeBase<TokSpan>;
 
   CNode* child(const char* name) { return (CNode*)base::child(name); }
 
@@ -29,6 +29,9 @@ struct CNode : public matcheroni::NodeBase<CToken> {
 
   const CNode* child_head() const { return (CNode*)_child_head; }
   const CNode* child_tail() const { return (CNode*)_child_tail; }
+
+  const char* text_head() const { return span.a->a; }
+  const char* text_tail() const { return span.b->b; }
 
   //----------------------------------------
 
@@ -79,8 +82,6 @@ struct CNode : public matcheroni::NodeBase<CToken> {
   const P* as_a() const {
     return dynamic_cast<const P*>(this);
   }
-
-  void dump_tree(int max_depth = 0, int indentation = 0);
 
   //----------------------------------------
 

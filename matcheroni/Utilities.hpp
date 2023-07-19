@@ -5,6 +5,8 @@
 #include "matcheroni/Matcheroni.hpp"  // for Span
 //#include "matcheroni/Parseroni.hpp"
 
+#include "matcheroni/dump.hpp"
+
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>    // for exit
@@ -13,6 +15,7 @@
 #include <sys/stat.h>
 #include <time.h>      // for clock_gettime, CLOCK_PROCESS_CP...
 #include <typeinfo>    // for type_info
+
 
 namespace matcheroni {
 
@@ -64,82 +67,26 @@ struct TraceText {
 
     auto name = match_name.str_val;
 
-    print_bar(ctx.trace_depth++, s, name, "?");
+    //print_bar(ctx.trace_depth++, s, name, "?");
+    int depth = ctx.trace_depth++;
+
+    print_match(s, s, 40);
+    print_trellis(depth, name, "?", 0xCCCCCC);
+
     auto end = P::match(ctx, s);
-    print_bar(--ctx.trace_depth, s, name, end.is_valid() ? "OK" : "X");
+    depth = --ctx.trace_depth;
 
-    return end;
-  }
-};
-
-#if 0
-inline static int indent_depth = 0;
-
-//------------------------------------------------------------------------------
-
-template<typename NodeType, typename atom>
-void print_trace_start(atom* a) {
-  static constexpr int context_len = 60;
-  printf("[");
-  print_escaped(a->get_lex_debug()->span_a, context_len, 0x404040);
-  printf("] ");
-  for (int i = 0; i < indent_depth; i++) printf("|   ");
-  print_class_name<NodeType>();
-  printf("?\n");
-  indent_depth += 1;
-}
-
-//------------------------------------------------------------------------------
-
-template<typename NodeType, typename atom>
-void print_trace_end(atom* a, atom* end) {
-  static constexpr int context_len = 60;
-  indent_depth -= 1;
-  printf("[");
-  if (end) {
-    int match_len = end->get_lex_debug()->span_a - a->get_lex_debug()->span_a;
-    if (match_len > context_len) match_len = context_len;
-    int left_len = context_len - match_len;
-    print_escaped(a->get_lex_debug()->span_a, match_len,  0x60C000);
-    print_escaped(end->get_lex_debug()->span_a, left_len, 0x404040);
-  }
-  else {
-    print_escaped(a->get_lex_debug()->span_a, context_len, 0x2020A0);
-  }
-  printf("] ");
-  for (int i = 0; i < indent_depth; i++) printf("|   ");
-  print_class_name<NodeType>();
-  printf(end ? " OK\n" : " XXX\n");
-
-#ifdef EXTRA_DEBUG
-  if (end) {
-    printf("\n");
-    print_class_name<NodeType>();
-    printf("\n");
-
-    for (auto c = a; c < end; c++) {
-      c->dump_token();
+    print_match(s, end, 40);
+    if (end.is_valid()) {
+      print_trellis(depth, name, "!", 0x80FF80);
     }
-    printf("\n");
-  }
-#endif
-}
+    else {
+      print_trellis(depth, name, "X", 0x8080FF);
+    }
 
-//------------------------------------------------------------------------------
-
-template<typename NodeType>
-struct TraceOld {
-  template<typename atom>
-  static atom* match(void* ctx, atom* a, atom* b) {
-    print_trace_start<NodeType, atom>(a);
-    auto end = NodeType::match(ctx, a, b);
-    print_trace_end<NodeType, atom>(a, end);
     return end;
   }
 };
-
-//------------------------------------------------------------------------------
-#endif
 
 //------------------------------------------------------------------------------
 
@@ -220,192 +167,6 @@ inline ConstNodeIterator<NodeType> end(const NodeType* parent) {
 }
 #endif
 
-//------------------------------------------------------------------------------
-
-inline void set_color(uint32_t c) {
-  if (c) {
-    printf("\u001b[38;2;%d;%d;%dm", (c >> 0) & 0xFF, (c >> 8) & 0xFF, (c >> 16) & 0xFF);
-  }
-  else {
-    printf("\u001b[0m");
-  }
-}
-
-//------------------------------------------------------------------------------
-
-inline void print_flat(TextSpan s, size_t max_len = 0) {
-  if (max_len == 0) max_len = s.len();
-
-  //printf("%p %p len %ld\n", s.a, s.b, s.len());
-
-  if (!s.is_valid()) {
-    printf("<invalid>");
-    for (size_t i = 0; i < max_len - strlen("<invalid>"); i++) putc(' ', stdout);
-    return;
-  }
-
-  if (s.is_empty()) {
-    printf("<empty>");
-    for (size_t i = 0; i < max_len - strlen("<empty>"); i++) putc(' ', stdout);
-    return;
-  }
-
-  size_t span_len = max_len;
-  if (s.len() > max_len) span_len -= 3;
-
-  for (size_t i = 0; i < span_len; i++) {
-    if (i >= s.len())
-      putc(' ', stdout);
-    else if (s.a[i] == '\n')
-      putc(' ', stdout);
-    else if (s.a[i] == '\r')
-      putc(' ', stdout);
-    else if (s.a[i] == '\t')
-      putc(' ', stdout);
-    else
-      putc(s.a[i], stdout);
-  }
-
-  if (s.len() > max_len) printf("...");
-}
-
-//------------------------------------------------------------------------------
-
-inline void print_bar(int depth, TextSpan s, const char* val, const char* suffix) {
-  set_color(0);
-  printf("{");
-  set_color(0xAAFFAA);
-  print_flat(s, 40);
-  set_color(0);
-  printf("}");
-
-  set_color(0x404040);
-  printf(depth == 0 ? " *" : "  ");
-  for (int i = 0; i < depth; i++) {
-    printf(i == depth - 1 ? "|-" : "| ");
-  }
-
-  set_color(0xFFAAAA);
-  printf("%s %s", val, suffix);
-  printf("\n");
-
-  set_color(0);
-}
-
-//------------------------------------------------------------------------------
-
-inline void print_match(TextSpan text, TextSpan match) {
-  printf("Match found:\n");
-  print_flat(text);
-  printf("\n");
-
-  size_t prefix_len = match.a - text.a;
-  size_t suffix_len = text.b - match.b;
-
-  set_color(0x404040);
-  for (size_t i = 0; i < prefix_len;  i++) putc('_', stdout);
-
-  set_color(0x80FF80);
-  for (size_t i = 0; i < match.len(); i++) putc('^', stdout);
-
-  set_color(0x404040);
-  for (size_t i = 0; i < suffix_len;  i++) putc('_', stdout);
-
-  printf("\n");
-  set_color(0);
-}
-
-//------------------------------------------------------------------------------
-
-inline void print_fail(TextSpan text, TextSpan tail) {
-  printf("Match failed here:\n");
-  print_flat(text);
-  printf("\n");
-
-  size_t fail_pos = tail.b - text.a;
-  size_t suffix_len = text.b - tail.b;
-
-  set_color(0x404040);
-  for (size_t i = 0; i < fail_pos;   i++) putc('_', stdout);
-
-  set_color(0x8080FF);
-  for (size_t i = 0; i < suffix_len; i++) putc('^', stdout);
-
-  printf("\n");
-  set_color(0);
-}
-
-//------------------------------------------------------------------------------
-
-inline void print_escaped(const char* s, int len, unsigned int color) {
-  if (len < 0) {
-    exit(1);
-  }
-  set_color(color);
-  while(len) {
-    auto c = *s++;
-    if      (c == 0)    break;
-    else if (c == ' ')  putc(' ', stdout);
-    else if (c == '\n') putc(' ', stdout);
-    else if (c == '\r') putc(' ', stdout);
-    else if (c == '\t') putc(' ', stdout);
-    else                putc(c,   stdout);
-    len--;
-  }
-  set_color(0);
-
-  return;
-}
-
-//------------------------------------------------------------------------------
-// Prints a text representation of the parse tree.
-
-template<typename node_type>
-inline void print_tree(const node_type* node, int depth = 0) {
-  print_bar(depth, node->span, node->match_name, "");
-  for (auto c = node->child_head(); c; c = c->node_next()) {
-    print_tree(c, depth + 1);
-  }
-}
-
-template<typename context>
-inline void print_context(const context& ctx, int depth = 0) {
-  for (auto node = ctx.top_head(); node; node = node->node_next()) {
-    print_tree(node);
-  }
-}
-
-//------------------------------------------------------------------------------
-
-/*
-inline void print_typeid_name(const char* name, int max_len = 0) {
-  int name_len = 0;
-
-  while((*name >= '0') && (*name <= '9')) {
-    name_len *= 10;
-    name_len += *name - '0';
-    name++;
-  }
-
-  if (max_len && name_len > max_len) name_len = max_len;
-
-  for (int i = 0; i < name_len; i++) {
-    putc(name[i], stdout);
-  }
-  for (int i = name_len; i < max_len; i++) {
-    putc(' ', stdout);
-  }
-}
-*/
-
-//------------------------------------------------------------------------------
-
-/*
-template<typename T>
-inline void print_class_name(int max_len = 0) {
-  print_typeid_name(typeid(T).name(), max_len);
-}
-*/
 
 //------------------------------------------------------------------------------
 

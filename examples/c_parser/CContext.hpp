@@ -83,10 +83,6 @@ class CContext : public matcheroni::NodeContext<TokSpan, CNode> {
   void append_node(CNode* node);
   void enclose_nodes(CNode* start, CNode* node);
 
-  void dump_stats();
-  void dump_lexemes();
-  //void dump_tokens();
-
   //----------------------------------------
 
   std::vector<CToken> tokens;

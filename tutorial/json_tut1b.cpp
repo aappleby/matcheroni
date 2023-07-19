@@ -6,6 +6,7 @@
 
 #include "matcheroni/Matcheroni.hpp"
 #include "matcheroni/Utilities.hpp"
+#include "matcheroni/dump.hpp"
 
 using namespace matcheroni;
 
@@ -40,12 +41,7 @@ int main(int argc, char** argv) {
   TextContext ctx;
   auto text = to_span(R"("Hello World")");
   auto tail = JsonParser::match(ctx, text);
-
-  if (tail.is_valid()) {
-    print_match(text, text - tail);
-  } else {
-    print_fail(text, tail);
-  }
+  print_summary(text, tail, 40);
 
   return 0;
 }

@@ -16,39 +16,40 @@ using namespace matcheroni;
 
 const char* source = R"(
 #include <stdio.h>
+
+namespace {
+struct foo {
+  int x;
+  int y;
+  void blep() {}
+};
+};
+
 int main(int argc, char** argv) {
   printf("Hello World\n");
+  int x = florble(+1++,2,3);
+  int y = +a-- + -b++;
   return 0;
 }
 )";
 
-/*
-#include <stdio.h>
-int main(int argc, char** argv) {
-  printf("Hello World\n");
-  return 0;
-}
-*/
-
 //------------------------------------------------------------------------------
 
 int test_parser() {
-  printf("Matcheroni c_parser_test\n");
-
   CLexer lexer;
   CContext context;
 
   lexer.reset();
   context.reset();
 
-  if (lexer.lex(to_span(source))) {
+  auto span = to_span(source);
+
+  if (lexer.lex(span)) {
     printf("Lex OK!\n");
   }
   else {
     printf("Lex failed!\n");
   }
-
-  //lexer.dump_lexemes();
 
   if (context.parse(lexer.tokens)) {
     printf("Parse OK!\n");
@@ -57,21 +58,23 @@ int test_parser() {
     printf("Parse failed!\n");
   }
 
-  //context.dump_tokens();
-
   printf("Dumping tree:\n");
-  for (auto c = context.top_head(); c; c = c->node_next()) {
-    c->dump_tree(0, 0);
-  }
+  print_context(span, context, 40);
 
-  //printf("Total nodes    %ld\n",      CNode::constructor_calls);
-  printf("Node pool      %d bytes\n", LinearAlloc::inst().max_size);
+  printf("Node max size  %d bytes\n", LinearAlloc::inst().max_size);
+  printf("Node count     %ld\n", context.node_count());
+  printf("Node max count %ld\n", LinearAlloc::inst().max_size / sizeof(CNode));
 
   return 0;
 }
 
 //------------------------------------------------------------------------------
 
-int main(int argc, char** argv) { test_parser(); }
+int main(int argc, char** argv) {
+  printf("c_parser_test\n");
+  test_parser();
+  printf("c_parser_test done\n");
+  return 0;
+}
 
 //------------------------------------------------------------------------------

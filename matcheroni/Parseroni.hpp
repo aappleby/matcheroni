@@ -129,9 +129,8 @@ struct LinearAlloc {
 
 //------------------------------------------------------------------------------
 
-template<typename atom>
+template<typename SpanType>
 struct NodeBase {
-  using SpanType = Span<atom>;
 
   NodeBase() {}
   virtual ~NodeBase() {}
@@ -217,7 +216,7 @@ struct NodeContext {
 
   size_t node_count() {
     size_t accum = 0;
-    for (auto c = _top_head; c; c = c->_node_next) accum += c->node_count();
+    for (auto c = top_head(); c; c = c->node_next()) accum += c->node_count();
     return accum;
   }
 
@@ -253,10 +252,10 @@ struct NodeContext {
   //----------------------------------------
 
   void detach(NodeType* n) {
-    if (n->_node_prev) n->_node_prev->_node_next = n->_node_next;
-    if (n->_node_next) n->_node_next->_node_prev = n->_node_prev;
-    if (_top_head == n) _top_head = n->_node_next;
-    if (_top_tail == n) _top_tail = n->_node_prev;
+    if (n->node_prev()) n->node_prev()->_node_next = n->node_next();
+    if (n->node_next()) n->node_next()->_node_prev = n->node_prev();
+    if (_top_head == n) _top_head = n->node_next();
+    if (_top_tail == n) _top_tail = n->node_prev();
     n->_node_prev = nullptr;
     n->_node_next = nullptr;
   }
@@ -297,6 +296,8 @@ struct NodeContext {
   }
 
   //----------------------------------------
+  // FIXME could this be faster if there was an append-only version for
+  // captures without children?
 
   void create2(NodeType* new_node, const char* match_name, SpanType span, uint64_t flags, NodeType* old_tail) {
     new_node->init(match_name, span, flags);
@@ -399,7 +400,22 @@ struct NodeContext {
 //------------------------------------------------------------------------------
 // We'll be parsing text a lot, so these are convenience declarations.
 
-using TextNode = NodeBase<char>;
+struct TextNode : public NodeBase<TextSpan> {
+  TextNode* node_prev() { return (TextNode*)_node_prev; }
+  TextNode* node_next() { return (TextNode*)_node_next; }
+
+  const TextNode* node_prev() const { return (TextNode*)_node_prev; }
+  const TextNode* node_next() const { return (TextNode*)_node_next; }
+
+  TextNode* child_head() { return (TextNode*)_child_head; }
+  TextNode* child_tail() { return (TextNode*)_child_tail; }
+
+  const TextNode* child_head() const { return (TextNode*)_child_head; }
+  const TextNode* child_tail() const { return (TextNode*)_child_tail; }
+
+  const char* text_head() const { return span.a; }
+  const char* text_tail() const { return span.b; }
+};
 
 struct TextNodeContext : public NodeContext<TextSpan, TextNode> {
 

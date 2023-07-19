@@ -101,19 +101,6 @@ struct Literal2 : public CNode, PatternWrapper<Literal2<lit>> {
   }
 };
 
-template <StringParam lit>
-struct Literal3 : public CNode, PatternWrapper<Literal2<lit>> {
-  static TokSpan match(CContext& ctx, TokSpan s) {
-    if (!s.is_valid()) return s.fail();
-
-    const CToken& tok_a = *s.a;
-    Span lit_span = lit.span();
-
-    if (!ctx.atom_eq(tok_a, lit_span)) return s.fail();
-    return s.advance(1);
-  }
-};
-
 //------------------------------------------------------------------------------
 
 template <StringParam lit>
@@ -157,7 +144,7 @@ struct NodeLiteral : public CNode, PatternWrapper<NodeLiteral<lit>> {
 
 struct NodeBuiltinType : public CNode, PatternWrapper<NodeBuiltinType> {
   using match_prefix = Ref<&CContext::match_builtin_type_prefix>;
-  using match_base = Ref<&CContext::match_builtin_type_base>;
+  using match_base   = Ref<&CContext::match_builtin_type_base>;
   using match_suffix = Ref<&CContext::match_builtin_type_suffix>;
 
   // clang-format off
@@ -176,7 +163,11 @@ struct NodeBuiltinType : public CNode, PatternWrapper<NodeBuiltinType> {
 };
 
 struct NodeTypedefType : public CNode, PatternWrapper<NodeTypedefType> {
-  using pattern = Ref<&CContext::match_typedef_type>;
+  using pattern =
+  Cap<
+    "typedef",
+    Ref<&CContext::match_typedef_type>
+  >;
 };
 
 //------------------------------------------------------------------------------
@@ -319,7 +310,12 @@ struct NodePrefixCast : public CNode, public PatternWrapper<NodePrefixCast> {
 
 struct NodeExpressionParen : public CNode, PatternWrapper<NodeExpressionParen> {
   using pattern =
-      DelimitedList<Atom<'('>, NodeExpression, Atom<','>, Atom<')'>>;
+  DelimitedList<
+    Atom<'('>,
+    Cap<"expression", NodeExpression>,
+    Atom<','>,
+    Atom<')'>
+  >;
 };
 
 struct NodeSuffixParen : public CNode, PatternWrapper<NodeSuffixParen> {
@@ -341,7 +337,12 @@ struct NodeSuffixParen : public CNode, PatternWrapper<NodeSuffixParen> {
 
 struct NodeExpressionBraces : public CNode, PatternWrapper<NodeExpressionBraces> {
   using pattern =
-      DelimitedList<Atom<'{'>, NodeExpression, Atom<','>, Atom<'}'>>;
+  DelimitedList<
+    Atom<'{'>,
+    Cap<"expression", NodeExpression>,
+    Atom<','>,
+    Atom<'}'>
+  >;
 };
 
 struct NodeSuffixBraces : public CNode, PatternWrapper<NodeSuffixBraces> {
@@ -351,7 +352,12 @@ struct NodeSuffixBraces : public CNode, PatternWrapper<NodeSuffixBraces> {
   }
 
   using pattern =
-      DelimitedList<Atom<'{'>, NodeExpression, Atom<','>, Atom<'}'>>;
+  DelimitedList<
+    Atom<'{'>,
+    Cap<"expression", NodeExpression>,
+    Atom<','>,
+    Atom<'}'>
+  >;
 };
 
 
@@ -364,7 +370,12 @@ struct NodeSuffixSubscript : public CNode, PatternWrapper<NodeSuffixSubscript> {
   }
 
   using pattern =
-      DelimitedList<Atom<'['>, NodeExpression, Atom<','>, Atom<']'>>;
+  DelimitedList<
+    Atom<'['>,
+    Cap<"expression", NodeExpression>,
+    Atom<','>,
+    Atom<']'>
+  >;
 };
 
 //------------------------------------------------------------------------------
@@ -394,9 +405,9 @@ struct NodeExpressionSizeof : public CNode, PatternWrapper<NodeExpressionSizeof>
     Cap<
       "value",
       Oneof<
-        NodeParenType,
-        NodeExpressionParen,
-        NodeExpression
+        Cap<"type",       NodeParenType>,
+        Cap<"expression", NodeExpressionParen>,
+        Cap<"expression", NodeExpression>
       >
     >
   >;
@@ -409,8 +420,8 @@ struct NodeExpressionAlignof : public CNode, PatternWrapper<NodeExpressionAligno
     Cap<
       "value",
       Oneof<
-        NodeParenType,
-        NodeExpressionParen
+        Cap<"type",       NodeParenType>,
+        Cap<"expression", NodeExpressionParen>
       >
     >
   >;
@@ -591,7 +602,15 @@ struct NodeExpression : public CNode, PatternWrapper<NodeExpression> {
   static TokSpan match2(CContext& ctx, TokSpan s) {
 
     using pattern =
-        Seq<unit_pattern, Any<Seq<Ref<match_binary_op>, unit_pattern>>>;
+    Seq<
+      Cap<"unit", unit_pattern>,
+      Any<
+        Seq<
+          Cap<"op", Ref<match_binary_op>>,
+          Cap<"unit", unit_pattern>
+        >
+      >
+    >;
 
     auto end = pattern::match(ctx, s);
     if (!end.is_valid()) {
@@ -606,7 +625,6 @@ struct NodeExpression : public CNode, PatternWrapper<NodeExpression> {
       {
         auto c = tok_a;
         while (c && c < tok_b) {
-          c->span->dump_tree(0, 1);
           c = c->step_right();
         }
         printf("\n");
@@ -616,8 +634,6 @@ struct NodeExpression : public CNode, PatternWrapper<NodeExpression> {
       while (c && c->span->precedence && c < tok_b) {
         c = c->step_right();
       }
-
-      c->dump_token();
 
       // ran out of units?
       if (c->span->precedence) break;
@@ -634,8 +650,6 @@ struct NodeExpression : public CNode, PatternWrapper<NodeExpression> {
       break;
     }
     */
-
-    // dump_tree(n, 0, 0);
 
     // Fold up as many nodes based on precedence as we can
 #if 0
@@ -721,13 +735,8 @@ struct NodeExpression : public CNode, PatternWrapper<NodeExpression> {
 
 #if 0
     {
-      printf("---EXPRESSION---\n");
       const CToken* c = a;
       while(1) {
-        //c->dump_token();
-        if (auto s = c->span) {
-          dump_tree(s, 1, 0);
-        }
         if (auto end = c->span->tok_b()) {
           c = end + 1;
         }
@@ -736,7 +745,6 @@ struct NodeExpression : public CNode, PatternWrapper<NodeExpression> {
         }
         if (c == tok_b) break;
       }
-      printf("----------------\n");
     }
 #endif
 
@@ -848,9 +856,9 @@ struct NodeTypeDecl : public CNode, public PatternWrapper<NodeTypeDecl> {
 struct NodePointer : public CNode, public PatternWrapper<NodePointer> {
   using pattern =
   Seq<
-    Cap<"star", Literal3<"*">>,
+    Cap<"star", Literal2<"*">>,
     Any<
-      Cap<"star", Literal3<"*">>,
+      Cap<"star", Literal2<"*">>,
       Cap<"modifier", NodeModifier>
     >
   >;
@@ -1049,10 +1057,10 @@ struct NodeDeclaratorList : public CNode,
   // clang-format off
   using pattern =
   comma_separated<
-    Seq<
+    Cap<"decl", Seq<
       Oneof<
         Seq<
-          Cap<"decl", NodeDeclarator>,
+          Cap<"name", NodeDeclarator>,
           Opt<Cap<"bit_suffix", NodeBitSuffix>>
         >,
         Cap<"bit_suffix", NodeBitSuffix>
@@ -1063,7 +1071,7 @@ struct NodeDeclaratorList : public CNode,
           Cap<"initializer", NodeInitializer>
         >
       >
-    >
+    >>
   >;
   // clang-format on
 };
@@ -1089,14 +1097,23 @@ struct NodeField : public PatternWrapper<NodeField> {
 };
 
 struct NodeFieldList : public CNode, public PatternWrapper<NodeFieldList> {
-  using pattern = DelimitedBlock<Atom<'{'>, NodeField, Atom<'}'>>;
+  using pattern =
+  DelimitedBlock<
+    Atom<'{'>,
+    NodeField,
+    Atom<'}'>
+  >;
 };
 
 //------------------------------------------------------------------------------
 
 struct NodeNamespace : public CNode, public PatternWrapper<NodeNamespace> {
   using pattern =
-      Seq<Keyword<"namespace">, Opt<NodeIdentifier>, Opt<NodeFieldList>>;
+  Seq<
+    Keyword<"namespace">,
+    Cap<"name", Opt<NodeIdentifier>>,
+    Opt<NodeFieldList>
+  >;
 };
 
 //------------------------------------------------------------------------------
@@ -1752,6 +1769,8 @@ struct NodeTypedef : public CNode, public PatternWrapper<NodeTypedef> {
     }
   }
 
+  // FIXME these child<> aren't gonna work
+
   static void extract_type(CContext& ctx) {
     auto node = ctx.top_tail();
 
@@ -1855,6 +1874,7 @@ struct NodeTranslationUnit : public CNode, public PatternWrapper<NodeTranslation
       Cap<"template",    Seq<NodeTemplate, Atom<';'>>>,
       Cap<"function",    NodeFunctionDefinition>,
       Cap<"declaration", Seq<NodeDeclaration, Atom<';'>>>,
+      Cap<"namespace",   NodeNamespace>,
       Atom<';'>
     >
   >;

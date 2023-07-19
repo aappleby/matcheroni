@@ -62,15 +62,6 @@ bool CLexer::lex(TextSpan text) {
 
 //------------------------------------------------------------------------------
 
-void CLexer::dump_lexemes() {
-  for (auto& l : tokens) {
-    l.dump();
-    printf("\n");
-  }
-}
-
-//------------------------------------------------------------------------------
-
 CToken next_lexeme(TextContext& ctx, TextSpan s) {
   TextSpan end;
 

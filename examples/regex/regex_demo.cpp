@@ -24,6 +24,9 @@ TextSpan parse_regex(TextNodeContext& ctx, TextSpan s);
 // The demo app accepts a quoted regex as its first command line argument,
 // attempts to parse it, and then prints out the resulting parse tree.
 
+// Bash will un-quote the regex on the command line for us, so we don't need
+// to do any processing here.
+
 int main(int argc, char** argv) {
   printf("Regex Demo\n");
 
@@ -32,34 +35,13 @@ int main(int argc, char** argv) {
     return 1;
   }
 
-  // Bash will un-quote the regex on the command line for us, so we don't need
-  // to do any processing here.
-  TextSpan span = {argv[1], argv[1] + strlen(argv[1])};
-
   // Invoke our regex matcher against the input text. If it matches, we will
   // get a non-null endpoint for the match.
 
-  printf("Parsing regex `%s`\n", span.a);
   TextNodeContext ctx;
-  auto parse_end = parse_regex(ctx, span);
-
-  if (parse_end.a == nullptr) {
-    printf("Parse fail at  : %ld\n", parse_end.b - span.a);
-    printf("Parse context  : `%-20.20s`\n", parse_end.b);
-  }
-  else {
-    printf("Parse tail len : %ld\n", parse_end.b - parse_end.a);
-    printf("Parse tail     : `%s`\n", parse_end.a);
-  }
-  printf("\n");
-
-  printf("Parse tree:\n");
-  printf("----------------------------------------\n");
-  for (auto n = ctx.top_head(); n; n = n->node_next()) {
-    print_tree(n);
-  }
-  printf("----------------------------------------\n");
-  printf("\n");
+  auto text = to_span(argv[1]);
+  auto tail = parse_regex(ctx, text);
+  print_summary(text, tail, 40);
 
   return 0;
 }

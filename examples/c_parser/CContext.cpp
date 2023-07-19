@@ -39,13 +39,6 @@ bool CContext::parse(std::vector<CToken>& lexemes) {
   auto tok_b = tokens.data() + tokens.size() - 1;
   TokSpan s(tok_a, tok_b);
 
-  /*
-  for (auto c = s.a; c < s.b; c++) {
-    c->dump();
-    printf("\n");
-  }
-  */
-
   auto end = NodeTranslationUnit::match(*this, s);
   return end.is_valid();
 }

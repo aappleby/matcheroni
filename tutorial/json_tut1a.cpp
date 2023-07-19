@@ -6,6 +6,7 @@
 
 #include "matcheroni/Matcheroni.hpp"
 #include "matcheroni/Utilities.hpp"
+#include "matcheroni/dump.hpp"
 
 using namespace matcheroni;
 
@@ -31,15 +32,12 @@ struct JsonParser {
 //------------------------------------------------------------------------------
 
 int main(int argc, char** argv) {
-  TextContext ctx;
-  auto text = to_span(R"(-123456.678 Hello World)");
-  auto tail = JsonParser::match(ctx, text);
+  printf("json_tut1a\n");
 
-  if (tail.is_valid()) {
-    print_match(text, text - tail);
-  } else {
-    print_fail(text, tail);
-  }
+  TextContext ctx;
+  auto text = to_span("-123456.678 Hello\nWorld\t\r");
+  auto tail = JsonParser::match(ctx, text);
+  print_summary(text, tail, 40);
 
   return 0;
 }

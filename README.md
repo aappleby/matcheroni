@@ -1,4 +1,7 @@
 ------
+### Update 7/18/2023 - Matcheroni is getting a major rewrite plus a parsing framework I'm calling Parseroni. There will be a full live interactive tutorial as well. Please hold off on using this library until those are complete.
+
+------
 ### TL;DR - Copy-paste [Matcheroni.hpp](matcheroni/Matcheroni.hpp) into your C++20 project and you can build simple [parsers](matcheroni/regex_parser.cpp) without needing a parser generator or a regex library.
 ------
 

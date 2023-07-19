@@ -14,7 +14,6 @@ struct CLexer {
   CLexer();
   void reset();
   bool lex(matcheroni::TextSpan text);
-  void dump_lexemes();
 
   std::vector<CToken> tokens;
 };
