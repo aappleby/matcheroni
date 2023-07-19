@@ -104,7 +104,7 @@ int main(int argc, char** argv) {
   //----------------------------------------
   // Scan the directory and prune it down to only valid C source files.
 
-  int total_lines = 0;
+  size_t total_lines = 0;
   std::vector<std::string> source_files;
   std::vector<std::string> failed_files;
   std::vector<std::string> bad_files;
@@ -175,8 +175,8 @@ int main(int argc, char** argv) {
 
   CLexer lexer;
   std::string text;
-  int total_bytes = 0;
-  double lex_time = 0;
+  size_t total_bytes = 0;
+  double lex_msec = 0;
   bool any_fail = false;
   int count = 0;
 
@@ -191,9 +191,9 @@ int main(int argc, char** argv) {
     read(path.c_str(), text);
     total_bytes += text.size();
 
-    lex_time -= timestamp_ms();
+    lex_msec -= timestamp_ms();
     bool lex_ok = lexer.lex(to_span(text));
-    lex_time += timestamp_ms();
+    lex_msec += timestamp_ms();
     if (!lex_ok) {
       failed_files.push_back(path);
       printf("Lexing failed for file %s:\n", path.c_str());
@@ -206,15 +206,17 @@ int main(int argc, char** argv) {
   auto time_b = timestamp_ms();
   auto total_time = time_b - time_a;
 
+  auto lex_sec = lex_msec / 1000;
+
   printf("\n");
   printf("Total time  %f msec\n", total_time);
-  printf("Lex time    %f msec\n", lex_time);
+  printf("Lex time    %f msec\n", lex_msec);
   printf("Total files %ld\n", source_files.size());
-  printf("Total lines %d\n", total_lines);
-  printf("Total bytes %d\n", total_bytes);
-  printf("File rate   %f\n", 1000.0 * double(source_files.size()) / double(lex_time));
-  printf("Line rate   %f\n", 1000.0 * double(total_lines) / double(lex_time));
-  printf("Byte rate   %f\n", 1000.0 * double(total_bytes) / double(lex_time));
+  printf("Total lines %ld\n", total_lines);
+  printf("Total bytes %ld\n", total_bytes);
+  printf("File rate   %.2f Kfiles/sec\n",  (source_files.size() / 1e3) / lex_sec);
+  printf("Line rate   %.2f Mlines/sec\n",  (total_lines / 1e6) / lex_sec);
+  printf("Byte rate   %.2f MBytes/sec\n",  (total_bytes / 1e6) / lex_sec);
   printf("Total failures        %ld\n", failed_files.size());
   printf("Total known-bad files %ld\n", bad_files.size());
   printf("Total skipped files   %ld\n", skipped_files.size());

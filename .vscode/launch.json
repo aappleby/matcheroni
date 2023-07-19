@@ -58,9 +58,9 @@
         "text": "-enable-pretty-printing",
         "ignoreFailures": true
       }],
-      "args" : ["../csmith_files"],
+      //"args" : ["../csmith_files"],
       //"args" : ["../gcc/gcc/testsuite/gcc.c-torture"],
-      //"args" : ["../gcc/gcc"],
+      "args" : ["../gcc/gcc"],
     },
 
     {

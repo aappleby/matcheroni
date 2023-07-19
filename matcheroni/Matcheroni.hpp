@@ -312,8 +312,8 @@ struct StringParam {
 
 // Lit<"foo">::match("foobar") == "bar"
 
-template <typename context>
-inline Span<char> match_lit(context& ctx, Span<char> s, const char* lit, size_t len) {
+template <typename Context, typename SpanType>
+inline SpanType match_lit(Context& ctx, SpanType s, const char* lit, size_t len) {
   matcheroni_assert(s.is_valid());
   if (len > s.len()) return s.fail();
 
@@ -327,8 +327,8 @@ inline Span<char> match_lit(context& ctx, Span<char> s, const char* lit, size_t 
 
 template <StringParam lit>
 struct Lit {
-  template <typename context>
-  static Span<char> match(context& ctx, Span<char> s) {
+  template <typename Context, typename SpanType>
+  static SpanType match(Context& ctx, SpanType s) {
     return match_lit(ctx, s, lit.str_val, lit.str_len);
   }
 };
