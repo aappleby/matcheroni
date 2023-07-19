@@ -7,8 +7,6 @@
 
 using namespace matcheroni;
 
-//------------------------------------------------------------------------------
-
 TextContext ctx;
 
 //------------------------------------------------------------------------------
@@ -135,6 +133,30 @@ void test_range() {
   text = to_span("ab");
   tail = NotRange<'m', 'z'>::match(ctx, text);
   TEST(tail.is_valid() && tail == "b");
+
+  text = to_span("be");
+  tail = Range<'a','c', 'd', 'f'>::match(ctx, text);
+  TEST(tail.is_valid() && tail == "e");
+
+  text = to_span("ez");
+  tail = Range<'a','c', 'd', 'f'>::match(ctx, text);
+  TEST(tail.is_valid() && tail == "z");
+
+  text = to_span("zq");
+  tail = Range<'a','c', 'd', 'f'>::match(ctx, text);
+  TEST(!tail.is_valid() && std::string(tail.b) == "zq");
+
+  text = to_span("mn");
+  tail = NotRange<'a','c', 'd','f'>::match(ctx, text);
+  TEST(tail.is_valid() && tail == "n");
+
+  text = to_span("be");
+  tail = NotRange<'a','c', 'd','f'>::match(ctx, text);
+  TEST(!tail.is_valid() && std::string(tail.b) == "be");
+
+  text = to_span("eb");
+  tail = NotRange<'a','c', 'd','f'>::match(ctx, text);
+  TEST(!tail.is_valid() && std::string(tail.b) == "eb");
 }
 
 //------------------------------------------------------------------------------

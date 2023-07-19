@@ -242,8 +242,20 @@ struct AnyAtom {
 //------------------------------------------------------------------------------
 // 'Range' matches ranges of atoms, equivalent to '[a-b]' in regex.
 
-template <auto RA, decltype(RA) RB>
+template <auto RA, decltype(RA) RB, auto... rest>
 struct Range {
+  template <typename context, typename atom>
+  static Span<atom> match(context& ctx, Span<atom> s) {
+    matcheroni_assert(s.is_valid());
+    if (s.is_empty()) return s.fail();
+    if (ctx.atom_lt(*s.a, RA)) return Range<rest...>::match(ctx, s);
+    if (ctx.atom_gt(*s.a, RB)) return Range<rest...>::match(ctx, s);
+    return s.advance(1);
+  }
+};
+
+template <auto RA, decltype(RA) RB>
+struct Range<RA, RB> {
   template <typename context, typename atom>
   static Span<atom> match(context& ctx, Span<atom> s) {
     matcheroni_assert(s.is_valid());
@@ -258,15 +270,35 @@ struct Range {
 // 'NotRange' matches ranges of atoms not in the given range, equivalent to
 // '[^a-b]' in regex.
 
-template <auto RA, decltype(RA) RB>
+template <auto RA, decltype(RA) RB, auto... rest>
 struct NotRange {
   template <typename context, typename atom>
   static Span<atom> match(context& ctx, Span<atom> s) {
     matcheroni_assert(s.is_valid());
     if (s.is_empty()) return s.fail();
-    if (ctx.atom_lt(*s.a, RA)) return s.advance(1);
-    if (ctx.atom_gt(*s.a, RB)) return s.advance(1);
-    return s.fail();
+
+    if ((ctx.atom_gt(*s.a, RA) || ctx.atom_eq(*s.a, RA)) &&
+        (ctx.atom_lt(*s.a, RB) || ctx.atom_eq(*s.a, RB))) {
+      return s.fail();
+    }
+
+    return NotRange<rest...>::match(ctx, s);
+  }
+};
+
+template <auto RA, decltype(RA) RB>
+struct NotRange<RA, RB> {
+  template <typename context, typename atom>
+  static Span<atom> match(context& ctx, Span<atom> s) {
+    matcheroni_assert(s.is_valid());
+    if (s.is_empty()) return s.fail();
+
+    if ((ctx.atom_gt(*s.a, RA) || ctx.atom_eq(*s.a, RA)) &&
+        (ctx.atom_lt(*s.a, RB) || ctx.atom_eq(*s.a, RB))) {
+      return s.fail();
+    }
+
+    return s.advance(1);
   }
 };
 
