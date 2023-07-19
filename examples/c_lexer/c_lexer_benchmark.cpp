@@ -162,16 +162,10 @@ int main(int argc, char** argv) {
 
     for (auto c : text) if (c == '\n') total_lines++;
     source_files.push_back(f.path());
-
-    //if (source_files.size() == 100) break;
   }
 
   //----------------------------------------
   // Lex all the good files
-
-  //source_files = {
-  //  "./examples/c_lexer/c_lexer_test.cpp"
-  //};
 
   CLexer lexer;
   std::string text;
