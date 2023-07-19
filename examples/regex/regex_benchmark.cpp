@@ -103,7 +103,7 @@ void benchmark_pattern(TextSpan s) {
   fflush(stdout);
 }
 
-using w = Oneof<Range<'a','z'>, Range<'A','Z'>, Range<'0','9'>, Atom<'_'>>;
+using w = Range<'a','z', 'A','Z', '0','9', '_', '_'>;
 using dot = Atom<'.'>;
 using at = Atom<'@'>;
 using plus = Atom<'+'>;

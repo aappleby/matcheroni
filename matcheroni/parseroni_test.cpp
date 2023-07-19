@@ -198,7 +198,7 @@ struct BeginEndTest {
   >;
 
   using ws   = Any<Atom<' ', '\n', '\r', '\t'>>;
-  using atom = Some<Range<'a','z'>, Range<'A','Z'>, Range<'0','9'>>;
+  using atom = Some<Range<'0','9','a','f','A','F'>>;
   using car  = Opt<Ref<match>>;
   using cdr  = Any<Seq<ws, Atom<','>, ws, Ref<match>>>;
   using list = Seq<Atom<'['>, ws, car, cdr, ws, Atom<']'>>;

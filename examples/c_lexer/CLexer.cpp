@@ -135,7 +135,7 @@ TextSpan match_int(TextContext& ctx, TextSpan s) {
   using decimal_constant     = Seq<nonzero_digit, Any<ticked<digit>>>;
 
   using hexadecimal_prefix         = Oneof<Lit<"0x">, Lit<"0X">>;
-  using hexadecimal_digit          = Oneof<Range<'0', '9'>, Range<'a', 'f'>, Range<'A', 'F'>>;
+  using hexadecimal_digit          = Range<'0','9','a','f','A','F'>;
   using hexadecimal_digit_sequence = Seq<hexadecimal_digit, Any<ticked<hexadecimal_digit>>>;
   using hexadecimal_constant       = Seq<hexadecimal_prefix, hexadecimal_digit_sequence>;
 
@@ -197,7 +197,7 @@ TextSpan match_universal_character_name(TextContext& ctx, TextSpan s) {
   using n_char_sequence = Some<n_char>;
   using named_universal_character = Seq<Lit<"\\N{">, n_char_sequence, Lit<"}">>;
 
-  using hexadecimal_digit = Oneof<Range<'0', '9'>, Range<'a', 'f'>, Range<'A', 'F'>>;
+  using hexadecimal_digit = Range<'0','9','a','f','A','F'>;
   using hex_quad = Rep<4, hexadecimal_digit>;
 
   using universal_character_name = Oneof<
@@ -284,7 +284,7 @@ TextSpan match_float(TextContext& ctx, TextSpan s) {
 
   using sign = Atom<'+','-'>;
 
-  using hexadecimal_digit          = Oneof<Range<'0', '9'>, Range<'a', 'f'>, Range<'A', 'F'>>;
+  using hexadecimal_digit          = Range<'0','9','a','f','A','F'>;
   using hexadecimal_digit_sequence = Seq<hexadecimal_digit, Any<ticked<hexadecimal_digit>>>;
   using hexadecimal_fractional_constant = Oneof<
     Seq<Opt<hexadecimal_digit_sequence>, Atom<'.'>, hexadecimal_digit_sequence>,
@@ -341,7 +341,7 @@ TextSpan match_escape_sequence(TextContext& ctx, TextSpan s) {
     Seq<Lit<"\\o{">, Any<octal_digit>, Lit<"}">>
   >;
 
-  using hexadecimal_digit = Oneof<Range<'0', '9'>, Range<'a', 'f'>, Range<'A', 'F'>>;
+  using hexadecimal_digit = Range<'0','9','a','f','A','F'>;
   using hexadecimal_escape_sequence = Oneof<
     Seq<Lit<"\\x">, Some<hexadecimal_digit>>,
     Seq<Lit<"\\x{">, Any<hexadecimal_digit>, Lit<"}">>

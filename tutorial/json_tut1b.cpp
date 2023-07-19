@@ -23,7 +23,7 @@ struct JsonParser {
   using exponent  = Seq<Atom<'e', 'E'>, Opt<sign>, digits>;
   using number    = Seq<integer, Opt<fraction>, Opt<exponent>>;
   using ws        = Any<Atom<' ', '\n', '\r', '\t'>>;
-  using hex       = Oneof<Range<'0', '9'>, Range<'A', 'F'>, Range<'a', 'f'>>;
+  using hex       = Range<'0','9','a','f','A','F'>;
   using escape    = Oneof<Charset<"\"\\/bfnrt">, Seq<Atom<'u'>, Rep<4, hex>>>;
   using character = Oneof<NotAtom<'"', '\\'>, Seq<Atom<'\\'>, escape>>;
   using string    = Seq<Atom<'"'>, Any<character>, Atom<'"'>>;

@@ -260,7 +260,7 @@ const char* match_int(void* ctx, const char* a, const char* b) {
   using decimal_constant     = Seq<nonzero_digit, Any<ticked<digit>>>;
 
   using hexadecimal_prefix         = Oneof<Lit<"0x">, Lit<"0X">>;
-  using hexadecimal_digit          = Oneof<Range<'0', '9'>, Range<'a', 'f'>, Range<'A', 'F'>>;
+  using hexadecimal_digit          = Range<'0','9','a','f','A','F'>;
   using hexadecimal_digit_sequence = Seq<hexadecimal_digit, Any<ticked<hexadecimal_digit>>>;
   using hexadecimal_constant       = Seq<hexadecimal_prefix, hexadecimal_digit_sequence>;
 
