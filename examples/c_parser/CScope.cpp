@@ -7,6 +7,12 @@
 #include "examples/c_parser/CContext.hpp"
 #include "examples/c_lexer/CToken.hpp"
 
+#include <string_view>
+
+using matcheroni::TextSpan;
+
+using std::string_view;
+
 void CScope::clear() {
   class_types.clear();
   struct_types.clear();
@@ -21,12 +27,10 @@ bool CScope::has_type(CContext& ctx, TokSpan s, token_list& types) {
   }
   /*+*/ctx.rewind(s);
 
-  for (const auto c : types) {
-    if (ctx.atom_eq(*s.a, *c)) {
-      return true;
-    }
-    else {
-    }
+  TextSpan span(s.a->a, s.a->b);
+
+  for (const auto& c : types) {
+    if (strcmp_span(span, c) == 0) return true;
   }
 
   return false;
@@ -35,11 +39,25 @@ bool CScope::has_type(CContext& ctx, TokSpan s, token_list& types) {
 void CScope::add_type(CContext& ctx, const CToken* a, token_list& types) {
   matcheroni_assert(ctx.atom_eq(*a, LEX_IDENTIFIER));
 
+  TextSpan span(a->a, a->b);
+
   for (const auto& c : types) {
-    if (ctx.atom_eq(*a, *c)) return;
+    if (strcmp_span(span, c) == 0) return;
   }
 
-  types.push_back(a);
+  types.push_back(span);
+}
+
+//----------------------------------------
+
+void CScope::add_typedef_type(const char* t) {
+  TextSpan span = matcheroni::to_span(t);
+
+  for (const auto& c : typedef_types) {
+    if (strcmp_span(span, c) == 0) return;
+  }
+
+  typedef_types.push_back(span);
 }
 
 //----------------------------------------

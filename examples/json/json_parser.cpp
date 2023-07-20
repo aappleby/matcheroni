@@ -4,8 +4,11 @@
 #include "matcheroni/Matcheroni.hpp"
 #include "matcheroni/Parseroni.hpp"
 #include "matcheroni/Utilities.hpp"
+#include "matcheroni/Cookbook.hpp"
 
 using namespace matcheroni;
+
+using cookbook::comma_separated;
 
 //------------------------------------------------------------------------------
 
@@ -26,9 +29,6 @@ struct JsonParser {
   using exponent  = Seq<Atom<'e','E'>, Opt<sign>, digits>;
   using integer   = Seq< Opt<Atom<'-'>>, Oneof<Seq<onenine,digits>,digit> >;
   using number    = Seq<integer, Opt<fraction>, Opt<exponent>>;
-
-  template<typename P>
-  using comma_separated = Seq<P, Any<Seq<ws, Atom<','>, ws, P>>>;
 
   static TextSpan value(TextNodeContext& ctx, TextSpan s) {
     return Oneof<

@@ -11,6 +11,8 @@
 
 using namespace matcheroni;
 
+bool verbose = false;
+
 //------------------------------------------------------------------------------
 // File filters
 
@@ -93,7 +95,6 @@ int test_parser(int argc, char** argv) {
   CLexer lexer;
   CContext context;
 
-  bool verbose = false;
   double io_time = 0;
   double lex_time = 0;
   double parse_time = 0;
@@ -137,7 +138,7 @@ int test_parser(int argc, char** argv) {
 
   for (const auto& path : paths) {
     {
-      // printf("Cleaning up\n");
+      if (verbose) printf("Cleaning up\n");
       cleanup_time -= timestamp_ms();
       lexer.reset();
       context.reset();
@@ -145,7 +146,7 @@ int test_parser(int argc, char** argv) {
     }
 
     {
-      // printf("Loading %s\n", path.c_str());
+      if (verbose) printf("Loading %s\n", path.c_str());
       io_time -= timestamp_ms();
 
       text.clear();
@@ -156,7 +157,7 @@ int test_parser(int argc, char** argv) {
       io_time += timestamp_ms();
     }
 
-    // printf("Lexing %s\n", path.c_str());
+    if (verbose) printf("Lexing %s\n", path.c_str());
     lex_time -= timestamp_ms();
     auto text_span = to_span(text);
     lexer.lex(text_span);
@@ -167,7 +168,7 @@ int test_parser(int argc, char** argv) {
       bool has_preproc = false;
       for (auto& l : lexer.tokens) {
         if (l.type == LEX_PREPROC) {
-          has_preproc = true;
+          //has_preproc = true;
           break;
         }
       }
@@ -179,16 +180,13 @@ int test_parser(int argc, char** argv) {
 
     TokSpan tok_span(lexer.tokens.data(), lexer.tokens.data() + lexer.tokens.size());
 
-    printf("%04d: Parsing %s\n", file_pass, path.c_str());
+    if (verbose) printf("%04d: Parsing %s\n", file_pass, path.c_str());
     parse_time -= timestamp_ms();
     bool parse_ok = context.parse(text_span, tok_span);
     parse_time += timestamp_ms();
 
     if (!parse_ok) {
       file_fail++;
-      printf("\n");
-      //print_context(span, context, 40);
-      printf("\n");
       printf("\n");
       printf("fail!\n");
       printf("Parsing failed: %s\n", path.c_str());

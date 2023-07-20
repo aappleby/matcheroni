@@ -213,7 +213,26 @@ struct NodePreproc : public CNode /*, PatternWrapper<NodePreproc>*/ {
   static TokSpan match(CContext& ctx, TokSpan span) {
     auto end = pattern::match(ctx, span);
     if (end.is_valid()) {
-      printf("Preproc `%s`\n", span.a->a);
+      std::string s(span.a->a, (end.a - 1)->b);
+
+      if (s.find("stdio") != std::string::npos) {
+        for (auto t : stdio_typedefs) {
+          ctx.type_scope->add_typedef_type(t);
+        }
+      }
+
+      if (s.find("stdint") != std::string::npos) {
+        for (auto t : stdint_typedefs) {
+          ctx.type_scope->add_typedef_type(t);
+        }
+      }
+
+      if (s.find("stddef") != std::string::npos) {
+        for (auto t : stddef_typedefs) {
+          ctx.type_scope->add_typedef_type(t);
+        }
+      }
+
     }
     return end;
   }

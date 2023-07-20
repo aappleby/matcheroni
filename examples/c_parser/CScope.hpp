@@ -3,6 +3,7 @@
 
 #pragma once
 #include <vector>
+#include <string>
 #include "matcheroni/Matcheroni.hpp"
 
 struct CToken;
@@ -13,7 +14,8 @@ typedef matcheroni::Span<CToken> TokSpan;
 
 struct CScope {
 
-  using token_list = std::vector<const CToken*>;
+  //using token_list = std::vector<const CToken*>;
+  using token_list = std::vector<matcheroni::TextSpan>;
 
   void clear();
   bool has_type(CContext& ctx, TokSpan s, token_list& types);
@@ -30,6 +32,8 @@ struct CScope {
   void add_union_type  (CContext& ctx, const CToken* a);
   void add_enum_type   (CContext& ctx, const CToken* a);
   void add_typedef_type(CContext& ctx, const CToken* a);
+
+  void add_typedef_type(const char* t);
 
   CScope* parent;
   token_list class_types;

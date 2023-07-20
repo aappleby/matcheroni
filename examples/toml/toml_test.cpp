@@ -1,10 +1,4 @@
 //------------------------------------------------------------------------------
-// This file is a full working example of using Matcheroni to build a JSON
-// parser.
-
-// Example usage:
-// bin/json_parser test_file.json
-
 // SPDX-FileCopyrightText:  2023 Austin Appleby <aappleby@gmail.com>
 // SPDX-License-Identifier: MIT License
 
