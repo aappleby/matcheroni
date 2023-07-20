@@ -131,6 +131,19 @@
     },
 
     //--------------------------------------------------------------------------
+    // TOML example
+
+    {
+      "name": "toml_test",
+      "preLaunchTask": "build_matcheroni",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/bin/examples/toml/toml_test",
+      "cwd": "${workspaceFolder}",
+      "args" : ["data/Cargo.toml"],
+    },
+
+    //--------------------------------------------------------------------------
     // Json tutorials
 
     {

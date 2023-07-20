@@ -40,11 +40,13 @@ int main(int argc, char** argv) {
   const char* paths[] = {
     //"data/json_demo.json",
     //"data/invalid.json",
+    "data/sample.json",
+
 
     // 4609770.000000
-    "../nativejson-benchmark/data/canada.json",
-    "../nativejson-benchmark/data/citm_catalog.json",
-    "../nativejson-benchmark/data/twitter.json",
+    //"../nativejson-benchmark/data/canada.json",
+    //"../nativejson-benchmark/data/citm_catalog.json",
+    //"../nativejson-benchmark/data/twitter.json",
   };
 
   double byte_accum = 0;

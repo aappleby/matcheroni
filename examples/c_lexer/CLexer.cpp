@@ -73,14 +73,12 @@ CToken next_lexeme(TextContext& ctx, TextSpan s) {
   // L'_' prefix...
   if (auto end = match_char(ctx, s)   ) return CToken(LEX_CHAR, TextSpan(s.a, end.a));
 
-  {
-    if (auto end = match_identifier(ctx, s)) {
-      auto tok_span = TextSpan(s.a, end.a);
-      if (SST<c_keywords>::match(tok_span.a, tok_span.b)) {
-        return CToken(LEX_KEYWORD, tok_span);
-      } else {
-        return CToken(LEX_IDENTIFIER, tok_span);
-      }
+  if (auto end = match_identifier(ctx, s)) {
+    auto span = TextSpan(s.a, end.a);
+    if (SST<c_keywords>::match(span.a, span.b)) {
+      return CToken(LEX_KEYWORD, span);
+    } else {
+      return CToken(LEX_IDENTIFIER, span);
     }
   }
 

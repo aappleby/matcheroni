@@ -8,6 +8,8 @@
 using namespace matcheroni;
 
 //------------------------------------------------------------------------------
+// FIXME - Is there anything we need to cover here that isn't already covered
+// by matcheroni_test?
 
 /*
 void test_match_string() {
