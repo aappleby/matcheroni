@@ -55,7 +55,7 @@ bool CLexer::lex(TextSpan text) {
       return false;
     }
     if (token.type == LEX_EOF) break;
-    text.a = token.b;
+    text.a = token.text.b;
   }
 
   return true;
@@ -75,11 +75,11 @@ CToken next_lexeme(TextContext& ctx, TextSpan body) {
   if (auto tail = match_char(ctx, body)   ) return CToken(LEX_CHAR, TextSpan(body.a, tail.a));
 
   if (auto tail = match_identifier(ctx, body)) {
-    auto span = TextSpan(body.a, tail.a);
-    if (SST<c_keywords>::match(span.a, span.b)) {
-      return CToken(LEX_KEYWORD, span);
+    auto text = TextSpan(body.a, tail.a);
+    if (SST<c_keywords>::match(text.a, text.b)) {
+      return CToken(LEX_KEYWORD, text);
     } else {
-      return CToken(LEX_IDENTIFIER, span);
+      return CToken(LEX_IDENTIFIER, text);
     }
   }
 

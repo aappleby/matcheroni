@@ -27,7 +27,7 @@ bool CScope::has_type(CContext& ctx, TokSpan body, token_list& types) {
   }
   /*+*/ctx.rewind(body);
 
-  TextSpan span(body.a->a, body.a->b);
+  TextSpan span(body.a->text.a, body.a->text.b);
 
   for (const auto& c : types) {
     if (strcmp_span(span, c) == 0) return true;
@@ -39,7 +39,7 @@ bool CScope::has_type(CContext& ctx, TokSpan body, token_list& types) {
 void CScope::add_type(CContext& ctx, const CToken* a, token_list& types) {
   matcheroni_assert(ctx.atom_cmp(*a, LEX_IDENTIFIER) == 0);
 
-  TextSpan span(a->a, a->b);
+  TextSpan span(a->text.a, a->text.b);
 
   for (const auto& c : types) {
     if (strcmp_span(span, c) == 0) return;

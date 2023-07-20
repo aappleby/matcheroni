@@ -134,7 +134,7 @@ inline TokSpan match_punct(CContext& ctx, TokSpan body) {
   for (auto i = 0; i < lit.str_len; i++) {
     const CToken& tok_a = body.a[0];
     if (ctx.atom_cmp(tok_a, LEX_PUNCT) != 0) return body.fail();
-    if (ctx.atom_cmp(tok_a.a[0], lit.str_val[i]) != 0) return body.fail();
+    if (ctx.atom_cmp(tok_a.text.a[0], lit.str_val[i]) != 0) return body.fail();
     body = body.advance(1);
   }
 
@@ -213,7 +213,7 @@ struct NodePreproc : public CNode /*, PatternWrapper<NodePreproc>*/ {
   static TokSpan match(CContext& ctx, TokSpan body) {
     auto tail = pattern::match(ctx, body);
     if (tail.is_valid()) {
-      std::string s(body.a->a, (tail.a - 1)->b);
+      std::string s(body.a->text.a, (tail.a - 1)->text.b);
 
       if (s.find("stdio") != std::string::npos) {
         for (auto t : stdio_typedefs) {
@@ -292,7 +292,7 @@ struct NodeSuffixOp : public CNode, PatternWrapper<NodeSuffixOp<lit>> {
 struct NodeQualifier : public CNode, PatternWrapper<NodeQualifier> {
   static TokSpan match(CContext& ctx, TokSpan body) {
     matcheroni_assert(body.is_valid());
-    TextSpan span = *(body.a);
+    TextSpan span = body.a->text;
     if (SST<qualifiers>::match(span.a, span.b)) {
       return body.advance(1);
     }
@@ -595,7 +595,7 @@ struct NodeExpression : public CNode, PatternWrapper<NodeExpression> {
     }
 
     // clang-format off
-    switch (body.a->a[0]) {
+    switch (body.a->text.a[0]) {
       case '+':
         return Oneof<NodeBinaryOp<"+=">, NodeBinaryOp<"+">>::match(ctx, body);
       case '-':

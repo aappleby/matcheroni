@@ -112,7 +112,7 @@ void CContext::pop_scope() {
 
 TokSpan CContext::match_builtin_type_base(TokSpan body) {
   if (!body.is_valid() || body.is_empty()) return body.fail();
-  if (SST<builtin_type_base>::match(body.a->a, body.a->b)) {
+  if (SST<builtin_type_base>::match(body.a->text.a, body.a->text.b)) {
     return body.advance(1);
   }
   else {
@@ -122,7 +122,7 @@ TokSpan CContext::match_builtin_type_base(TokSpan body) {
 
 TokSpan CContext::match_builtin_type_prefix(TokSpan body) {
   if (!body.is_valid() || body.is_empty()) return body.fail();
-  if (SST<builtin_type_prefix>::match(body.a->a, body.a->b)) {
+  if (SST<builtin_type_prefix>::match(body.a->text.a, body.a->text.b)) {
     return body.advance(1);
   }
   else {
@@ -132,7 +132,7 @@ TokSpan CContext::match_builtin_type_prefix(TokSpan body) {
 
 TokSpan CContext::match_builtin_type_suffix(TokSpan body) {
   if (!body.is_valid() || body.is_empty()) return body.fail();
-  if (SST<builtin_type_suffix>::match(body.a->a, body.a->b)) {
+  if (SST<builtin_type_suffix>::match(body.a->text.a, body.a->text.b)) {
     return body.advance(1);
   }
   else {

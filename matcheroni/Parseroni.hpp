@@ -144,7 +144,7 @@ struct NodeBase {
 
   void init(const char* match_name, SpanType span, uint64_t flags) {
     this->match_name = match_name;
-    this->span = span;
+    this->span  = span;
     this->flags = flags;
   }
 

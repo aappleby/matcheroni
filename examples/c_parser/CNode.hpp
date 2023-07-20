@@ -30,8 +30,8 @@ struct CNode : public matcheroni::NodeBase<TokSpan> {
   const CNode* child_head() const { return (CNode*)_child_head; }
   const CNode* child_tail() const { return (CNode*)_child_tail; }
 
-  const char* text_head() const { return span.a->a; }
-  const char* text_tail() const { return (span.b - 1)->b; }
+  const char* text_head() const { return span.a->text.a; }
+  const char* text_tail() const { return (span.b - 1)->text.b; }
 
   //----------------------------------------
 
