@@ -35,6 +35,9 @@ enum LexemeType {
 struct CToken : public matcheroni::TextSpan {
   CToken(LexemeType type, matcheroni::TextSpan s);
 
+  const char* text_head() const { return a; }
+  const char* text_tail() const { return b; }
+
   bool is_bof() const;
   bool is_eof() const;
   bool is_gap() const;

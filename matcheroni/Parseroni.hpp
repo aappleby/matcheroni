@@ -240,6 +240,7 @@ struct NodeContext {
     new_node->_child_tail = nullptr;
 
     if (_top_tail) {
+      matcheroni_assert(new_node != _top_tail);
       new_node->_node_prev = _top_tail;
       _top_tail->_node_next = new_node;
       _top_tail = new_node;
@@ -290,6 +291,7 @@ struct NodeContext {
       auto dead = _top_tail;
       set_tail((NodeType*)_top_tail->_node_prev);
 #ifndef FAST_MODE
+      printf("recycling %s\n", dead->match_name);
       recycle(dead);
 #endif
     }
@@ -379,6 +381,7 @@ struct NodeContext {
 
     auto tail = node->_child_tail;
 
+    detach(node);
     delete node;
 
     while (tail) {
@@ -453,6 +456,8 @@ inline Span<atom> capture(context& ctx, Span<atom> s, const char* match_name, ma
     Span<atom> node_span = {s.a, end.a};
     auto new_node = new node_type();
     ctx.create2(new_node, match_name, node_span, 0, old_tail);
+    matcheroni_assert(new_node->node_next() != new_node);
+    matcheroni_assert(new_node->node_prev() != new_node);
   }
   else {
     // We don't set the tail back here, rewind will do it.

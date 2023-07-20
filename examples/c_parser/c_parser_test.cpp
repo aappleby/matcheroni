@@ -15,11 +15,7 @@ using namespace matcheroni;
 //------------------------------------------------------------------------------
 
 const char* source = R"(
-extern void exit (int);
-extern void abort (void);
-
-typedef int T;
-
+typedef __SIZE_TYPE__ size_t;
 )";
 
 //------------------------------------------------------------------------------

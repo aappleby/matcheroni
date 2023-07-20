@@ -24,9 +24,28 @@ struct TraceToken {
     auto text = TextSpan(s.a->a, (s.b - 1)->b);
     auto name = match_name.str_val;
 
-    print_bar(ctx.trace_depth++, text, name, "?");
+    int depth = ctx.trace_depth++;
+
+    print_match2(s, s, 40);
+    print_trellis(depth, name, "?", 0xCCCCCC);
+
+    //print_bar(ctx.trace_depth++, text, name, "?");
     auto end = P::match(ctx, s);
-    print_bar(--ctx.trace_depth, text, name, end.is_valid() ? "OK" : "X");
+    depth = --ctx.trace_depth;
+
+    print_match2(s, end, 40);
+    if (end.is_valid()) {
+      print_trellis(depth, name, "!", 0x80FF80);
+      printf("\n");
+      print_context(ctx.text_span, ctx, 40);
+      printf("\n");
+    }
+    else {
+      print_trellis(depth, name, "X", 0x8080FF);
+    }
+
+
+    //print_bar(--ctx.trace_depth, text, name, end.is_valid() ? "OK" : "X");
 
     return end;
   }
@@ -188,8 +207,16 @@ struct NodeIdentifier : public CNode, PatternWrapper<NodeIdentifier> {
 
 //------------------------------------------------------------------------------
 
-struct NodePreproc : public CNode, PatternWrapper<NodePreproc> {
+struct NodePreproc : public CNode /*, PatternWrapper<NodePreproc>*/ {
   using pattern = Atom<LEX_PREPROC>;
+
+  static TokSpan match(CContext& ctx, TokSpan span) {
+    auto end = pattern::match(ctx, span);
+    if (end.is_valid()) {
+      printf("Preproc `%s`\n", span.a->a);
+    }
+    return end;
+  }
 };
 
 //------------------------------------------------------------------------------
@@ -1733,7 +1760,7 @@ struct NodeTypedef : public CNode, public PatternWrapper<NodeTypedef> {
     Opt<
       Keyword<"__extension__">
     >,
-    Keyword<"typedef">,
+    TraceToken<"keyword", Keyword<"typedef">>,
     Cap<
       "newtype",
       Oneof<
@@ -1818,7 +1845,10 @@ struct NodeTypedef : public CNode, public PatternWrapper<NodeTypedef> {
 
   static TokSpan match(CContext& ctx, TokSpan s) {
     auto end = pattern::match(ctx, s);
-    if (end.is_valid()) extract_type(ctx);
+    if (end.is_valid()) {
+      //print_context(ctx.text_span, ctx, 40);
+      extract_type(ctx);
+    }
     return end;
   }
 };

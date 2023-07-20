@@ -323,7 +323,7 @@ constexpr std::array builtin_type_base = {
   "ptrdiff_t",
   "short",
   "signed",
-  "size_t", // used in fputs-lib.c torture test
+  //"size_t", // used in fputs-lib.c torture test
   "uint16_t",
   "uint32_t",
   "uint64_t",

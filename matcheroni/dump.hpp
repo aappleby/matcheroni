@@ -81,6 +81,7 @@ inline void print_trellis(int depth, const char* name, const char* suffix,
   set_color(color);
   printf("%s %s\n", name, suffix);
   set_color(0);
+  fflush(stdout);
 }
 
 //------------------------------------------------------------------------------
@@ -97,6 +98,7 @@ inline void print_match(const char* a, const char* b, const char* c,
   d.put('`', 0xAAAAAA);
 
   set_color(0);
+  fflush(stdout);
 }
 
 //------------------------------------------------------------------------------
@@ -106,6 +108,20 @@ inline void print_match(TextSpan text, TextSpan tail, size_t width) {
     print_match(text.a, tail.a, text.b, 0x80FF80, 0xCCCCCC, width);
   } else {
     print_match(text.a, tail.b, text.b, 0xCCCCCC, 0x8080FF, width);
+  }
+}
+
+template<typename node_type>
+inline void print_match2(Span<node_type> head, Span<node_type> tail, int width) {
+  const char* text_a = head.a->text_head();
+  const char* text_b = head.b->text_tail();
+
+  if (tail.is_valid()) {
+    const char* tail_a = tail.a->text_head();
+    print_match(text_a, tail_a, text_b, 0x80FF80, 0xCCCCCC, width);
+  } else {
+    const char* tail_b = tail.b->text_head();
+    print_match(text_a, tail_b, text_b, 0xCCCCCC, 0x8080FF, width);
   }
 }
 
