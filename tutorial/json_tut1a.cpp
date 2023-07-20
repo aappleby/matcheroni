@@ -35,7 +35,7 @@ int main(int argc, char** argv) {
   printf("json_tut1a\n");
 
   TextContext ctx;
-  auto text = to_span("-123456.678 Hello\nWorld\t\r");
+  auto text = to_span("-12345.6789e10 Hello\nWorld\t\r");
   auto tail = JsonParser::match(ctx, text);
   print_summary(text, tail, 40);
 
