@@ -26,6 +26,26 @@ void CContext::reset() {
 
 //------------------------------------------------------------------------------
 
+bool CContext::parse(matcheroni::TextSpan text, TokSpan lexemes) {
+  this->text_span = text;
+  this->lexemes = lexemes;
+
+  for (auto t = lexemes.a; t < lexemes.b; t++) {
+    if (!t->is_gap()) {
+      tokens.push_back(*t);
+    }
+  }
+
+  // Skip over BOF, stop before EOF
+  auto tok_a = tokens.data() + 1;
+  auto tok_b = tokens.data() + tokens.size() - 1;
+  TokSpan s(tok_a, tok_b);
+
+  auto end = NodeTranslationUnit::match(*this, s);
+  return end.is_valid();
+}
+
+/*
 bool CContext::parse(std::vector<CToken>& lexemes) {
 
   for (auto& t : lexemes) {
@@ -42,6 +62,7 @@ bool CContext::parse(std::vector<CToken>& lexemes) {
   auto end = NodeTranslationUnit::match(*this, s);
   return end.is_valid();
 }
+*/
 
 //------------------------------------------------------------------------------
 

@@ -158,8 +158,8 @@ int test_parser(int argc, char** argv) {
 
     // printf("Lexing %s\n", path.c_str());
     lex_time -= timestamp_ms();
-    auto span = to_span(text);
-    lexer.lex(span);
+    auto text_span = to_span(text);
+    lexer.lex(text_span);
     lex_time += timestamp_ms();
 
     // Filter all files containing preproc, but not if they're a csmith file
@@ -177,9 +177,11 @@ int test_parser(int argc, char** argv) {
       }
     }
 
+    TokSpan tok_span(lexer.tokens.data(), lexer.tokens.data() + lexer.tokens.size());
+
     printf("%04d: Parsing %s\n", file_pass, path.c_str());
     parse_time -= timestamp_ms();
-    bool parse_ok = context.parse(lexer.tokens);
+    bool parse_ok = context.parse(text_span, tok_span);
     parse_time += timestamp_ms();
 
     if (!parse_ok) {

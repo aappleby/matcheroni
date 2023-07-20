@@ -15,22 +15,11 @@ using namespace matcheroni;
 //------------------------------------------------------------------------------
 
 const char* source = R"(
-#include <stdio.h>
+extern void exit (int);
+extern void abort (void);
 
-namespace {
-struct foo {
-  int x;
-  int y;
-  void blep() {}
-};
-};
+typedef int T;
 
-int main(int argc, char** argv) {
-  printf("Hello World\n");
-  int x = florble(+1++,2,3);
-  int y = +a-- + -b++;
-  return 0;
-}
 )";
 
 //------------------------------------------------------------------------------
@@ -42,24 +31,16 @@ int test_parser() {
   lexer.reset();
   context.reset();
 
-  auto span = to_span(source);
+  auto text_span = to_span(source);
+  auto lex_ok = lexer.lex(text_span);
+  printf("Lex %s!\n", lex_ok ? "OK" : "failed");
 
-  if (lexer.lex(span)) {
-    printf("Lex OK!\n");
-  }
-  else {
-    printf("Lex failed!\n");
-  }
-
-  if (context.parse(lexer.tokens)) {
-    printf("Parse OK!\n");
-  }
-  else {
-    printf("Parse failed!\n");
-  }
+  TokSpan tok_span = to_span(lexer.tokens);
+  auto parse_ok = context.parse(text_span, tok_span);
+  printf("Parse %s!\n", parse_ok ? "OK" : "failed");
 
   printf("Dumping tree:\n");
-  print_context(span, context, 40);
+  print_context(text_span, context, 40);
 
   printf("Node max size  %d bytes\n", LinearAlloc::inst().max_size);
   printf("Node count     %ld\n", context.node_count());

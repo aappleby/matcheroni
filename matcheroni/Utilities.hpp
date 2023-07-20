@@ -15,6 +15,7 @@
 #include <sys/stat.h>
 #include <time.h>      // for clock_gettime, CLOCK_PROCESS_CP...
 #include <typeinfo>    // for type_info
+#include <vector>
 
 
 namespace matcheroni {
@@ -98,10 +99,19 @@ inline TextSpan to_span(const std::string& s) {
   return TextSpan(s.data(), s.data() + s.size());
 }
 
+template<typename atom>
+inline Span<atom> to_span(const std::vector<atom>& s) {
+  return Span<atom>(s.data(), s.data() + s.size());
+}
+
+//------------------------------------------------------------------------------
+
 inline std::string to_string(TextSpan s) {
   matcheroni_assert(s.a);
   return std::string(s.a, s.b);
 }
+
+//------------------------------------------------------------------------------
 
 inline bool operator==(TextSpan a, const std::string& b) {
   return a.is_valid() && to_string(a) == b;

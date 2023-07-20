@@ -35,6 +35,7 @@ struct CNode : public matcheroni::NodeBase<TokSpan> {
 
   //----------------------------------------
 
+  /*
   template <typename P>
   bool is_a() const {
     return typeid(*this) == typeid(P);
@@ -60,19 +61,6 @@ struct CNode : public matcheroni::NodeBase<TokSpan> {
     return nullptr;
   }
 
-  /*
-  template <typename P>
-  P* search() {
-    if (this->is_a<P>()) return this->as_a<P>();
-    for (auto cursor = head; cursor; cursor = cursor->next) {
-      if (auto c = cursor->search<P>()) {
-        return c;
-      }
-    }
-    return nullptr;
-  }
-  */
-
   template <typename P>
   P* as_a() {
     return dynamic_cast<P*>(this);
@@ -82,6 +70,7 @@ struct CNode : public matcheroni::NodeBase<TokSpan> {
   const P* as_a() const {
     return dynamic_cast<const P*>(this);
   }
+  */
 
   //----------------------------------------
 

@@ -70,6 +70,11 @@
       "request": "launch",
       "program": "${workspaceFolder}/bin/examples/c_parser/c_parser_test",
       "cwd": "${workspaceFolder}",
+      "setupCommands": [{
+        "description": "Enable pretty-printing for gdb",
+        "text": "-enable-pretty-printing",
+        "ignoreFailures": true
+      }],
     },
 
     {
@@ -82,7 +87,7 @@
       //"args" : ["tests"],
       //"args" : ["../csmith_files"],
       //"args" : ["../gcc/gcc"],
-      //"args" : ["../gcc/gcc/testsuite/gcc.c-torture"],
+      "args" : ["../gcc/gcc/testsuite/gcc.c-torture"],
     },
 
     //--------------------------------------------------------------------------

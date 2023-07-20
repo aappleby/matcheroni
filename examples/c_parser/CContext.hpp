@@ -59,7 +59,8 @@ class CContext : public matcheroni::NodeContext<TokSpan, CNode> {
   void set_tail(CNode* tail) { _top_tail = tail; }
 
   void reset();
-  bool parse(std::vector<CToken>& lexemes);
+  //bool parse(std::vector<CToken>& lexemes);
+  bool parse(matcheroni::TextSpan text, TokSpan lexemes);
 
   TokSpan match_builtin_type_base  (TokSpan s);
   TokSpan match_builtin_type_prefix(TokSpan s);
@@ -84,6 +85,9 @@ class CContext : public matcheroni::NodeContext<TokSpan, CNode> {
   void enclose_nodes(CNode* start, CNode* node);
 
   //----------------------------------------
+
+  matcheroni::TextSpan text_span;
+  TokSpan  lexemes;
 
   std::vector<CToken> tokens;
   CScope* type_scope;

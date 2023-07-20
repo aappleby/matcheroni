@@ -1144,13 +1144,13 @@ struct NodeStruct : public CNode, public PatternWrapper<NodeStruct> {
   // clang-format off
   using pattern =
   Seq<
-    Any<NodeModifier>,
+    Any<Cap<"modifier",  NodeModifier>>,
     Keyword<"struct">,
-    Any<NodeAttribute>,  // This has to be here, there are a lot of struct __attrib__() foo {};
+    Any<Cap<"attribute", NodeAttribute>>,  // This has to be here, there are a lot of struct __attrib__() foo {};
     Opt<NodeStructTypeAdder>,
-    Opt<NodeFieldList>,
-    Any<NodeAttribute>,
-    Opt<NodeDeclaratorList>
+    Opt<Cap<"fields",    NodeFieldList>>,
+    Any<Cap<"attribute", NodeAttribute>>,
+    Opt<Cap<"decls",     NodeDeclaratorList>>
   >;
   // clang-format on
 };
@@ -1185,13 +1185,13 @@ struct NodeUnion : public CNode, public PatternWrapper<NodeUnion> {
   // clang-format off
   using pattern =
   Seq<
-    Any<NodeModifier>,
+    Any<Cap<"modifier", NodeModifier>>,
     Keyword<"union">,
-    Any<NodeAttribute>,
+    Any<Cap<"attribute", NodeAttribute>>,
     Opt<NodeUnionTypeAdder>,
-    Opt<NodeFieldList>,
-    Any<NodeAttribute>,
-    Opt<NodeDeclaratorList>
+    Opt<Cap<"fields", NodeFieldList>>,
+    Any<Cap<"attribute", NodeAttribute>>,
+    Opt<Cap<"decls", NodeDeclaratorList>>
   >;
   // clang-format on
 };
@@ -1225,13 +1225,13 @@ struct NodeClass : public CNode, public PatternWrapper<NodeClass> {
   // clang-format off
   using pattern =
   Seq<
-    Any<NodeModifier>,
+    Any<Cap<"modifier",  NodeModifier>>,
     NodeLiteral<"class">,
     Any<Cap<"attribute", NodeAttribute>>,
     Opt<NodeClassTypeAdder>,
-    Opt<Cap<"body", NodeFieldList>>,
+    Opt<Cap<"body",      NodeFieldList>>,
     Any<Cap<"attribute", NodeAttribute>>,
-    Opt<Cap<"decls", NodeDeclaratorList>>
+    Opt<Cap<"decls",     NodeDeclaratorList>>
   >;
   // clang-format on
 };
@@ -1310,12 +1310,12 @@ struct NodeEnum : public CNode, public PatternWrapper<NodeEnum> {
   // clang-format off
   using pattern =
   Seq<
-    Any<NodeModifier>,
+    Any<Cap<"modifier", NodeModifier>>,
     Keyword<"enum">,
     Opt<NodeLiteral<"class">>,
     Opt<NodeEnumTypeAdder>,
     Opt<Seq<Atom<':'>, Cap<"type", NodeTypeDecl>>>,
-    Opt<Cap<"body", NodeEnumerators>>,
+    Opt<Cap<"body",  NodeEnumerators>>,
     Opt<Cap<"decls", NodeDeclaratorList>>
   >;
 };
@@ -1737,67 +1737,79 @@ struct NodeTypedef : public CNode, public PatternWrapper<NodeTypedef> {
     Cap<
       "newtype",
       Oneof<
-        NodeStruct,
-        NodeUnion,
-        NodeClass,
-        NodeEnum,
-        NodeDeclaration
+        Cap<"struct", NodeStruct>,
+        Cap<"union",  NodeUnion>,
+        Cap<"class",  NodeClass>,
+        Cap<"enum",   NodeEnum>,
+        Cap<"decl",   NodeDeclaration>
       >
     >
   >;
   // clang-format on
 
-  static void extract_declarator(CContext& ctx, NodeDeclarator* decl) {
+  static void extract_declarator(CContext& ctx, CNode* decl) {
+    /*
     if (auto id = decl->child("identifier")) {
       ctx.add_typedef_type(id->span.a);
     }
+    */
+    if (auto name = decl->child("name")) {
+      if (auto id = name->child("identifier")) {
+        ctx.add_typedef_type(id->span.a);
+      }
+    }
 
-    //for (auto child : decl) {
+    /*
     for (auto child = decl->child_head(); child; child = child->node_next()) {
       if (auto decl = child->as_a<NodeDeclarator>()) {
         extract_declarator(ctx, decl);
       }
     }
+    */
   }
 
-  static void extract_declarator_list(CContext& ctx, NodeDeclaratorList* decls) {
+  static void extract_declarator_list(CContext& ctx, CNode* decls) {
     if (!decls) return;
     for (auto child = decls->child_head(); child; child = child->node_next()) {
-      if (auto decl = child->as_a<NodeDeclarator>()) {
-        extract_declarator(ctx, decl);
+
+      if (strcmp(child->match_name, "decl") == 0) {
+        extract_declarator(ctx, child);
       }
+      else {
+        matcheroni_assert(false);
+      }
+
+      //if (auto decl = child->as_a<NodeDeclarator>()) {
+      //  extract_declarator(ctx, decl);
+      //}
     }
   }
-
-  // FIXME these child<> aren't gonna work
 
   static void extract_type(CContext& ctx) {
     auto node = ctx.top_tail();
 
-    // node->dump_tree();
-
-    if (auto type = node->child<NodeStruct>()) {
-      extract_declarator_list(ctx, type->child<NodeDeclaratorList>());
+    if (auto c = node->child("union")) {
+      extract_declarator_list(ctx, c->child("decls"));
       return;
     }
 
-    if (auto type = node->child<NodeUnion>()) {
-      extract_declarator_list(ctx, type->child<NodeDeclaratorList>());
+    if (auto c = node->child("struct")) {
+      extract_declarator_list(ctx, c->child("decls"));
       return;
     }
 
-    if (auto type = node->child<NodeClass>()) {
-      extract_declarator_list(ctx, type->child<NodeDeclaratorList>());
+    if (auto c = node->child("class")) {
+      extract_declarator_list(ctx, c->child("decls"));
       return;
     }
 
-    if (auto type = node->child<NodeEnum>()) {
-      extract_declarator_list(ctx, type->child<NodeDeclaratorList>());
+    if (auto c = node->child("enum")) {
+      extract_declarator_list(ctx, c->child("decls"));
       return;
     }
 
-    if (auto type = node->child<NodeDeclaration>()) {
-      extract_declarator_list(ctx, type->child<NodeDeclaratorList>());
+    if (auto c = node->child("decl")) {
+      extract_declarator_list(ctx, c->child("decls"));
       return;
     }
 
