@@ -32,21 +32,21 @@ class CContext : public matcheroni::NodeContext<TokSpan, CNode> {
  public:
   CContext();
 
-  static bool atom_eq(char a, char b) {
-    return a == b;
+  static int atom_cmp(char a, int b) {
+    return a - b;
   }
 
-  static bool atom_eq(const CToken& a, const LexemeType& b) {
-    return a.type == b;
+  static int atom_cmp(const CToken& a, const LexemeType& b) {
+    return a.type - b;
   }
 
-  static bool atom_eq(const CToken& a, const char& b) {
-    if (a.len() != 1) return false;
-    return a.a[0] == b;
+  static int atom_cmp(const CToken& a, const char& b) {
+    if (auto d = a.len() - 1) return d;
+    return a.a[0] - b;
   }
 
-  static bool atom_eq(const CToken& a, const matcheroni::TextSpan& b) {
-    return strcmp_span(a, b) == 0;
+  static int atom_cmp(const CToken& a, const matcheroni::TextSpan& b) {
+    return strcmp_span(a, b);
   }
 
   CNode* top_head() { return (CNode*)_top_head; }

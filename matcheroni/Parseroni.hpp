@@ -422,9 +422,7 @@ struct TextNode : public NodeBase<TextSpan> {
 
 struct TextNodeContext : public NodeContext<TextSpan, TextNode> {
 
-  static bool atom_eq(char a, char b) { return a == b; }
-  static bool atom_lt(char a, char b) { return a < b; }
-  static bool atom_gt(char a, char b) { return a > b; }
+  static int atom_cmp(char a, int b) { return a - b; }
 
   TextNode* top_head() { return _top_head; }
   TextNode* top_tail() { return _top_tail; }

@@ -27,7 +27,7 @@ const int reps = 1;
 constexpr bool verbose   = false;
 constexpr bool dump_tree = false;
 const int warmup = 10;
-const int reps = 10;
+const int reps = 20;
 #endif
 
 TextSpan parse_json(TextNodeContext& ctx, TextSpan s);
@@ -40,13 +40,13 @@ int main(int argc, char** argv) {
   const char* paths[] = {
     //"data/json_demo.json",
     //"data/invalid.json",
-    "data/sample.json",
+    //"data/sample.json",
 
 
     // 4609770.000000
-    //"../nativejson-benchmark/data/canada.json",
-    //"../nativejson-benchmark/data/citm_catalog.json",
-    //"../nativejson-benchmark/data/twitter.json",
+    "../nativejson-benchmark/data/canada.json",
+    "../nativejson-benchmark/data/citm_catalog.json",
+    "../nativejson-benchmark/data/twitter.json",
   };
 
   double byte_accum = 0;
@@ -54,6 +54,8 @@ int main(int argc, char** argv) {
   double line_accum = 0;
 
   TextNodeContext ctx;
+
+  double min_rep_accum = 0;
 
   for (auto path : paths) {
     if (verbose) {
@@ -77,7 +79,8 @@ int main(int argc, char** argv) {
 
     //----------------------------------------
 
-    double path_time_accum = 0;
+    double min_rep = 1e100;
+    double rep_time_accum = 0;
 
     for (int rep = 0; rep < (warmup + reps); rep++) {
       ctx.reset();
@@ -86,10 +89,14 @@ int main(int argc, char** argv) {
       parse_end = parse_json(ctx, text);
       double time_b = timestamp_ms();
 
-      if (rep >= warmup) path_time_accum += time_b - time_a;
+      double time = time_b - time_a;
+
+      if (rep >= warmup) rep_time_accum += time;
+      if (time < min_rep) min_rep = time;
     }
 
-    time_accum += path_time_accum;
+    time_accum += rep_time_accum;
+    min_rep_accum += min_rep;
 
     //----------------------------------------
 
@@ -102,7 +109,7 @@ int main(int argc, char** argv) {
     }
 
     if (verbose) {
-      printf("Parsed %d reps in %f msec\n", reps, path_time_accum);
+      printf("Parsed %d reps in %f msec\n", reps, rep_time_accum);
       printf("\n");
     }
 
@@ -127,7 +134,8 @@ int main(int argc, char** argv) {
   printf("Line accum %f\n", line_accum);
   printf("Byte rate  %f\n", byte_accum / (time_accum / 1000.0));
   printf("Line rate  %f\n", line_accum / (time_accum / 1000.0));
-  printf("Rep time   %f\n", time_accum / reps);
+  printf("Avg rep time %f\n", time_accum / reps);
+  printf("Min rep time %f\n", min_rep_accum);
   printf("\n");
 
   return 0;
