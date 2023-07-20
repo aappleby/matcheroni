@@ -315,23 +315,23 @@ constexpr std::array builtin_type_base = {
   "double",
   "float",
   "int",
-  "int16_t",
-  "int32_t",
-  "int64_t",
-  "int8_t",
+  //"int16_t",
+  //"int32_t",
+  //"int64_t",
+  //"int8_t",
   "long",
-  "ptrdiff_t",
+  //"ptrdiff_t",
   "short",
   "signed",
   //"size_t", // used in fputs-lib.c torture test
-  "uint16_t",
-  "uint32_t",
-  "uint64_t",
-  "uint8_t",
+  //"uint16_t",
+  //"uint32_t",
+  //"uint64_t",
+  //"uint8_t",
   "unsigned",
   //"va_list", // technically part of the c library, but it shows up in stdarg test files
   "void",
-  "wchar_t",
+  //"wchar_t",
 };
 
 //------------------------------------------------------------------------------

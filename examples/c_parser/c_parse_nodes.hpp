@@ -1760,7 +1760,7 @@ struct NodeTypedef : public CNode, public PatternWrapper<NodeTypedef> {
     Opt<
       Keyword<"__extension__">
     >,
-    TraceToken<"keyword", Keyword<"typedef">>,
+    Keyword<"typedef">,
     Cap<
       "newtype",
       Oneof<

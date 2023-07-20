@@ -291,7 +291,7 @@ struct NodeContext {
       auto dead = _top_tail;
       set_tail((NodeType*)_top_tail->_node_prev);
 #ifndef FAST_MODE
-      printf("recycling %s\n", dead->match_name);
+      //printf("recycling %s\n", dead->match_name);
       recycle(dead);
 #endif
     }
