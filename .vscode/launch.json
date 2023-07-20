@@ -114,7 +114,16 @@
     },
 
     //--------------------------------------------------------------------------
-    // Json demo & benchmark
+    // JSON
+
+    {
+      "name": "json_benchmark",
+      "preLaunchTask": "build_matcheroni",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/bin/examples/json/json_benchmark",
+      "cwd": "${workspaceFolder}",
+    },
 
     {
       "name": "json_demo",
@@ -127,16 +136,17 @@
     },
 
     {
-      "name": "json_benchmark",
+      "name": "json_test",
       "preLaunchTask": "build_matcheroni",
       "type": "cppdbg",
       "request": "launch",
-      "program": "${workspaceFolder}/bin/examples/json/json_benchmark",
+      "program": "${workspaceFolder}/bin/examples/json/json_test",
       "cwd": "${workspaceFolder}",
+      "args" : ["data/json_demo.json"],
     },
 
     //--------------------------------------------------------------------------
-    // TOML example
+    // TOML
 
     {
       "name": "toml_test",

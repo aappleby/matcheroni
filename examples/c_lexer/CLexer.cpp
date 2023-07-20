@@ -9,6 +9,7 @@
 #include "examples/c_lexer/CToken.hpp"
 #include "matcheroni/Matcheroni.hpp"
 #include "matcheroni/Utilities.hpp"
+#include "matcheroni/Cookbook.hpp"
 
 using namespace matcheroni;
 
@@ -211,24 +212,20 @@ TextSpan match_universal_character_name(TextContext& ctx, TextSpan s) {
 // Basic UTF8 support
 
 TextSpan match_utf8(TextContext& ctx, TextSpan s) {
-  // clang-format off
-  using utf8_ext       = Range<char(0x80), char(0xBF)>;
-  //using utf8_onebyte   = Range<char(0x00), char(0x7F)>;
-  using utf8_twobyte   = Seq<Range<char(0xC0), char(0xDF)>, utf8_ext>;
-  using utf8_threebyte = Seq<Range<char(0xE0), char(0xEF)>, utf8_ext, utf8_ext>;
-  using utf8_fourbyte  = Seq<Range<char(0xF0), char(0xF7)>, utf8_ext, utf8_ext, utf8_ext>;
-
   // matching 1-byte utf breaks things in match_identifier
-  using utf8_char      = Oneof<utf8_twobyte, utf8_threebyte, utf8_fourbyte>;
-  //using utf8_char      = Oneof<utf8_onebyte, utf8_twobyte, utf8_threebyte, utf8_fourbyte>;
-  // clang-format on
+  using utf8_char =
+  Oneof<
+    cookbook::utf8_twobyte,
+    cookbook::utf8_threebyte,
+    cookbook::utf8_fourbyte
+  >;
+  //using utf8_char = Oneof<utf8_onebyte, utf8_twobyte, utf8_threebyte, utf8_fourbyte>;
 
   return utf8_char::match(ctx, s);
 }
 
 TextSpan match_utf8_bom(TextContext& ctx, TextSpan s) {
-  using utf8_bom = Seq<Atom<char(0xEF)>, Atom<char(0xBB)>, Atom<char(0xBF)>>;
-  return utf8_bom::match(ctx, s);
+  return cookbook::utf8_bom::match(ctx, s);
 }
 
 //------------------------------------------------------------------------------
@@ -239,7 +236,7 @@ TextSpan match_identifier(TextContext& ctx, TextSpan s) {
   using digit = Range<'0', '9'>;
 
   // Not sure if this should be in here
-  using latin1_ext = Range<char(128),char(255)>;
+  using latin1_ext = Range<128,255>;
 
   using nondigit = Oneof<
     Range<'a', 'z'>,

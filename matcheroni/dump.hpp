@@ -91,11 +91,11 @@ inline void print_match(const char* a, const char* b, const char* c,
   SpanDumper d;
   auto cursor = a;
 
-  d.put('`', 0xAAAAAA);
+  //d.put('`', 0xAAAAAA);
   while (d.len < width && cursor < b) d.put(*cursor++, color_ab);
   while (d.len < width && cursor < c) d.put(*cursor++, color_bc);
   while (d.len < width)               d.put('@',       dim_color(color_bc));
-  d.put('`', 0xAAAAAA);
+  //d.put('`', 0xAAAAAA);
 
   set_color(0);
   fflush(stdout);

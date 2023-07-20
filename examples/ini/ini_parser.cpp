@@ -3,19 +3,18 @@
 
 using namespace matcheroni;
 
-using ws      = Any<Atom<' ', '\t'>>;
+using blank   = Any<Atom<' ', '\t'>>;
 using digit   = Range<'0', '9'>;
 using alpha   = Range<'a', 'z', 'A', 'Z', '_', '_'>;
 using ident   = Seq<alpha, Any<digit, alpha>>;
 using comment = Seq<Lit<";">, Until<EOL>>;
-using blank   = Seq<ws, EOL>;
-using section = Seq<Atom<'['>, ws, ident, ws, Atom<']'>, ws, EOL>;
+using blank   = Seq<blank, EOL>;
+using section = Seq<Atom<'['>, blank, ident, blank, Atom<']'>, blank, EOL>;
 using token   = Any<NotAtom<' ', '\t'>>;
-using value   = Seq<token, Any<Seq<ws, token>>>;
-using keyval  = Seq<ident, ws, Atom<'='>, ws, value, ws, EOL>;
+using value   = Seq<token, Any<Seq<blank, token>>>;
+using keyval  = Seq<ident, blank, Atom<'='>, blank, value, blank, EOL>;
 using line    = Oneof<section, keyval, comment, blank>;
 using doc     = Any<line>;
-
 
 bool parse_ini(const char* text) {
   auto span = to_span(text);

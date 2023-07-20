@@ -11,6 +11,8 @@ using namespace matcheroni;
 // FIXME - Is there anything we need to cover here that isn't already covered
 // by matcheroni_test?
 
+// FIXME - yeah we need a raw string backreference test :P
+
 /*
 void test_match_string() {
   const char* text1 = "asdfasdf \"Hello World\" 123456789";

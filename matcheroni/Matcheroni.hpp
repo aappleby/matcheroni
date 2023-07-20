@@ -120,9 +120,9 @@ using matcher_function = Span<atom> (*)(context& ctx, Span<atom> s);
 
 struct TextContext {
 
-  static bool atom_eq(char a, char b) { return a == b; }
-  static bool atom_lt(char a, char b) { return a < b; }
-  static bool atom_gt(char a, char b) { return a > b; }
+  static bool atom_eq(char a, int b) { return a == b; }
+  static bool atom_lt(char a, int b) { return a < b; }
+  static bool atom_gt(char a, int b) { return a > b; }
 
   // Rewind does nothing as it doesn't interact with trace_depth.
   template<typename atom> void rewind(Span<atom> s) {}
