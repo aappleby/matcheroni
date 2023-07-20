@@ -394,10 +394,10 @@ void test_until() {
 
 //------------------------------------------------------------------------------
 
-TextSpan test_matcher(TextContext& ctx, TextSpan s) {
-  matcheroni_assert(s.is_valid());
-  if (s.is_empty()) return s.fail();
-  return s.a[0] == 'a' ? s.advance(1) : s.fail();
+TextSpan test_matcher(TextContext& ctx, TextSpan body) {
+  matcheroni_assert(body.is_valid());
+  if (body.is_empty()) return body.fail();
+  return body.a[0] == 'a' ? body.advance(1) : body.fail();
 }
 
 void test_ref() {

@@ -22,7 +22,7 @@ constexpr bool dump_tree = true;
 const int warmup = 0;
 const int reps = 1;
 
-TextSpan parse_json(TextNodeContext& ctx, TextSpan s);
+TextSpan parse_json(TextNodeContext& ctx, TextSpan body);
 
 //------------------------------------------------------------------------------
 

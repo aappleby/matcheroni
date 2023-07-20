@@ -30,14 +30,14 @@ struct JsonParser {
   using integer   = Seq< Opt<Atom<'-'>>, Oneof<Seq<onenine,digits>,digit> >;
   using number    = Seq<integer, Opt<fraction>, Opt<exponent>>;
 
-  static TextSpan value(TextNodeContext& ctx, TextSpan s) {
+  static TextSpan value(TextNodeContext& ctx, TextSpan body) {
     return Oneof<
       Capture<"array",   array,   TextNode>,
       Capture<"number",  number,  TextNode>,
       Capture<"object",  object,  TextNode>,
       Capture<"string",  string,  TextNode>,
       Capture<"keyword", keyword, TextNode>
-    >::match(ctx, s);
+    >::match(ctx, body);
   }
 
   using pair =
@@ -70,14 +70,14 @@ struct JsonParser {
   // clang-format on
   //----------------------------------------
 
-  static TextSpan match(TextNodeContext& ctx, TextSpan s) {
-    return Seq<ws, Ref<value>, ws>::match(ctx, s);
+  static TextSpan match(TextNodeContext& ctx, TextSpan body) {
+    return Seq<ws, Ref<value>, ws>::match(ctx, body);
   }
 };
 
 
-TextSpan parse_json(TextNodeContext& ctx, TextSpan s) {
-  return JsonParser::match(ctx, s);
+TextSpan parse_json(TextNodeContext& ctx, TextSpan body) {
+  return JsonParser::match(ctx, body);
 }
 
 //------------------------------------------------------------------------------

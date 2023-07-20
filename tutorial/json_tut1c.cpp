@@ -33,7 +33,7 @@ struct JsonParser {
   template <typename P>
   using list = Opt<Seq<P, Any<Seq<ws, Atom<','>, ws, P>>>>;
 
-  static TextSpan value(TextContext& ctx, TextSpan s) {
+  static TextSpan value(TextContext& ctx, TextSpan body) {
     return
     Oneof<
       TraceText<"array",   array>,
@@ -41,7 +41,7 @@ struct JsonParser {
       TraceText<"object",  object>,
       TraceText<"string",  string>,
       TraceText<"keyword", keyword>
-    >::match(ctx, s);
+    >::match(ctx, body);
   }
 
   using array =
@@ -71,8 +71,8 @@ struct JsonParser {
     Atom<'}'>
   >;
 
-  static TextSpan match(TextContext& ctx, TextSpan s) {
-    return Seq<ws, Ref<value>, ws>::match(ctx, s);
+  static TextSpan match(TextContext& ctx, TextSpan body) {
+    return Seq<ws, Ref<value>, ws>::match(ctx, body);
   }
   // clang-format on
 };

@@ -59,8 +59,8 @@ struct SpanDumper {
     for (auto c = a; c < b; c++) put(*c, color);
   }
 
-  void put(TextSpan s, uint32_t color = 0) {
-    for (auto c = s.a; c < s.b; c++) put(*c, color);
+  void put(TextSpan body, uint32_t color = 0) {
+    for (auto c = body.a; c < body.b; c++) put(*c, color);
   }
 
   void reset() {
@@ -245,11 +245,11 @@ void CToken::dump() const {
 //------------------------------------------------------------------------------
 
 #if 0
-inline void print_bar2(int depth, TextSpan s, const char* val, const char* suffix) {
+inline void print_bar2(int depth, TextSpan body, const char* val, const char* suffix) {
   set_color(0);
   printf("{");
   set_color(0xAAFFAA);
-  print_flat(s, TextSpan(s.b, s.b), 40);
+  print_flat(s, TextSpan(body.b, body.b), 40);
   set_color(0);
   printf("}");
 

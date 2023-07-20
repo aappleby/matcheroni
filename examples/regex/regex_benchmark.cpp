@@ -82,19 +82,19 @@ void benchmark_baseline(const char* path) {
 TextContext ctx;
 
 template<typename P>
-void benchmark_pattern(TextSpan s) {
+void benchmark_pattern(TextSpan body) {
   int matches = 0;
   double time = 0;
 
   time -= timestamp_ms();
-  while(s.a != s.b) {
-    auto end = P::match(ctx, s);
-    if (end.is_valid()) {
+  while(body.a != body.b) {
+    auto tail = P::match(ctx, body);
+    if (tail.is_valid()) {
       matches++;
-      s.a = end.a;
+      body.a = tail.a;
     }
     else {
-      s.a++;
+      body.a++;
     }
   }
   time += timestamp_ms();
@@ -153,16 +153,16 @@ using matcheroni_ip4_pattern = Seq<
 
 void benchmark_matcheroni(const char* path) {
   std::string buf = read(path);
-  TextSpan s = to_span(buf);
+  TextSpan body = to_span(buf);
 
   printf("Email: ");
-  benchmark_pattern<matcheroni_email_pattern>(s);
+  benchmark_pattern<matcheroni_email_pattern>(body);
 
   printf("URL:   ");
-  benchmark_pattern<matcheroni_url_pattern>(s);
+  benchmark_pattern<matcheroni_url_pattern>(body);
 
   printf("IP4:   ");
-  benchmark_pattern<matcheroni_ip4_pattern>(s);
+  benchmark_pattern<matcheroni_ip4_pattern>(body);
 }
 
 #endif

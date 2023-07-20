@@ -37,10 +37,10 @@ struct LinearAlloc {
     };
   }
 
-  void restore_state(SlabState s) {
-    top_slab = s.top_slab;
-    top_slab->cursor = s.top_cursor;
-    current_size = s.current_size;
+  void restore_state(SlabState state) {
+    top_slab = state.top_slab;
+    top_slab->cursor = state.top_cursor;
+    current_size = state.current_size;
   }
 
   // slab size is 1 hugepage. seems to work ok.
@@ -135,10 +135,10 @@ struct NodeBase {
   NodeBase() {}
   virtual ~NodeBase() {}
 
-  static void* operator new     (size_t s)          { return LinearAlloc::inst().alloc(s); }
-  static void* operator new[]   (size_t s)          { return LinearAlloc::inst().alloc(s); }
-  static void  operator delete  (void* p, size_t s) { LinearAlloc::inst().free(p, s); }
-  static void  operator delete[](void* p, size_t s) { LinearAlloc::inst().free(p, s); }
+  static void* operator new     (size_t size)          { return LinearAlloc::inst().alloc(size); }
+  static void* operator new[]   (size_t size)          { return LinearAlloc::inst().alloc(size); }
+  static void  operator delete  (void* p, size_t size) { LinearAlloc::inst().free(p, size); }
+  static void  operator delete[](void* p, size_t size) { LinearAlloc::inst().free(p, size); }
 
   //----------------------------------------
 
@@ -286,8 +286,8 @@ struct NodeContext {
   // we must also throw away any parse nodes that were created during the failed
   // match.
 
-  void rewind(SpanType s) {
-    while (_top_tail && (_top_tail->span.a >= s.a)) {
+  void rewind(SpanType body) {
+    while (_top_tail && (_top_tail->span.a >= body.a)) {
       auto dead = _top_tail;
       set_tail((NodeType*)_top_tail->_node_prev);
 #ifndef FAST_MODE
@@ -440,18 +440,18 @@ struct TextNodeContext : public NodeContext<TextSpan, TextNode> {
 // any sub-nodes to it, and places it on the context's node list.
 
 template<typename context, typename atom, typename node_type>
-inline Span<atom> capture(context& ctx, Span<atom> s, const char* match_name, matcher_function<context, atom> match) {
+inline Span<atom> capture(context& ctx, Span<atom> body, const char* match_name, matcher_function<context, atom> match) {
 
   auto old_tail = ctx.top_tail();
 #ifdef PARSERONI_FAST_MODE
   auto old_state = LinearAlloc::inst().save_state();
 #endif
 
-  auto end = match(ctx, s);
+  auto tail = match(ctx, body);
 
-  if (end.is_valid()) {
+  if (tail.is_valid()) {
     //printf("Capture %s\n", match_name);
-    Span<atom> node_span = {s.a, end.a};
+    Span<atom> node_span = {body.a, tail.a};
     auto new_node = new node_type();
     ctx.create2(new_node, match_name, node_span, 0, old_tail);
     matcheroni_assert(new_node->node_next() != new_node);
@@ -464,14 +464,14 @@ inline Span<atom> capture(context& ctx, Span<atom> s, const char* match_name, ma
 #endif
   }
 
-  return end;
+  return tail;
 }
 
 template <StringParam match_name, typename pattern, typename node_type>
 struct Capture {
   template<typename context, typename atom>
-  static Span<atom> match(context& ctx, Span<atom> s) {
-    return capture<context, atom, node_type>(ctx, s, match_name.str_val, pattern::match);
+  static Span<atom> match(context& ctx, Span<atom> body) {
+    return capture<context, atom, node_type>(ctx, body, match_name.str_val, pattern::match);
   }
 };
 
@@ -492,7 +492,7 @@ struct Capture {
 // but this is _not_ an error.
 
 template <typename context, typename atom>
-inline Span<atom> capture_begin(context& ctx, Span<atom> s, matcher_function<context, atom> match) {
+inline Span<atom> capture_begin(context& ctx, Span<atom> body, matcher_function<context, atom> match) {
   using SpanType = Span<atom>;
 
   auto old_tail = ctx.top_tail();
@@ -500,9 +500,9 @@ inline Span<atom> capture_begin(context& ctx, Span<atom> s, matcher_function<con
     auto old_state = LinearAlloc::inst().save_state();
 #endif
 
-  auto end = match(ctx, s);
-  if (end.is_valid()) {
-    Span<atom> bounds(s.a, end.a);
+  auto tail = match(ctx, body);
+  if (tail.is_valid()) {
+    Span<atom> bounds(body.a, tail.a);
     ctx.enclose_bookmark(old_tail, bounds);
   }
   else {
@@ -510,7 +510,7 @@ inline Span<atom> capture_begin(context& ctx, Span<atom> s, matcher_function<con
     LinearAlloc::inst().restore_state(old_state);
 #endif
   }
-  return end;
+  return tail;
 }
 
 //----------------------------------------
@@ -518,23 +518,23 @@ inline Span<atom> capture_begin(context& ctx, Span<atom> s, matcher_function<con
 template <typename node_type, typename... rest>
 struct CaptureBegin {
   template<typename context, typename atom>
-  static Span<atom> match(context& ctx, Span<atom> s) {
-    return capture_begin<context, atom>(ctx, s, Seq<rest...>::match);
+  static Span<atom> match(context& ctx, Span<atom> body) {
+    return capture_begin<context, atom>(ctx, body, Seq<rest...>::match);
   }
 };
 
 //----------------------------------------
 
 template<typename context, typename atom, typename node_type>
-inline Span<atom> capture_end(context& ctx, Span<atom> s, const char* match_name, matcher_function<context, atom> match) {
+inline Span<atom> capture_end(context& ctx, Span<atom> body, const char* match_name, matcher_function<context, atom> match) {
 
-  auto end = match(ctx, s);
-  if (end.is_valid()) {
-    Span<atom> new_span(end.a, end.a);
+  auto tail = match(ctx, body);
+  if (tail.is_valid()) {
+    Span<atom> new_span(tail.a, tail.a);
     auto new_node = new node_type();
     ctx.create2(new_node, match_name, new_span, /*flags*/ 1, ctx.top_tail());
   }
-  return end;
+  return tail;
 }
 
 //----------------------------------------
@@ -542,8 +542,8 @@ inline Span<atom> capture_end(context& ctx, Span<atom> s, const char* match_name
 template<StringParam match_name, typename P, typename node_type>
 struct CaptureEnd {
   template<typename context, typename atom>
-  static Span<atom> match(context& ctx, Span<atom> s) {
-    return capture_end<context, atom, node_type>(ctx, s, match_name.str_val, P::match);
+  static Span<atom> match(context& ctx, Span<atom> body) {
+    return capture_end<context, atom, node_type>(ctx, body, match_name.str_val, P::match);
   }
 };
 

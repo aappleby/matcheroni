@@ -36,10 +36,10 @@ Unlike std::regex, we don't need to link in any additional libraries or instanti
 ```cpp
 const std::string text = "aaabbaaccdefxyz";
 
-// The first argument to match() is a user-defined context pointer.
+// The first argument to match() is a reference to a context object.
 // The second two arguments are the range of text to match against.
 // The match function returns the _end_ of the match, or nullptr if there was no match.
-const char* result = my_pattern::match(nullptr, text.data(), text.data() + text.size());
+TextSpan tail = my_pattern::match(ctx, to_span(text));
 
 // Since we matched "aabbaaccdef", this prints "xyz".
 printf("%s\n", result);
@@ -73,8 +73,8 @@ const char* match_parens_recurse(void* ctx, const char* a, const char* b) {
 
 // Now we can use the pattern
 std::string text = "(((foo)bar)baz)tail";
-auto end = match_parens::match(nullptr, text.data(), text.data() + text.size());
-printf("%s", end); // prints "tail"
+auto tail = match_parens::match(nullptr, text.data(), text.data() + text.size());
+printf("%s", tail); // prints "tail"
 ```
 # Building the Matcheroni examples
 Install [Ninja](https://ninja-build.org/) if you haven't already, then run ninja in the repo root.
@@ -99,10 +99,11 @@ Matching functions should return a pointer in the range ```[a, b]``` to indicate
 Matcheroni includes [built-in matchers for most regex-like tasks](matcheroni/Matcheroni.h#L54), but writing your own is straightforward. Matchers can be templated and can do basically whatever they like inside ```match()```. For example, if we wanted to print a message whenever some pattern matches, we could do this:
 
 ```cpp
-template<typename P>
+template<typename pattern>
 struct PrintMessage {
-  static const char* match(void* ctx, const char* a, const char* b) {
-    const char* result = P::match(ctx, a, b);
+  template<typename context_type>
+  static TextSpan match(context_type& ctx, TextSpan body) {
+    TextSpan = pattern::match(ctx, body);
     if (result) {
       printf("Match succeeded!\n");
     }
@@ -120,7 +121,8 @@ using pattern = PrintMessage<Atom<'a'>>;
 const std::string text = "This does not start with 'a'";
 
 // prints "Match failed!"
-pattern::match(nullptr, text.data(), text.data() + text.size());
+TextContext ctx;
+pattern::match(ctx, to_span(text));
 ```
 
 # Built-in matchers
@@ -247,12 +249,12 @@ Parsers generated with a real parser generator will probably be faster.
 
 Here's the code I use to match C99 integers, plus a few additions from the C++ spec and the GCC extensions.
 
-Note that it consists of 20 ```using``` declarations and the only actual "code" is ```return integer_constant::match(ctx, a, b);```
+Note that it consists of 20 ```using``` declarations and the only actual "code" is ```return integer_constant::match(ctx, body);```
 
 If you follow along in Appendix A of the [C99 spec](https://www.open-std.org/jtc1/sc22/wg14/www/docs/n1256.pdf), you'll see it lines up quite closely.
 
 ```cpp
-const char* match_int(void* ctx, const char* a, const char* b) {
+TextSpan match_int(TextContext& ctx, TextSpan) {
   // clang-format off
   using digit                = Range<'0', '9'>;
   using nonzero_digit        = Range<'1', '9'>;
@@ -309,7 +311,7 @@ const char* match_int(void* ctx, const char* a, const char* b) {
     >
   >;
 
-  return integer_constant::match(ctx, a, b);
+  return integer_constant::match(ctx, body);
   // clang-format on
 }
 ```

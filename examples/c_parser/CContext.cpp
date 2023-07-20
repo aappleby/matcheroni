@@ -39,10 +39,10 @@ bool CContext::parse(matcheroni::TextSpan text, TokSpan lexemes) {
   // Skip over BOF, stop before EOF
   auto tok_a = tokens.data() + 1;
   auto tok_b = tokens.data() + tokens.size() - 1;
-  TokSpan s(tok_a, tok_b);
+  TokSpan body(tok_a, tok_b);
 
-  auto end = NodeTranslationUnit::match(*this, s);
-  return end.is_valid();
+  auto tail = NodeTranslationUnit::match(*this, body);
+  return tail.is_valid();
 }
 
 /*
@@ -57,33 +57,33 @@ bool CContext::parse(std::vector<CToken>& lexemes) {
   // Skip over BOF, stop before EOF
   auto tok_a = tokens.data() + 1;
   auto tok_b = tokens.data() + tokens.size() - 1;
-  TokSpan s(tok_a, tok_b);
+  TokSpan body(tok_a, tok_b);
 
-  auto end = NodeTranslationUnit::match(*this, s);
-  return end.is_valid();
+  auto tail = NodeTranslationUnit::match(*this, body);
+  return tail.is_valid();
 }
 */
 
 //------------------------------------------------------------------------------
 
-TokSpan CContext::match_class_type(TokSpan s) {
-  return type_scope->has_class_type(*this, s) ? s.advance(1) : s.fail();
+TokSpan CContext::match_class_type(TokSpan body) {
+  return type_scope->has_class_type(*this, body) ? body.advance(1) : body.fail();
 }
 
-TokSpan CContext::match_struct_type(TokSpan s) {
-  return type_scope->has_struct_type(*this, s) ? s.advance(1) : s.fail();
+TokSpan CContext::match_struct_type(TokSpan body) {
+  return type_scope->has_struct_type(*this, body) ? body.advance(1) : body.fail();
 }
 
-TokSpan CContext::match_union_type(TokSpan s) {
-  return type_scope->has_union_type(*this, s) ? s.advance(1) : s.fail();
+TokSpan CContext::match_union_type(TokSpan body) {
+  return type_scope->has_union_type(*this, body) ? body.advance(1) : body.fail();
 }
 
-TokSpan CContext::match_enum_type(TokSpan s) {
-  return type_scope->has_enum_type(*this, s) ? s.advance(1) : s.fail();
+TokSpan CContext::match_enum_type(TokSpan body) {
+  return type_scope->has_enum_type(*this, body) ? body.advance(1) : body.fail();
 }
 
-TokSpan CContext::match_typedef_type(TokSpan s) {
-  return type_scope->has_typedef_type(*this, s) ? s.advance(1) : s.fail();
+TokSpan CContext::match_typedef_type(TokSpan body) {
+  return type_scope->has_typedef_type(*this, body) ? body.advance(1) : body.fail();
 }
 
 void CContext::add_class_type  (const CToken* a) { type_scope->add_class_type(*this, a); }
@@ -110,33 +110,33 @@ void CContext::pop_scope() {
 
 //----------------------------------------------------------------------------
 
-TokSpan CContext::match_builtin_type_base(TokSpan s) {
-  if (!s.is_valid() || s.is_empty()) return s.fail();
-  if (SST<builtin_type_base>::match(s.a->a, s.a->b)) {
-    return s.advance(1);
+TokSpan CContext::match_builtin_type_base(TokSpan body) {
+  if (!body.is_valid() || body.is_empty()) return body.fail();
+  if (SST<builtin_type_base>::match(body.a->a, body.a->b)) {
+    return body.advance(1);
   }
   else {
-    return s.fail();
+    return body.fail();
   }
 }
 
-TokSpan CContext::match_builtin_type_prefix(TokSpan s) {
-  if (!s.is_valid() || s.is_empty()) return s.fail();
-  if (SST<builtin_type_prefix>::match(s.a->a, s.a->b)) {
-    return s.advance(1);
+TokSpan CContext::match_builtin_type_prefix(TokSpan body) {
+  if (!body.is_valid() || body.is_empty()) return body.fail();
+  if (SST<builtin_type_prefix>::match(body.a->a, body.a->b)) {
+    return body.advance(1);
   }
   else {
-    return s.fail();
+    return body.fail();
   }
 }
 
-TokSpan CContext::match_builtin_type_suffix(TokSpan s) {
-  if (!s.is_valid() || s.is_empty()) return s.fail();
-  if (SST<builtin_type_suffix>::match(s.a->a, s.a->b)) {
-    return s.advance(1);
+TokSpan CContext::match_builtin_type_suffix(TokSpan body) {
+  if (!body.is_valid() || body.is_empty()) return body.fail();
+  if (SST<builtin_type_suffix>::match(body.a->a, body.a->b)) {
+    return body.advance(1);
   }
   else {
-    return s.fail();
+    return body.fail();
   }
 }
 

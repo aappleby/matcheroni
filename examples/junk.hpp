@@ -120,8 +120,8 @@ struct Delimited {
     if (!new_b || !new_b->is_punct(rdelim)) return nullptr;
 
     if (!new_b) return nullptr;
-    if (auto end = P::match(ctx, a + 1, new_b)) {
-      if (end != new_b) return nullptr;
+    if (auto tail = P::match(ctx, a + 1, new_b)) {
+      if (tail != new_b) return nullptr;
       return new_b + 1;
     }
     else {

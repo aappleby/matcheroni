@@ -17,8 +17,8 @@ using namespace matcheroni;
 
 template<StringParam match_name, typename pattern, typename node_type>
 struct Capture3 {
-  static TextSpan match(TextNodeContext& ctx, TextSpan s) {
-    return Capture<match_name, pattern, node_type>::match(ctx, s);
+  static TextSpan match(TextNodeContext& ctx, TextSpan body) {
+    return Capture<match_name, pattern, node_type>::match(ctx, body);
   }
 };
 
@@ -26,34 +26,34 @@ struct Capture3 {
 // To match anything at all, we first need to tell Matcheroni how to compare
 // one atom of our input sequence against a constant.
 
-static TextSpan match_regex(TextNodeContext& ctx, TextSpan s);
+static TextSpan match_regex(TextNodeContext& ctx, TextSpan body);
 
 // Our 'control' characters consist of all atoms with special regex meanings.
 
 struct cchar {
   using pattern = Atom<'\\', '(', ')', '|', '$', '.', '+', '*', '?', '[', ']', '^'>;
-  static TextSpan match(TextNodeContext& ctx, TextSpan s) { return pattern::match(ctx, s); }
+  static TextSpan match(TextNodeContext& ctx, TextSpan body) { return pattern::match(ctx, body); }
 };
 
 // Our 'plain' characters are every character that's not a control character.
 
 struct pchar {
   using pattern = Seq<Not<cchar>, AnyAtom>;
-  static TextSpan match(TextNodeContext& ctx, TextSpan s) { return pattern::match(ctx, s); }
+  static TextSpan match(TextNodeContext& ctx, TextSpan body) { return pattern::match(ctx, body); }
 };
 
 // Plain text is any span of plain characters not followed by an operator.
 
 struct text {
   using pattern = Some<Seq<pchar, Not<Atom<'*', '+', '?'>>>>;
-  static TextSpan match(TextNodeContext& ctx, TextSpan s) { return pattern::match(ctx, s); }
+  static TextSpan match(TextNodeContext& ctx, TextSpan body) { return pattern::match(ctx, body); }
 };
 
 // Our 'meta' characters are anything after a backslash.
 
 struct mchar {
   using pattern = Seq<Atom<'\\'>, AnyAtom>;
-  static TextSpan match(TextNodeContext& ctx, TextSpan s) { return pattern::match(ctx, s); }
+  static TextSpan match(TextNodeContext& ctx, TextSpan body) { return pattern::match(ctx, body); }
 };
 
 // A character range is a beginning character and an end character separated
@@ -66,18 +66,18 @@ struct range {
     Atom<'-'>,
     Capture3<"end", pchar, TextNode>
   >;
-  static TextSpan match(TextNodeContext& ctx, TextSpan s) { return pattern::match(ctx, s); }
+  static TextSpan match(TextNodeContext& ctx, TextSpan body) { return pattern::match(ctx, body); }
 };
 
 // The contents of a matcher set must be ranges or individual characters.
 struct set_body {
-  static TextSpan match(TextNodeContext& ctx, TextSpan s) {
+  static TextSpan match(TextNodeContext& ctx, TextSpan body) {
     return
     Some<
       Capture3<"range", range, TextNode>,
       Capture3<"char",  pchar, TextNode>,
       Capture3<"meta",  mchar, TextNode>
-    >::match(ctx, s);
+    >::match(ctx, body);
   }
 };
 
@@ -96,7 +96,7 @@ struct unit {
     Capture3<"char",    pchar, TextNode>,
     Capture3<"meta",    mchar, TextNode>
   >;
-  static TextSpan match(TextNodeContext& ctx, TextSpan s) { return pattern::match(ctx, s); }
+  static TextSpan match(TextNodeContext& ctx, TextSpan body) { return pattern::match(ctx, body); }
 };
 
 // A 'simple' regex is text, line end markers, a unit w/ operator, or a bare
@@ -112,8 +112,8 @@ struct simple {
     Capture3<"opt",  Seq<unit, Atom<'?'>>, TextNode>,
     unit
   >;
-  static TextSpan match(TextNodeContext& ctx, TextSpan s) {
-    return pattern::match(ctx, s);
+  static TextSpan match(TextNodeContext& ctx, TextSpan body) {
+    return pattern::match(ctx, body);
   }
 };
 
@@ -128,26 +128,26 @@ struct oneof {
       Capture3<"option", simple, TextNode>
     >>
   >;
-  static TextSpan match(TextNodeContext& ctx, TextSpan s) {
-    return pattern::match(ctx, s);
+  static TextSpan match(TextNodeContext& ctx, TextSpan body) {
+    return pattern::match(ctx, body);
   }
 };
 
 // This is the top level of our regex parser.
-static TextSpan match_regex(TextNodeContext& ctx, TextSpan s) {
+static TextSpan match_regex(TextNodeContext& ctx, TextSpan body) {
   // A 'top-level' regex is either a simple regex or a one-of regex.
   using regex_top =
   Oneof<
     Capture3<"oneof", oneof, TextNode>,
     simple
   >;
-  return regex_top::match(ctx, s);
+  return regex_top::match(ctx, body);
 }
 
 __attribute__((noinline))
-TextSpan parse_regex(TextNodeContext& ctx, TextSpan s) {
-  return match_regex(ctx, s);
-  //return s.fail();
+TextSpan parse_regex(TextNodeContext& ctx, TextSpan body) {
+  return match_regex(ctx, body);
+  //return body.fail();
 }
 
 //------------------------------------------------------------------------------

@@ -18,14 +18,14 @@ struct CScope {
   using token_list = std::vector<matcheroni::TextSpan>;
 
   void clear();
-  bool has_type(CContext& ctx, TokSpan s, token_list& types);
+  bool has_type(CContext& ctx, TokSpan body, token_list& types);
   void add_type(CContext& ctx, const CToken* a, token_list& types);
 
-  bool has_class_type  (CContext& ctx, TokSpan s);
-  bool has_struct_type (CContext& ctx, TokSpan s);
-  bool has_union_type  (CContext& ctx, TokSpan s);
-  bool has_enum_type   (CContext& ctx, TokSpan s);
-  bool has_typedef_type(CContext& ctx, TokSpan s);
+  bool has_class_type  (CContext& ctx, TokSpan body);
+  bool has_struct_type (CContext& ctx, TokSpan body);
+  bool has_union_type  (CContext& ctx, TokSpan body);
+  bool has_enum_type   (CContext& ctx, TokSpan body);
+  bool has_typedef_type(CContext& ctx, TokSpan body);
 
   void add_class_type  (CContext& ctx, const CToken* a);
   void add_struct_type (CContext& ctx, const CToken* a);

@@ -30,8 +30,8 @@ struct JsonParser {
   using keyword   = Oneof<Lit<"true">, Lit<"false">, Lit<"null">>;
   // clang-format on
 
-  static TextSpan match(TextContext& ctx, TextSpan s) {
-    return Oneof<number, string, keyword>::match(ctx, s);
+  static TextSpan match(TextContext& ctx, TextSpan body) {
+    return Oneof<number, string, keyword>::match(ctx, body);
   }
 };
 

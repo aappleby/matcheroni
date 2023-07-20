@@ -21,9 +21,9 @@ struct SST<table> {
     return 0;
   }
 
-  constexpr static bool contains(const char* s) {
-    for (auto t : table) {
-      if (__builtin_strcmp(t, s) == 0) return true;
+  constexpr static bool contains(const char* text) {
+    for (auto table_entry : table) {
+      if (__builtin_strcmp(table_entry, text) == 0) return true;
     }
     return false;
   }

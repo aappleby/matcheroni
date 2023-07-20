@@ -62,30 +62,30 @@ struct InstanceCounter {
 template <StringParam match_name, typename P>
 struct TraceText {
   template<typename context, typename atom>
-  static Span<atom> match(context& ctx, Span<atom> s) {
-    matcheroni_assert(s.is_valid());
-    if (s.is_empty()) return s.fail();
+  static Span<atom> match(context& ctx, Span<atom> body) {
+    matcheroni_assert(body.is_valid());
+    if (body.is_empty()) return body.fail();
 
     auto name = match_name.str_val;
 
-    //print_bar(ctx.trace_depth++, s, name, "?");
+    //print_bar(ctx.trace_depth++, body, name, "?");
     int depth = ctx.trace_depth++;
 
-    print_match(s, s, 40);
+    print_match(body, body, 40);
     print_trellis(depth, name, "?", 0xCCCCCC);
 
-    auto end = P::match(ctx, s);
+    auto tail = P::match(ctx, body);
     depth = --ctx.trace_depth;
 
-    print_match(s, end, 40);
-    if (end.is_valid()) {
+    print_match(body, tail, 40);
+    if (tail.is_valid()) {
       print_trellis(depth, name, "!", 0x80FF80);
     }
     else {
       print_trellis(depth, name, "X", 0x8080FF);
     }
 
-    return end;
+    return tail;
   }
 };
 
@@ -95,20 +95,20 @@ inline TextSpan to_span(const char* text) {
   return TextSpan(text, text + strlen(text));
 }
 
-inline TextSpan to_span(const std::string& s) {
-  return TextSpan(s.data(), s.data() + s.size());
+inline TextSpan to_span(const std::string& text) {
+  return TextSpan(text.data(), text.data() + text.size());
 }
 
 template<typename atom>
-inline Span<atom> to_span(const std::vector<atom>& s) {
-  return Span<atom>(s.data(), s.data() + s.size());
+inline Span<atom> to_span(const std::vector<atom>& atoms) {
+  return Span<atom>(atoms.data(), atoms.data() + atoms.size());
 }
 
 //------------------------------------------------------------------------------
 
-inline std::string to_string(TextSpan s) {
-  matcheroni_assert(s.a);
-  return std::string(s.a, s.b);
+inline std::string to_string(TextSpan body) {
+  matcheroni_assert(body.a);
+  return std::string(body.a, body.b);
 }
 
 //------------------------------------------------------------------------------

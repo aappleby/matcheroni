@@ -68,11 +68,11 @@ void reset_everything() {
 // A mini s-expression parser in ~10 lines of code. :D
 
 struct SExpression {
-  static TextSpan match(TextNodeContext& ctx, TextSpan s) {
+  static TextSpan match(TextNodeContext& ctx, TextSpan body) {
     return Oneof<
       Capture<"atom", atom, TestNode>,
       Capture<"list", list, TestNode>
-    >::match(ctx, s);
+    >::match(ctx, body);
   }
 
   using ws   = Any<Atom<' ', '\n', '\r', '\t'>>;
@@ -176,11 +176,11 @@ void test_rewind() {
 
 struct BeginEndTest {
 
-  static TextSpan match(TextNodeContext& ctx, TextSpan s) {
+  static TextSpan match(TextNodeContext& ctx, TextSpan body) {
     return Oneof<
       suffixed<Capture<"atom", atom, TestNode>>,
       suffixed<Capture<"list", list, TestNode>>
-    >::match(ctx, s);
+    >::match(ctx, body);
   }
 
   // suffixed<> wraps the previously-matched node in another node if it has
@@ -233,8 +233,8 @@ void test_begin_end() {
 // mismatched suffix.
 
 struct Pathological {
-  static TextSpan match(TextNodeContext& ctx, TextSpan s) {
-    return pattern::match(ctx, s);
+  static TextSpan match(TextNodeContext& ctx, TextSpan body) {
+    return pattern::match(ctx, body);
   }
 
   using pattern =

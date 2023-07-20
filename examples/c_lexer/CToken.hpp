@@ -33,7 +33,7 @@ enum LexemeType {
 //------------------------------------------------------------------------------
 
 struct CToken : public matcheroni::TextSpan {
-  CToken(LexemeType type, matcheroni::TextSpan s);
+  CToken(LexemeType type, matcheroni::TextSpan text);
 
   const char* text_head() const { return a; }
   const char* text_tail() const { return b; }

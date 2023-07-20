@@ -62,15 +62,15 @@ class CContext : public matcheroni::NodeContext<TokSpan, CNode> {
   //bool parse(std::vector<CToken>& lexemes);
   bool parse(matcheroni::TextSpan text, TokSpan lexemes);
 
-  TokSpan match_builtin_type_base  (TokSpan s);
-  TokSpan match_builtin_type_prefix(TokSpan s);
-  TokSpan match_builtin_type_suffix(TokSpan s);
+  TokSpan match_builtin_type_base  (TokSpan body);
+  TokSpan match_builtin_type_prefix(TokSpan body);
+  TokSpan match_builtin_type_suffix(TokSpan body);
 
-  TokSpan match_class_type  (TokSpan s);
-  TokSpan match_struct_type (TokSpan s);
-  TokSpan match_union_type  (TokSpan s);
-  TokSpan match_enum_type   (TokSpan s);
-  TokSpan match_typedef_type(TokSpan s);
+  TokSpan match_class_type  (TokSpan body);
+  TokSpan match_struct_type (TokSpan body);
+  TokSpan match_union_type  (TokSpan body);
+  TokSpan match_enum_type   (TokSpan body);
+  TokSpan match_typedef_type(TokSpan body);
 
   void add_class_type  (const CToken* a);
   void add_struct_type (const CToken* a);

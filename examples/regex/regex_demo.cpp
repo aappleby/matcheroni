@@ -18,7 +18,7 @@
 
 using namespace matcheroni;
 
-TextSpan parse_regex(TextNodeContext& ctx, TextSpan s);
+TextSpan parse_regex(TextNodeContext& ctx, TextSpan body);
 
 //------------------------------------------------------------------------------
 // The demo app accepts a quoted regex as its first command line argument,

@@ -24,8 +24,8 @@ struct JsonParser {
   using number    = Seq<integer, Opt<fraction>, Opt<exponent>>;
   // clang-format on
 
-  static TextSpan match(TextContext& ctx, TextSpan s) {
-    return number::match(ctx, s);
+  static TextSpan match(TextContext& ctx, TextSpan body) {
+    return number::match(ctx, body);
   }
 };
 

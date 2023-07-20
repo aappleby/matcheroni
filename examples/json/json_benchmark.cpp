@@ -30,7 +30,7 @@ const int warmup = 10;
 const int reps = 20;
 #endif
 
-TextSpan parse_json(TextNodeContext& ctx, TextSpan s);
+TextSpan parse_json(TextNodeContext& ctx, TextSpan body);
 
 //------------------------------------------------------------------------------
 

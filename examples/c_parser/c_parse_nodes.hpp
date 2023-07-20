@@ -17,24 +17,24 @@ using namespace matcheroni;
 template <StringParam match_name, typename P>
 struct TraceToken {
   template<typename atom>
-  static Span<atom> match(CContext& ctx, Span<atom> s) {
-    matcheroni_assert(s.is_valid());
-    if (s.is_empty()) return s.fail();
+  static Span<atom> match(CContext& ctx, Span<atom> body) {
+    matcheroni_assert(body.is_valid());
+    if (body.is_empty()) return body.fail();
 
-    auto text = TextSpan(s.a->a, (s.b - 1)->b);
+    auto text = TextSpan(body.a->a, (body.b - 1)->b);
     auto name = match_name.str_val;
 
     int depth = ctx.trace_depth++;
 
-    print_match2(s, s, 40);
+    print_match2(body, body, 40);
     print_trellis(depth, name, "?", 0xCCCCCC);
 
     //print_bar(ctx.trace_depth++, text, name, "?");
-    auto end = P::match(ctx, s);
+    auto tail = P::match(ctx, body);
     depth = --ctx.trace_depth;
 
-    print_match2(s, end, 40);
-    if (end.is_valid()) {
+    print_match2(body, tail, 40);
+    if (tail.is_valid()) {
       print_trellis(depth, name, "!", 0x80FF80);
       printf("\n");
       print_context(ctx.text_span, ctx, 40);
@@ -45,9 +45,9 @@ struct TraceToken {
     }
 
 
-    //print_bar(--ctx.trace_depth, text, name, end.is_valid() ? "OK" : "X");
+    //print_bar(--ctx.trace_depth, text, name, tail.is_valid() ? "OK" : "X");
 
-    return end;
+    return tail;
   }
 };
 
@@ -102,43 +102,43 @@ template <StringParam lit>
 struct Keyword : public CNode, PatternWrapper<Keyword<lit>> {
   static_assert(SST<c_keywords>::contains(lit.str_val));
 
-  static TokSpan match(CContext& ctx, TokSpan s) {
-    if (!s.is_valid()) return s.fail();
-    if (ctx.atom_cmp(*s.a, LEX_KEYWORD) != 0) return s.fail();
-    /*+*/ ctx.rewind(s);
-    if (ctx.atom_cmp(*s.a, lit.span()) != 0) return s.fail();
-    return s.advance(1);
+  static TokSpan match(CContext& ctx, TokSpan body) {
+    if (!body.is_valid()) return body.fail();
+    if (ctx.atom_cmp(*body.a, LEX_KEYWORD) != 0) return body.fail();
+    /*+*/ ctx.rewind(body);
+    if (ctx.atom_cmp(*body.a, lit.span()) != 0) return body.fail();
+    return body.advance(1);
   }
 };
 
 template <StringParam lit>
 struct Literal2 : public CNode, PatternWrapper<Literal2<lit>> {
-  static TokSpan match(CContext& ctx, TokSpan s) {
-    if (!s.is_valid()) return s.fail();
-    if (ctx.atom_cmp(*s.a, lit.span()) != 0) return s.fail();
-    return s.advance(1);
+  static TokSpan match(CContext& ctx, TokSpan body) {
+    if (!body.is_valid()) return body.fail();
+    if (ctx.atom_cmp(*body.a, lit.span()) != 0) return body.fail();
+    return body.advance(1);
   }
 };
 
 //------------------------------------------------------------------------------
 
 template <StringParam lit>
-inline TokSpan match_punct(CContext& ctx, TokSpan s) {
-  if (!s.is_valid()) return s.fail();
+inline TokSpan match_punct(CContext& ctx, TokSpan body) {
+  if (!body.is_valid()) return body.fail();
 
   size_t lit_len = lit.str_len;
   const char* lit_val = lit.str_val;
 
-  if (s.len() < lit.str_len) return s.fail();
+  if (body.len() < lit.str_len) return body.fail();
 
   for (auto i = 0; i < lit.str_len; i++) {
-    const CToken& tok_a = s.a[0];
-    if (ctx.atom_cmp(tok_a, LEX_PUNCT) != 0) return s.fail();
-    if (ctx.atom_cmp(tok_a.a[0], lit.str_val[i]) != 0) return s.fail();
-    s = s.advance(1);
+    const CToken& tok_a = body.a[0];
+    if (ctx.atom_cmp(tok_a, LEX_PUNCT) != 0) return body.fail();
+    if (ctx.atom_cmp(tok_a.a[0], lit.str_val[i]) != 0) return body.fail();
+    body = body.advance(1);
   }
 
-  return s;
+  return body;
 }
 
 //------------------------------------------------------------------------------
@@ -210,10 +210,10 @@ struct NodeIdentifier : public CNode, PatternWrapper<NodeIdentifier> {
 struct NodePreproc : public CNode /*, PatternWrapper<NodePreproc>*/ {
   using pattern = Atom<LEX_PREPROC>;
 
-  static TokSpan match(CContext& ctx, TokSpan span) {
-    auto end = pattern::match(ctx, span);
-    if (end.is_valid()) {
-      std::string s(span.a->a, (end.a - 1)->b);
+  static TokSpan match(CContext& ctx, TokSpan body) {
+    auto tail = pattern::match(ctx, body);
+    if (tail.is_valid()) {
+      std::string s(body.a->a, (tail.a - 1)->b);
 
       if (s.find("stdio") != std::string::npos) {
         for (auto t : stdio_typedefs) {
@@ -234,7 +234,7 @@ struct NodePreproc : public CNode /*, PatternWrapper<NodePreproc>*/ {
       }
 
     }
-    return end;
+    return tail;
   }
 };
 
@@ -290,14 +290,14 @@ struct NodeSuffixOp : public CNode, PatternWrapper<NodeSuffixOp<lit>> {
 //------------------------------------------------------------------------------
 
 struct NodeQualifier : public CNode, PatternWrapper<NodeQualifier> {
-  static TokSpan match(CContext& ctx, TokSpan s) {
-    matcheroni_assert(s.is_valid());
-    TextSpan span = *(s.a);
+  static TokSpan match(CContext& ctx, TokSpan body) {
+    matcheroni_assert(body.is_valid());
+    TextSpan span = *(body.a);
     if (SST<qualifiers>::match(span.a, span.b)) {
-      return s.advance(1);
+      return body.advance(1);
     }
     else {
-      return s.fail();
+      return body.fail();
     }
   }
 };
@@ -587,51 +587,51 @@ struct NodeTernaryOp : public CNode, PatternWrapper<NodeTernaryOp> {
 //----------------------------------------
 
 struct NodeExpression : public CNode, PatternWrapper<NodeExpression> {
-  static TokSpan match_binary_op(CContext& ctx, TokSpan s) {
-    matcheroni_assert(s.is_valid());
+  static TokSpan match_binary_op(CContext& ctx, TokSpan body) {
+    matcheroni_assert(body.is_valid());
 
-    if (ctx.atom_cmp(*s.a, LEX_PUNCT)) {
-      return s.fail();
+    if (ctx.atom_cmp(*body.a, LEX_PUNCT)) {
+      return body.fail();
     }
 
     // clang-format off
-    switch (s.a->a[0]) {
+    switch (body.a->a[0]) {
       case '+':
-        return Oneof<NodeBinaryOp<"+=">, NodeBinaryOp<"+">>::match(ctx, s);
+        return Oneof<NodeBinaryOp<"+=">, NodeBinaryOp<"+">>::match(ctx, body);
       case '-':
-        return Oneof<NodeBinaryOp<"->*">, NodeBinaryOp<"->">, NodeBinaryOp<"-=">, NodeBinaryOp<"-">>::match(ctx, s);
+        return Oneof<NodeBinaryOp<"->*">, NodeBinaryOp<"->">, NodeBinaryOp<"-=">, NodeBinaryOp<"-">>::match(ctx, body);
       case '*':
-        return Oneof<NodeBinaryOp<"*=">, NodeBinaryOp<"*">>::match(ctx, s);
+        return Oneof<NodeBinaryOp<"*=">, NodeBinaryOp<"*">>::match(ctx, body);
       case '/':
-        return Oneof<NodeBinaryOp<"/=">, NodeBinaryOp<"/">>::match(ctx, s);
+        return Oneof<NodeBinaryOp<"/=">, NodeBinaryOp<"/">>::match(ctx, body);
       case '=':
-        return Oneof<NodeBinaryOp<"==">, NodeBinaryOp<"=">>::match(ctx, s);
+        return Oneof<NodeBinaryOp<"==">, NodeBinaryOp<"=">>::match(ctx, body);
       case '<':
-        return Oneof<NodeBinaryOp<"<<=">, NodeBinaryOp<"<=>">, NodeBinaryOp<"<=">, NodeBinaryOp<"<<">, NodeBinaryOp<"<">>::match(ctx, s);
+        return Oneof<NodeBinaryOp<"<<=">, NodeBinaryOp<"<=>">, NodeBinaryOp<"<=">, NodeBinaryOp<"<<">, NodeBinaryOp<"<">>::match(ctx, body);
       case '>':
-        return Oneof<NodeBinaryOp<">>=">, NodeBinaryOp<">=">, NodeBinaryOp<">>">, NodeBinaryOp<">">>::match(ctx, s);
+        return Oneof<NodeBinaryOp<">>=">, NodeBinaryOp<">=">, NodeBinaryOp<">>">, NodeBinaryOp<">">>::match(ctx, body);
       case '!':
-        return NodeBinaryOp<"!=">::match(ctx, s);
+        return NodeBinaryOp<"!=">::match(ctx, body);
       case '&':
-        return Oneof<NodeBinaryOp<"&&">, NodeBinaryOp<"&=">, NodeBinaryOp<"&">>::match(ctx, s);
+        return Oneof<NodeBinaryOp<"&&">, NodeBinaryOp<"&=">, NodeBinaryOp<"&">>::match(ctx, body);
       case '|':
-        return Oneof<NodeBinaryOp<"||">, NodeBinaryOp<"|=">, NodeBinaryOp<"|">>::match(ctx, s);
+        return Oneof<NodeBinaryOp<"||">, NodeBinaryOp<"|=">, NodeBinaryOp<"|">>::match(ctx, body);
       case '^':
-        return Oneof<NodeBinaryOp<"^=">, NodeBinaryOp<"^">>::match(ctx, s);
+        return Oneof<NodeBinaryOp<"^=">, NodeBinaryOp<"^">>::match(ctx, body);
       case '%':
-        return Oneof<NodeBinaryOp<"%=">, NodeBinaryOp<"%">>::match(ctx, s);
+        return Oneof<NodeBinaryOp<"%=">, NodeBinaryOp<"%">>::match(ctx, body);
       case '.':
-        return Oneof<NodeBinaryOp<".*">, NodeBinaryOp<".">>::match(ctx, s);
+        return Oneof<NodeBinaryOp<".*">, NodeBinaryOp<".">>::match(ctx, body);
       case '?':
-        return NodeTernaryOp::match(ctx, s);
+        return NodeTernaryOp::match(ctx, body);
 
         // FIXME this is only for C++, and
-        // case ':': return NodeBinaryOp<"::">::match(ctx, s);
+        // case ':': return NodeBinaryOp<"::">::match(ctx, body);
         // default:  return nullptr;
     }
     // clang-format on
 
-    return s.fail();
+    return body.fail();
   }
 
   //----------------------------------------
@@ -645,7 +645,7 @@ struct NodeExpression : public CNode, PatternWrapper<NodeExpression> {
   subtraction.
   */
 
-  static TokSpan match2(CContext& ctx, TokSpan s) {
+  static TokSpan match2(CContext& ctx, TokSpan body) {
 
     using pattern =
     Seq<
@@ -658,13 +658,13 @@ struct NodeExpression : public CNode, PatternWrapper<NodeExpression> {
       >
     >;
 
-    auto end = pattern::match(ctx, s);
-    if (!end.is_valid()) {
-      return s.fail();
+    auto tail = pattern::match(ctx, body);
+    if (!tail.is_valid()) {
+      return body.fail();
     }
 
-    //auto tok_a = s.a;
-    //auto tok_b = end.a;
+    //auto tok_a = body.a;
+    //auto tok_b = tail.a;
 
     /*
     while (0) {
@@ -772,10 +772,10 @@ struct NodeExpression : public CNode, PatternWrapper<NodeExpression> {
 #endif
 
 #if 0
-    if (auto end = SpanTernaryOp::match(ctx, cursor, b)) {
+    if (auto tail = SpanTernaryOp::match(ctx, cursor, b)) {
       auto node = new NodeExpressionTernary();
-      node->init(a, end - 1);
-      cursor = end;
+      node->init(a, tail - 1);
+      cursor = tail;
     }
 #endif
 
@@ -783,8 +783,8 @@ struct NodeExpression : public CNode, PatternWrapper<NodeExpression> {
     {
       const CToken* c = a;
       while(1) {
-        if (auto end = c->span->tok_b()) {
-          c = end + 1;
+        if (auto tail = c->span->tok_b()) {
+          c = tail + 1;
         }
         else {
           c++;
@@ -794,20 +794,20 @@ struct NodeExpression : public CNode, PatternWrapper<NodeExpression> {
     }
 #endif
 
-    return end;
+    return tail;
   }
 
   //----------------------------------------
 
-  static TokSpan match(CContext& ctx, TokSpan s) {
+  static TokSpan match(CContext& ctx, TokSpan body) {
     //print_trace_start<NodeExpression, CToken>(a);
-    auto end = match2(ctx, s);
-    if (end.is_valid()) {
+    auto tail = match2(ctx, body);
+    if (tail.is_valid()) {
       //auto node = new NodeExpression();
-      //node->init_node(ctx, a, end - 1, a->span, (end - 1)->span);
+      //node->init_node(ctx, a, tail - 1, a->span, (tail - 1)->span);
     }
-    //print_trace_end<NodeExpression, CToken>(a, end);
-    return end;
+    //print_trace_end<NodeExpression, CToken>(a, tail);
+    return tail;
   }
 };
 
@@ -1169,18 +1169,18 @@ struct NodeStructType : public CNode, public PatternWrapper<NodeStructType> {
 };
 
 struct NodeStructTypeAdder : public NodeIdentifier {
-  static TokSpan match(CContext& ctx, TokSpan s) {
-    auto end = NodeIdentifier::match(ctx, s);
-    if (end.is_valid()) {
-      ctx.add_struct_type(s.a);
-      return end;
+  static TokSpan match(CContext& ctx, TokSpan body) {
+    auto tail = NodeIdentifier::match(ctx, body);
+    if (tail.is_valid()) {
+      ctx.add_struct_type(body.a);
+      return tail;
     } else {
-      auto end = NodeTypedefType::match(ctx, s);
-      if (end.is_valid()) {
+      auto tail = NodeTypedefType::match(ctx, body);
+      if (tail.is_valid()) {
         // Already typedef'd
-        return end;
+        return tail;
       } else {
-        return s.fail();
+        return body.fail();
       }
     }
   }
@@ -1204,24 +1204,24 @@ struct NodeStruct : public CNode, public PatternWrapper<NodeStruct> {
 //------------------------------------------------------------------------------
 
 struct NodeUnionType : public CNode {
-  static TokSpan match(CContext& ctx, TokSpan s) {
-    return ctx.match_union_type(s);
+  static TokSpan match(CContext& ctx, TokSpan body) {
+    return ctx.match_union_type(body);
   }
 };
 
 struct NodeUnionTypeAdder : public NodeIdentifier {
-  static TokSpan match(CContext& ctx, TokSpan s) {
-    auto end = NodeIdentifier::match(ctx, s);
-    if (end.is_valid()) {
-      ctx.add_union_type(s.a);
-      return end;
+  static TokSpan match(CContext& ctx, TokSpan body) {
+    auto tail = NodeIdentifier::match(ctx, body);
+    if (tail.is_valid()) {
+      ctx.add_union_type(body.a);
+      return tail;
     } else {
-      auto end = NodeTypedefType::match(ctx, s);
-      if (end.is_valid()) {
+      auto tail = NodeTypedefType::match(ctx, body);
+      if (tail.is_valid()) {
         // Already typedef'd
-        return end;
+        return tail;
       } else {
-        return s.fail();
+        return body.fail();
       }
     }
   }
@@ -1249,19 +1249,19 @@ struct NodeClassType : public CNode, public PatternWrapper<NodeClassType> {
 };
 
 struct NodeClassTypeAdder : public NodeIdentifier {
-  static TokSpan match(CContext& ctx, TokSpan s) {
-    auto end = NodeIdentifier::match(ctx, s);
-    if (end.is_valid()) {
-      ctx.add_class_type(s.a);
-      return end;
+  static TokSpan match(CContext& ctx, TokSpan body) {
+    auto tail = NodeIdentifier::match(ctx, body);
+    if (tail.is_valid()) {
+      ctx.add_class_type(body.a);
+      return tail;
     } else
     {
-      auto end = NodeTypedefType::match(ctx, s);
-      if (end.is_valid()) {
+      auto tail = NodeTypedefType::match(ctx, body);
+      if (tail.is_valid()) {
         // Already typedef'd
-        return end;
+        return tail;
       } else {
-        return s.fail();
+        return body.fail();
       }
     }
   }
@@ -1312,18 +1312,18 @@ struct NodeEnumType : public CNode, public PatternWrapper<NodeEnumType> {
 };
 
 struct NodeEnumTypeAdder : public NodeIdentifier {
-  static TokSpan match(CContext& ctx, TokSpan s) {
-    auto end = NodeIdentifier::match(ctx, s);
-    if (end.is_valid()) {
-      ctx.add_enum_type(s.a);
-      return end;
+  static TokSpan match(CContext& ctx, TokSpan body) {
+    auto tail = NodeIdentifier::match(ctx, body);
+    if (tail.is_valid()) {
+      ctx.add_enum_type(body.a);
+      return tail;
     } else {
-        auto end = NodeTypedefType::match(ctx, s);
-        if (end.is_valid()) {
+        auto tail = NodeTypedefType::match(ctx, body);
+        if (tail.is_valid()) {
         // Already typedef'd
-        return end;
+        return tail;
       } else {
-        return s.fail();
+        return body.fail();
       }
     }
   }
@@ -1510,11 +1510,11 @@ struct NodeDeclaration : public CNode, public PatternWrapper<NodeDeclaration> {
 
 template <typename P>
 struct PushPopScope {
-  static TokSpan match(CContext& ctx, TokSpan s) {
+  static TokSpan match(CContext& ctx, TokSpan body) {
     ctx.push_scope();
-    auto end = P::match(ctx, s);
+    auto tail = P::match(ctx, body);
     ctx.pop_scope();
-    return end;
+    return tail;
   }
 };
 
@@ -1862,13 +1862,13 @@ struct NodeTypedef : public CNode, public PatternWrapper<NodeTypedef> {
     matcheroni_assert(false);
   }
 
-  static TokSpan match(CContext& ctx, TokSpan s) {
-    auto end = pattern::match(ctx, s);
-    if (end.is_valid()) {
+  static TokSpan match(CContext& ctx, TokSpan body) {
+    auto tail = pattern::match(ctx, body);
+    if (tail.is_valid()) {
       //print_context(ctx.text_span, ctx, 40);
       extract_type(ctx);
     }
-    return end;
+    return tail;
   }
 };
 

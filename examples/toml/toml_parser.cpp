@@ -43,7 +43,7 @@ using key     = Some<Range<'0','9','a','z','A','Z','_','_','-','-'>>;
 template<typename val, typename delim>
 using delimited_list = Opt<Seq<val, Any<Seq<space, delim, space, val>>, space, Opt<delim>>>;
 
-static TextSpan match_value(TextNodeContext& ctx, TextSpan s);
+static TextSpan match_value(TextNodeContext& ctx, TextSpan body);
 using value = Ref<match_value>;
 
 using key_or_str = Oneof<key, string>;
@@ -132,7 +132,7 @@ Any<Seq<
   space
 >>;
 
-static TextSpan match_value(TextNodeContext& ctx, TextSpan s) {
+static TextSpan match_value(TextNodeContext& ctx, TextSpan body) {
   using value =
   Oneof<
     Cap<"string", string>,
@@ -142,9 +142,9 @@ static TextSpan match_value(TextNodeContext& ctx, TextSpan s) {
     Cap<"array", array>,
     Cap<"inline_table", inline_table>
   >;
-  return value::match(ctx, s);
+  return value::match(ctx, body);
 }
 
-TextSpan match_toml(TextNodeContext& ctx, TextSpan text) {
-  return tomlFile::match(ctx, text);
+TextSpan match_toml(TextNodeContext& ctx, TextSpan body) {
+  return tomlFile::match(ctx, body);
 }

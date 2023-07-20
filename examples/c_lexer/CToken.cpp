@@ -9,10 +9,10 @@ using namespace matcheroni;
 
 //------------------------------------------------------------------------------
 
-CToken::CToken(LexemeType type, TextSpan s) {
+CToken::CToken(LexemeType type, TextSpan text) {
   this->type = type;
-  this->a = s.a;
-  this->b = s.b;
+  this->a = text.a;
+  this->b = text.b;
 }
 
 //----------------------------------------------------------------------------
