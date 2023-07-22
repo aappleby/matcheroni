@@ -1045,6 +1045,7 @@ struct NodeBitSuffix : public CNode, public PatternWrapper<NodeBitSuffix> {
 };
 
 //------------------------------------------------------------------------------
+// FIXME this can match nothing and that seems wrong
 
 struct NodeAbstractDeclarator : public CNode,
                                 public PatternWrapper<NodeAbstractDeclarator> {

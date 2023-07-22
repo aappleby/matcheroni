@@ -5,6 +5,7 @@
 
 #include <cstddef>  // for size_t
 #include <typeinfo>
+#include <string>
 
 #include "matcheroni/Parseroni.hpp"
 #include "examples/c_lexer/CToken.hpp"
@@ -32,6 +33,24 @@ struct CNode : public matcheroni::NodeBase<TokSpan> {
 
   const char* text_head() const { return span.a->text.a; }
   const char* text_tail() const { return (span.b - 1)->text.b; }
+
+  void debug_dump(std::string& out) {
+    out += "[";
+    out += match_name;
+    out += ":";
+    if (child_head()) {
+      for (auto c = child_head(); c; c = c->node_next()) {
+        c->debug_dump(out);
+      }
+    }
+    else {
+      out += '`';
+      out += std::string(span.a->text.a, (span.b - 1)->text.b);
+      out += '`';
+    }
+    out += "]";
+  }
+
 
   //----------------------------------------
 

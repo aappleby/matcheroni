@@ -84,6 +84,12 @@ class CContext : public matcheroni::NodeContext<TokSpan, CNode> {
   void append_node(CNode* node);
   void enclose_nodes(CNode* start, CNode* node);
 
+  void debug_dump(std::string& out) {
+    for (auto node = top_head(); node; node = node->node_next()) {
+      node->debug_dump(out);
+    }
+  }
+
   //----------------------------------------
 
   matcheroni::TextSpan text_span;

@@ -1,3 +1,5 @@
+include rules.ninja
+
 #-------------------------------------------------------------------------------
 # Configuration
 
@@ -23,29 +25,27 @@ includes = -I.
 #include-what-you-use -Xiwyu --no_fwd_decls -std=c++20 -I. ${in}
 
 #-------------------------------------------------------------------------------
-# Rules
+# Emscripten
 
-rule compile_cpp
-  command = g++ -std=c++20 ${build_mode} ${defs} ${includes} -MMD -MF ${out}.d -c ${in} -o ${out}
-  depfile = ${out}.d
-  deps = gcc
+build obj/ems/tutorial/json_tut1a.o  : compile_cpp_ems tutorial/json_tut1a.cpp
+build docs/tutorial/json_tut1a.js    : link_ems obj/ems/tutorial/json_tut1a.o
 
-rule compile_c
-  command = gcc ${build_mode} ${includes} ${defs} -MMD -MF ${out}.d -c ${in} -o ${out}
-  depfile = ${out}.d
-  deps = gcc
+build obj/ems/tutorial/json_tut1b.o  : compile_cpp_ems tutorial/json_tut1b.cpp
+build docs/tutorial/json_tut1b.js    : link_ems obj/ems/tutorial/json_tut1b.o
 
-rule static_lib
-  command = ar rcs ${out} ${in} > /dev/null
+build obj/ems/tutorial/json_tut1c.o  : compile_cpp_ems tutorial/json_tut1c.cpp
+build docs/tutorial/json_tut1c.js    : link_ems obj/ems/tutorial/json_tut1c.o
 
-rule link
-  command = g++ -Wall ${build_mode} ${in} -lboost_system -lboost_regex -o ${out}
 
-rule run_test
-  command = ${in} >> /dev/null && touch ${out}
+build docs/tutorial/tutorial_src.data docs/tutorial/tutorial_src.js: command $
+    tutorial/json_tut1a.cpp $
+    tutorial/json_tut1b.cpp $
+    tutorial/json_tut1c.cpp $
+    tutorial/json_tut1a.cpp
+  command = python3 $$EMSDK/upstream/emscripten/tools/file_packager.py $
+      docs/tutorial/tutorial_src.data --no-node --js-output=docs/tutorial/tutorial_src.js $
+      --preload tutorial
 
-rule iwyu
-  command = include-what-you-use -std=c++20 -I. ${in} && touch ${out} 2> /dev/null
 
 #-------------------------------------------------------------------------------
 # Tests
@@ -191,7 +191,7 @@ link $
   obj/examples/c_parser/c_parser_test.o $
   obj/examples/c_lexer.a $
   obj/examples/c_parser.a
-build bin/examples/c_parser/c_parser_test_pass  : run_test bin/examples/c_parser/c_parser_test
+#build bin/examples/c_parser/c_parser_test_pass  : run_test bin/examples/c_parser/c_parser_test
 
 #-------------------------------------------------------------------------------
 

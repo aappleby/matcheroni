@@ -1,9 +1,3 @@
-//------------------------------------------------------------------------------
-// Parseroni JSON tutorial, part 1A.
-
-// SPDX-FileCopyrightText:  2023 Austin Appleby <aappleby@gmail.com>
-// SPDX-License-Identifier: MIT License
-
 #include "matcheroni/Matcheroni.hpp"
 #include "matcheroni/Utilities.hpp"
 #include "matcheroni/dump.hpp"
@@ -32,14 +26,15 @@ struct JsonParser {
 //------------------------------------------------------------------------------
 
 int main(int argc, char** argv) {
-  printf("json_tut1a\n");
+  if (argc < 2) {
+    printf("json_tut1a <text to match>\n");
+    return 0;
+  }
 
   TextContext ctx;
-  auto text = to_span("-12345.6789e10 Hello\nWorld\t\r");
+  auto text = to_span(argv[1]);
   auto tail = JsonParser::match(ctx, text);
   print_summary(text, tail, 40);
 
-  return 0;
+  return tail.is_valid() ? 0 : -1;
 }
-
-//------------------------------------------------------------------------------

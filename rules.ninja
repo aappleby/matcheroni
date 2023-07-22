@@ -1,0 +1,45 @@
+rule compile_cpp
+  command = g++ -std=c++20 ${build_mode} ${defs} ${includes} -MMD -MF ${out}.d -c ${in} -o ${out}
+  depfile = ${out}.d
+  deps = gcc
+
+rule compile_c
+  command = gcc ${build_mode} ${includes} ${defs} -MMD -MF ${out}.d -c ${in} -o ${out}
+  depfile = ${out}.d
+  deps = gcc
+
+rule static_lib
+  command = ar rcs ${out} ${in} > /dev/null
+
+rule link
+  command = g++ -Wall ${build_mode} ${in} -lboost_system -lboost_regex -o ${out}
+
+rule run_test
+  command = ${in} >> /dev/null && touch ${out}
+
+rule iwyu
+  command = include-what-you-use -std=c++20 -I. ${in} && touch ${out} 2> /dev/null
+
+rule compile_c_ems
+  command = emcc -O2 ${includes} -MMD -MF ${out}.d -c ${in} -o ${out}
+  depfile = ${out}.d
+  deps = gcc
+
+rule compile_cpp_ems
+  command = emcc -O2 -std=c++2b ${includes} -MMD -MF ${out}.d -c ${in} -o ${out}
+  depfile = ${out}.d
+  deps = gcc
+
+rule link_ems
+  command = emcc ${in}  $
+      -sEXPORT_ES6 $
+      -sEXPORTED_RUNTIME_METHODS=['FS','callMain'] $
+      -s MODULARIZE=1 $
+      -sNO_DISABLE_EXCEPTION_CATCHING $
+      -sTOTAL_STACK=32MB $
+      -sINITIAL_MEMORY=64MB  $
+      -sFORCE_FILESYSTEM  $
+      -o ${out}
+
+rule command
+  command = ${command}
