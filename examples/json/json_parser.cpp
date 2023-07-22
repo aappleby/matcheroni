@@ -14,7 +14,7 @@ using cookbook::comma_separated;
 
 struct JsonParser {
   // clang-format off
-  using ws        = Any<Atom<' ','\n','\r','\t'>>;
+  using space     = Some<Atom<' ','\n','\r','\t'>>;
   using hex       = Range<'0','9','a','f','A','F'>;
   using escape    = Oneof<Charset<"\"\\/bfnrt">, Seq<Atom<'u'>, Rep<4, hex>>>;
   using keyword   = Oneof<Lit<"true">, Lit<"false">, Lit<"null">>;
@@ -43,27 +43,29 @@ struct JsonParser {
   using pair =
   Seq<
     Capture<"key", string, TextNode>,
-    ws,
+    Opt<space>,
     Atom<':'>,
-    ws,
+    Opt<space>,
     Capture<"value", Ref<value>, TextNode>
   >;
 
   using object =
   Seq<
-    Atom<'{'>, ws,
+    Atom<'{'>,
+    Opt<space>,
     Opt<comma_separated<
       Capture<"member", pair, TextNode>
     >>,
-    ws,
+    Opt<space>,
     Atom<'}'>
   >;
 
   using array =
   Seq<
     Atom<'['>,
-    ws,
-    Opt<comma_separated<Ref<value>>>, ws,
+    Opt<space>,
+    Opt<comma_separated<Ref<value>>>,
+    Opt<space>,
     Atom<']'>
   >;
 
@@ -71,7 +73,7 @@ struct JsonParser {
   //----------------------------------------
 
   static TextSpan match(TextNodeContext& ctx, TextSpan body) {
-    return Seq<ws, Ref<value>, ws>::match(ctx, body);
+    return Seq<Opt<space>, Ref<value>, Opt<space>>::match(ctx, body);
   }
 };
 

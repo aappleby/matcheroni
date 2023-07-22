@@ -16,7 +16,7 @@ using isgraph = Range<0x21, 0x7E>;
 using islower = Range<'a', 'z'>;
 using isprint = Range<0x20, 0x7E>;
 using ispunct = Range<0x21, 0x2F, 0x3A, 0x40, 0x5B, 0x60, 0x7B, 0x7E>;
-using isspace = Any<Atom<' ','\f','\v','\n','\r','\t'>>;
+using isspace = Atom<' ','\f','\v','\n','\r','\t'>;
 using isupper = Range<'A', 'Z'>;
 using isxdigit = Range<'0','9','a','f','A','F'>;
 
@@ -62,9 +62,9 @@ template<typename pattern, typename delim>
 using separated =
 Seq<
   pattern,
-  Any<Seq<isspace, delim, isspace, pattern>>,
+  Any<Seq<Any<isspace>, delim, Any<isspace>, pattern>>,
   // trailing delimiter OK
-  Opt<Seq<isspace, delim>>
+  Opt<Seq<Any<isspace>, delim>>
 >;
 
 template<typename pattern>
@@ -88,7 +88,7 @@ using dot_joined = joined<pattern, Atom<'.'>>;
 // Delimited lists
 
 template<typename ldelim, typename pattern, typename rdelim>
-using delimited_list = Seq<ldelim, isspace, comma_separated<pattern>, isspace, rdelim>;
+using delimited_list = Seq<ldelim, Any<isspace>, comma_separated<pattern>, Any<isspace>, rdelim>;
 
 template<typename pattern> using paren_list   = delimited_list<Atom<'('>, pattern, Atom<')'>>;
 template<typename pattern> using bracket_list = delimited_list<Atom<'['>, pattern, Atom<']'>>;

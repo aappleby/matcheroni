@@ -15,6 +15,7 @@ using namespace matcheroni;
 
 struct JsonParser {
   // clang-format off
+  using space     = Some<Atom<' ', '\n', '\r', '\t'>>;
   using sign      = Atom<'+', '-'>;
   using digit     = Range<'0', '9'>;
   using onenine   = Range<'1', '9'>;
@@ -23,7 +24,6 @@ struct JsonParser {
   using fraction  = Seq<Atom<'.'>, digits>;
   using exponent  = Seq<Atom<'e', 'E'>, Opt<sign>, digits>;
   using number    = Seq<integer, Opt<fraction>, Opt<exponent>>;
-  using ws        = Any<Atom<' ', '\n', '\r', '\t'>>;
   using hex       = Range<'0','9','a','f','A','F'>;
   using escape    = Oneof<Charset<"\"\\/bfnrt">, Seq<Atom<'u'>, Rep<4, hex>>>;
   using character = Oneof<NotAtom<'"', '\\'>, Seq<Atom<'\\'>, escape>>;
@@ -31,7 +31,7 @@ struct JsonParser {
   using keyword   = Oneof<Lit<"true">, Lit<"false">, Lit<"null">>;
 
   template <typename P>
-  using list = Opt<Seq<P, Any<Seq<ws, Atom<','>, ws, P>>>>;
+  using list = Opt<Seq<P, Any<Seq<Any<space>, Atom<','>, Any<space>, P>>>>;
 
   static TextSpan value(TextContext& ctx, TextSpan body) {
     return
@@ -47,32 +47,32 @@ struct JsonParser {
   using array =
   Seq<
     Atom<'['>,
-    ws,
+    Any<space>,
     list<TraceText<"element", Ref<value>>>,
-    ws,
+    Any<space>,
     Atom<']'>
   >;
 
   using pair =
   Seq<
     TraceText<"key", string>,
-    ws,
+    Any<space>,
     Atom<':'>,
-    ws,
+    Any<space>,
     TraceText<"val", Ref<value>>
   >;
 
   using object =
   Seq<
     Atom<'{'>,
-    ws,
+    Any<space>,
     list<TraceText<"pair", pair>>,
-    ws,
+    Any<space>,
     Atom<'}'>
   >;
 
   static TextSpan match(TextContext& ctx, TextSpan body) {
-    return Seq<ws, Ref<value>, ws>::match(ctx, body);
+    return Seq<Any<space>, Ref<value>, Any<space>>::match(ctx, body);
   }
   // clang-format on
 };

@@ -75,11 +75,11 @@ struct SExpression {
     >::match(ctx, body);
   }
 
-  using ws   = Any<Atom<' ', '\n', '\r', '\t'>>;
-  using atom = Some<NotAtom<'(', ')', ' ', '\n', '\r', '\t', ','>>;
-  using car  = Opt<Ref<match>>;
-  using cdr  = Any<Seq<ws, Atom<','>, ws, Ref<match>>>;
-  using list = Seq<Atom<'('>, ws, car, cdr, ws, Atom<')'>>;
+  using space = Atom<' ', '\n', '\r', '\t'>;
+  using atom  = Some<Range<'0','9','a','z','A','Z', '_', '_'>>;
+  using car   = Opt<Ref<match>>;
+  using cdr   = Any<Seq<Atom<','>, Any<space>, Ref<match>>>;
+  using list  = Seq<Atom<'('>, Any<space>, car, Any<space>, cdr, Any<space>, Atom<')'>>;
 };
 
 //----------------------------------------
@@ -197,11 +197,11 @@ struct BeginEndTest {
     >
   >;
 
-  using ws   = Any<Atom<' ', '\n', '\r', '\t'>>;
-  using atom = Some<Range<'0','9','a','f','A','F'>>;
-  using car  = Opt<Ref<match>>;
-  using cdr  = Any<Seq<ws, Atom<','>, ws, Ref<match>>>;
-  using list = Seq<Atom<'['>, ws, car, cdr, ws, Atom<']'>>;
+  using space = Some<Atom<' ', '\n', '\r', '\t'>>;
+  using atom  = Some<Range<'0','9','a','f','A','F'>>;
+  using car   = Opt<Ref<match>>;
+  using cdr   = Any<Seq<Atom<','>, Any<space>, Ref<match>>>;
+  using list  = Seq<Atom<'['>, Any<space>, car, Any<space>, cdr, Any<space>, Atom<']'>>;
 };
 
 //------------------------------------------------------------------------------

@@ -32,7 +32,7 @@ struct JsonParser {
   using exponent  = Seq<Atom<'e','E'>, Opt<sign>, digits>;
   using number    = Seq<integer, Opt<fraction>, Opt<exponent>>;
 
-  using ws        = Any<Atom<' ','\n','\r','\t'>>;
+  using space     = Some<Atom<' ','\n','\r','\t'>>;
   using hex       = Range<'0','9','a','f','A','F'>;
   using escape    = Oneof<Charset<"\"\\/bfnrt">, Seq<Atom<'u'>, Rep<4, hex>>>;
   using keyword   = Oneof<Lit<"true">, Lit<"false">, Lit<"null">>;
@@ -41,7 +41,7 @@ struct JsonParser {
   // clang-format on
 
   template<typename P>
-  using list = Opt<Seq<P, Any<Seq<ws, Atom<','>, ws, P>>>>;
+  using list = Opt<Seq<P, Any<Seq<Any<space>, Atom<','>, Any<space>, P>>>>;
 
   static TextSpan value(TextNodeContext& ctx, TextSpan body) {
     using value =
@@ -58,43 +58,50 @@ struct JsonParser {
   using array =
   Seq<
     Atom<'['>,
-    ws,
+    Any<space>,
     list<Ref<value>>,
-    ws,
+    Any<space>,
     Atom<']'>
   >;
 
   using pair =
   Seq<
     Capture<"key", string, TextNode>,
-    ws,
+    Any<space>,
     Atom<':'>,
-    ws,
+    Any<space>,
     Capture<"value", Ref<value>, TextNode>
   >;
 
   using object =
   Seq<
     Atom<'{'>,
-    ws,
+    Any<space>,
     list<Capture<"pair", pair, TextNode>>,
-    ws,
+    Any<space>,
     Atom<'}'>
   >;
 
   static TextSpan match(TextNodeContext& ctx, TextSpan body) {
-    return Seq<ws, Ref<value>, ws>::match(ctx, body);
+    return Seq<Any<space>, Ref<value>, Any<space>>::match(ctx, body);
   }
 };
 
 //------------------------------------------------------------------------------
 
-const char* json = R"(
-)";
-
 int main(int argc, char** argv) {
+  if (argc < 2) {
+    printf("json_tut1a <filename>\n");
+    return 0;
+  }
+
+  printf("argv[0] = %s\n", argv[0]);
+  printf("argv[1] = %s\n", argv[1]);
+  printf("\n");
+
   TextNodeContext ctx;
-  TextSpan text = to_span(json);
+  auto input = read(argv[1]);
+  auto text = to_span(input);
   auto tail = JsonParser::match(ctx, text);
   print_summary(text, tail, ctx, 40);
 
