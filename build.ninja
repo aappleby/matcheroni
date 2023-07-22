@@ -1,5 +1,7 @@
 include rules.ninja
 
+subninja build_docs.ninja
+
 #-------------------------------------------------------------------------------
 # Configuration
 
@@ -7,7 +9,7 @@ include rules.ninja
 # Turning EXTRA_DEBUG on will generate even more spam.
 
 ### Debug build
-#build_mode = -g -O0 -Wall -Werror -Wno-unused-variable -Wno-unused-local-typedefs -Wno-unused-but-set-variable
+build_mode = -g -O0 -Wall -Werror -Wno-unused-variable -Wno-unused-local-typedefs -Wno-unused-but-set-variable
 #defs = ${defs} -DMATCHERONI_ENABLE_TRACE
 #defs = ${defs} -DEXTRA_DEBUG
 
@@ -18,34 +20,11 @@ include rules.ninja
 ### -flto _doubles_ the speed of CLexer. :O
 ### -flto _halves_ the speed of Matcheroni's IP4 matcher, weird.
 ### LTO breaks "size obj/examples/json_parser.o"
-build_mode = -O3 -flto
+#build_mode = -O3 -flto
 
 includes = -I.
 
 #include-what-you-use -Xiwyu --no_fwd_decls -std=c++20 -I. ${in}
-
-#-------------------------------------------------------------------------------
-# Emscripten
-
-build obj/ems/tutorial/json_tut1a.o  : compile_cpp_ems tutorial/json_tut1a.cpp
-build docs/tutorial/json_tut1a.js    : link_ems obj/ems/tutorial/json_tut1a.o
-
-build obj/ems/tutorial/json_tut1b.o  : compile_cpp_ems tutorial/json_tut1b.cpp
-build docs/tutorial/json_tut1b.js    : link_ems obj/ems/tutorial/json_tut1b.o
-
-build obj/ems/tutorial/json_tut1c.o  : compile_cpp_ems tutorial/json_tut1c.cpp
-build docs/tutorial/json_tut1c.js    : link_ems obj/ems/tutorial/json_tut1c.o
-
-
-build docs/tutorial/tutorial_src.data docs/tutorial/tutorial_src.js: command $
-    tutorial/json_tut1a.cpp $
-    tutorial/json_tut1b.cpp $
-    tutorial/json_tut1c.cpp $
-    tutorial/json_tut1a.cpp
-  command = python3 $$EMSDK/upstream/emscripten/tools/file_packager.py $
-      docs/tutorial/tutorial_src.data --no-node --js-output=docs/tutorial/tutorial_src.js $
-      --preload tutorial
-
 
 #-------------------------------------------------------------------------------
 # Tests

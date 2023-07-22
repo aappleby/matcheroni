@@ -12,8 +12,10 @@ using namespace matcheroni;
 
 //------------------------------------------------------------------------------
 
+
 struct JsonParser {
   // clang-format off
+  using space     = Some<Atom<' ', '\n', '\r', '\t'>>;
   using sign      = Atom<'+', '-'>;
   using digit     = Range<'0', '9'>;
   using onenine   = Range<'1', '9'>;
@@ -22,7 +24,6 @@ struct JsonParser {
   using fraction  = Seq<Atom<'.'>, digits>;
   using exponent  = Seq<Atom<'e', 'E'>, Opt<sign>, digits>;
   using number    = Seq<integer, Opt<fraction>, Opt<exponent>>;
-  using ws        = Any<Atom<' ', '\n', '\r', '\t'>>;
   using hex       = Range<'0','9','a','f','A','F'>;
   using escape    = Oneof<Charset<"\"\\/bfnrt">, Seq<Atom<'u'>, Rep<4, hex>>>;
   using character = Oneof<NotAtom<'"', '\\'>, Seq<Atom<'\\'>, escape>>;
@@ -31,15 +32,25 @@ struct JsonParser {
   // clang-format on
 
   static TextSpan match(TextContext& ctx, TextSpan body) {
-    return Oneof<number, string, keyword>::match(ctx, body);
+    return Some<number, string, keyword, space>::match(ctx, body);
   }
 };
 
 //------------------------------------------------------------------------------
 
 int main(int argc, char** argv) {
+  if (argc < 2) {
+    printf("json_tut1b <filename>\n");
+    return 0;
+  }
+
+  printf("argv[0] = %s\n", argv[0]);
+  printf("argv[1] = %s\n", argv[1]);
+  printf("\n");
+
   TextContext ctx;
-  auto text = to_span(R"("Hello World")");
+  auto input = read(argv[1]);
+  auto text = to_span("\"Hello World\" 123.4 true blahblah");
   auto tail = JsonParser::match(ctx, text);
   print_summary(text, tail, 40);
 

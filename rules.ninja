@@ -21,17 +21,17 @@ rule iwyu
   command = include-what-you-use -std=c++20 -I. ${in} && touch ${out} 2> /dev/null
 
 rule compile_c_ems
-  command = emcc -O2 ${includes} -MMD -MF ${out}.d -c ${in} -o ${out}
+  command = emcc -std=c++20 -O2 ${includes} -MMD -MF ${out}.d -c ${in} -o ${out}
   depfile = ${out}.d
   deps = gcc
 
 rule compile_cpp_ems
-  command = emcc -O2 -std=c++2b ${includes} -MMD -MF ${out}.d -c ${in} -o ${out}
+  command = emcc -std=c++20 -O2 ${includes} -MMD -MF ${out}.d -c ${in} -o ${out}
   depfile = ${out}.d
   deps = gcc
 
 rule link_ems
-  command = emcc ${in}  $
+  command = emcc $
       -sEXPORT_ES6 $
       -sEXPORTED_RUNTIME_METHODS=['FS','callMain'] $
       -s MODULARIZE=1 $
@@ -39,7 +39,8 @@ rule link_ems
       -sTOTAL_STACK=32MB $
       -sINITIAL_MEMORY=64MB  $
       -sFORCE_FILESYSTEM  $
-      -o ${out}
+      --embed-file="${embed}" $
+      ${in} -o ${out}
 
 rule command
   command = ${command}

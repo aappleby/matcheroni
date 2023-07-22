@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en-us">
+
+<head>
+  <script src="assets/drawdown.js"></script>
+  <link rel="stylesheet" href="top.css" />
+
+  <title>Matcheroni & Parseroni</title>
+  <link rel="icon" type="image/x-icon" href="assets/favicon.ico">
+
+</head>
+
+<body>
+  <div class="markdown"></div>
+  <pre class="plain" style="display:none;">
+
+# Matcheroni!
+
+Matcheroni is a toolkit for building lexers and parsers in C++20.
+
+</pre>
+
+  <script>
+    let ein = document.querySelector(".plain")
+    let eout = document.querySelector(".markdown")
+    eout.innerHTML = markdown(ein.innerText)
+  </script>
+</body>

@@ -90,13 +90,6 @@ struct JsonParser {
 //------------------------------------------------------------------------------
 
 const char* json = R"(
-{
-  "foo" : "bar",
-  "baz" : [1, 2, 3, -5.238492834e-123],
-  "blep" : true,
-  "blap" : false,
-  "blop" : null
-}
 )";
 
 int main(int argc, char** argv) {

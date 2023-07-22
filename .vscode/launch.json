@@ -168,6 +168,12 @@
       "request": "launch",
       "program": "${workspaceFolder}/bin/tutorial/json_tut1a",
       "cwd": "${workspaceFolder}",
+      "setupCommands": [{
+        "description": "Enable pretty-printing for gdb",
+        "text": "-enable-pretty-printing",
+        "ignoreFailures": true
+      }],
+      "args" : ["tutorial/json_tut1a.input"],
     },
 
     {
@@ -177,6 +183,12 @@
       "request": "launch",
       "program": "${workspaceFolder}/bin/tutorial/json_tut1b",
       "cwd": "${workspaceFolder}",
+      "setupCommands": [{
+        "description": "Enable pretty-printing for gdb",
+        "text": "-enable-pretty-printing",
+        "ignoreFailures": true
+      }],
+      "args" : ["tutorial/json_tut1b.input"],
     },
 
     {
@@ -186,6 +198,12 @@
       "request": "launch",
       "program": "${workspaceFolder}/bin/tutorial/json_tut1c",
       "cwd": "${workspaceFolder}",
+      "setupCommands": [{
+        "description": "Enable pretty-printing for gdb",
+        "text": "-enable-pretty-printing",
+        "ignoreFailures": true
+      }],
+      "args" : ["tutorial/json_tut1c.input"],
     },
 
     {
@@ -195,7 +213,12 @@
       "request": "launch",
       "program": "${workspaceFolder}/bin/tutorial/json_tut2a",
       "cwd": "${workspaceFolder}",
-      "args" : ["data/json_demo.json"],
+      "setupCommands": [{
+        "description": "Enable pretty-printing for gdb",
+        "text": "-enable-pretty-printing",
+        "ignoreFailures": true
+      }],
+      "args" : ["tutorial/json_tut2a.json"],
     },
 
 

@@ -27,12 +27,17 @@ struct JsonParser {
 
 int main(int argc, char** argv) {
   if (argc < 2) {
-    printf("json_tut1a <text to match>\n");
+    printf("json_tut1a <filename>\n");
     return 0;
   }
 
+  printf("argv[0] = %s\n", argv[0]);
+  printf("argv[1] = %s\n", argv[1]);
+  printf("\n");
+
   TextContext ctx;
-  auto text = to_span(argv[1]);
+  auto input = read(argv[1]);
+  auto text = to_span(input);
   auto tail = JsonParser::match(ctx, text);
   print_summary(text, tail, 40);
 

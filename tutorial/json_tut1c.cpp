@@ -80,8 +80,18 @@ struct JsonParser {
 //------------------------------------------------------------------------------
 
 int main(int argc, char** argv) {
-  auto text = to_span(R"( { "zarg" : "whop", "foo" : [1,2,3] } )");
+  if (argc < 2) {
+    printf("json_tut1c <filename>\n");
+    return 0;
+  }
+
+  printf("argv[0] = %s\n", argv[0]);
+  printf("argv[1] = %s\n", argv[1]);
+  printf("\n");
+
   TextContext ctx;
+  auto input = read(argv[1]);
+  auto text = to_span(input);
   auto tail = JsonParser::match(ctx, text);
   print_summary(text, tail, 40);
 
