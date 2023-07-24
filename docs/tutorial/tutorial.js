@@ -2,6 +2,9 @@ console.log("tutorial.js load @ " + performance.now());
 
 import { CodeJar } from "../assets/codejar.min.js";
 
+//import { AnsiUp } from "../assets/ansi_up.js";
+//console.log(AnsiUp);
+
 const highlight = (editor) => {
   editor.textContent = editor.textContent
   hljs.highlightElement(editor)
@@ -9,17 +12,13 @@ const highlight = (editor) => {
 
 //------------------------------------------------------------------------------
 
-class SourcePane {
+class LeftPanel {
   constructor(pane_div) {
-    this.mod        = null;
-    this.pane_div   = pane_div;
-    this.header_bar = pane_div.querySelector(".header_bar");
-    this.body_div   = pane_div.querySelector(".code_jar");
-    this.code_jar   = null;
-
-    if (this.body_div) {
-      this.code_jar = new CodeJar(this.body_div, highlight, {tab:"  "});
-    }
+    this.mod           = null;
+    this.panel_div     = pane_div;
+    this.source_header = pane_div.querySelector(".header_bar");
+    this.source_pane   = pane_div.querySelector(".code_jar");
+    this.source_jar    = new CodeJar(this.source_pane, highlight, {tab:"  "});
   }
 
   set_mod(mod) {
@@ -28,9 +27,9 @@ class SourcePane {
 
   reload() {
     try {
-      let filename = this.header_bar.innerText;
+      let filename = this.source_header.innerText;
       let src_contents = new TextDecoder().decode(this.mod.FS.readFile(filename));
-      this.code_jar.updateCode(src_contents);
+      this.source_jar.updateCode(src_contents);
     } catch {}
   }
 
@@ -38,30 +37,37 @@ class SourcePane {
 
 //------------------------------------------------------------------------------
 
-class TerminalPane {
-  constructor(pane_div) {
-    this.mod        = null;
-    this.pane_div   = pane_div;
-    this.header_bar = pane_div.querySelector(".header_bar");
-    this.body_div   = pane_div.querySelector(".terminal");
-    this.terminal   = null;
+class RightPanel {
+  constructor(panel) {
+    this.mod           = null;
+    this.panel_div     = panel;
+    this.input_header  = panel.querySelector(".input_header");
+    this.input_pane    = panel.querySelector(".input_pane");
+    //this.input_jar     = new CodeJar(this.input_pane, () => {}, {tab:"  "});
+    this.output_header = panel.querySelector(".output_header");
+    this.output_pane   = panel.querySelector(".output_pane");
+    //this.output_term   = null;
+    this.fitAddon      = null;
 
-    if (this.body_div) {
-      this.terminal = new Terminal({
-        fontSize: 14,
-        fontFamily: "monospace",
-        convertEol: true,
-        theme: {
-          background: '#1E1E1E'
-        },
-        scrollback: 9999,
-      });
+    /*
+    this.output_term = new Terminal({
+      //cols:80,
+      //rows:40,
+      fontSize: 14,
+      fontFamily: "monospace",
+      convertEol: true,
+      theme: {
+        background: '#1E1E1E'
+      },
+      scrollback: 9999,
+      //scrollback: 0,
+    });
 
-      const fitAddon = new FitAddon.FitAddon();
-      this.terminal.loadAddon(fitAddon);
-      this.terminal.open(this.body_div);
-      fitAddon.fit();
-    }
+    this.fitAddon = new FitAddon.FitAddon();
+    this.output_term.loadAddon(this.fitAddon);
+    this.output_term.open(this.output_pane);
+    this.fitAddon.fit();
+    */
   }
 
   set_mod(mod) {
@@ -69,10 +75,17 @@ class TerminalPane {
   }
 
   reload() {
+    try {
+      let filename = this.input_header.innerText;
+      let input_contents = new TextDecoder().decode(this.mod.FS.readFile(filename));
+      this.input_pane.innerText = input_contents;
+    } catch {}
   }
 };
 
 //------------------------------------------------------------------------------
+
+window.tutorials = [];
 
 class Tutorial {
   constructor(div) {
@@ -80,42 +93,66 @@ class Tutorial {
     this.div = div;
     this.stdout = "";
     this.stderr = "";
+    this.ansi_up = new AnsiUp;
 
-    this.source_pane = new SourcePane(div.querySelector("#source"));
-    this.input_pane  = new SourcePane(div.querySelector("#input"));
-    this.output_pane = new TerminalPane(div.querySelector("#output"));
+    this.left_panel  = new LeftPanel(div.querySelector(".left_panel"));
+    this.right_panel = new RightPanel(div.querySelector(".right_panel"));
     this.compile_timeout = null;
-
-    //this.input_pane.code_jar.updateCode("-12345.6789e10 Hello World");
+    window.tutorials.push(this);
   }
 
   set_mod(mod) {
     this.mod = mod;
 
-    this.source_pane.set_mod(mod);
-    this.input_pane.set_mod(mod);
-    this.output_pane.set_mod(mod);
+    this.left_panel.set_mod(mod);
+    this.right_panel.set_mod(mod);
 
-    this.input_pane.code_jar.onUpdate(() => this.convert());
+    this.right_panel.input_pane.oninput = ()=> {
+      let filename = this.right_panel.input_header.innerText;
+      let contents = this.right_panel.input_pane.innerText;
+      //console.log("writing " + filename + " = " + contents);
+      this.mod.FS.writeFile(filename, contents);
+      this.convert();
+    };
 
-    this.source_pane.reload();
-    this.input_pane.reload();
-    this.output_pane.reload();
+    /*
+    this.right_panel.input_jar.onUpdate(() => {
+      let filename = this.right_panel.input_header.innerText;
+      let contents = this.right_panel.input_pane.innerText;
+      //console.log("writing " + filename + " = " + contents);
+      this.mod.FS.writeFile(filename, contents);
+      this.convert();
+    });
+    */
+
+    this.left_panel.reload();
+    this.right_panel.reload();
 
     this.convert();
   }
 
   convert() {
-    //console.log("convert");
     this.stdout = "";
     this.stderr = "";
 
-    let args = [this.input_pane.header_bar.innerText];
+    let args = [this.right_panel.input_header.innerText];
     let ret = this.mod.callMain(args);
+    //console.log(ret);
 
-    this.output_pane.header_bar.style.backgroundColor = ret == 0 ? "#353" : "#533";
-    this.output_pane.terminal.clear();
-    this.output_pane.terminal.write(this.stdout);
+    this.right_panel.output_header.style.backgroundColor = ret == 0 ? "#353" : "#533";
+    //this.right_panel.output_term.clear();
+    //this.right_panel.output_term.write(this.stdout);
+
+    /*
+    var txt  = "\n\n\033[1;33;40m 33;40  \033[1;33;41m 33;41  \033[1;33;42m 33;42  \033[1;33;43m 33;43  \033[1;33;44m 33;44  \033[1;33;45m 33;45  \033[1;33;46m 33;46  \033[1m\033[0\n\n\033[1;33;42m >> Tests OK\n\n"
+    var ansi_up = new AnsiUp;
+    var html = ansi_up.ansi_to_html(txt);
+    var cdiv = document.getElementById("console");
+    cdiv.innerHTML = html;
+    */
+
+    this.right_panel.output_pane.innerHTML = this.ansi_up.ansi_to_html(this.stdout);
+    //this.right_panel.fitAddon.fit();
   }
 }
 
@@ -142,31 +179,24 @@ function load_tutorial(name) {
   });
 }
 
-/*
-const FS_global = FS;
-const Module_cat = {
-    preRun: () => {
-        const FS = Module_cat.FS;
-        FS.writeFile('test.txt', 'test');
-        FS.mkdir('/global');
-        FS.mount(FS_global, {}, '/global');
-    },
-};
-
-cat(Module_cat).then(Module_ =>
-{
-    Module_.callMain([arg]);
-});
-*/
-
-
+//------------------------------------------------------------------------------
 
 load_tutorial("json_tut1a");
 load_tutorial("json_tut1b");
 load_tutorial("json_tut1c");
+load_tutorial("json_tut2a");
+load_tutorial("json_tut2b");
 
-//new Tutorial(document.querySelector("#json_tut1b"));
+//------------------------------------------------------------------------------
 
-//new Tutorial(document.querySelector("#json_tut1c"));
+let code_boxes = document.querySelectorAll(".code_box");
+let code_box_jars = [];
+
+console.log(code_boxes);
+
+for(let c of code_boxes) {
+  let jar = new CodeJar(c, highlight, {tab:"  "});
+  code_box_jars.push(jar);
+}
 
 //------------------------------------------------------------------------------

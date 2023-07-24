@@ -17,6 +17,7 @@
 #include <typeinfo>    // for type_info
 #include <vector>
 
+#include <string_view>
 
 namespace matcheroni {
 
@@ -71,13 +72,13 @@ struct TraceText {
     //print_bar(ctx.trace_depth++, body, name, "?");
     int depth = ctx.trace_depth++;
 
-    print_match(body, body, 40);
+    print_match(body, body, 50);
     print_trellis(depth, name, "?", 0xCCCCCC);
 
     auto tail = P::match(ctx, body);
     depth = --ctx.trace_depth;
 
-    print_match(body, tail, 40);
+    print_match(body, tail, 50);
     if (tail.is_valid()) {
       print_trellis(depth, name, "!", 0x80FF80);
     }

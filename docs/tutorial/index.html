@@ -12,6 +12,7 @@
   <script src="../assets/highlight.min.js"></script>
   <script src="../assets/xterm.js"></script>
   <script src="../assets/xterm-addon-fit.min.js"></script>
+  <script src="../assets/ansi_up.js"></script>
 
   <title>Metron C++ to Verilog Tutorial</title>
   <link rel="icon" type="image/x-icon" href="../assets/cheese_m.jpg">
@@ -23,15 +24,11 @@
     <div class="topbar_spacer"> </div>
     <div class="topbar_title">
       <img src="../assets/cheese_m.jpg" width="48" height="48" style="margin:8px;">
-      Matcheroni & Parseroni Tutorial <a style="margin-left:80px;" href="https://github.com/aappleby/Matcheroni">Source
-        on
-        Github</a>
+      Matcheroni & Parseroni Tutorial
+      <a style="margin-left:80px;" href="https://github.com/aappleby/Matcheroni">Source on Github</a>
     </div>
     <div class="topbar_spacer"></div>
-
   </div>
-
-
 
   <div class="contents">
     <div class="divider">Matcheroni is a toolkit for matching text. </div>
@@ -40,46 +37,149 @@
     </p>
 
     <div class="divider">Getting started by matching numbers</div>
+
     <p>
-      Here's tutorial 1a:<br>
+      Let's start off with a fairly simple example - matching numbers. Below is a live version of the tutorial - the
+      source is on the left, the input to the program is top right (live-editable), and the output is bottom right (also
+      live). Fiddle around with the input a bit and we'll go through the code line-by-line afterwards.
     </p>
 
 
     <div class="live_code" id="json_tut1a">
-      <div class="source_panel" id="source">
-        <div class="header_bar" id="source_header">./tutorial/json_tut1a.cpp</div>
-        <div class="code_jar language-cpp"></div>
+      <div class="left_panel">
+        <div class="header_bar">./tutorial/json_tut1a.cpp</div>
+        <div class="source_pane code_jar language-cpp"></div>
       </div>
-      <div class="input_output">
-        <div class="input_panel" id="input">
-          <div class="header_bar" id="input_header">./tutorial/json_tut1a.input</div>
-          <div class="code_jar language-cpp"></div>
-        </div>
-        <div class="output_panel" id="output">
-          <div class="header_bar" id="output_header">json_tut1a output</div>
-          <div class="terminal"></div>
-        </div>
+      <div class="right_panel">
+        <div class="input_header header_bar">./tutorial/json_tut1a.input</div>
+        <div class="input_pane code_jar" contenteditable="true"></div>
+        <div class="spacer"></div>
+        <div class="output_header header_bar">json_tut1a output</div>
+        <div class="output_pane"></div>
       </div>
     </div>
 
     <p>
-      Here's tutorial 1b:<br>
+      Matcheroni is a header-only library - just #including the main Matcheroni header is enough to get you up and
+      running, though you might want Utilities.hpp as well as it contains debugging and printing helpers.
+    </p>
+
+<div class="code_box language-cpp">
+01234567890123456789012345678901234567890123456789012345678901234567890123456789
+#include "matcheroni/Matcheroni.hpp"
+#include "matcheroni/Utilities.hpp"
+
+using namespace matcheroni;
+
+</div>
+
+    <p>
+      Matching or parsing text is all about building larger patterns out of collections of smaller patterns. Each lexing
+      or parsing library out there has a slightly different way in which they go about this. In Matcheroni, "patterns"
+      are templated structs wrapped around "matcher functions". The reasons why are complicated due to C++ template
+      weirdness, but the net effect is that Matcheroni patterns can be assembled like Legos and still get compiled down
+      to heavily-optimized-and-inlined code.
+    </p>
+
+    <p>
+    </p>
+    <div class="question">
+      Question from reader?
+    </div>
+
+    <p>
+      In this example we have a JsonParser struct, and inside it are a list of smaller patterns that make up part of the
+      JSON spec. These have been translated as directly as possible from the official JSON spec here - (link).
+    </p>
+
+<div class="code_box language-cpp">
+using sign = Atom&lt;'+', '-'&gt;;
+using digit = Range&lt;'0', '9'&gt;;
+using onenine = Range&lt;'1', '9'&gt;;
+using digits = Some&lt;digit&gt;;
+using integer = Seq&lt;Opt&lt;Atom&lt;'-'&gt;&gt;, Oneof&lt;Seq&lt;onenine, digits&gt;, digit&gt;&gt;;
+using fraction = Seq&lt;Atom&lt;'.'&gt;, digits&gt;;
+using exponent = Seq&lt;Atom&lt;'e', 'E'&gt;, Opt&lt;sign&gt;, digits&gt;;
+using number = Seq&lt;integer, Opt&lt;fraction&gt;, Opt&lt;exponent&gt;&gt;;
+
+</div>
+
+    <p>
+      If you're not familiar with templates in C++ this code will look pretty weird. It looks almost like we're calling
+      functions, but we're not - we're instantiating templates and giving them new names. The intermediate names before
+      'number' are technically optional, but writing the pattern out fully results in something like
+      <span class="inline-code">Seq&lt; Seq&lt;Opt&lt;Atom&lt;'-'&gt;&gt;, Oneof&lt;Seq&lt;Range&lt;'1', '9'&gt;, Some&lt;Range&lt;'0','9'&gt;...."</span>
+      - maintaining that gets tedious really quickly.
+    </p>
+    <p>
+      For example, 'Atom' is a built-in pattern that matches exactly one of a set of atoms (in this case characters,
+      since we're matching text) passed in via the template parameters.
+    </p>
+    <p>
+      'Range' is similar, behaving like "[a-z]" in regular expressions. "Some" is equivalent to "+" in regex, "Opt" is
+      equivalent to "?", "Oneof" is "(a|b)", and "Seq" just means "match these patterns in order". There are many more
+      patterns that we'll get into shortly.
+    </p>
+    <p>
+      By combining seven smaller patterns together, we end up with a 'number' pattern that will match integers and
+      floating point numbers like "-1838" or "823.39e-10".
+    </p>
+    <p>
+      To actually _do_ something with the pattern, we call its static "match" method. Since the matchers are static
+      methods and have no state of their own, match() takes a "context" argument which can be any type that implements a
+      few required methods. We aren't doing anything fancy, so we're using Matcheroni's built-in "TextContext".
+    </p>
+
+<div class="code_box language-cpp">
+struct JsonParser {
+  ...
+  static TextSpan match(TextContext& ctx, TextSpan body) {
+    return number::match(ctx, body);
+  }
+};
+
+</div>
+
+    <p>
+      Now we just read a string from a file via read() (in Utilities.hpp), wrap it in a span (basically a C++
+      string_view), and feed it to JsonParser::match.
+    </p>
+    <p>
+      The resulting 'tail' span will be the portion of the span _not_ consumed by the matcher:
+      <span class="inline-code">Atom&lt;'a'&gt;::match("asdf")</span> will return "sdf".
+    </p>
+    <p>
+      And lastly, we use another helper from Utilities.hpp to print out a colorized version of the match. Whitespace
+      shows up as dark grey, with '\n' and '\t' turned into dark grey 'n's and 't's, etcetera. Character locations past
+      end-of-file are dark grey @'s.
+    </p>
+
+<div class="code_box language-cpp">
+auto input = read(argv[1]);
+auto text = to_span(input);
+auto tail = JsonParser::match(ctx, text);
+print_summary(text, tail, 50);
+
+</div>
+
+    <p>
+    </p>
+
+    <p>
+      Now for tutorial 1B!
     </p>
 
     <div class="live_code" id="json_tut1b">
-      <div class="source_panel" id="source">
-        <div class="header_bar" id="source_header">./tutorial/json_tut1b.cpp</div>
-        <div class="code_jar language-cpp"></div>
+      <div class="left_panel">
+        <div class="header_bar">./tutorial/json_tut1b.cpp</div>
+        <div class="source_pane code_jar language-cpp"></div>
       </div>
-      <div class="input_output">
-        <div class="input_panel" id="input">
-          <div class="header_bar" id="input_header">./tutorial/json_tut1b.input</div>
-          <div class="code_jar language-cpp"></div>
-        </div>
-        <div class="output_panel" id="output">
-          <div class="header_bar" id="output_header">json_tut1b Output</div>
-          <div class="terminal"></div>
-        </div>
+      <div class="right_panel">
+        <div class="input_header header_bar">./tutorial/json_tut1b.input</div>
+        <div class="input_pane code_jar" contenteditable="true"></div>
+        <div class="spacer"></div>
+        <div class="output_header header_bar">json_tut1b output</div>
+        <div class="output_pane"></div>
       </div>
     </div>
 
@@ -88,41 +188,65 @@
       Here's tutorial 1c:<br>
     </p>
     <div class="live_code" id="json_tut1c">
-      <div class="source_panel" id="source">
-        <div class="header_bar" id="source_header">./tutorial/json_tut1c.cpp</div>
-        <div class="code_jar language-cpp"></div>
+      <div class="left_panel">
+        <div class="header_bar">./tutorial/json_tut1c.cpp</div>
+        <div class="source_pane code_jar language-cpp"></div>
       </div>
-      <div class="input_output">
-        <div class="input_panel" id="input">
-          <div class="header_bar" id="input_header">./tutorial/json_tut1c.input</div>
-          <div class="code_jar language-cpp"></div>
-        </div>
-        <div class="output_panel" id="output">
-          <div class="header_bar" id="output_header">json_tut1c Output</div>
-          <div class="terminal"></div>
-        </div>
+      <div class="right_panel">
+        <div class="input_header header_bar">./tutorial/json_tut1c.input</div>
+        <div class="input_pane code_jar" contenteditable="true"></div>
+        <div class="spacer"></div>
+        <div class="output_header header_bar">json_tut1c output</div>
+        <div class="output_pane"></div>
+      </div>
+    </div>
+
+    <p>
+      Here's tutorial 2a:<br>
+    </p>
+    <div class="live_code" id="json_tut2a">
+      <div class="left_panel">
+        <div class="header_bar">./tutorial/json_tut2a.cpp</div>
+        <div class="source_pane code_jar language-cpp"></div>
+      </div>
+      <div class="right_panel">
+        <div class="input_header header_bar">./tutorial/json_tut2a.input</div>
+        <div class="input_pane code_jar" contenteditable="true"></div>
+        <div class="spacer"></div>
+        <div class="output_header header_bar">json_tut2b output</div>
+        <div class="output_pane"></div>
       </div>
     </div>
 
 
-    <h1>
+
+
+    <p>
+      Here's tutorial 2b:<br>
+    </p>
+    <div class="live_code" id="json_tut2b">
+      <div class="left_panel">
+        <div class="header_bar">./tutorial/json_tut2b.cpp</div>
+        <div class="source_pane code_jar language-cpp"></div>
+      </div>
+      <div class="right_panel">
+        <div class="input_header header_bar">./tutorial/json_tut2b.input</div>
+        <div class="input_pane code_jar" contenteditable="true"></div>
+        <div class="spacer"></div>
+        <div class="output_header header_bar">json_tut2b output</div>
+        <div class="output_pane"></div>
+      </div>
+    </div>
+
+    <div class="question">
       Question from reader?
-    </h1>
+    </div>
     <p>
       Response thingy.
     </p>
     <p>
-      <b>
-        Warning and stuff
-      </b>
+      <b>Warning and stuff</b>
     </p>
-
-
-
-
-
-
-
 
 
     <div class="divider">Closing remarks</div>
@@ -132,8 +256,8 @@
     <p>
       -Austin Appleby
     </p>
-
   </div>
+
 
   <script type="text/javascript">
     console.log("source load starting @ " + performance.now());

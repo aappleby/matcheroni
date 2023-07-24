@@ -117,18 +117,27 @@ build bin/examples/json/json_test_pass : run_test bin/examples/json/json_test
 build obj/tutorial/json_tut1a.o    : compile_cpp tutorial/json_tut1a.cpp
 build bin/tutorial/json_tut1a      : link obj/tutorial/json_tut1a.o
 build bin/tutorial/json_tut1a_pass : run_test bin/tutorial/json_tut1a
+  args = tutorial/json_tut1a.input
 
 build obj/tutorial/json_tut1b.o    : compile_cpp tutorial/json_tut1b.cpp
 build bin/tutorial/json_tut1b      : link obj/tutorial/json_tut1b.o
 build bin/tutorial/json_tut1b_pass : run_test bin/tutorial/json_tut1b
+  args = tutorial/json_tut1b.input
 
 build obj/tutorial/json_tut1c.o    : compile_cpp tutorial/json_tut1c.cpp
 build bin/tutorial/json_tut1c      : link obj/tutorial/json_tut1c.o
 build bin/tutorial/json_tut1c_pass : run_test bin/tutorial/json_tut1c
+  args = tutorial/json_tut1c.input
 
 build obj/tutorial/json_tut2a.o    : compile_cpp tutorial/json_tut2a.cpp
 build bin/tutorial/json_tut2a      : link obj/tutorial/json_tut2a.o
 build bin/tutorial/json_tut2a_pass : run_test bin/tutorial/json_tut2a
+  args = tutorial/json_tut2a.input
+
+build obj/tutorial/json_tut2b.o    : compile_cpp tutorial/json_tut2b.cpp
+build bin/tutorial/json_tut2b      : link obj/tutorial/json_tut2b.o
+build bin/tutorial/json_tut2b_pass : run_test bin/tutorial/json_tut2b
+  args = tutorial/json_tut2b.input
 
 #-------------------------------------------------------------------------------
 # C lexer example (not finished)

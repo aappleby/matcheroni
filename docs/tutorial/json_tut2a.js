@@ -750,13 +750,13 @@ class CppException extends EmscriptenEH {
 // end include: runtime_exceptions.js
 var wasmBinaryFile;
 if (Module['locateFile']) {
-  wasmBinaryFile = 'json_tut1b.wasm';
+  wasmBinaryFile = 'json_tut2a.wasm';
   if (!isDataURI(wasmBinaryFile)) {
     wasmBinaryFile = locateFile(wasmBinaryFile);
   }
 } else {
   // Use bundler-friendly `new URL(..., import.meta.url)` pattern; works in browsers too.
-  wasmBinaryFile = new URL('json_tut1b.wasm', import.meta.url).href;
+  wasmBinaryFile = new URL('json_tut2a.wasm', import.meta.url).href;
 }
 
 function getBinarySync(file) {
@@ -4678,13 +4678,13 @@ var ___wasm_call_ctors = createExportWrapper("__wasm_call_ctors");
 /** @type {function(...*):?} */
 var _main = Module['_main'] = createExportWrapper("__main_argc_argv");
 /** @type {function(...*):?} */
+var _malloc = createExportWrapper("malloc");
+/** @type {function(...*):?} */
 var _fflush = Module['_fflush'] = createExportWrapper("fflush");
 /** @type {function(...*):?} */
 var ___errno_location = createExportWrapper("__errno_location");
 /** @type {function(...*):?} */
 var _free = Module['_free'] = createExportWrapper("free");
-/** @type {function(...*):?} */
-var _malloc = createExportWrapper("malloc");
 /** @type {function(...*):?} */
 var _setThrew = createExportWrapper("setThrew");
 /** @type {function(...*):?} */
@@ -4733,8 +4733,10 @@ var ___cxa_can_catch = createExportWrapper("__cxa_can_catch");
 /** @type {function(...*):?} */
 var ___cxa_is_pointer_type = createExportWrapper("__cxa_is_pointer_type");
 /** @type {function(...*):?} */
+var dynCall_viiij = Module['dynCall_viiij'] = createExportWrapper("dynCall_viiij");
+/** @type {function(...*):?} */
 var dynCall_jiji = Module['dynCall_jiji'] = createExportWrapper("dynCall_jiji");
-var ___emscripten_embedded_file_data = Module['___emscripten_embedded_file_data'] = 33571796;
+var ___emscripten_embedded_file_data = Module['___emscripten_embedded_file_data'] = 33572332;
 function invoke_ii(index,a1) {
   var sp = stackSave();
   try {

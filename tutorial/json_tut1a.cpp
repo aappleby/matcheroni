@@ -7,18 +7,16 @@ using namespace matcheroni;
 //------------------------------------------------------------------------------
 
 struct JsonParser {
-  // clang-format off
-  using sign      = Atom<'+', '-'>;
-  using digit     = Range<'0', '9'>;
-  using onenine   = Range<'1', '9'>;
-  using digits    = Some<digit>;
-  using integer   = Seq<Opt<Atom<'-'>>, Oneof<Seq<onenine, digits>, digit>>;
-  using fraction  = Seq<Atom<'.'>, digits>;
-  using exponent  = Seq<Atom<'e', 'E'>, Opt<sign>, digits>;
-  using number    = Seq<integer, Opt<fraction>, Opt<exponent>>;
-  // clang-format on
-
   static TextSpan match(TextContext& ctx, TextSpan body) {
+    using sign      = Atom<'+', '-'>;
+    using digit     = Range<'0', '9'>;
+    using onenine   = Range<'1', '9'>;
+    using digits    = Some<digit>;
+    using integer   = Seq<Opt<Atom<'-'>>, Oneof<Seq<onenine, digits>, digit>>;
+    using fraction  = Seq<Atom<'.'>, digits>;
+    using exponent  = Seq<Atom<'e', 'E'>, Opt<sign>, digits>;
+    using number    = Seq<integer, Opt<fraction>, Opt<exponent>>;
+
     return number::match(ctx, body);
   }
 };
@@ -26,6 +24,10 @@ struct JsonParser {
 //------------------------------------------------------------------------------
 
 int main(int argc, char** argv) {
+  printf("0123456789012345678901234567890123456789");
+  printf("0123456789012345678901234567890123456789");
+  printf("\n");
+
   if (argc < 2) {
     printf("json_tut1a <filename>\n");
     return 0;
@@ -39,7 +41,7 @@ int main(int argc, char** argv) {
   auto input = read(argv[1]);
   auto text = to_span(input);
   auto tail = JsonParser::match(ctx, text);
-  print_summary(text, tail, 40);
+  print_summary(text, tail, 50);
 
   return tail.is_valid() ? 0 : -1;
 }

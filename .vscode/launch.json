@@ -23,6 +23,11 @@
       "request": "launch",
       "program": "${workspaceFolder}/bin/matcheroni/matcheroni_test",
       "cwd": "${workspaceFolder}",
+      "setupCommands": [{
+        "description": "Enable pretty-printing for gdb",
+        "text": "-enable-pretty-printing",
+        "ignoreFailures": true
+      }],
     },
 
     {
@@ -32,6 +37,11 @@
       "request": "launch",
       "program": "${workspaceFolder}/bin/matcheroni/parseroni_test",
       "cwd": "${workspaceFolder}",
+      "setupCommands": [{
+        "description": "Enable pretty-printing for gdb",
+        "text": "-enable-pretty-printing",
+        "ignoreFailures": true
+      }],
     },
 
     //--------------------------------------------------------------------------
@@ -44,6 +54,11 @@
       "request": "launch",
       "program": "${workspaceFolder}/bin/examples/c_lexer/c_lexer_test",
       "cwd": "${workspaceFolder}",
+      "setupCommands": [{
+        "description": "Enable pretty-printing for gdb",
+        "text": "-enable-pretty-printing",
+        "ignoreFailures": true
+      }],
     },
 
     {
@@ -84,6 +99,11 @@
       "request": "launch",
       "program": "${workspaceFolder}/bin/examples/c_parser/c_parser_benchmark",
       "cwd": "${workspaceFolder}",
+      "setupCommands": [{
+        "description": "Enable pretty-printing for gdb",
+        "text": "-enable-pretty-printing",
+        "ignoreFailures": true
+      }],
       //"args" : ["tests"],
       //"args" : ["../csmith_files"],
       //"args" : ["../gcc/gcc"],
@@ -100,7 +120,11 @@
       "request": "launch",
       "program": "${workspaceFolder}/bin/examples/regex/regex_demo",
       "cwd": "${workspaceFolder}",
-      //"args" : ["regex_demo.txt"],
+      "setupCommands": [{
+        "description": "Enable pretty-printing for gdb",
+        "text": "-enable-pretty-printing",
+        "ignoreFailures": true
+      }],
       "args" : ["(^\\d+\\s+(very)?\\s+(good|bad)\\s+[a-z]*$)"],
     },
 
@@ -110,6 +134,11 @@
       "type": "cppdbg",
       "request": "launch",
       "program": "${workspaceFolder}/bin/examples/regex/regex_benchmark",
+      "setupCommands": [{
+        "description": "Enable pretty-printing for gdb",
+        "text": "-enable-pretty-printing",
+        "ignoreFailures": true
+      }],
       "cwd": "${workspaceFolder}",
     },
 
@@ -122,6 +151,11 @@
       "type": "cppdbg",
       "request": "launch",
       "program": "${workspaceFolder}/bin/examples/json/json_benchmark",
+      "setupCommands": [{
+        "description": "Enable pretty-printing for gdb",
+        "text": "-enable-pretty-printing",
+        "ignoreFailures": true
+      }],
       "cwd": "${workspaceFolder}",
     },
 
@@ -132,6 +166,11 @@
       "request": "launch",
       "program": "${workspaceFolder}/bin/examples/json/json_demo",
       "cwd": "${workspaceFolder}",
+      "setupCommands": [{
+        "description": "Enable pretty-printing for gdb",
+        "text": "-enable-pretty-printing",
+        "ignoreFailures": true
+      }],
       "args" : ["data/json_demo.json"],
     },
 
@@ -142,6 +181,11 @@
       "request": "launch",
       "program": "${workspaceFolder}/bin/examples/json/json_test",
       "cwd": "${workspaceFolder}",
+      "setupCommands": [{
+        "description": "Enable pretty-printing for gdb",
+        "text": "-enable-pretty-printing",
+        "ignoreFailures": true
+      }],
       "args" : ["data/json_demo.json"],
     },
 
@@ -155,6 +199,11 @@
       "request": "launch",
       "program": "${workspaceFolder}/bin/examples/toml/toml_test",
       "cwd": "${workspaceFolder}",
+      "setupCommands": [{
+        "description": "Enable pretty-printing for gdb",
+        "text": "-enable-pretty-printing",
+        "ignoreFailures": true
+      }],
       "args" : ["data/Cargo.toml"],
     },
 
@@ -218,7 +267,22 @@
         "text": "-enable-pretty-printing",
         "ignoreFailures": true
       }],
-      "args" : ["tutorial/json_tut2a.json"],
+      "args" : ["tutorial/json_tut2a.input"],
+    },
+
+    {
+      "name": "json_tut2b",
+      "preLaunchTask": "build_matcheroni",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/bin/tutorial/json_tut2b",
+      "cwd": "${workspaceFolder}",
+      "setupCommands": [{
+        "description": "Enable pretty-printing for gdb",
+        "text": "-enable-pretty-printing",
+        "ignoreFailures": true
+      }],
+      "args" : ["tutorial/json_tut2b.input"],
     },
 
 

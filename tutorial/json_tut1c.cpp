@@ -14,7 +14,6 @@ using namespace matcheroni;
 //------------------------------------------------------------------------------
 
 struct JsonParser {
-  // clang-format off
   using space     = Some<Atom<' ', '\n', '\r', '\t'>>;
   using sign      = Atom<'+', '-'>;
   using digit     = Range<'0', '9'>;
@@ -59,7 +58,7 @@ struct JsonParser {
     Any<space>,
     Atom<':'>,
     Any<space>,
-    TraceText<"val", Ref<value>>
+    TraceText<"value", Ref<value>>
   >;
 
   using object =
@@ -74,7 +73,6 @@ struct JsonParser {
   static TextSpan match(TextContext& ctx, TextSpan body) {
     return Seq<Any<space>, Ref<value>, Any<space>>::match(ctx, body);
   }
-  // clang-format on
 };
 
 //------------------------------------------------------------------------------
@@ -93,9 +91,9 @@ int main(int argc, char** argv) {
   auto input = read(argv[1]);
   auto text = to_span(input);
   auto tail = JsonParser::match(ctx, text);
-  print_summary(text, tail, 40);
+  print_summary(text, tail, 50);
 
-  return 0;
+  return tail.is_valid() ? 0 : -1;
 }
 
 //------------------------------------------------------------------------------

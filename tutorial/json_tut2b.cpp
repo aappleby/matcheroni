@@ -16,6 +16,16 @@
 
 using namespace matcheroni;
 
+struct NumberNode : public TextNode {
+  void init(const char* match_name, TextSpan span, uint64_t flags) override {
+    TextNode::init(match_name, span, flags);
+    value = atof(span.a);
+  }
+
+  using TextNode::TextNode;
+  double value = 0;
+};
+
 //------------------------------------------------------------------------------
 // To build a parse tree, we wrap the patterns we want to create nodes for
 // in a Capture<> matcher that will invoke our node factory. We can also wrap
@@ -45,7 +55,7 @@ struct JsonParser {
     using value =
     Oneof<
       Capture<"array",   array,   TextNode>,
-      Capture<"number",  number,  TextNode>,
+      Capture<"number",  number,  NumberNode>,
       Capture<"object",  object,  TextNode>,
       Capture<"string",  string,  TextNode>,
       Capture<"keyword", keyword, TextNode>
@@ -53,7 +63,7 @@ struct JsonParser {
     return value::match(ctx, body);
   }
 
-  using array =
+  using array  =
   Seq<
     Atom<'['>,
     Any<space>,
@@ -62,7 +72,7 @@ struct JsonParser {
     Atom<']'>
   >;
 
-  using pair =
+  using pair   =
   Seq<
     Capture<"key", string, TextNode>,
     Any<space>,
@@ -87,6 +97,27 @@ struct JsonParser {
 
 //------------------------------------------------------------------------------
 
+double sum(TextNode* node) {
+  double result = 0;
+  if (auto num = dynamic_cast<NumberNode*>(node)) {
+    result += num->value;
+  }
+  for (auto n = node->child_head(); n; n = n->node_next()) {
+    result += sum(n);
+  }
+  return result;
+}
+
+double sum(TextNodeContext& context) {
+  double result = 0;
+  for (auto n = context.top_head(); n; n = n->node_next()) {
+    result += sum(n);
+  }
+  return result;
+}
+
+//------------------------------------------------------------------------------
+
 int main(int argc, char** argv) {
   if (argc < 2) {
     printf("json_tut1a <filename>\n");
@@ -101,6 +132,10 @@ int main(int argc, char** argv) {
   auto input = read(argv[1]);
   auto text = to_span(input);
   auto tail = JsonParser::match(ctx, text);
+
+  printf("Sum of number nodes: %f\n", sum(ctx));
+  printf("\n");
+
   print_summary(text, tail, ctx, 50);
 
   return tail.is_valid() ? 0 : -1;

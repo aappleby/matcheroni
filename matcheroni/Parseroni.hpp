@@ -142,7 +142,8 @@ struct NodeBase {
 
   //----------------------------------------
 
-  void init(const char* match_name, SpanType span, uint64_t flags) {
+  // FIXME this virtual might slow things down
+  virtual void init(const char* match_name, SpanType span, uint64_t flags) {
     this->match_name = match_name;
     this->span  = span;
     this->flags = flags;
@@ -302,7 +303,6 @@ struct NodeContext {
   // captures without children?
 
   void create2(NodeType* new_node, const char* match_name, SpanType span, uint64_t flags, NodeType* old_tail) {
-    new_node->init(match_name, span, flags);
 
     if (span.b > _highwater) _highwater = span.b;
 
@@ -316,6 +316,8 @@ struct NodeContext {
       auto child_tail = _top_tail;
       splice(new_node, (NodeType*)child_head, child_tail);
     }
+
+    new_node->init(match_name, span, flags);
   }
 
 

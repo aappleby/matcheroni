@@ -50,7 +50,7 @@ int main(int argc, char** argv) {
   }
 
   printf("Parsing toml took %f msec\n", time_b - time_a);
-  print_summary(text, tail, ctx, 40);
+  print_summary(text, tail, ctx, 50);
 
   return 0;
 }

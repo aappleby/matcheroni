@@ -150,10 +150,10 @@ inline void print_context(TextSpan text, const context& ctx, int width) {
 
 inline void print_summary(TextSpan text, TextSpan tail, int width) {
   printf("Match text:\n");
-  print_match(text, text, 40);
+  print_match(text, text, width);
   printf("\n");
   printf("Match result:\n");
-  print_match(text, tail, 40);
+  print_match(text, tail, width);
   printf("\n");
 }
 
@@ -161,7 +161,7 @@ template<typename context>
 inline void print_summary(TextSpan text, TextSpan tail, const context& ctx, int width) {
   print_summary(text, tail, width);
   printf("Parse tree:\n");
-  print_context(text, ctx, 40);
+  print_context(text, ctx, width);
 }
 
 //------------------------------------------------------------------------------

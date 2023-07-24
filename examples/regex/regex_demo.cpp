@@ -41,7 +41,7 @@ int main(int argc, char** argv) {
   TextNodeContext ctx;
   auto text = to_span(argv[1]);
   auto tail = parse_regex(ctx, text);
-  print_summary(text, tail, 40);
+  print_summary(text, tail, 50);
 
   return 0;
 }

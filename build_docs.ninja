@@ -17,6 +17,14 @@ build obj/ems/tutorial/json_tut1c.o  : compile_cpp_ems tutorial/json_tut1c.cpp
 build docs/tutorial/json_tut1c.js    : link_ems obj/ems/tutorial/json_tut1c.o | tutorial/json_tut1c.input
   embed=tutorial
 
+build obj/ems/tutorial/json_tut2a.o  : compile_cpp_ems tutorial/json_tut2a.cpp
+build docs/tutorial/json_tut2a.js    : link_ems obj/ems/tutorial/json_tut2a.o | tutorial/json_tut2a.input
+  embed=tutorial
+
+build obj/ems/tutorial/json_tut2b.o  : compile_cpp_ems tutorial/json_tut2b.cpp
+build docs/tutorial/json_tut2b.js    : link_ems obj/ems/tutorial/json_tut2b.o | tutorial/json_tut2b.input
+  embed=tutorial
+
 #build docs/tutorial/tutorial_src.data docs/tutorial/tutorial_src.js: command $
 #    tutorial/json_tut1a.cpp $
 #    tutorial/json_tut1b.cpp $
