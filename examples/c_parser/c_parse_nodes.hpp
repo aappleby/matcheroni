@@ -37,7 +37,7 @@ struct TraceToken {
     if (tail.is_valid()) {
       print_trellis(depth, name, "!", 0x80FF80);
       printf("\n");
-      print_context(ctx.text_span, ctx, 40);
+      utils::print_context(ctx.text_span, ctx, 40);
       printf("\n");
     }
     else {

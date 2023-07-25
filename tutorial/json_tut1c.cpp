@@ -35,11 +35,11 @@ struct JsonParser {
   static TextSpan value(TextContext& ctx, TextSpan body) {
     return
     Oneof<
-      TraceText<"array",   array>,
-      TraceText<"number",  number>,
-      TraceText<"object",  object>,
-      TraceText<"string",  string>,
-      TraceText<"keyword", keyword>
+      utils::TraceText<"array",   array>,
+      utils::TraceText<"number",  number>,
+      utils::TraceText<"object",  object>,
+      utils::TraceText<"string",  string>,
+      utils::TraceText<"keyword", keyword>
     >::match(ctx, body);
   }
 
@@ -47,25 +47,25 @@ struct JsonParser {
   Seq<
     Atom<'['>,
     Any<space>,
-    list<TraceText<"element", Ref<value>>>,
+    list<utils::TraceText<"element", Ref<value>>>,
     Any<space>,
     Atom<']'>
   >;
 
   using pair =
   Seq<
-    TraceText<"key", string>,
+    utils::TraceText<"key", string>,
     Any<space>,
     Atom<':'>,
     Any<space>,
-    TraceText<"value", Ref<value>>
+    utils::TraceText<"value", Ref<value>>
   >;
 
   using object =
   Seq<
     Atom<'{'>,
     Any<space>,
-    list<TraceText<"pair", pair>>,
+    list<utils::TraceText<"pair", pair>>,
     Any<space>,
     Atom<'}'>
   >;
@@ -88,10 +88,10 @@ int main(int argc, char** argv) {
   printf("\n");
 
   TextContext ctx;
-  auto input = read(argv[1]);
-  auto text = to_span(input);
+  auto input = utils::read(argv[1]);
+  auto text = utils::to_span(input);
   auto tail = JsonParser::match(ctx, text);
-  print_summary(text, tail, 50);
+  utils::print_summary(text, tail, 50);
 
   return tail.is_valid() ? 0 : -1;
 }

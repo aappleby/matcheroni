@@ -31,9 +31,9 @@ bool no_ws_streq(const std::string& a, const std::string& b) {
 void parse_and_dump(matcher_function<CContext, CToken> parse, std::string source, std::string expected) {
   CLexer lexer;
   CContext context;
-  auto text_span = to_span(source);
+  auto text_span = utils::to_span(source);
   auto lex_ok = lexer.lex(text_span);
-  TokSpan tok_span = to_span(lexer.tokens);
+  TokSpan tok_span = utils::to_span(lexer.tokens);
 
   //auto parse_ok = context.parse(text_span, tok_span);
 

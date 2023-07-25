@@ -47,7 +47,7 @@ int main(int argc, char** argv) {
   raw_text.push_back(0);
 
   CLexer lexer;
-  lexer.lex(to_span(raw_text));
+  lexer.lex(utils::to_span(raw_text));
 
   for (auto& l : lexer.tokens) {
     l.dump();

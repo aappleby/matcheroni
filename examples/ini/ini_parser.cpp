@@ -20,7 +20,7 @@ using line    = Oneof<section, keyval, comment, blank>;
 using doc     = Any<line>;
 
 bool parse_ini(const char* text) {
-  auto span = to_span(text);
+  auto span = utils::to_span(text);
 
   TextContext ctx;
   auto tail = doc::match(ctx, span);

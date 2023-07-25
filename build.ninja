@@ -114,6 +114,11 @@ build bin/examples/json/json_test_pass : run_test bin/examples/json/json_test
 #-------------------------------------------------------------------------------
 # Tutorial examples
 
+build obj/tutorial/json_tut0a.o    : compile_cpp tutorial/json_tut0a.cpp
+build bin/tutorial/json_tut0a      : link obj/tutorial/json_tut0a.o
+build bin/tutorial/json_tut0a_pass : run_test bin/tutorial/json_tut0a
+  args = tutorial/json_tut0a.input
+
 build obj/tutorial/json_tut1a.o    : compile_cpp tutorial/json_tut1a.cpp
 build bin/tutorial/json_tut1a      : link obj/tutorial/json_tut1a.o
 build bin/tutorial/json_tut1a_pass : run_test bin/tutorial/json_tut1a

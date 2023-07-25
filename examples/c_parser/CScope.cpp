@@ -51,7 +51,7 @@ void CScope::add_type(CContext& ctx, const CToken* a, token_list& types) {
 //----------------------------------------
 
 void CScope::add_typedef_type(const char* t) {
-  TextSpan span = matcheroni::to_span(t);
+  TextSpan span = matcheroni::utils::to_span(t);
 
   for (const auto& c : typedef_types) {
     if (strcmp_span(span, c) == 0) return;

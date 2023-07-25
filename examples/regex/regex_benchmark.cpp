@@ -40,35 +40,35 @@ using namespace matcheroni;
 #ifdef REGEX_BENCHMARK_BASELINE
 
 void benchmark_baseline(const char* path) {
-  std::string buf = read(path);
+  std::string buf = utils::read(path);
 
   {
     int checksum = 0;
-    double time = -timestamp_ms();
+    double time = -utils::timestamp_ms();
     for (auto c : buf) {
       checksum = checksum * 0x1234567 ^ c;
     }
-    time += timestamp_ms();
+    time += utils::timestamp_ms();
     printf("Email: Checksum 0x%08x, time %f\n", checksum, time);
   }
 
   {
     int checksum = 0;
-    double time = -timestamp_ms();
+    double time = -utils::timestamp_ms();
     for (auto c : buf) {
       checksum = checksum * 0x7654321 ^ c;
     }
-    time += timestamp_ms();
+    time += utils::timestamp_ms();
     printf("Email: Checksum 0x%08x, time %f\n", checksum, time);
   }
 
   {
     int checksum = 0;
-    double time = -timestamp_ms();
+    double time = -utils::timestamp_ms();
     for (auto c : buf) {
       checksum = checksum * 0x123321 ^ c;
     }
-    time += timestamp_ms();
+    time += utils::timestamp_ms();
     printf("Email: Checksum 0x%08x, time %f\n", checksum, time);
   }
 }
@@ -86,7 +86,7 @@ void benchmark_pattern(TextSpan body) {
   int matches = 0;
   double time = 0;
 
-  time -= timestamp_ms();
+  time -= utils::timestamp_ms();
   while(body.begin != body.end) {
     auto tail = P::match(ctx, body);
     if (tail.is_valid()) {
@@ -97,7 +97,7 @@ void benchmark_pattern(TextSpan body) {
       body.begin++;
     }
   }
-  time += timestamp_ms();
+  time += utils::timestamp_ms();
 
   printf("Match count %4d, time %f msec\n", matches, time);
   fflush(stdout);
@@ -152,8 +152,8 @@ using matcheroni_ip4_pattern = Seq<
 >;
 
 void benchmark_matcheroni(const char* path) {
-  std::string buf = read(path);
-  TextSpan body = to_span(buf);
+  std::string buf = utils::read(path);
+  TextSpan body = utils::to_span(buf);
 
   printf("Email: ");
   benchmark_pattern<matcheroni_email_pattern>(body);
@@ -172,7 +172,7 @@ void benchmark_matcheroni(const char* path) {
 #ifdef REGEX_BENCHMARK_STD_REGEX
 
 void benchmark_std_regex(const char* path) {
-  std::string buf = read(path);
+  std::string buf = utils::read(path);
 
   const char* regex_email = "[\\w.+-]+@[\\w.-]+\\.[\\w.-]+";
   const char* regex_url   = "[\\w]+:\\/\\/[^\\/\\s?#]+[^\\s?#]+(?:\\?[^\\s#]*)?(?:#[^\\s]*)?";
@@ -184,12 +184,12 @@ void benchmark_std_regex(const char* path) {
     std::cregex_iterator end;
 
     int match_count = 0;
-    double time = -timestamp_ms();
+    double time = -utils::timestamp_ms();
     while (it != end) {
       match_count++;
       it++;
     }
-    time += timestamp_ms();
+    time += utils::timestamp_ms();
     printf("Email: Match count %4d, time %f\n", match_count, time);
   }
 
@@ -199,12 +199,12 @@ void benchmark_std_regex(const char* path) {
     std::cregex_iterator end;
 
     int match_count = 0;
-    double time = -timestamp_ms();
+    double time = -utils::timestamp_ms();
     while (it != end) {
       match_count++;
       it++;
     }
-    time += timestamp_ms();
+    time += utils::timestamp_ms();
     printf("URL:   Match count %4d, time %f\n", match_count, time);
   }
 
@@ -214,12 +214,12 @@ void benchmark_std_regex(const char* path) {
     std::cregex_iterator end;
 
     int match_count = 0;
-    double time = -timestamp_ms();
+    double time = -utils::timestamp_ms();
     while (it != end) {
       match_count++;
       it++;
     }
-    time += timestamp_ms();
+    time += utils::timestamp_ms();
     printf("IP4:   Match count %4d, time %f\n", match_count, time);
   }
 }
@@ -230,7 +230,7 @@ void benchmark_std_regex(const char* path) {
 #ifdef REGEX_BENCHMARK_BOOST
 
 void benchmark_boost_regex(const char* path) {
-  std::string buf = read(path);
+  std::string buf = utils::read(path);
 
   const char* regex_email = "[\\w.+-]+@[\\w.-]+\\.[\\w.-]+";
   const char* regex_url   = "[\\w]+:\\/\\/[^\\/\\s?#]+[^\\s?#]+(?:\\?[^\\s#]*)?(?:#[^\\s]*)?";
@@ -242,12 +242,12 @@ void benchmark_boost_regex(const char* path) {
     boost::cregex_iterator end;
 
     int match_count = 0;
-    double time = -timestamp_ms();
+    double time = -utils::timestamp_ms();
     while (it != end) {
       match_count++;
       it++;
     }
-    time += timestamp_ms();
+    time += utils::timestamp_ms();
     printf("Email: Match count %4d, time %f\n", match_count, time);
   }
 
@@ -257,12 +257,12 @@ void benchmark_boost_regex(const char* path) {
     boost::cregex_iterator end;
 
     int match_count = 0;
-    double time = -timestamp_ms();
+    double time = -utils::timestamp_ms();
     while (it != end) {
       match_count++;
       it++;
     }
-    time += timestamp_ms();
+    time += utils::timestamp_ms();
     printf("URL:   Match count %4d, time %f\n", match_count, time);
   }
 
@@ -272,12 +272,12 @@ void benchmark_boost_regex(const char* path) {
     boost::cregex_iterator end;
 
     int match_count = 0;
-    double time = -timestamp_ms();
+    double time = -utils::timestamp_ms();
     while (it != end) {
       match_count++;
       it++;
     }
-    time += timestamp_ms();
+    time += utils::timestamp_ms();
     printf("IP4:   Match count %4d, time %f\n", match_count, time);
   }
 }

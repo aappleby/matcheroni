@@ -750,13 +750,13 @@ class CppException extends EmscriptenEH {
 // end include: runtime_exceptions.js
 var wasmBinaryFile;
 if (Module['locateFile']) {
-  wasmBinaryFile = 'json_tut2a.wasm';
+  wasmBinaryFile = 'json_tut0a.wasm';
   if (!isDataURI(wasmBinaryFile)) {
     wasmBinaryFile = locateFile(wasmBinaryFile);
   }
 } else {
   // Use bundler-friendly `new URL(..., import.meta.url)` pattern; works in browsers too.
-  wasmBinaryFile = new URL('json_tut2a.wasm', import.meta.url).href;
+  wasmBinaryFile = new URL('json_tut0a.wasm', import.meta.url).href;
 }
 
 function getBinarySync(file) {
@@ -4301,6 +4301,33 @@ function dbg(text) {
       abortOnCannotGrowMemory(requestedSize);
     };
 
+  
+  var _proc_exit = (code) => {
+      EXITSTATUS = code;
+      if (!keepRuntimeAlive()) {
+        if (Module['onExit']) Module['onExit'](code);
+        ABORT = true;
+      }
+      quit_(code, new ExitStatus(code));
+    };
+  /** @suppress {duplicate } */
+  /** @param {boolean|number=} implicit */
+  var exitJS = (status, implicit) => {
+      EXITSTATUS = status;
+  
+      checkUnflushedContent();
+  
+      // if exit() was called explicitly, warn the user if the runtime isn't actually being shut down
+      if (keepRuntimeAlive() && !implicit) {
+        var msg = `program exited (with status: ${status}), but keepRuntimeAlive() is set (counter=${runtimeKeepaliveCounter}) due to an async operation, so halting execution but not exiting the runtime or preventing further async execution (you can use emscripten_force_exit, if you want to force a true shutdown)`;
+        readyPromiseReject(msg);
+        err(msg);
+      }
+  
+      _proc_exit(status);
+    };
+  var _exit = exitJS;
+
   function _fd_close(fd) {
   try {
   
@@ -4399,30 +4426,6 @@ function dbg(text) {
   }
   }
 
-  
-  var _proc_exit = (code) => {
-      EXITSTATUS = code;
-      if (!keepRuntimeAlive()) {
-        if (Module['onExit']) Module['onExit'](code);
-        ABORT = true;
-      }
-      quit_(code, new ExitStatus(code));
-    };
-  /** @param {boolean|number=} implicit */
-  var exitJS = (status, implicit) => {
-      EXITSTATUS = status;
-  
-      checkUnflushedContent();
-  
-      // if exit() was called explicitly, warn the user if the runtime isn't actually being shut down
-      if (keepRuntimeAlive() && !implicit) {
-        var msg = `program exited (with status: ${status}), but keepRuntimeAlive() is set (counter=${runtimeKeepaliveCounter}) due to an async operation, so halting execution but not exiting the runtime or preventing further async execution (you can use emscripten_force_exit, if you want to force a true shutdown)`;
-        readyPromiseReject(msg);
-        err(msg);
-      }
-  
-      _proc_exit(status);
-    };
 
   var handleException = (e) => {
       // Certain exception types we do not treat as errors since they are used for
@@ -4659,6 +4662,7 @@ var wasmImports = {
   abort: _abort,
   emscripten_memcpy_big: _emscripten_memcpy_big,
   emscripten_resize_heap: _emscripten_resize_heap,
+  exit: _exit,
   fd_close: _fd_close,
   fd_read: _fd_read,
   fd_seek: _fd_seek,
@@ -4678,13 +4682,13 @@ var ___wasm_call_ctors = createExportWrapper("__wasm_call_ctors");
 /** @type {function(...*):?} */
 var _main = Module['_main'] = createExportWrapper("__main_argc_argv");
 /** @type {function(...*):?} */
-var _malloc = createExportWrapper("malloc");
-/** @type {function(...*):?} */
 var _fflush = Module['_fflush'] = createExportWrapper("fflush");
 /** @type {function(...*):?} */
 var ___errno_location = createExportWrapper("__errno_location");
 /** @type {function(...*):?} */
 var _free = Module['_free'] = createExportWrapper("free");
+/** @type {function(...*):?} */
+var _malloc = createExportWrapper("malloc");
 /** @type {function(...*):?} */
 var _setThrew = createExportWrapper("setThrew");
 /** @type {function(...*):?} */
@@ -4733,10 +4737,8 @@ var ___cxa_can_catch = createExportWrapper("__cxa_can_catch");
 /** @type {function(...*):?} */
 var ___cxa_is_pointer_type = createExportWrapper("__cxa_is_pointer_type");
 /** @type {function(...*):?} */
-var dynCall_viiij = Module['dynCall_viiij'] = createExportWrapper("dynCall_viiij");
-/** @type {function(...*):?} */
 var dynCall_jiji = Module['dynCall_jiji'] = createExportWrapper("dynCall_jiji");
-var ___emscripten_embedded_file_data = Module['___emscripten_embedded_file_data'] = 33573544;
+var ___emscripten_embedded_file_data = Module['___emscripten_embedded_file_data'] = 33572828;
 function invoke_ii(index,a1) {
   var sp = stackSave();
   try {

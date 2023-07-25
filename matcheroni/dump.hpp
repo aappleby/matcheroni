@@ -8,6 +8,7 @@
 #include "matcheroni/Matcheroni.hpp"  // for Span
 
 namespace matcheroni {
+namespace utils {
 
 //------------------------------------------------------------------------------
 
@@ -196,6 +197,7 @@ inline void print_class_name(int max_len = 0) {
 }
 */
 
+};  // namespace utils
 };  // namespace matcheroni
 
 //------------------------------------------------------------------------------

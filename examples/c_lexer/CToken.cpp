@@ -112,11 +112,11 @@ void CToken::dump() const {
   }
   while (dump.size() < span_len) dump += " ";
 
-  set_color(type_to_color());
+  utils::set_color(type_to_color());
   printf("%-14.14s ", type_to_str());
-  set_color(0);
+  utils::set_color(0);
   printf("%s", dump.c_str());
-  set_color(0);
+  utils::set_color(0);
 }
 
 //----------------------------------------------------------------------------

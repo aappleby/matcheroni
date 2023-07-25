@@ -36,7 +36,7 @@ int main(int argc, char** argv) {
   TextSpan text = to_span(buf);
   */
 
-  TextSpan text = to_span(json);
+  TextSpan text = utils::to_span(json);
   TextNodeContext ctx;
 
   double time_a, time_b;
@@ -44,13 +44,13 @@ int main(int argc, char** argv) {
 
   for (int rep = 0; rep < 100; rep++) {
     ctx.reset();
-    time_a = timestamp_ms();
+    time_a = utils::timestamp_ms();
     tail = parse_json(ctx, text);
-    time_b = timestamp_ms();
+    time_b = utils::timestamp_ms();
   }
 
   printf("Parsing toml took %f msec\n", time_b - time_a);
-  print_summary(text, tail, ctx, 50);
+  utils::print_summary(text, tail, ctx, 50);
 
   return 0;
 }

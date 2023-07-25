@@ -211,6 +211,21 @@
     // Json tutorials
 
     {
+      "name": "json_tut0a",
+      "preLaunchTask": "build_matcheroni",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/bin/tutorial/json_tut0a",
+      "cwd": "${workspaceFolder}",
+      "setupCommands": [{
+        "description": "Enable pretty-printing for gdb",
+        "text": "-enable-pretty-printing",
+        "ignoreFailures": true
+      }],
+      "args" : ["tutorial/json_tut0a.input"],
+    },
+
+    {
       "name": "json_tut1a",
       "preLaunchTask": "build_matcheroni",
       "type": "cppdbg",

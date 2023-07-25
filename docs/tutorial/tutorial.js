@@ -2,9 +2,6 @@ console.log("tutorial.js load @ " + performance.now());
 
 import { CodeJar } from "../assets/codejar.min.js";
 
-//import { AnsiUp } from "../assets/ansi_up.js";
-//console.log(AnsiUp);
-
 const highlight = (editor) => {
   editor.textContent = editor.textContent
   hljs.highlightElement(editor)
@@ -43,31 +40,9 @@ class RightPanel {
     this.panel_div     = panel;
     this.input_header  = panel.querySelector(".input_header");
     this.input_pane    = panel.querySelector(".input_pane");
-    //this.input_jar     = new CodeJar(this.input_pane, () => {}, {tab:"  "});
     this.output_header = panel.querySelector(".output_header");
     this.output_pane   = panel.querySelector(".output_pane");
-    //this.output_term   = null;
     this.fitAddon      = null;
-
-    /*
-    this.output_term = new Terminal({
-      //cols:80,
-      //rows:40,
-      fontSize: 14,
-      fontFamily: "monospace",
-      convertEol: true,
-      theme: {
-        background: '#1E1E1E'
-      },
-      scrollback: 9999,
-      //scrollback: 0,
-    });
-
-    this.fitAddon = new FitAddon.FitAddon();
-    this.output_term.loadAddon(this.fitAddon);
-    this.output_term.open(this.output_pane);
-    this.fitAddon.fit();
-    */
   }
 
   set_mod(mod) {
@@ -110,20 +85,9 @@ class Tutorial {
     this.right_panel.input_pane.oninput = ()=> {
       let filename = this.right_panel.input_header.innerText;
       let contents = this.right_panel.input_pane.innerText;
-      //console.log("writing " + filename + " = " + contents);
       this.mod.FS.writeFile(filename, contents);
       this.convert();
     };
-
-    /*
-    this.right_panel.input_jar.onUpdate(() => {
-      let filename = this.right_panel.input_header.innerText;
-      let contents = this.right_panel.input_pane.innerText;
-      //console.log("writing " + filename + " = " + contents);
-      this.mod.FS.writeFile(filename, contents);
-      this.convert();
-    });
-    */
 
     this.left_panel.reload();
     this.right_panel.reload();
@@ -137,22 +101,9 @@ class Tutorial {
 
     let args = [this.right_panel.input_header.innerText];
     let ret = this.mod.callMain(args);
-    //console.log(ret);
 
     this.right_panel.output_header.style.backgroundColor = ret == 0 ? "#353" : "#533";
-    //this.right_panel.output_term.clear();
-    //this.right_panel.output_term.write(this.stdout);
-
-    /*
-    var txt  = "\n\n\033[1;33;40m 33;40  \033[1;33;41m 33;41  \033[1;33;42m 33;42  \033[1;33;43m 33;43  \033[1;33;44m 33;44  \033[1;33;45m 33;45  \033[1;33;46m 33;46  \033[1m\033[0\n\n\033[1;33;42m >> Tests OK\n\n"
-    var ansi_up = new AnsiUp;
-    var html = ansi_up.ansi_to_html(txt);
-    var cdiv = document.getElementById("console");
-    cdiv.innerHTML = html;
-    */
-
     this.right_panel.output_pane.innerHTML = this.ansi_up.ansi_to_html(this.stdout);
-    //this.right_panel.fitAddon.fit();
   }
 }
 
@@ -181,6 +132,7 @@ function load_tutorial(name) {
 
 //------------------------------------------------------------------------------
 
+load_tutorial("json_tut0a");
 load_tutorial("json_tut1a");
 load_tutorial("json_tut1b");
 load_tutorial("json_tut1c");

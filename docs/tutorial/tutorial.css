@@ -127,6 +127,7 @@ p {
   height:700px;
   flex-basis: 1;
   flex-grow: 0;
+  align-items: stretch;
 
   display: flex;
   flex-direction: column;
@@ -154,7 +155,7 @@ p {
 
 .source_pane {
   flex-basis: auto;
-  flex-grow: 0;
+  flex-grow: 1;
   padding:8px;
   background-color: #1E1E1E;
   /*overflow:scroll;*/

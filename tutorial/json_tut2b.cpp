@@ -120,7 +120,7 @@ double sum(TextNodeContext& context) {
 
 int main(int argc, char** argv) {
   if (argc < 2) {
-    printf("json_tut1a <filename>\n");
+    printf("json_tut2b <filename>\n");
     return 0;
   }
 
@@ -129,14 +129,14 @@ int main(int argc, char** argv) {
   printf("\n");
 
   TextNodeContext ctx;
-  auto input = read(argv[1]);
-  auto text = to_span(input);
+  auto input = utils::read(argv[1]);
+  auto text = utils::to_span(input);
   auto tail = JsonParser::match(ctx, text);
 
   printf("Sum of number nodes: %f\n", sum(ctx));
   printf("\n");
 
-  print_summary(text, tail, ctx, 50);
+  utils::print_summary(text, tail, ctx, 50);
 
   return tail.is_valid() ? 0 : -1;
 }

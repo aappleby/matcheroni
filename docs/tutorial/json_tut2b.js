@@ -4736,7 +4736,7 @@ var ___cxa_is_pointer_type = createExportWrapper("__cxa_is_pointer_type");
 var dynCall_viiij = Module['dynCall_viiij'] = createExportWrapper("dynCall_viiij");
 /** @type {function(...*):?} */
 var dynCall_jiji = Module['dynCall_jiji'] = createExportWrapper("dynCall_jiji");
-var ___emscripten_embedded_file_data = Module['___emscripten_embedded_file_data'] = 33573184;
+var ___emscripten_embedded_file_data = Module['___emscripten_embedded_file_data'] = 33573640;
 function invoke_ii(index,a1) {
   var sp = stackSave();
   try {

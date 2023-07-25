@@ -19,6 +19,7 @@
 #include <string_view>
 
 namespace matcheroni {
+namespace utils {
 
 //------------------------------------------------------------------------------
 
@@ -259,5 +260,5 @@ inline uint64_t hash_context(context& ctx) {
 }
 
 //------------------------------------------------------------------------------
-
+}; // namespace utils
 }; // namespace matcheroni

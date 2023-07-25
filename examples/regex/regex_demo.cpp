@@ -39,9 +39,9 @@ int main(int argc, char** argv) {
   // get a non-null endpoint for the match.
 
   TextNodeContext ctx;
-  auto text = to_span(argv[1]);
+  auto text = utils::to_span(argv[1]);
   auto tail = parse_regex(ctx, text);
-  print_summary(text, tail, 50);
+  utils::print_summary(text, tail, 50);
 
   return 0;
 }

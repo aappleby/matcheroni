@@ -139,29 +139,29 @@ int test_parser(int argc, char** argv) {
   for (const auto& path : paths) {
     {
       if (verbose) printf("Cleaning up\n");
-      cleanup_time -= timestamp_ms();
+      cleanup_time -= utils::timestamp_ms();
       lexer.reset();
       context.reset();
-      cleanup_time += timestamp_ms();
+      cleanup_time += utils::timestamp_ms();
     }
 
     {
       if (verbose) printf("Loading %s\n", path.c_str());
-      io_time -= timestamp_ms();
+      io_time -= utils::timestamp_ms();
 
       text.clear();
-      read(path.c_str(), text);
+      utils::read(path.c_str(), text);
       for (auto c : text) if (c == '\n') file_lines++;
       file_bytes += text.size();
 
-      io_time += timestamp_ms();
+      io_time += utils::timestamp_ms();
     }
 
     if (verbose) printf("Lexing %s\n", path.c_str());
-    lex_time -= timestamp_ms();
-    auto text_span = to_span(text);
+    lex_time -= utils::timestamp_ms();
+    auto text_span = utils::to_span(text);
     lexer.lex(text_span);
-    lex_time += timestamp_ms();
+    lex_time += utils::timestamp_ms();
 
     // Filter all files containing preproc, but not if they're a csmith file
     if (path.find("csmith") == std::string::npos) {
@@ -181,9 +181,9 @@ int test_parser(int argc, char** argv) {
     TokSpan tok_span(lexer.tokens.data(), lexer.tokens.data() + lexer.tokens.size());
 
     if (verbose) printf("%04d: Parsing %s\n", file_pass, path.c_str());
-    parse_time -= timestamp_ms();
+    parse_time -= utils::timestamp_ms();
     bool parse_ok = context.parse(text_span, tok_span);
-    parse_time += timestamp_ms();
+    parse_time += utils::timestamp_ms();
 
     if (!parse_ok) {
       file_fail++;
@@ -239,17 +239,17 @@ int test_parser(int argc, char** argv) {
   printf("File skip      %d\n", file_skip);
 
   if (file_fail) {
-    set_color(0x008080FF);
+    utils::set_color(0x008080FF);
     printf("##################\n");
     printf("##     FAIL     ##\n");
     printf("##################\n");
-    set_color(0);
+    utils::set_color(0);
   } else {
-    set_color(0x0080FF80);
+    utils::set_color(0x0080FF80);
     printf("##################\n");
     printf("##     PASS     ##\n");
     printf("##################\n");
-    set_color(0);
+    utils::set_color(0);
   }
 
   return 0;

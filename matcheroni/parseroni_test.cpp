@@ -10,7 +10,7 @@ using namespace matcheroni;
 
 //------------------------------------------------------------------------------
 
-struct TestNode : public TextNode, public InstanceCounter<TestNode> {
+struct TestNode : public TextNode, public utils::InstanceCounter<TestNode> {
   using TextNode::TextNode;
 
   TestNode* node_prev()  { return (TestNode*)_node_prev; }
@@ -47,7 +47,7 @@ void sexp_to_string(TestNode* n, std::string& out) {
 
 template<typename context>
 void check_hash(context& ctx, uint64_t hash_a) {
-  uint64_t hash_b = hash_context(ctx);
+  uint64_t hash_b = utils::hash_context(ctx);
   printf("Expected hash 0x%016lx\n", hash_a);
   printf("Actual hash   0x%016lx\n", hash_b);
   matcheroni_assert(hash_a == hash_b && "bad hash");
@@ -57,9 +57,9 @@ void check_hash(context& ctx, uint64_t hash_a) {
 
 void reset_everything() {
   LinearAlloc::inst().reset();
-  InstanceCounter<TestNode>::reset();
-  matcheroni_assert(InstanceCounter<TestNode>::live == 0);
-  matcheroni_assert(InstanceCounter<TestNode>::dead == 0);
+  utils::InstanceCounter<TestNode>::reset();
+  matcheroni_assert(utils::InstanceCounter<TestNode>::live == 0);
+  matcheroni_assert(utils::InstanceCounter<TestNode>::dead == 0);
   matcheroni_assert(LinearAlloc::inst().current_size == 0);
   matcheroni_assert(LinearAlloc::inst().max_size == 0);
 }
@@ -92,7 +92,7 @@ void test_basic() {
     // Check than we can round-trip a s-expression
     TextNodeContext ctx;
     ctx.reset();
-    auto text = to_span("(abcd,efgh,(ab),(a,(bc,de)),ghijk)");
+    auto text = utils::to_span("(abcd,efgh,(ab),(a,(bc,de)),ghijk)");
     auto tail = SExpression::match(ctx, text);
     matcheroni_assert(tail.is_valid() && tail == "");
 
@@ -101,17 +101,17 @@ void test_basic() {
     sexp_to_string((TestNode*)ctx.top_head(), new_text);
     printf("Old : %s\n", text.begin);
     printf("New : %s\n", new_text.c_str());
-    matcheroni_assert(text == new_text && "Mismatch!");
+    matcheroni_assert(utils::to_string(text) == new_text && "Mismatch!");
     printf("\n");
 
-    print_summary(text, tail, ctx, 50);
+    utils::print_summary(text, tail, ctx, 50);
 
     check_hash(ctx, 0x7073c4e1b84277f0);
 
     matcheroni_assert(LinearAlloc::inst().max_size == sizeof(TestNode) * 11);
     matcheroni_assert(LinearAlloc::inst().current_size == sizeof(TestNode) * 11);
-    matcheroni_assert(InstanceCounter<TestNode>::live == 11);
-    matcheroni_assert(InstanceCounter<TestNode>::dead == 0);
+    matcheroni_assert(utils::InstanceCounter<TestNode>::live == 11);
+    matcheroni_assert(utils::InstanceCounter<TestNode>::dead == 0);
   }
 
   TextNodeContext ctx;
@@ -119,17 +119,17 @@ void test_basic() {
   TextSpan tail;
 
   ctx.reset();
-  span = to_span("((((a))))");
+  span = utils::to_span("((((a))))");
   tail = SExpression::match(ctx, span);
   matcheroni_assert(tail.is_valid() && tail == "");
 
   ctx.reset();
-  span = to_span("(((())))");
+  span = utils::to_span("(((())))");
   tail = SExpression::match(ctx, span);
   matcheroni_assert(tail.is_valid() && tail == "");
 
   ctx.reset();
-  span = to_span("(((()))(");
+  span = utils::to_span("(((()))(");
   tail = SExpression::match(ctx, span);
   matcheroni_assert(!tail.is_valid() && std::string(tail.end) == "(");
 
@@ -158,14 +158,14 @@ void test_rewind() {
 
   TextNodeContext ctx;
 
-  auto text = to_span("abcdef");
+  auto text = utils::to_span("abcdef");
   auto tail = pattern::match(ctx, text);
 
-  print_summary(text, tail, ctx, 50);
+  utils::print_summary(text, tail, ctx, 50);
   check_hash(ctx, 0x2850a87bce45242a);
 
-  matcheroni_assert(InstanceCounter<TestNode>::live == 1);
-  matcheroni_assert(InstanceCounter<TestNode>::dead == 5);
+  matcheroni_assert(utils::InstanceCounter<TestNode>::live == 1);
+  matcheroni_assert(utils::InstanceCounter<TestNode>::dead == 5);
   matcheroni_assert(LinearAlloc::inst().current_size == sizeof(TestNode) * 1);
   matcheroni_assert(LinearAlloc::inst().max_size == sizeof(TestNode) * 5);
 
@@ -212,14 +212,14 @@ void test_begin_end() {
 
   TextNodeContext ctx;
 
-  auto text = to_span("[ [abc,ab?,cdb+] , [a,b,c*,d,e,f] ]");
+  auto text = utils::to_span("[ [abc,ab?,cdb+] , [a,b,c*,d,e,f] ]");
   auto tail = BeginEndTest::match(ctx, text);
 
-  print_summary(text, tail, ctx, 50);
+  utils::print_summary(text, tail, ctx, 50);
   check_hash(ctx, 0x401403cbefc2cba9);
 
-  matcheroni_assert(InstanceCounter<TestNode>::live == 15);
-  matcheroni_assert(InstanceCounter<TestNode>::dead == 0);
+  matcheroni_assert(utils::InstanceCounter<TestNode>::live == 15);
+  matcheroni_assert(utils::InstanceCounter<TestNode>::dead == 0);
   matcheroni_assert(LinearAlloc::inst().max_size == sizeof(TestNode) * 15);
   matcheroni_assert(LinearAlloc::inst().current_size == sizeof(TestNode) * 15);
 
@@ -259,7 +259,7 @@ void test_pathological() {
   TextNodeContext ctx;
 
   // Matching this pattern should produce 7 live nodes and 137250 dead nodes.
-  auto text = to_span("[[[[[[a]]]]]]");
+  auto text = utils::to_span("[[[[[[a]]]]]]");
   auto tail = Pathological::match(ctx, text);
   matcheroni_assert(tail.is_valid() && "pathological tree invalid");
 
@@ -272,11 +272,11 @@ void test_pathological() {
   // {[a]                 }  | | | | |-none
   // {a                   }  | | | | | |-atom
 
-  print_summary(text, tail, ctx, 50);
+  utils::print_summary(text, tail, ctx, 50);
   check_hash(ctx, 0x07a37a832d506209);
 
-  matcheroni_assert(InstanceCounter<TestNode>::live == 7);
-  matcheroni_assert(InstanceCounter<TestNode>::dead == 137250);
+  matcheroni_assert(utils::InstanceCounter<TestNode>::live == 7);
+  matcheroni_assert(utils::InstanceCounter<TestNode>::dead == 137250);
   matcheroni_assert(LinearAlloc::inst().max_size == sizeof(TestNode) * 7);
   matcheroni_assert(LinearAlloc::inst().current_size == sizeof(TestNode) * 7);
 

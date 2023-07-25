@@ -99,7 +99,7 @@ int main(int argc, char** argv) {
 
   const char* base_path = argc > 1 ? argv[1] : ".";
 
-  auto time_a = timestamp_ms();
+  auto time_a = utils::timestamp_ms();
 
   //----------------------------------------
   // Scan the directory and prune it down to only valid C source files.
@@ -143,7 +143,7 @@ int main(int argc, char** argv) {
     }
 
     std::string text;
-    read(path.c_str(), text);
+    utils::read(path.c_str(), text);
 
     // Filter out all the files that are actually assembly
     // We split the string constants so we don't mark _this_ source file as
@@ -182,12 +182,12 @@ int main(int argc, char** argv) {
 
     //printf("%05d: Lexing %s\n", count++, path.c_str());
 
-    read(path.c_str(), text);
+    utils::read(path.c_str(), text);
     total_bytes += text.size();
 
-    lex_msec -= timestamp_ms();
-    bool lex_ok = lexer.lex(to_span(text));
-    lex_msec += timestamp_ms();
+    lex_msec -= utils::timestamp_ms();
+    bool lex_ok = lexer.lex(utils::to_span(text));
+    lex_msec += utils::timestamp_ms();
     if (!lex_ok) {
       failed_files.push_back(path);
       printf("Lexing failed for file %s:\n", path.c_str());
@@ -197,7 +197,7 @@ int main(int argc, char** argv) {
   //----------------------------------------
   // Report stats
 
-  auto time_b = timestamp_ms();
+  auto time_b = utils::timestamp_ms();
   auto total_time = time_b - time_a;
 
   auto lex_sec = lex_msec / 1000;

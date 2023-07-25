@@ -5,6 +5,10 @@ includes = -I.
 #-------------------------------------------------------------------------------
 # Emscripten
 
+build obj/ems/tutorial/json_tut0a.o  : compile_cpp_ems tutorial/json_tut0a.cpp
+build docs/tutorial/json_tut0a.js    : link_ems obj/ems/tutorial/json_tut0a.o | tutorial/json_tut0a.input
+  embed=tutorial
+
 build obj/ems/tutorial/json_tut1a.o  : compile_cpp_ems tutorial/json_tut1a.cpp
 build docs/tutorial/json_tut1a.js    : link_ems obj/ems/tutorial/json_tut1a.o | tutorial/json_tut1a.input
   embed=tutorial
@@ -24,12 +28,3 @@ build docs/tutorial/json_tut2a.js    : link_ems obj/ems/tutorial/json_tut2a.o | 
 build obj/ems/tutorial/json_tut2b.o  : compile_cpp_ems tutorial/json_tut2b.cpp
 build docs/tutorial/json_tut2b.js    : link_ems obj/ems/tutorial/json_tut2b.o | tutorial/json_tut2b.input
   embed=tutorial
-
-#build docs/tutorial/tutorial_src.data docs/tutorial/tutorial_src.js: command $
-#    tutorial/json_tut1a.cpp $
-#    tutorial/json_tut1b.cpp $
-#    tutorial/json_tut1c.cpp $
-#    tutorial/json_tut1a.cpp
-#  command = python3 $$EMSDK/upstream/emscripten/tools/file_packager.py $
-#      docs/tutorial/tutorial_src.data --no-node --js-output=docs/tutorial/tutorial_src.js $
-#      --preload tutorial

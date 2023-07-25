@@ -54,7 +54,7 @@ int main(int argc, char** argv) {
 
     char* buf = nullptr;
     size_t size = 0;
-    read(path, buf, size);
+    utils::read(path, buf, size);
     if (size == 0) {
       printf("Could not load %s\n", path);
       continue;
@@ -73,9 +73,9 @@ int main(int argc, char** argv) {
     for (int rep = 0; rep < (warmup + reps); rep++) {
       ctx.reset();
 
-      double time_a = timestamp_ms();
+      double time_a = utils::timestamp_ms();
       parse_end = parse_json(ctx, text);
-      double time_b = timestamp_ms();
+      double time_b = utils::timestamp_ms();
 
       if (rep >= warmup) path_time_accum += time_b - time_a;
     }
@@ -99,7 +99,7 @@ int main(int argc, char** argv) {
 
     if (dump_tree) {
       printf("Parse tree:\n");
-      print_context(text, ctx, 40);
+      utils::print_context(text, ctx, 40);
     }
 
     if (verbose) {

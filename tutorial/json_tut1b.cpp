@@ -51,10 +51,10 @@ int main(int argc, char** argv) {
   printf("\n");
 
   TextContext ctx;
-  auto input = read(argv[1]);
-  auto text = to_span(input);
+  auto input = utils::read(argv[1]);
+  auto text = utils::to_span(input);
   auto tail = JsonParser::match(ctx, text);
-  print_summary(text, tail, 50);
+  utils::print_summary(text, tail, 50);
 
   return tail.is_valid() ? 0 : -1;
 }
