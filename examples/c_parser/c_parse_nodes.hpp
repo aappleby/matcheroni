@@ -21,7 +21,7 @@ struct TraceToken {
     matcheroni_assert(body.is_valid());
     if (body.is_empty()) return body.fail();
 
-    auto text = TextSpan(body.a->a, (body.b - 1)->b);
+    auto text = TextSpan(body.begin->begin, (body.b - 1)->b);
     auto name = match_name.str_val;
 
     int depth = ctx.trace_depth++;
@@ -104,9 +104,9 @@ struct Keyword : public CNode, PatternWrapper<Keyword<lit>> {
 
   static TokSpan match(CContext& ctx, TokSpan body) {
     if (!body.is_valid()) return body.fail();
-    if (ctx.atom_cmp(*body.a, LEX_KEYWORD) != 0) return body.fail();
+    if (ctx.atom_cmp(*body.begin, LEX_KEYWORD) != 0) return body.fail();
     /*+*/ ctx.rewind(body);
-    if (ctx.atom_cmp(*body.a, lit.span()) != 0) return body.fail();
+    if (ctx.atom_cmp(*body.begin, lit.span()) != 0) return body.fail();
     return body.advance(1);
   }
 };
@@ -115,7 +115,7 @@ template <StringParam lit>
 struct Literal2 : public CNode, PatternWrapper<Literal2<lit>> {
   static TokSpan match(CContext& ctx, TokSpan body) {
     if (!body.is_valid()) return body.fail();
-    if (ctx.atom_cmp(*body.a, lit.span()) != 0) return body.fail();
+    if (ctx.atom_cmp(*body.begin, lit.span()) != 0) return body.fail();
     return body.advance(1);
   }
 };
@@ -132,9 +132,9 @@ inline TokSpan match_punct(CContext& ctx, TokSpan body) {
   if (body.len() < lit.str_len) return body.fail();
 
   for (auto i = 0; i < lit.str_len; i++) {
-    const CToken& tok_a = body.a[0];
+    const CToken& tok_a = body.begin[0];
     if (ctx.atom_cmp(tok_a, LEX_PUNCT) != 0) return body.fail();
-    if (ctx.atom_cmp(tok_a.text.a[0], lit.str_val[i]) != 0) return body.fail();
+    if (ctx.atom_cmp(tok_a.text.begin[0], lit.str_val[i]) != 0) return body.fail();
     body = body.advance(1);
   }
 
@@ -213,7 +213,7 @@ struct NodePreproc : public CNode /*, PatternWrapper<NodePreproc>*/ {
   static TokSpan match(CContext& ctx, TokSpan body) {
     auto tail = pattern::match(ctx, body);
     if (tail.is_valid()) {
-      std::string s(body.a->text.a, (tail.a - 1)->text.b);
+      std::string s(body.begin->text.begin, (tail.begin - 1)->text.end);
 
       if (s.find("stdio") != std::string::npos) {
         for (auto t : stdio_typedefs) {
@@ -292,8 +292,8 @@ struct NodeSuffixOp : public CNode, PatternWrapper<NodeSuffixOp<lit>> {
 struct NodeQualifier : public CNode, PatternWrapper<NodeQualifier> {
   static TokSpan match(CContext& ctx, TokSpan body) {
     matcheroni_assert(body.is_valid());
-    TextSpan span = body.a->text;
-    if (SST<qualifiers>::match(span.a, span.b)) {
+    TextSpan span = body.begin->text;
+    if (SST<qualifiers>::match(span.begin, span.end)) {
       return body.advance(1);
     }
     else {
@@ -590,12 +590,12 @@ struct NodeExpression : public CNode, PatternWrapper<NodeExpression> {
   static TokSpan match_binary_op(CContext& ctx, TokSpan body) {
     matcheroni_assert(body.is_valid());
 
-    if (ctx.atom_cmp(*body.a, LEX_PUNCT)) {
+    if (ctx.atom_cmp(*body.begin, LEX_PUNCT)) {
       return body.fail();
     }
 
     // clang-format off
-    switch (body.a->text.a[0]) {
+    switch (body.begin->text.begin[0]) {
       case '+':
         return Oneof<NodeBinaryOp<"+=">, NodeBinaryOp<"+">>::match(ctx, body);
       case '-':
@@ -663,8 +663,8 @@ struct NodeExpression : public CNode, PatternWrapper<NodeExpression> {
       return body.fail();
     }
 
-    //auto tok_a = body.a;
-    //auto tok_b = tail.a;
+    //auto tok_a = body.begin;
+    //auto tok_b = tail.begin;
 
     /*
     while (0) {
@@ -1173,7 +1173,7 @@ struct NodeStructTypeAdder : public NodeIdentifier {
   static TokSpan match(CContext& ctx, TokSpan body) {
     auto tail = NodeIdentifier::match(ctx, body);
     if (tail.is_valid()) {
-      ctx.add_struct_type(body.a);
+      ctx.add_struct_type(body.begin);
       return tail;
     } else {
       auto tail = NodeTypedefType::match(ctx, body);
@@ -1214,7 +1214,7 @@ struct NodeUnionTypeAdder : public NodeIdentifier {
   static TokSpan match(CContext& ctx, TokSpan body) {
     auto tail = NodeIdentifier::match(ctx, body);
     if (tail.is_valid()) {
-      ctx.add_union_type(body.a);
+      ctx.add_union_type(body.begin);
       return tail;
     } else {
       auto tail = NodeTypedefType::match(ctx, body);
@@ -1253,7 +1253,7 @@ struct NodeClassTypeAdder : public NodeIdentifier {
   static TokSpan match(CContext& ctx, TokSpan body) {
     auto tail = NodeIdentifier::match(ctx, body);
     if (tail.is_valid()) {
-      ctx.add_class_type(body.a);
+      ctx.add_class_type(body.begin);
       return tail;
     } else
     {
@@ -1316,7 +1316,7 @@ struct NodeEnumTypeAdder : public NodeIdentifier {
   static TokSpan match(CContext& ctx, TokSpan body) {
     auto tail = NodeIdentifier::match(ctx, body);
     if (tail.is_valid()) {
-      ctx.add_enum_type(body.a);
+      ctx.add_enum_type(body.begin);
       return tail;
     } else {
         auto tail = NodeTypedefType::match(ctx, body);
@@ -1802,7 +1802,7 @@ struct NodeTypedef : public CNode, public PatternWrapper<NodeTypedef> {
     */
     if (auto name = decl->child("name")) {
       if (auto id = name->child("identifier")) {
-        ctx.add_typedef_type(id->span.a);
+        ctx.add_typedef_type(id->span.begin);
       }
     }
 

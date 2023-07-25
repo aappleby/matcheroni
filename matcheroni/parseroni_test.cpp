@@ -30,7 +30,7 @@ struct TestNode : public TextNode, public InstanceCounter<TestNode> {
 
 void sexp_to_string(TestNode* n, std::string& out) {
   if (strcmp(n->match_name, "atom") == 0) {
-    for (auto c = n->span.a; c < n->span.b; c++) out.push_back(*c);
+    for (auto c = n->span.begin; c < n->span.end; c++) out.push_back(*c);
   } else if (strcmp(n->match_name, "list") == 0) {
     out.push_back('(');
     for (auto c = n->child_head(); c; c = c->node_next()) {
@@ -99,7 +99,7 @@ void test_basic() {
     printf("Round-trip s-expression:\n");
     std::string new_text;
     sexp_to_string((TestNode*)ctx.top_head(), new_text);
-    printf("Old : %s\n", text.a);
+    printf("Old : %s\n", text.begin);
     printf("New : %s\n", new_text.c_str());
     matcheroni_assert(text == new_text && "Mismatch!");
     printf("\n");
@@ -131,7 +131,7 @@ void test_basic() {
   ctx.reset();
   span = to_span("(((()))(");
   tail = SExpression::match(ctx, span);
-  matcheroni_assert(!tail.is_valid() && std::string(tail.b) == "(");
+  matcheroni_assert(!tail.is_valid() && std::string(tail.end) == "(");
 
   printf("test_basic() end\n\n");
 }

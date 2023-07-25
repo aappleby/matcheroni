@@ -42,7 +42,7 @@ class CContext : public matcheroni::NodeContext<TokSpan, CNode> {
 
   static int atom_cmp(const CToken& a, const char& b) {
     if (auto d = a.text.len() - 1) return d;
-    return a.text.a[0] - b;
+    return a.text.begin[0] - b;
   }
 
   static int atom_cmp(const CToken& a, const matcheroni::TextSpan& b) {

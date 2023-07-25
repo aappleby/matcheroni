@@ -30,18 +30,18 @@ template <typename atom>
 struct Span {
   using AtomType = atom;
 
-  constexpr Span() : a(nullptr), b(nullptr) {}
-  constexpr Span(const atom* a, const atom* b) : a(a), b(b) {}
+  constexpr Span() : begin(nullptr), end(nullptr) {}
+  constexpr Span(const atom* begin, const atom* end) : begin(begin), end(end) {}
 
   size_t len() const {
     matcheroni_assert(is_valid());
-    return b - a;
+    return end - begin;
   }
 
   //----------------------------------------
 
   bool operator==(const Span& c) const {
-    return a == c.a && b == c.b;
+    return begin == c.begin && end == c.end;
   }
 
   bool operator==(const char* text) {
@@ -49,29 +49,29 @@ struct Span {
     return strcmp_span(*this, text) == 0;
   }
 
-  bool is_empty() const { return a && a == b; }
-  bool is_valid() const { return a; }
+  bool is_empty() const { return begin && begin == end; }
+  bool is_valid() const { return begin; }
 
   // this must be the same as is_valid() otherwise
   // if (auto tail = match()) {}
   // fails if tail is EOF
-  operator bool() const { return a; }
+  operator bool() const { return begin; }
 
   //----------------------------------------
 
   [[nodiscard]] Span fail() const {
-    return a ? Span(nullptr, a) : Span(a, b);
+    return begin ? Span(nullptr, begin) : Span(begin, end);
   }
 
   [[nodiscard]] Span advance(int offset) const {
-    matcheroni_assert(a);
-    return {a + offset, b};
+    matcheroni_assert(begin);
+    return {begin + offset, end};
   }
 
   //----------------------------------------
 
-  const atom* a;
-  const atom* b;
+  const atom* begin;
+  const atom* end;
 };
 
 //------------------------------------------------------------------------------
@@ -81,10 +81,10 @@ struct Span {
 inline int strcmp_span(const Span<char>& s2, const char* lit) {
   Span<char> s = s2;
   while (1) {
-    auto ca = s.a == s.b ? 0 : *s.a;
+    auto ca = s.begin == s.end ? 0 : *s.begin;
     auto cb = *lit;
     if (ca != cb || ca == 0) return ca - cb;
-    s.a++;
+    s.begin++;
     lit++;
   }
 }
@@ -92,7 +92,7 @@ inline int strcmp_span(const Span<char>& s2, const char* lit) {
 inline int strcmp_span(const Span<char>& a, const Span<char>& b) {
   if (int c = a.len() - b.len()) return c;
   for (size_t i = 0; i < a.len(); i++) {
-    if (auto c = a.a[i] - b.a[i]) return c;
+    if (auto c = a.begin[i] - b.begin[i]) return c;
   }
   return 0;
 }
@@ -158,7 +158,7 @@ struct Atom<C, rest...> {
     matcheroni_assert(body.is_valid());
     if (body.is_empty()) return body.fail();
 
-    if (ctx.atom_cmp(*body.a, C) == 0) {
+    if (ctx.atom_cmp(*body.begin, C) == 0) {
       return body.advance(1);
     } else {
       return Atom<rest...>::match(ctx, body);
@@ -173,7 +173,7 @@ struct Atom<C> {
     matcheroni_assert(body.is_valid());
     if (body.is_empty()) return body.fail();
 
-    if (ctx.atom_cmp(*body.a, C) == 0) {
+    if (ctx.atom_cmp(*body.begin, C) == 0) {
       return body.advance(1);
     } else {
       return body.fail();
@@ -192,7 +192,7 @@ struct NotAtom {
     matcheroni_assert(body.is_valid());
     if (body.is_empty()) return body.fail();
 
-    if (ctx.atom_cmp(*body.a, C) == 0) {
+    if (ctx.atom_cmp(*body.begin, C) == 0) {
       return body.fail();
     }
     return NotAtom<rest...>::match(ctx, body);
@@ -206,7 +206,7 @@ struct NotAtom<C> {
     matcheroni_assert(body.is_valid());
     if (body.is_empty()) return body.fail();
 
-    if (ctx.atom_cmp(*body.a, C) == 0) {
+    if (ctx.atom_cmp(*body.begin, C) == 0) {
       return body.fail();
     } else {
       return body.advance(1);
@@ -236,7 +236,7 @@ struct Range {
     matcheroni_assert(body.is_valid());
     if (body.is_empty()) return body.fail();
 
-    if ((ctx.atom_cmp(*body.a, RA) >= 0) && (ctx.atom_cmp(*body.a, RB) <= 0)) {
+    if ((ctx.atom_cmp(*body.begin, RA) >= 0) && (ctx.atom_cmp(*body.begin, RB) <= 0)) {
       return body.advance(1);
     }
     return Range<rest...>::match(ctx, body);
@@ -250,7 +250,7 @@ struct Range<RA, RB> {
     matcheroni_assert(body.is_valid());
     if (body.is_empty()) return body.fail();
 
-    if ((ctx.atom_cmp(*body.a, RA) >= 0) && (ctx.atom_cmp(*body.a, RB) <= 0)) {
+    if ((ctx.atom_cmp(*body.begin, RA) >= 0) && (ctx.atom_cmp(*body.begin, RB) <= 0)) {
       return body.advance(1);
     }
     return body.fail();
@@ -268,7 +268,7 @@ struct NotRange {
     matcheroni_assert(body.is_valid());
     if (body.is_empty()) return body.fail();
 
-    if ((ctx.atom_cmp(*body.a, RA) >= 0) && (ctx.atom_cmp(*body.a, RB) <= 0)) {
+    if ((ctx.atom_cmp(*body.begin, RA) >= 0) && (ctx.atom_cmp(*body.begin, RB) <= 0)) {
       return body.fail();
     }
 
@@ -283,7 +283,7 @@ struct NotRange<RA, RB> {
     matcheroni_assert(body.is_valid());
     if (body.is_empty()) return body.fail();
 
-    if ((ctx.atom_cmp(*body.a, RA) >= 0) && (ctx.atom_cmp(*body.a, RB) <= 0)) {
+    if ((ctx.atom_cmp(*body.begin, RA) >= 0) && (ctx.atom_cmp(*body.begin, RB) <= 0)) {
       return body.fail();
     }
 
@@ -320,7 +320,7 @@ inline SpanType match_lit(Context& ctx, SpanType body, const char* lit, size_t l
   if (len > body.len()) return body.fail();
 
   for (size_t i = 0; i < len; i++) {
-    if (ctx.atom_cmp(*body.a, *lit)) return body.fail();
+    if (ctx.atom_cmp(*body.begin, *lit)) return body.fail();
     body = body.advance(1);
     lit++;
   }
@@ -387,7 +387,7 @@ struct Oneof {
       return tail2;
     } else {
       // Both attempts failed, return whichever match got farther.
-      return tail1.b > tail2.b ? tail1 : tail2;
+      return tail1.end > tail2.end ? tail1 : tail2;
     }
   }
 };
@@ -753,7 +753,7 @@ struct StoreBackref {
       ref = body.fail();
       return tail;
     }
-    ref = {body.a, tail.a};
+    ref = {body.begin, tail.begin};
 
     //printf("Backref: `");
     //for (auto d = body.a; d < c.a; d++) putc(*d, stdout);
@@ -774,7 +774,7 @@ struct MatchBackref {
 
     for (size_t i = 0; i < ref.len(); i++) {
       if (body.is_empty()) return body.fail();
-      if (ctx.atom_cmp(*body.a, ref.a[i])) return body.fail();
+      if (ctx.atom_cmp(*body.begin, ref.begin[i])) return body.fail();
       body = body.advance(1);
     }
 
@@ -843,7 +843,7 @@ struct EOL {
   static Span<atom> match(context& ctx, Span<atom> body) {
     matcheroni_assert(body.is_valid());
     if (body.is_empty()) return body;
-    if (body.a[0] == atom('\n')) return body;
+    if (body.begin[0] == atom('\n')) return body;
     return body.fail();
   }
 };
@@ -893,7 +893,7 @@ struct Charset {
     matcheroni_assert(body.is_valid());
 
     for (auto i = 0; i < chars.str_len; i++) {
-      if (ctx.atom_cmp(body.a[0], chars.str_val[i]) == 0) {
+      if (ctx.atom_cmp(body.begin[0], chars.str_val[i]) == 0) {
         return body.advance(1);
       }
     }

@@ -288,7 +288,7 @@ struct NodeContext {
   // match.
 
   void rewind(SpanType body) {
-    while (_top_tail && (_top_tail->span.a >= body.a)) {
+    while (_top_tail && (_top_tail->span.begin >= body.begin)) {
       auto dead = _top_tail;
       set_tail((NodeType*)_top_tail->_node_prev);
 #ifndef FAST_MODE
@@ -304,7 +304,7 @@ struct NodeContext {
 
   void create2(NodeType* new_node, const char* match_name, SpanType span, uint64_t flags, NodeType* old_tail) {
 
-    if (span.b > _highwater) _highwater = span.b;
+    if (span.end > _highwater) _highwater = span.end;
 
     // Move all nodes in (old_tail,new_tail] to be children of new_node and
     // append new_node to the node list.
@@ -418,8 +418,8 @@ struct TextNode : public NodeBase<TextSpan> {
   const TextNode* child_head() const { return (TextNode*)_child_head; }
   const TextNode* child_tail() const { return (TextNode*)_child_tail; }
 
-  const char* text_head() const { return span.a; }
-  const char* text_tail() const { return span.b; }
+  const char* text_head() const { return span.begin; }
+  const char* text_tail() const { return span.end; }
 };
 
 struct TextNodeContext : public NodeContext<TextSpan, TextNode> {
@@ -453,7 +453,7 @@ inline Span<atom> capture(context& ctx, Span<atom> body, const char* match_name,
 
   if (tail.is_valid()) {
     //printf("Capture %s\n", match_name);
-    Span<atom> node_span = {body.a, tail.a};
+    Span<atom> node_span = {body.begin, tail.begin};
     auto new_node = new node_type();
     ctx.create2(new_node, match_name, node_span, 0, old_tail);
     matcheroni_assert(new_node->node_next() != new_node);
@@ -504,7 +504,7 @@ inline Span<atom> capture_begin(context& ctx, Span<atom> body, matcher_function<
 
   auto tail = match(ctx, body);
   if (tail.is_valid()) {
-    Span<atom> bounds(body.a, tail.a);
+    Span<atom> bounds(body.begin, tail.begin);
     ctx.enclose_bookmark(old_tail, bounds);
   }
   else {
@@ -532,7 +532,7 @@ inline Span<atom> capture_end(context& ctx, Span<atom> body, const char* match_n
 
   auto tail = match(ctx, body);
   if (tail.is_valid()) {
-    Span<atom> new_span(tail.a, tail.a);
+    Span<atom> new_span(tail.begin, tail.begin);
     auto new_node = new node_type();
     ctx.create2(new_node, match_name, new_span, /*flags*/ 1, ctx.top_tail());
   }

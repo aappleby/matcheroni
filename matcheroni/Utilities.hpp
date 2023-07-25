@@ -3,7 +3,6 @@
 
 #pragma once
 #include "matcheroni/Matcheroni.hpp"  // for Span
-//#include "matcheroni/Parseroni.hpp"
 
 #include "matcheroni/dump.hpp"
 
@@ -108,8 +107,8 @@ inline Span<atom> to_span(const std::vector<atom>& atoms) {
 //------------------------------------------------------------------------------
 
 inline std::string to_string(TextSpan body) {
-  matcheroni_assert(body.a);
-  return std::string(body.a, body.b);
+  matcheroni_assert(body.begin);
+  return std::string(body.begin, body.end);
 }
 
 //------------------------------------------------------------------------------
@@ -239,7 +238,7 @@ inline uint64_t hash_tree(const node_type* node, int depth = 0) {
     h = (h * 975313579) ^ *c;
   }
 
-  for (auto c = node->span.a; c < node->span.b; c++) {
+  for (auto c = node->span.begin; c < node->span.end; c++) {
     h = (h * 123456789) ^ *c;
   }
 

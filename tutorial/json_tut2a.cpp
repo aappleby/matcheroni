@@ -16,27 +16,104 @@
 
 using namespace matcheroni;
 
+/*
+json
+  element
+
+value
+  object
+  array
+  string
+  number
+  "true"
+  "false"
+  "null"
+
+object
+  '{' ws '}'
+  '{' members '}'
+
+members
+  member
+  member ',' members
+
+member
+  ws string ws ':' element
+
+array
+  '[' ws ']'
+  '[' elements ']'
+
+elements
+  element
+  element ',' elements
+
+element
+  ws value ws
+
+string
+  '"' characters '"'
+
+characters
+  ""
+  character characters
+
+character
+  '0020' . '10FFFF' - '"' - '\'
+  '\' escape
+
+escape
+  '"'
+  '\'
+  '/'
+  'b'
+  'f'
+  'n'
+  'r'
+  't'
+  'u' hex hex hex hex
+
+hex
+  digit
+  'A' . 'F'
+  'a' . 'f'
+
+ws
+  ""
+  '0020' ws
+  '000A' ws
+  '000D' ws
+  '0009' ws
+*/
+
 //------------------------------------------------------------------------------
 // To build a parse tree, we wrap the patterns we want to create nodes for
 // in a Capture<> matcher that will invoke our node factory. We can also wrap
 // them in a TraceText<> matcher if we want to debug our patterns.
 
 struct JsonParser {
-  using sign      = Atom<'+','-'>;
-  using digit     = Range<'0','9'>;
+
+
+
   using onenine   = Range<'1','9'>;
+  using digit     = Oneof<Atom<'0'>, onenine>;
   using digits    = Some<digit>;
   using integer   = Seq< Opt<Atom<'-'>>, Oneof<Seq<onenine,digits>,digit> >;
-  using fraction  = Seq<Atom<'.'>, digits>;
-  using exponent  = Seq<Atom<'e','E'>, Opt<sign>, digits>;
-  using number    = Seq<integer, Opt<fraction>, Opt<exponent>>;
+  using fraction  = Opt<Seq<Atom<'.'>, digits>>;
+  using sign      = Opt<Atom<'+','-'>>;
+  using exponent  = Opt<Seq<Atom<'e','E'>, sign, digits>>;
+  using number    = Seq<integer, fraction, exponent>;
+
+
+
 
   using space     = Some<Atom<' ','\n','\r','\t'>>;
   using hex       = Range<'0','9','a','f','A','F'>;
   using escape    = Oneof<Charset<"\"\\/bfnrt">, Seq<Atom<'u'>, Rep<4, hex>>>;
   using keyword   = Oneof<Lit<"true">, Lit<"false">, Lit<"null">>;
-  using character = Oneof< NotAtom<'"','\\'>, Seq<Atom<'\\'>, escape> >;
+  using character = Seq<Not<Atom<'\"'>>, Not<Atom<'\\'>>, Range<0x0020, 0x10FFFF>>;
   using string    = Seq<Atom<'"'>, Any<character>, Atom<'"'>>;
+
 
   template<typename P>
   using list = Opt<Seq<P, Any<Seq<Any<space>, Atom<','>, Any<space>, P>>>>;

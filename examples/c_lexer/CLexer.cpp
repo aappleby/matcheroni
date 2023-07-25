@@ -43,19 +43,19 @@ void CLexer::reset() { tokens.clear(); }
 //------------------------------------------------------------------------------
 
 bool CLexer::lex(TextSpan text) {
-  tokens.push_back(CToken(LEX_BOF, TextSpan(text.a, text.a)));
+  tokens.push_back(CToken(LEX_BOF, TextSpan(text.begin, text.begin)));
 
 
   TextContext ctx;
   while (text.is_valid()) {
-    // Don't pass a context here or we will slow way down doing rewinds
+    // Don't pass begin context here or we will slow way down doing rewinds
     auto token = next_lexeme(ctx, text);
     tokens.push_back(token);
     if (token.type == LEX_INVALID) {
       return false;
     }
     if (token.type == LEX_EOF) break;
-    text.a = token.text.b;
+    text.begin = token.text.end;
   }
 
   return true;
@@ -66,32 +66,32 @@ bool CLexer::lex(TextSpan text) {
 CToken next_lexeme(TextContext& ctx, TextSpan body) {
   TextSpan tail;
 
-  if (auto tail = match_space(ctx, body)  ) return CToken(LEX_SPACE, TextSpan(body.a, tail.a));
-  if (auto tail = match_newline(ctx, body)) return CToken(LEX_NEWLINE, TextSpan(body.a, tail.a));
-  if (auto tail = match_string(ctx, body) ) return CToken(LEX_STRING, TextSpan(body.a, tail.a));
+  if (auto tail = match_space(ctx, body)  ) return CToken(LEX_SPACE, TextSpan(body.begin, tail.begin));
+  if (auto tail = match_newline(ctx, body)) return CToken(LEX_NEWLINE, TextSpan(body.begin, tail.begin));
+  if (auto tail = match_string(ctx, body) ) return CToken(LEX_STRING, TextSpan(body.begin, tail.begin));
 
   // Match char needs to come before match identifier because of its possible
   // L'_' prefix...
-  if (auto tail = match_char(ctx, body)   ) return CToken(LEX_CHAR, TextSpan(body.a, tail.a));
+  if (auto tail = match_char(ctx, body)   ) return CToken(LEX_CHAR, TextSpan(body.begin, tail.begin));
 
   if (auto tail = match_identifier(ctx, body)) {
-    auto text = TextSpan(body.a, tail.a);
-    if (SST<c_keywords>::match(text.a, text.b)) {
+    auto text = TextSpan(body.begin, tail.begin);
+    if (SST<c_keywords>::match(text.begin, text.end)) {
       return CToken(LEX_KEYWORD, text);
     } else {
       return CToken(LEX_IDENTIFIER, text);
     }
   }
 
-  if (auto tail = match_comment(ctx, body) ) return CToken(LEX_COMMENT, TextSpan(body.a, tail.a));
-  if (auto tail = match_preproc(ctx, body) ) return CToken(LEX_PREPROC, TextSpan(body.a, tail.a));
-  if (auto tail = match_float(ctx, body)   ) return CToken(LEX_FLOAT, TextSpan(body.a, tail.a));
-  if (auto tail = match_int(ctx, body)     ) return CToken(LEX_INT, TextSpan(body.a, tail.a));
-  if (auto tail = match_punct(ctx, body)   ) return CToken(LEX_PUNCT, TextSpan(body.a, tail.a));
-  if (auto tail = match_splice(ctx, body)  ) return CToken(LEX_SPLICE, TextSpan(body.a, tail.a));
-  if (auto tail = match_formfeed(ctx, body)) return CToken(LEX_FORMFEED, TextSpan(body.a, tail.a));
-  if (auto tail = match_eof(ctx, body)     ) return CToken(LEX_EOF, TextSpan(body.a, tail.a));
-  if (auto tail = match_string(ctx, body)  ) return CToken(LEX_STRING, TextSpan(body.a, tail.a));
+  if (auto tail = match_comment(ctx, body) ) return CToken(LEX_COMMENT, TextSpan(body.begin, tail.begin));
+  if (auto tail = match_preproc(ctx, body) ) return CToken(LEX_PREPROC, TextSpan(body.begin, tail.begin));
+  if (auto tail = match_float(ctx, body)   ) return CToken(LEX_FLOAT, TextSpan(body.begin, tail.begin));
+  if (auto tail = match_int(ctx, body)     ) return CToken(LEX_INT, TextSpan(body.begin, tail.begin));
+  if (auto tail = match_punct(ctx, body)   ) return CToken(LEX_PUNCT, TextSpan(body.begin, tail.begin));
+  if (auto tail = match_splice(ctx, body)  ) return CToken(LEX_SPLICE, TextSpan(body.begin, tail.begin));
+  if (auto tail = match_formfeed(ctx, body)) return CToken(LEX_FORMFEED, TextSpan(body.begin, tail.begin));
+  if (auto tail = match_eof(ctx, body)     ) return CToken(LEX_EOF, TextSpan(body.begin, tail.begin));
+  if (auto tail = match_string(ctx, body)  ) return CToken(LEX_STRING, TextSpan(body.begin, tail.begin));
 
   return CToken(LEX_INVALID, body.fail());
 }
@@ -101,7 +101,7 @@ CToken next_lexeme(TextContext& ctx, TextSpan body) {
 
 TextSpan match_eof(TextContext& ctx, TextSpan body) {
   if (body.is_empty()) return body;
-  if (*body.a == 0) return TextSpan(body.a, body.a);
+  if (*body.begin == 0) return TextSpan(body.begin, body.begin);
   return body.fail();
 }
 
@@ -149,7 +149,7 @@ TextSpan match_int(TextContext& ctx, TextSpan body) {
   using long_long_suffix       = Oneof<Lit<"ll">, Lit<"LL">>;
   using bit_precise_int_suffix = Oneof<Lit<"wb">, Lit<"WB">>;
 
-  // This is a little odd because we have to match in longest-suffix-first order
+  // This is begin little odd because we have to match in longest-suffix-first order
   // to ensure we capture the entire suffix
   using integer_suffix = Oneof<
     Seq<unsigned_suffix,  long_long_suffix>,
@@ -367,7 +367,7 @@ TextSpan match_char(TextContext& ctx, TextSpan body) {
   // The spec disallows empty character constants, but...
   //using character_constant = Seq< Opt<encoding_prefix>, Atom<'\''>, c_char_sequence, Atom<'\''> >;
 
-  // ...in GCC they're only a warning.
+  // ...in GCC they're only begin warning.
   using character_constant = Seq< Opt<encoding_prefix>, Atom<'\''>, Any<c_char>, Atom<'\''> >;
   // clang-format on
 
@@ -447,7 +447,7 @@ TextSpan match_string(TextContext& ctx, TextSpan body) {
 // 6.4.6 Punctuators
 
 TextSpan match_punct(TextContext& ctx, TextSpan body) {
-  // We're just gonna match these one punct at a time
+  // We're just gonna match these one punct at begin time
   using punctuator = Charset<"-,;:!?.()[]{}*/&#%^+<=>|~">;
   return punctuator::match(ctx, body);
 }
@@ -488,12 +488,12 @@ TextSpan match_comment(TextContext& ctx, TextSpan body) {
 }
 
 //------------------------------------------------------------------------------
-// 5.1.1.2 : Lines ending in a backslash and a newline get spliced together
+// 5.1.1.2 : Lines ending in begin backslash and begin newline get spliced together
 // with the following line.
 
 TextSpan match_splice(TextContext& ctx, TextSpan body) {
 
-  // According to GCC it's only a warning to have whitespace between the
+  // According to GCC it's only begin warning to have whitespace between the
   // backslash and the newline... and apparently \r\n is ok too?
 
   // clang-format off

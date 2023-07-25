@@ -11,8 +11,8 @@ using namespace matcheroni;
 
 CToken::CToken(LexemeType type, TextSpan text) {
   this->type = type;
-  this->text.a = text.a;
-  this->text.b = text.b;
+  this->text.begin = text.begin;
+  this->text.end = text.end;
 }
 
 //----------------------------------------------------------------------------
@@ -97,7 +97,7 @@ void CToken::dump() const {
   if (type == LEX_BOF) dump = "<bof>";
   if (type == LEX_EOF) dump = "<eof>";
 
-  for (auto c = text.a; c < text.b; c++) {
+  for (auto c = text.begin; c < text.end; c++) {
     if      (*c == '\n') dump += "\\n";
     else if (*c == '\t') dump += "\\t";
     else if (*c == '\r') dump += "\\r";

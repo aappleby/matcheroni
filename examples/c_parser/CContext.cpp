@@ -30,7 +30,7 @@ bool CContext::parse(matcheroni::TextSpan text, TokSpan lexemes) {
   this->text_span = text;
   this->lexemes = lexemes;
 
-  for (auto t = lexemes.a; t < lexemes.b; t++) {
+  for (auto t = lexemes.begin; t < lexemes.end; t++) {
     if (!t->is_gap()) {
       tokens.push_back(*t);
     }
@@ -112,7 +112,7 @@ void CContext::pop_scope() {
 
 TokSpan CContext::match_builtin_type_base(TokSpan body) {
   if (!body.is_valid() || body.is_empty()) return body.fail();
-  if (SST<builtin_type_base>::match(body.a->text.a, body.a->text.b)) {
+  if (SST<builtin_type_base>::match(body.begin->text.begin, body.begin->text.end)) {
     return body.advance(1);
   }
   else {
@@ -122,7 +122,7 @@ TokSpan CContext::match_builtin_type_base(TokSpan body) {
 
 TokSpan CContext::match_builtin_type_prefix(TokSpan body) {
   if (!body.is_valid() || body.is_empty()) return body.fail();
-  if (SST<builtin_type_prefix>::match(body.a->text.a, body.a->text.b)) {
+  if (SST<builtin_type_prefix>::match(body.begin->text.begin, body.begin->text.end)) {
     return body.advance(1);
   }
   else {
@@ -132,7 +132,7 @@ TokSpan CContext::match_builtin_type_prefix(TokSpan body) {
 
 TokSpan CContext::match_builtin_type_suffix(TokSpan body) {
   if (!body.is_valid() || body.is_empty()) return body.fail();
-  if (SST<builtin_type_suffix>::match(body.a->text.a, body.a->text.b)) {
+  if (SST<builtin_type_suffix>::match(body.begin->text.begin, body.begin->text.end)) {
     return body.advance(1);
   }
   else {

@@ -31,8 +31,8 @@ struct CNode : public matcheroni::NodeBase<TokSpan> {
   const CNode* child_head() const { return (CNode*)_child_head; }
   const CNode* child_tail() const { return (CNode*)_child_tail; }
 
-  const char* text_head() const { return span.a->text.a; }
-  const char* text_tail() const { return (span.b - 1)->text.b; }
+  const char* text_head() const { return span.begin->text.begin; }
+  const char* text_tail() const { return (span.end - 1)->text.end; }
 
   void debug_dump(std::string& out) {
     out += "[";
@@ -45,7 +45,7 @@ struct CNode : public matcheroni::NodeBase<TokSpan> {
     }
     else {
       out += '`';
-      out += std::string(span.a->text.a, (span.b - 1)->text.b);
+      out += std::string(span.begin->text.begin, (span.end - 1)->text.end);
       out += '`';
     }
     out += "]";

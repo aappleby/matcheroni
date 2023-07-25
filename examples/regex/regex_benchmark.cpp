@@ -87,14 +87,14 @@ void benchmark_pattern(TextSpan body) {
   double time = 0;
 
   time -= timestamp_ms();
-  while(body.a != body.b) {
+  while(body.begin != body.end) {
     auto tail = P::match(ctx, body);
     if (tail.is_valid()) {
       matches++;
-      body.a = tail.a;
+      body.begin = tail.begin;
     }
     else {
-      body.a++;
+      body.begin++;
     }
   }
   time += timestamp_ms();

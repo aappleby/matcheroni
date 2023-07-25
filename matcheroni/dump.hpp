@@ -60,7 +60,7 @@ struct SpanDumper {
   }
 
   void put(TextSpan body, uint32_t color = 0) {
-    for (auto c = body.a; c < body.b; c++) put(*c, color);
+    for (auto c = body.begin; c < body.end; c++) put(*c, color);
   }
 
   void reset() {
@@ -105,22 +105,22 @@ inline void print_match(const char* a, const char* b, const char* c,
 
 inline void print_match(TextSpan text, TextSpan tail, size_t width) {
   if (tail.is_valid()) {
-    print_match(text.a, tail.a, text.b, 0x80FF80, 0xCCCCCC, width);
+    print_match(text.begin, tail.begin, text.end, 0x80FF80, 0xCCCCCC, width);
   } else {
-    print_match(text.a, tail.b, text.b, 0xCCCCCC, 0x8080FF, width);
+    print_match(text.begin, tail.end, text.end, 0xCCCCCC, 0x8080FF, width);
   }
 }
 
 template<typename node_type>
 inline void print_match2(Span<node_type> head, Span<node_type> tail, int width) {
-  const char* text_a = head.a->text_head();
+  const char* text_a = head.begin->text_head();
   const char* text_b = head.b->text_tail();
 
   if (tail.is_valid()) {
-    const char* tail_a = tail.a->text_head();
+    const char* tail_a = tail.begin->text_head();
     print_match(text_a, tail_a, text_b, 0x80FF80, 0xCCCCCC, width);
   } else {
-    const char* tail_b = tail.b->text_head();
+    const char* tail_b = tail.end->text_head();
     print_match(text_a, tail_b, text_b, 0xCCCCCC, 0x8080FF, width);
   }
 }
@@ -133,7 +133,7 @@ inline void print_tree(TextSpan text, const node_type* node, int width, int dept
   const char* a = node->text_head();
   const char* b = node->text_tail();
 
-  print_match(a, b, text.b, 0x80FF80, 0xCCCCCC, width);
+  print_match(a, b, text.end, 0x80FF80, 0xCCCCCC, width);
   print_trellis(depth, node->match_name, "", 0xFFAAAA);
 
   for (auto c = node->child_head(); c; c = c->node_next()) {

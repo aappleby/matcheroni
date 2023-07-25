@@ -20,23 +20,277 @@
 </head>
 
 <body>
-  <div class="topbar">
-    <div class="topbar_spacer"> </div>
-    <div class="topbar_title">
-      <img src="../assets/cheese_m.jpg" width="48" height="48" style="margin:8px;">
-      Matcheroni & Parseroni Tutorial
-      <a style="margin-left:80px;" href="https://github.com/aappleby/Matcheroni">Source on Github</a>
-    </div>
-    <div class="topbar_spacer"></div>
+<div class="topbar">
+  <div class="topbar_spacer"> </div>
+  <div class="topbar_title">
+    <img src="../assets/cheese_m.jpg" width="48" height="48" style="margin:8px;">
+    Matcheroni & Parseroni Tutorial
+    <a style="margin-left:80px;" href="https://github.com/aappleby/Matcheroni">Source on Github</a>
   </div>
+  <div class="topbar_spacer"></div>
+</div>
 
-  <div class="contents">
-    <div class="divider">Matcheroni is a toolkit for matching text. </div>
-    <p>
-      Parseroni can build parse trees out of Matcheroni patterns.
-    </p>
+<div class="contents">
 
-    <div class="divider">Getting started by matching numbers</div>
+<div class="divider">Matcheroni is a toolkit for matching text. </div>
+
+
+
+
+
+
+
+
+<p>So, you need to parse some text.</p>
+
+<pre class="centered text_box">
+~$ mkdir test
+~$ cd test
+~/test$ nano main.cpp
+</pre>
+<p>Let's start with "Hello World":</p>
+<pre class="centered text_box code_jar language-cpp">
+#include &lt;stdio.h&gt;
+
+int main(int argc, char** argv) {
+  printf("Hello World!\n");
+  return 0;
+}
+</pre>
+
+<p>And run it...</p>
+
+<pre class="centered text_box">
+~/test$ gcc main.cpp -o main
+~/test$ ./main
+Hello World!
+~/test$
+</pre>
+
+<p>OK, now to clone the Matcheroni repo</p>
+<pre class="centered text_box">
+~/test$ git clone https://github.com/aappleby/Matcheroni
+Cloning into 'Matcheroni'...
+remote: Enumerating objects: 3804, done.
+remote: Counting objects: 100% (915/915), done.
+remote: Compressing objects: 100% (465/465), done.
+remote: Total 3804 (delta 660), reused 675 (delta 443), pack-reused 2889
+Receiving objects: 100% (3804/3804), 4.54 MiB | 9.90 MiB/s, done.
+Resolving deltas: 100% (2742/2742), done.
+~/test$
+</pre>
+
+<p>and #include it in our program</p>
+<pre class="centered text_box code_jar language-cpp">
+#include &lt;stdio.h&gt;
+#include "matcheroni/Matcheroni.hpp"
+
+int main(int argc, char** argv) {
+  printf("Hello World!\n");
+  return 0;
+}
+</pre>
+
+<p>And now we need --std=c++20 to compile</p>
+
+<pre class="centered text_box">
+~/test$ gcc --std=c++20 -IMatcheroni main.cpp -o main
+~/test$ ./main
+Hello World!
+~/test$
+</pre>
+
+<p>Now let's do something trivial with Matcheroni, like match the letter 'H'</p>
+
+<pre class="centered text_box code_jar language-cpp">
+#include &lt;stdio.h&gt;
+#include "matcheroni/Matcheroni.hpp"
+
+using namespace matcheroni;
+
+int main(int argc, char** argv) {
+  const char* text = "Hello World!";
+
+  TextContext ctx;
+  TextSpan body = to_span("Hello World!");
+  TextSpan tail = Atom&lt;'H'&gt;::match(ctx, body);
+  printf("%s\n", tail.begin);
+  return 0;
+}
+</pre>
+
+
+
+
+
+<div class="flex_row">
+<div class="flex_col">
+<div class="header_bar">Source</div>
+<pre class="text_box code_jar language-cpp">
+#include &lt;stdio.h&gt;
+#include "matcheroni/Matcheroni.hpp"
+#include "matcheroni/Utilities.hpp"
+
+using namespace matcheroni;
+
+int main(int argc, char** argv) {
+  TextContext context;
+  using pattern = Seq&lt;Lit&lt;"Hello"&gt;, Lit&lt;" "&gt;, Lit&lt;"World"&gt;&gt;;
+  TextSpan body = to_span("Hello World");
+  TextSpan tail = pattern::match(context, body);
+
+  printf("body.begin `%s`\n", body.a);
+  printf("body.end   `%s`\n", body.b);
+  printf("tail.begin `%s`\n", tail.a);
+  printf("tail.end   `%s`\n", tail.b);
+  return 0;
+};
+</pre>
+</div>
+<div class="flex_col">
+<div class="header_bar">Output</div>
+<pre class="text_box">
+body.begin `Hello World`
+body.end   ``
+tail.begin `!`
+tail.end   ``
+</pre>
+</div>
+</div>
+
+<p>So what happens if the text doesn't match?</p>
+
+<div class="flex_row">
+<div class="flex_col">
+<div class="header_bar">Source</div>
+<pre class="text_box code_jar language-cpp">
+#include &lt;stdio.h&gt;
+#include "matcheroni/Matcheroni.hpp"
+#include "matcheroni/Utilities.hpp"
+
+using namespace matcheroni;
+
+int main(int argc, char** argv) {
+  TextContext context;
+  using pattern = Seq&lt;Lit&lt;"Hello"&gt;, Lit&lt;" "&gt;, Lit&lt;"World"&gt;&gt;;
+  TextSpan body = to_span("Hello Moon");
+  TextSpan tail = pattern::match(context, body);
+
+  printf("body.begin `%s`\n", body.a);
+  printf("body.end   `%s`\n", body.b);
+  printf("tail.begin `%s`\n", tail.a);
+  printf("tail.end   `%s`\n", tail.b);
+  return 0;
+};
+</pre>
+</div>
+<div class="flex_col">
+<div class="header_bar">Output</div>
+<pre class="text_box">
+body.begin `Hello Moon!`
+body.end   ``
+tail.begin `(null)`
+tail.end   `Moon!`
+</pre>
+</div>
+</div>
+
+<p>The tail span starts with nullptr to indicate that the match failed, and </p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="divider">Getting started by matching numbers</div>
+
+<p>
+Here's an EBNF definition of JSON, using <a href="https://www.w3.org/TR/REC-xml/#sec-notation">W3C notation</a>, side-by-side with the equivalent Matcheroni patterns.
+I've modified the grammar slightly from the version on <a href="http://json.org">JSON.org</a> to ensure rules always match something and that whitespace is always "inside" the patterns:
+</p>
+
+<div class="flex_row">
+<div class="flex_col">
+<div class="header_bar">JSON grammar in W3C EBNF</div>
+<pre class="text_box">
+onenine   = [1-9]
+digit     = '0' | onenine
+digits    = digit+
+integer   = '-'? (digit | onenine digits)
+fraction  = '.' digits
+sign      = '+' | '-'
+exponent  = ('e' | 'E') sign? digits
+number    = integer fraction? exponent?
+
+hex       = digit | [a-fA-F]
+escape    = ["\/bfnrt] | ('u' hex hex hex hex)
+character = ([#x20-#x10FFFF] - '"' - '\') | ('\' escape)
+string    = '"' character* '"'
+
+ws        = [ \t\n\r]+
+keyword   = "true" | "false" | "null"
+value     = object | array | string | number | keyword
+member    = string ws? ':' ws? value
+values    = value  (ws? ',' ws? value)*
+members   = member (ws? ',' ws? member)*
+array     = '[' ws? values  ws? ']'
+object    = '{' ws? members ws? '}'
+
+json      = object | array
+</pre>
+</div>
+<div class="flex_col">
+<div class="header_bar">JSON grammar in Matcheroni</div>
+<pre class="text_box code_jar language-cpp">
+using onenine   = Range&lt;'1', '9'&gt;;
+using digit     = Oneof&lt;Atom&lt;'0'&gt;, onenine&gt;;
+using digits    = Some&lt;digit&gt;;
+using integer   = Seq&lt;Opt&lt;Atom&lt;'-'&gt;&gt;, Oneof&lt;digit, Seq&lt;onenine, digits&gt;&gt;&gt;;
+using fraction  = Seq&lt;Atom&lt;'.'&gt;, digits&gt;;
+using sign      = Atom&lt;'+', '-'&gt;;
+using exponent  = Seq&lt;Atom&lt;'e', 'E'&gt;, Opt&lt;sign&gt;, digits&gt;;
+using number    = Seq&lt;integer, Opt&lt;fraction&gt;, Opt&lt;exponent&gt;&gt;;
+
+using hex       = Oneof&lt;digit, Range&lt;'a', 'f', 'A', 'F'&gt;&gt;;
+
+using escape = Oneof&lt;
+  Charset&lt;"\"\\/bfnrt"&gt;,
+  Seq&lt;Atom&lt;'u'&gt;, hex, hex, hex, hex&gt;
+&gt;;
+
+using character = Oneof&lt;
+  Seq&lt;Not&lt;Atom&lt;'\"'&gt;&gt;, Not&lt;Atom&lt;'\\'&gt;&gt;, Range&lt;0x20, 0x10FFFF&gt;&gt;,
+  Seq&lt;Atom&lt;'\\'&gt;, escape&gt;
+&gt;;
+
+using string    = Seq&lt;Atom&lt;'"'&gt;, Any&lt;character&gt;, Atom&lt;'"'&gt;&gt;;
+
+using ws        = Some&lt;Atom&lt;' ','\t', '\n', '\r'&gt;&gt;;
+using keyword   = Oneof&lt;Lit&lt;"true"&gt;, Lit&lt;"false"&gt;, Lit&lt;"null"&gt;&gt;;
+using value     = Oneof&lt;object, array, string, number, keyword&gt;;
+using member    = Seq&lt;string, Opt&lt;ws&gt;, Atom&lt;':'&gt;, Opt&lt;ws&gt;, value&gt;;
+using values    = Seq&lt;value,  Any&lt;Seq&lt;Opt&lt;ws&gt;, Atom&lt;','&gt;, Opt&lt;ws&gt;, value&gt;&gt;;
+using members   = Seq&lt;member, Any&lt;Seq&lt;Opt&lt;ws&gt;, Atom&lt;','&gt;, Opt&lt;ws&gt;, member&gt;&gt;;
+using array     = Seq&lt;Atom&lt;'['&gt;, Opt&lt;ws&gt;, values,  Any&lt;ws&gt;, Atom&lt;']'&gt;&gt;;
+using object    = Seq&lt;Atom&lt;'{'&gt;, Opt&lt;ws&gt;, members, Opt&lt;ws&gt;, Atom&lt;'}'&gt;&gt;;
+
+using json      = Oneof&lt;object, array&gt;;
+</pre>
+</div>
+</div>
+
 
     <p>
       Let's start off with a fairly simple example - matching numbers. Below is a live version of the tutorial - the
@@ -64,14 +318,13 @@
       running, though you might want Utilities.hpp as well as it contains debugging and printing helpers.
     </p>
 
-<div class="code_box language-cpp">
-01234567890123456789012345678901234567890123456789012345678901234567890123456789
+
+    <pre class="code_jar language-cpp">
 #include "matcheroni/Matcheroni.hpp"
 #include "matcheroni/Utilities.hpp"
 
 using namespace matcheroni;
-
-</div>
+</pre>
 
     <p>
       Matching or parsing text is all about building larger patterns out of collections of smaller patterns. Each lexing
@@ -92,7 +345,7 @@ using namespace matcheroni;
       JSON spec. These have been translated as directly as possible from the official JSON spec here - (link).
     </p>
 
-<div class="code_box language-cpp">
+    <pre class="code_jar language-cpp">
 using sign = Atom&lt;'+', '-'&gt;;
 using digit = Range&lt;'0', '9'&gt;;
 using onenine = Range&lt;'1', '9'&gt;;
@@ -101,14 +354,14 @@ using integer = Seq&lt;Opt&lt;Atom&lt;'-'&gt;&gt;, Oneof&lt;Seq&lt;onenine, digi
 using fraction = Seq&lt;Atom&lt;'.'&gt;, digits&gt;;
 using exponent = Seq&lt;Atom&lt;'e', 'E'&gt;, Opt&lt;sign&gt;, digits&gt;;
 using number = Seq&lt;integer, Opt&lt;fraction&gt;, Opt&lt;exponent&gt;&gt;;
-
-</div>
+</pre>
 
     <p>
       If you're not familiar with templates in C++ this code will look pretty weird. It looks almost like we're calling
       functions, but we're not - we're instantiating templates and giving them new names. The intermediate names before
       'number' are technically optional, but writing the pattern out fully results in something like
-      <span class="inline-code">Seq&lt; Seq&lt;Opt&lt;Atom&lt;'-'&gt;&gt;, Oneof&lt;Seq&lt;Range&lt;'1', '9'&gt;, Some&lt;Range&lt;'0','9'&gt;...."</span>
+      <span class="inline-code">Seq&lt; Seq&lt;Opt&lt;Atom&lt;'-'&gt;&gt;, Oneof&lt;Seq&lt;Range&lt;'1', '9'&gt;,
+        Some&lt;Range&lt;'0','9'&gt;...."</span>
       - maintaining that gets tedious really quickly.
     </p>
     <p>
@@ -130,15 +383,14 @@ using number = Seq&lt;integer, Opt&lt;fraction&gt;, Opt&lt;exponent&gt;&gt;;
       few required methods. We aren't doing anything fancy, so we're using Matcheroni's built-in "TextContext".
     </p>
 
-<div class="code_box language-cpp">
+    <pre class="code_jar language-cpp">
 struct JsonParser {
   ...
   static TextSpan match(TextContext& ctx, TextSpan body) {
     return number::match(ctx, body);
   }
 };
-
-</div>
+</pre>
 
     <p>
       Now we just read a string from a file via read() (in Utilities.hpp), wrap it in a span (basically a C++
@@ -154,13 +406,12 @@ struct JsonParser {
       end-of-file are dark grey @'s.
     </p>
 
-<div class="code_box language-cpp">
+    <pre class="code_jar language-cpp">
 auto input = read(argv[1]);
 auto text = to_span(input);
 auto tail = JsonParser::match(ctx, text);
 print_summary(text, tail, 50);
-
-</div>
+</pre>
 
     <p>
     </p>

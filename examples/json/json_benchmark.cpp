@@ -100,7 +100,7 @@ int main(int argc, char** argv) {
 
     //----------------------------------------
 
-    if (parse_end.a < text.b) {
+    if (parse_end.begin < text.end) {
       printf("Parse failed!\n");
       printf("Failure near `");
       //print_flat(TextSpan(context->highwater, text.b), 20);

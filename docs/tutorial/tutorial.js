@@ -189,7 +189,7 @@ load_tutorial("json_tut2b");
 
 //------------------------------------------------------------------------------
 
-let code_boxes = document.querySelectorAll(".code_box");
+let code_boxes = document.querySelectorAll(".code_jar");
 let code_box_jars = [];
 
 console.log(code_boxes);

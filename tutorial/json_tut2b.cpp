@@ -19,7 +19,7 @@ using namespace matcheroni;
 struct NumberNode : public TextNode {
   void init(const char* match_name, TextSpan span, uint64_t flags) override {
     TextNode::init(match_name, span, flags);
-    value = atof(span.a);
+    value = atof(span.begin);
   }
 
   using TextNode::TextNode;
