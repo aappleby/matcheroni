@@ -35,10 +35,10 @@ struct JsonParser {
   // Matches any valid JSON value
   static TextSpan match_value(TextNodeContext& ctx, TextSpan body) {
     return Oneof<
-      Capture<"array",   array,   TextNode>,
       Capture<"number",  number,  TextNode>,
-      Capture<"object",  object,  TextNode>,
       Capture<"string",  string,  TextNode>,
+      Capture<"array",   array,   TextNode>,
+      Capture<"object",  object,  TextNode>,
       Capture<"keyword", keyword, TextNode>
     >::match(ctx, body);
   }

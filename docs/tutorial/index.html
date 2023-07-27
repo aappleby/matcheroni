@@ -61,7 +61,7 @@
 
 
 
-<div class="divider">Parsing JSON in Matcheroni Part 0: "Hello World"</div>
+<div class="divider">Parsing JSON, Step 0: "Hello World"</div>
 
 <p>
 Before we jump into JSON syntax, let's start with the Matcheroni equivalent of "Hello World".
@@ -141,7 +141,8 @@ The 'tail' return value from pattern::match() is a span representing the <b>rema
 
 
 <div class="question">
-But what _is_ the pattern matcher, exactly? It looks like a type, but there are words in it.
+Hey, wait a second - what _is_ the pattern matcher, exactly?<br>
+It's "using" what looks like a type, but there are words in it.
 </div>
 <p>
 We can get into it in more detail later, but essentially the matcher is just a tree of templated structs, each of which has a static match() method that does some matching work of its own and then calls into the match() methods of the template arguments.</p>
@@ -160,7 +161,7 @@ Yeah, it's a bit weird - but it works quite well. The resulting template names a
 
 
 
-<div class="divider">Parsing JSON in Matcheroni Part 1: Numbers</div>
+<div class="divider">Parsing JSON, Step 1: Matching Numbers</div>
 
 <p>
 Let's look at a more realistic example - parsing JSON. We'll break the grammar into a few chunks to make it a bit less overwhelming. Below we've defined our own matcher, JsonParser, that uses the built-in Matcheroni patterns to match JSON-valid numbers. The grammar below is slightly modified from the version on <a href="http://json.org">JSON.org</a> (for reasons that will be explained later) but is equivalent to it.
@@ -194,6 +195,7 @@ Let's look at a more realistic example - parsing JSON. We'll break the grammar i
   Now let's match lists of numbers, strings, and keywords:
 </p>
 
+<div class="divider">Parsing JSON, Step 2: Matching Strings & Keywords</div>
 
 <div class="live_code" id="json_tut1b">
   <div class="left_panel">
@@ -218,6 +220,8 @@ Let's look at a more realistic example - parsing JSON. We'll break the grammar i
 <p>
   The (work-in-progress) C99 lexer and parser in Matcheroni's example folder takes advantage of this functionality - the lexer matches plain text and produces text spans, the parser matches text spans and produces parse nodes. There are probably other interesting ways of using Matcheroni on things other than text - perhaps parsing binary data, or decoding bus transactions from oscilloscope data?
 </p>
+
+<div class="divider">JSON Part 3: Matching Containers</div>
 
 <p>
   Let's fold in the remainder of the JSON grammar and look at how we can debug Matcheroni patterns.
@@ -287,12 +291,54 @@ So our JSON matcher generates a little over 8k of code. Tracing adds another 16k
   What about performance?
 </p>
 
-<div class="divider">Pitfalls and Caveats</div>
+<div class="divider">Parsing JSON, Step 4: Actually Parsing JSON</div>
 
+<p>
+  Here's tutorial 2a:<br>
+</p>
+<div class="live_code" id="json_tut2a">
+  <div class="left_panel">
+    <div class="header_bar">./tutorial/json_tut2a.cpp</div>
+    <div class="source_pane language-cpp"></div>
+  </div>
+  <div class="right_panel">
+    <div class="input_header header_bar">./tutorial/json_tut2a.input</div>
+    <div class="input_pane language-json" contenteditable="true"></div>
+    <div class="spacer"></div>
+    <div class="output_header header_bar">json_tut2b output</div>
+    <div class="output_pane"></div>
+  </div>
+</div>
+
+
+
+
+<div class="divider">Parsing JSON, Step 5: Customization</div>
+<p>
+  Here's tutorial 2b:<br>
+</p>
+<div class="live_code" id="json_tut2b">
+  <div class="left_panel">
+    <div class="header_bar">./tutorial/json_tut2b.cpp</div>
+    <div class="source_pane language-cpp"></div>
+  </div>
+  <div class="right_panel">
+    <div class="input_header header_bar">./tutorial/json_tut2b.input</div>
+    <div class="input_pane language-json" contenteditable="true"></div>
+    <div class="spacer"></div>
+    <div class="output_header header_bar">json_tut2b output</div>
+    <div class="output_pane"></div>
+  </div>
+</div>
+
+
+
+
+
+
+<div class="divider">JSON Part 6: Pitfalls & Caveats</div>
 <div class="question">Oneof&lt;&gt; returns the _first_ match</div>
-
 <div class="question">Some&lt;Opt&lt;&gt;&gt; creates an infinite loop</div>
-
 <div class="question">Suffixes can cause exponential parsing time</div>
 
 
@@ -303,9 +349,22 @@ So our JSON matcher generates a little over 8k of code. Tracing adds another 16k
 
 
 
+<div class="divider">Work-In-Progress C Parser</div>
 
-
-
+<p>Tiny C parser</p>
+<div class="live_code" id="tiny_c_parser">
+  <div class="left_panel">
+    <div class="header_bar">./tutorial/tiny_c_parser.cpp</div>
+    <div class="source_pane language-cpp"></div>
+  </div>
+  <div class="right_panel">
+    <div class="input_header header_bar">./tutorial/tiny_c_parser.input</div>
+    <div class="input_pane language-cpp"></div>
+    <div class="spacer"></div>
+    <div class="output_header header_bar">tiny_c_parser output</div>
+    <div class="output_pane"></div>
+  </div>
+</div>
 
 
 

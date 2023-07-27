@@ -91,10 +91,14 @@ build bin/examples/toml/toml_test_pass : run_test bin/examples/toml/toml_test
 #-------------------------------------------------------------------------------
 # JSON parser example
 
+build obj/examples/json/json_matcher.o    : compile_cpp examples/json/json_matcher.cpp
 build obj/examples/json/json_parser.o     : compile_cpp examples/json/json_parser.cpp
 
 build obj/examples/json/json_benchmark.o  : compile_cpp examples/json/json_benchmark.cpp
-build bin/examples/json/json_benchmark    : link obj/examples/json/json_parser.o obj/examples/json/json_benchmark.o
+build bin/examples/json/json_benchmark    : link $
+  obj/examples/json/json_matcher.o $
+  obj/examples/json/json_parser.o $
+  obj/examples/json/json_benchmark.o
 
 build obj/examples/json/json_demo.o       : compile_cpp examples/json/json_demo.cpp
 build bin/examples/json/json_demo         : link obj/examples/json/json_parser.o obj/examples/json/json_demo.o

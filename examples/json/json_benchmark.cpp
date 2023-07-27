@@ -30,32 +30,31 @@ const int warmup = 10;
 const int reps = 20;
 #endif
 
+//#define MATCH
+#define PARSE
+
+TextSpan match_json(TextContext& ctx, TextSpan body);
 TextSpan parse_json(TextNodeContext& ctx, TextSpan body);
 
 //------------------------------------------------------------------------------
 
 int main(int argc, char** argv) {
-  printf("Matcheroni JSON parsing benchmark\n");
+  printf("Matcheroni JSON matching/parsing benchmark\n");
 
   const char* paths[] = {
-    //"data/json_demo.json",
-    //"data/invalid.json",
-    //"data/sample.json",
-
-
-    // 4609770.000000
+    // should be 4609770 bytes
     "data/canada.json",
     "data/citm_catalog.json",
     "data/twitter.json",
   };
 
   double byte_accum = 0;
-  double time_accum = 0;
+  double match_accum = 0;
+  double parse_accum = 0;
   double line_accum = 0;
 
-  TextNodeContext ctx;
-
-  double min_rep_accum = 0;
+  TextContext ctx1;
+  TextNodeContext ctx2;
 
   for (auto path : paths) {
     if (verbose) {
@@ -75,67 +74,75 @@ int main(int argc, char** argv) {
     for (size_t i = 0; i < size; i++) if (buf[i] == '\n') line_accum++;
 
     TextSpan text = {buf, buf + size};
-    TextSpan parse_end = text;
 
     //----------------------------------------
 
-    double min_rep = 1e100;
-    double rep_time_accum = 0;
-
+    TextSpan match_end = text;
     for (int rep = 0; rep < (warmup + reps); rep++) {
-      ctx.reset();
-
       double time_a = utils::timestamp_ms();
-      parse_end = parse_json(ctx, text);
+      match_end = match_json(ctx1, text);
       double time_b = utils::timestamp_ms();
-
       double time = time_b - time_a;
-
-      if (rep >= warmup) rep_time_accum += time;
-      if (time < min_rep) min_rep = time;
+      if (rep >= warmup) match_accum += time;
     }
 
-    time_accum += rep_time_accum;
-    min_rep_accum += min_rep;
-
-    //----------------------------------------
-
-    if (parse_end.begin < text.end) {
-      printf("Parse failed!\n");
+    if (match_end.begin < text.end) {
+      printf("Match failed!\n");
       printf("Failure near `");
-      //print_flat(TextSpan(context->highwater, text.b), 20);
+      printf("%50.50s", match_end.begin);
       printf("`\n");
       continue;
     }
 
-    if (verbose) {
-      printf("Parsed %d reps in %f msec\n", reps, rep_time_accum);
-      printf("\n");
+    //----------------------------------------
+
+    TextSpan parse_end = text;
+    for (int rep = 0; rep < (warmup + reps); rep++) {
+      double time_a = utils::timestamp_ms();
+      ctx2.reset();
+      parse_end = parse_json(ctx2, text);
+      double time_b = utils::timestamp_ms();
+      double time = time_b - time_a;
+      if (rep >= warmup) parse_accum += time;
     }
+
+    if (parse_end.begin < text.end) {
+      printf("Parse failed!\n");
+      printf("Failure near `");
+      printf("%50.50s", parse_end.begin);
+      printf("`\n");
+      continue;
+    }
+
+    //----------------------------------------
 
     if (dump_tree) {
       printf("Parse tree:\n");
-      utils::print_context(text, ctx, 40);
+      utils::print_context(text, ctx2, 40);
     }
 
     if (verbose) {
       printf("Slab current      %d\n",  LinearAlloc::inst().current_size);
       printf("Slab max          %d\n",  LinearAlloc::inst().max_size);
-      printf("Tree nodes        %ld\n", ctx.node_count());
+      printf("Tree nodes        %ld\n", ctx2.node_count());
     }
 
     delete [] buf;
   }
 
+  match_accum /= reps;
+  parse_accum /= reps;
+
   printf("\n");
   printf("----------------------------------------\n");
-  printf("Byte accum %f\n", byte_accum);
-  printf("Time accum %f\n", time_accum);
-  printf("Line accum %f\n", line_accum);
-  printf("Byte rate  %f\n", byte_accum / (time_accum / 1000.0));
-  printf("Line rate  %f\n", line_accum / (time_accum / 1000.0));
-  printf("Avg rep time %f\n", time_accum / reps);
-  printf("Min rep time %f\n", min_rep_accum);
+  printf("Byte total %f\n", byte_accum);
+  printf("Line total %f\n", line_accum);
+  printf("Match time %f\n", match_accum);
+  printf("Parse time %f\n", parse_accum);
+  printf("Match byte rate  %f megabytes per second\n", (byte_accum / 1e6) / (match_accum / 1e3));
+  printf("Match line rate  %f megalines per second\n", (line_accum / 1e6) / (match_accum / 1e3));
+  printf("Parse byte rate  %f megabytes per second\n", (byte_accum / 1e6) / (parse_accum / 1e3));
+  printf("Parse line rate  %f megalines per second\n", (line_accum / 1e6) / (parse_accum / 1e3));
   printf("\n");
 
   return 0;

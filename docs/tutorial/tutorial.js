@@ -138,9 +138,9 @@ load_tutorial("json_tut0a");
 load_tutorial("json_tut1a");
 load_tutorial("json_tut1b");
 load_tutorial("json_tut1c");
-//load_tutorial("json_tut2a");
-//load_tutorial("json_tut2b");
-//load_tutorial("tiny_c_parser");
+load_tutorial("json_tut2a");
+load_tutorial("json_tut2b");
+load_tutorial("tiny_c_parser");
 
 //------------------------------------------------------------------------------
 

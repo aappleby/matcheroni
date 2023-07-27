@@ -143,7 +143,7 @@ struct NodeBase {
   //----------------------------------------
 
   // FIXME this virtual might slow things down
-  virtual void init(const char* match_name, SpanType span, uint64_t flags) {
+  void init(const char* match_name, SpanType span, uint64_t flags) {
     this->match_name = match_name;
     this->span  = span;
     this->flags = flags;
@@ -317,7 +317,8 @@ struct NodeContext {
       splice(new_node, (NodeType*)child_head, child_tail);
     }
 
-    new_node->init(match_name, span, flags);
+    // FIXME this is calling through vtable, can we make it a static call if we go through Capture?
+    //new_node->init(match_name, span, flags);
   }
 
 
@@ -456,6 +457,7 @@ inline Span<atom> capture(context& ctx, Span<atom> body, const char* match_name,
     Span<atom> node_span = {body.begin, tail.begin};
     auto new_node = new node_type();
     ctx.create2(new_node, match_name, node_span, 0, old_tail);
+    new_node->init(match_name, node_span, 0);
     matcheroni_assert(new_node->node_next() != new_node);
     matcheroni_assert(new_node->node_prev() != new_node);
   }
@@ -535,6 +537,7 @@ inline Span<atom> capture_end(context& ctx, Span<atom> body, const char* match_n
     Span<atom> new_span(tail.begin, tail.begin);
     auto new_node = new node_type();
     ctx.create2(new_node, match_name, new_span, /*flags*/ 1, ctx.top_tail());
+    new_node->init(match_name, new_span, /*flags*/ 1);
   }
   return tail;
 }

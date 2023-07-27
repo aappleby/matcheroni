@@ -34,10 +34,10 @@ struct JsonMatcher {
   // Matches any valid JSON value
   static TextSpan match_value(TextContext& ctx, TextSpan body) {
     return Oneof<
-      utils::TraceText<"array",   array>,
       utils::TraceText<"number",  number>,
-      utils::TraceText<"object",  object>,
       utils::TraceText<"string",  string>,
+      utils::TraceText<"array",   array>,
+      utils::TraceText<"object",  object>,
       utils::TraceText<"keyword", keyword>
     >::match(ctx, body);
   }

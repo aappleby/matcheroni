@@ -8,8 +8,9 @@ using namespace matcheroni;
 
 struct NumberNode : public TextNode {
   using TextNode::TextNode;
+  //virtual ~NumberNode() {}
 
-  void init(const char* match_name, TextSpan span, uint64_t flags) override {
+  void init(const char* match_name, TextSpan span, uint64_t flags) {
     TextNode::init(match_name, span, flags);
     value = atof(span.begin);
   }
@@ -48,10 +49,10 @@ struct JsonParser {
   // Matches any valid JSON value
   static TextSpan match_value(TextNodeContext& ctx, TextSpan body) {
     return Oneof<
-      Capture<"array",   array,   TextNode>,
       Capture<"number",  number,  NumberNode>,
-      Capture<"object",  object,  TextNode>,
       Capture<"string",  string,  TextNode>,
+      Capture<"array",   array,   TextNode>,
+      Capture<"object",  object,  TextNode>,
       Capture<"keyword", keyword, TextNode>
     >::match(ctx, body);
   }
@@ -95,8 +96,9 @@ struct JsonParser {
 
 double sum(TextNode* node) {
   double result = 0;
-  if (auto num = dynamic_cast<NumberNode*>(node)) {
-    result += num->value;
+  //if (auto num = dynamic_cast<NumberNode*>(node)) {
+  if (strcmp(node->match_name, "number") == 0) {
+    result += ((NumberNode*)node)->value;
   }
   for (auto n = node->child_head(); n; n = n->node_next()) {
     result += sum(n);
