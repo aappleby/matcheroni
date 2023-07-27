@@ -21,7 +21,7 @@ void CScope::clear() {
   typedef_types.clear();
 }
 
-bool CScope::has_type(CContext& ctx, TokSpan body, token_list& types) {
+bool CScope::has_type(CContext& ctx, TokenSpan body, token_list& types) {
   if(ctx.atom_cmp(*body.begin, LEX_IDENTIFIER)) {
     return false;
   }
@@ -62,11 +62,11 @@ void CScope::add_typedef_type(const char* t) {
 
 //----------------------------------------
 
-bool CScope::has_class_type  (CContext& ctx, TokSpan body) { if (has_type(ctx, body, class_types  )) return true; if (parent) return parent->has_class_type  (ctx, body); else return false; }
-bool CScope::has_struct_type (CContext& ctx, TokSpan body) { if (has_type(ctx, body, struct_types )) return true; if (parent) return parent->has_struct_type (ctx, body); else return false; }
-bool CScope::has_union_type  (CContext& ctx, TokSpan body) { if (has_type(ctx, body, union_types  )) return true; if (parent) return parent->has_union_type  (ctx, body); else return false; }
-bool CScope::has_enum_type   (CContext& ctx, TokSpan body) { if (has_type(ctx, body, enum_types   )) return true; if (parent) return parent->has_enum_type   (ctx, body); else return false; }
-bool CScope::has_typedef_type(CContext& ctx, TokSpan body) { if (has_type(ctx, body, typedef_types)) return true; if (parent) return parent->has_typedef_type(ctx, body); else return false; }
+bool CScope::has_class_type  (CContext& ctx, TokenSpan body) { if (has_type(ctx, body, class_types  )) return true; if (parent) return parent->has_class_type  (ctx, body); else return false; }
+bool CScope::has_struct_type (CContext& ctx, TokenSpan body) { if (has_type(ctx, body, struct_types )) return true; if (parent) return parent->has_struct_type (ctx, body); else return false; }
+bool CScope::has_union_type  (CContext& ctx, TokenSpan body) { if (has_type(ctx, body, union_types  )) return true; if (parent) return parent->has_union_type  (ctx, body); else return false; }
+bool CScope::has_enum_type   (CContext& ctx, TokenSpan body) { if (has_type(ctx, body, enum_types   )) return true; if (parent) return parent->has_enum_type   (ctx, body); else return false; }
+bool CScope::has_typedef_type(CContext& ctx, TokenSpan body) { if (has_type(ctx, body, typedef_types)) return true; if (parent) return parent->has_typedef_type(ctx, body); else return false; }
 
 void CScope::add_class_type  (CContext& ctx, const CToken* a) { return add_type(ctx, a, class_types  ); }
 void CScope::add_struct_type (CContext& ctx, const CToken* a) { return add_type(ctx, a, struct_types ); }

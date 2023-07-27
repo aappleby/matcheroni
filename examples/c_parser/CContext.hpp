@@ -24,16 +24,16 @@ struct CNode;
 struct CContext;
 struct CScope;
 
-using TokSpan = matcheroni::Span<CToken>;
+using TokenSpan = matcheroni::Span<CToken>;
 
 //------------------------------------------------------------------------------
 
-class CContext : public matcheroni::NodeContext<TokSpan, CNode> {
+class CContext : public matcheroni::NodeContext<TokenSpan, CNode> {
  public:
   CContext();
 
   static int atom_cmp(char a, int b) {
-    return a - b;
+    return (unsigned char)a - b;
   }
 
   static int atom_cmp(const CToken& a, const LexemeType& b) {
@@ -60,17 +60,17 @@ class CContext : public matcheroni::NodeContext<TokSpan, CNode> {
 
   void reset();
   //bool parse(std::vector<CToken>& lexemes);
-  bool parse(matcheroni::TextSpan text, TokSpan lexemes);
+  bool parse(matcheroni::TextSpan text, TokenSpan lexemes);
 
-  TokSpan match_builtin_type_base  (TokSpan body);
-  TokSpan match_builtin_type_prefix(TokSpan body);
-  TokSpan match_builtin_type_suffix(TokSpan body);
+  TokenSpan match_builtin_type_base  (TokenSpan body);
+  TokenSpan match_builtin_type_prefix(TokenSpan body);
+  TokenSpan match_builtin_type_suffix(TokenSpan body);
 
-  TokSpan match_class_type  (TokSpan body);
-  TokSpan match_struct_type (TokSpan body);
-  TokSpan match_union_type  (TokSpan body);
-  TokSpan match_enum_type   (TokSpan body);
-  TokSpan match_typedef_type(TokSpan body);
+  TokenSpan match_class_type  (TokenSpan body);
+  TokenSpan match_struct_type (TokenSpan body);
+  TokenSpan match_union_type  (TokenSpan body);
+  TokenSpan match_enum_type   (TokenSpan body);
+  TokenSpan match_typedef_type(TokenSpan body);
 
   void add_class_type  (const CToken* a);
   void add_struct_type (const CToken* a);
@@ -93,7 +93,7 @@ class CContext : public matcheroni::NodeContext<TokSpan, CNode> {
   //----------------------------------------
 
   matcheroni::TextSpan text_span;
-  TokSpan  lexemes;
+  TokenSpan  lexemes;
 
   std::vector<CToken> tokens;
   CScope* type_scope;

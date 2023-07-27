@@ -750,13 +750,13 @@ class CppException extends EmscriptenEH {
 // end include: runtime_exceptions.js
 var wasmBinaryFile;
 if (Module['locateFile']) {
-  wasmBinaryFile = 'json_tut2b.wasm';
+  wasmBinaryFile = 'tiny_c_parser.wasm';
   if (!isDataURI(wasmBinaryFile)) {
     wasmBinaryFile = locateFile(wasmBinaryFile);
   }
 } else {
   // Use bundler-friendly `new URL(..., import.meta.url)` pattern; works in browsers too.
-  wasmBinaryFile = new URL('json_tut2b.wasm', import.meta.url).href;
+  wasmBinaryFile = new URL('tiny_c_parser.wasm', import.meta.url).href;
 }
 
 function getBinarySync(file) {
@@ -4740,7 +4740,7 @@ var ___cxa_is_pointer_type = createExportWrapper("__cxa_is_pointer_type");
 var dynCall_viiij = Module['dynCall_viiij'] = createExportWrapper("dynCall_viiij");
 /** @type {function(...*):?} */
 var dynCall_jiji = Module['dynCall_jiji'] = createExportWrapper("dynCall_jiji");
-var ___emscripten_embedded_file_data = Module['___emscripten_embedded_file_data'] = 33582968;
+var ___emscripten_embedded_file_data = Module['___emscripten_embedded_file_data'] = 33577764;
 function invoke_ii(index,a1) {
   var sp = stackSave();
   try {

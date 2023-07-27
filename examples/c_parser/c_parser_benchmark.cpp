@@ -178,7 +178,7 @@ int test_parser(int argc, char** argv) {
       }
     }
 
-    TokSpan tok_span(lexer.tokens.data(), lexer.tokens.data() + lexer.tokens.size());
+    TokenSpan tok_span(lexer.tokens.data(), lexer.tokens.data() + lexer.tokens.size());
 
     if (verbose) printf("%04d: Parsing %s\n", file_pass, path.c_str());
     parse_time -= utils::timestamp_ms();

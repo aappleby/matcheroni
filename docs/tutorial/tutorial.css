@@ -50,15 +50,20 @@ p {
 /******************************************************************************/
 
 .divider {
-  margin:auto;
-  padding:10px;
+  /*margin:auto;*/
+  margin:0px;
+  padding:0px;
+  padding-top:10px;
+  padding-bottom:10px;
+  /*
   padding-left:40px;
   padding-right:40px;
+  */
   background-color: #3B3344;
   border: solid #1A1A1A 1px;
   text-align:center;
   font-size:20px;
-  width:fit-content;
+  width:100%;
 }
 
 /******************************************************************************/
@@ -100,6 +105,15 @@ p {
   flex-grow: 1;
 }
 
+.code_box {
+  display: flex;
+  background-color: #1e1e1e;
+  margin:0px;
+  padding:8px;
+  width:80ch;
+  flex-grow: 1;
+}
+
 .centered {
   margin-left: auto;
   margin-right: auto;
@@ -124,7 +138,7 @@ p {
 }
 
 .left_panel {
-  height:700px;
+  max-height:700px;
   flex-basis: 1;
   flex-grow: 0;
   align-items: stretch;
@@ -136,7 +150,7 @@ p {
 }
 
 .right_panel {
-  height:700px;
+  max-height:700px;
   flex-basis: 1;
   flex-grow: 0;
 

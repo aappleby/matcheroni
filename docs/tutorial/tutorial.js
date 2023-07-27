@@ -14,7 +14,7 @@ class LeftPanel {
     this.mod           = null;
     this.panel_div     = pane_div;
     this.source_header = pane_div.querySelector(".header_bar");
-    this.source_pane   = pane_div.querySelector(".code_jar");
+    this.source_pane   = pane_div.querySelector(".source_pane");
     this.source_jar    = new CodeJar(this.source_pane, highlight, {tab:"  "});
   }
 
@@ -40,6 +40,7 @@ class RightPanel {
     this.panel_div     = panel;
     this.input_header  = panel.querySelector(".input_header");
     this.input_pane    = panel.querySelector(".input_pane");
+    this.input_jar     = new CodeJar(this.input_pane, highlight, {tab:"  "});
     this.output_header = panel.querySelector(".output_header");
     this.output_pane   = panel.querySelector(".output_pane");
     this.fitAddon      = null;
@@ -53,7 +54,8 @@ class RightPanel {
     try {
       let filename = this.input_header.innerText;
       let input_contents = new TextDecoder().decode(this.mod.FS.readFile(filename));
-      this.input_pane.innerText = input_contents;
+      this.input_jar.updateCode(input_contents);
+      //this.input_pane.innerText = input_contents;
     } catch {}
   }
 };
@@ -136,12 +138,13 @@ load_tutorial("json_tut0a");
 load_tutorial("json_tut1a");
 load_tutorial("json_tut1b");
 load_tutorial("json_tut1c");
-load_tutorial("json_tut2a");
-load_tutorial("json_tut2b");
+//load_tutorial("json_tut2a");
+//load_tutorial("json_tut2b");
+//load_tutorial("tiny_c_parser");
 
 //------------------------------------------------------------------------------
 
-let code_boxes = document.querySelectorAll(".code_jar");
+let code_boxes = document.querySelectorAll(".code_box");
 let code_box_jars = [];
 
 console.log(code_boxes);

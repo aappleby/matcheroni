@@ -424,7 +424,7 @@ struct TextNode : public NodeBase<TextSpan> {
 
 struct TextNodeContext : public NodeContext<TextSpan, TextNode> {
 
-  static int atom_cmp(char a, int b) { return a - b; }
+  static int atom_cmp(char a, int b) { return (unsigned char)a - b; }
 
   TextNode* top_head() { return _top_head; }
   TextNode* top_tail() { return _top_tail; }

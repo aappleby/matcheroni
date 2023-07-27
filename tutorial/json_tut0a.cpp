@@ -1,23 +1,19 @@
 #include "matcheroni/Matcheroni.hpp"
 #include "matcheroni/Utilities.hpp"
 
-//using namespace matcheroni;
-
-using matcheroni::Lit;
-using matcheroni::TextContext;
-using matcheroni::TextSpan;
-using matcheroni::utils::read;
-using matcheroni::utils::to_span;
-using matcheroni::utils::print_summary;
+using namespace matcheroni;
 
 int main(int argc, char** argv) {
   if (argc < 2) exit(-1);
 
+  std::string input = utils::read(argv[1]);
+  TextSpan text = utils::to_span(input);
+
+  using pattern = Seq< Lit<"Hello">, Atom<' '>, Lit<"World"> >;
+
   TextContext ctx;
-  auto input = read(argv[1]);
-  auto text = to_span(input);
-  auto tail = Lit<"Hello">::match(ctx, text);
-  print_summary(text, tail, 50);
+  TextSpan tail = pattern::match(ctx, text);
+  utils::print_summary(text, tail, 50);
 
   return tail.is_valid() ? 0 : -1;
 }

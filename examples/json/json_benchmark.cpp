@@ -44,9 +44,9 @@ int main(int argc, char** argv) {
 
 
     // 4609770.000000
-    "../nativejson-benchmark/data/canada.json",
-    "../nativejson-benchmark/data/citm_catalog.json",
-    "../nativejson-benchmark/data/twitter.json",
+    "data/canada.json",
+    "data/citm_catalog.json",
+    "data/twitter.json",
   };
 
   double byte_accum = 0;

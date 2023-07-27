@@ -122,7 +122,8 @@ using matcher_function = Span<atom> (*)(context& ctx, Span<atom> body);
 
 struct TextContext {
 
-  static int atom_cmp(char a, int b) { return a - b; }
+  // We cast to unsigned char as our ranges are generally going to be unsigned.
+  static int atom_cmp(char a, int b) { return (unsigned char)a - b; }
 
   // Rewind does nothing as it doesn't interact with trace_depth.
   template<typename atom> void rewind(Span<atom> body) {}

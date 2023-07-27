@@ -10,12 +10,12 @@
 #include "matcheroni/Parseroni.hpp"
 #include "examples/c_lexer/CToken.hpp"
 
-typedef matcheroni::Span<CToken> TokSpan;
+typedef matcheroni::Span<CToken> TokenSpan;
 
 //------------------------------------------------------------------------------
 
-struct CNode : public matcheroni::NodeBase<TokSpan> {
-  using base = matcheroni::NodeBase<TokSpan>;
+struct CNode : public matcheroni::NodeBase<TokenSpan> {
+  using base = matcheroni::NodeBase<TokenSpan>;
 
   CNode* child(const char* name) { return (CNode*)base::child(name); }
 

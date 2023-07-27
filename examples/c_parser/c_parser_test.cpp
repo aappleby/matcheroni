@@ -33,7 +33,7 @@ void parse_and_dump(matcher_function<CContext, CToken> parse, std::string source
   CContext context;
   auto text_span = utils::to_span(source);
   auto lex_ok = lexer.lex(text_span);
-  TokSpan tok_span = utils::to_span(lexer.tokens);
+  TokenSpan tok_span = utils::to_span(lexer.tokens);
 
   //auto parse_ok = context.parse(text_span, tok_span);
 
@@ -46,7 +46,7 @@ void parse_and_dump(matcher_function<CContext, CToken> parse, std::string source
   // Skip over BOF, stop before EOF
   auto tok_a = tokens.data() + 1;
   auto tok_b = tokens.data() + tokens.size() - 1;
-  TokSpan body(tok_a, tok_b);
+  TokenSpan body(tok_a, tok_b);
 
   auto tail = parse(context, body);
 

@@ -5,6 +5,25 @@ includes = -I.
 #-------------------------------------------------------------------------------
 # Emscripten
 
+build obj/ems/examples/c_lexer/CLexer.o    : compile_cpp_ems examples/c_lexer/CLexer.cpp
+build obj/ems/examples/c_lexer/CToken.o    : compile_cpp_ems examples/c_lexer/CToken.cpp
+build obj/ems/examples/c_parser/CNode.o    : compile_cpp_ems examples/c_parser/CNode.cpp
+build obj/ems/examples/c_parser/CContext.o : compile_cpp_ems examples/c_parser/CContext.cpp
+build obj/ems/examples/c_parser/CScope.o   : compile_cpp_ems examples/c_parser/CScope.cpp
+
+build obj/ems/tutorial/tiny_c_parser.o  : compile_cpp_ems tutorial/tiny_c_parser.cpp
+
+build docs/tutorial/tiny_c_parser.js : link_ems $
+  obj/ems/tutorial/tiny_c_parser.o $
+  obj/ems/examples/c_lexer/CLexer.o $
+  obj/ems/examples/c_lexer/CToken.o $
+  obj/ems/examples/c_parser/CContext.o $
+  obj/ems/examples/c_parser/CNode.o $
+  obj/ems/examples/c_parser/CScope.o $
+  | tutorial/tiny_c_parser.input
+  embed=tutorial
+
+
 build obj/ems/tutorial/json_tut0a.o  : compile_cpp_ems tutorial/json_tut0a.cpp
 build docs/tutorial/json_tut0a.js    : link_ems obj/ems/tutorial/json_tut0a.o | tutorial/json_tut0a.input
   embed=tutorial

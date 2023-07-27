@@ -4,33 +4,39 @@
 #include "matcheroni/Matcheroni.hpp"
 #include "matcheroni/Parseroni.hpp"
 #include "matcheroni/Utilities.hpp"
-#include "matcheroni/Cookbook.hpp"
 
 using namespace matcheroni;
 
-using cookbook::comma_separated;
-
-//------------------------------------------------------------------------------
-
 struct JsonParser {
-  // clang-format off
-  using space     = Some<Atom<' ','\n','\r','\t'>>;
-  using hex       = Range<'0','9','a','f','A','F'>;
-  using escape    = Oneof<Charset<"\"\\/bfnrt">, Seq<Atom<'u'>, Rep<4, hex>>>;
-  using keyword   = Oneof<Lit<"true">, Lit<"false">, Lit<"null">>;
-  using character = Oneof< NotAtom<'"','\\'>, Seq<Atom<'\\'>, escape> >;
-  using string    = Seq<Atom<'"'>, Any<character>, Atom<'"'>>;
-
-  using sign      = Atom<'+','-'>;
-  using digit     = Range<'0','9'>;
-  using onenine   = Range<'1','9'>;
+  // Matches any JSON number
+  using sign      = Atom<'+', '-'>;
+  using digit     = Range<'0', '9'>;
+  using onenine   = Range<'1', '9'>;
   using digits    = Some<digit>;
+  using integer   = Seq<Opt<sign>, Oneof<Seq<onenine, digits>, digit>>;
   using fraction  = Seq<Atom<'.'>, digits>;
-  using exponent  = Seq<Atom<'e','E'>, Opt<sign>, digits>;
-  using integer   = Seq< Opt<Atom<'-'>>, Oneof<Seq<onenine,digits>,digit> >;
+  using exponent  = Seq<Atom<'e', 'E'>, Opt<sign>, digits>;
   using number    = Seq<integer, Opt<fraction>, Opt<exponent>>;
 
-  static TextSpan value(TextNodeContext& ctx, TextSpan body) {
+  // Matches a JSON string that can contain valid escape characters
+  using space     = Some<Atom<' ', '\n', '\r', '\t'>>;
+  using hex       = Range<'0','9','a','f','A','F'>;
+  using escape    = Oneof<Charset<"\"\\/bfnrt">, Seq<Atom<'u'>, Rep<4, hex>>>;
+  using character = Oneof<
+    Seq<Not<Atom<'"'>>, Not<Atom<'\\'>>, Range<0x0020, 0x10FFFF>>,
+    Seq<Atom<'\\'>, escape>
+  >;
+  using string = Seq<Atom<'"'>, Any<character>, Atom<'"'>>;
+
+  // Matches the three reserved JSON keywords
+  using keyword = Oneof<Lit<"true">, Lit<"false">, Lit<"null">>;
+
+  // Matches a comma-delimited list with embedded whitespace
+  template <typename P>
+  using list = Seq<P, Any<Seq<Opt<space>, Atom<','>, Opt<space>, P>>>;
+
+  // Matches any valid JSON value
+  static TextSpan match_value(TextNodeContext& ctx, TextSpan body) {
     return Oneof<
       Capture<"array",   array,   TextNode>,
       Capture<"number",  number,  TextNode>,
@@ -39,41 +45,41 @@ struct JsonParser {
       Capture<"keyword", keyword, TextNode>
     >::match(ctx, body);
   }
+  using value = Ref<match_value>;
 
+  // Matches bracket-delimited lists of JSON values
+  using array =
+  Seq<
+    Atom<'['>,
+    Opt<space>,
+    Opt<list<Capture<"element", value, TextNode>>>,
+    Opt<space>,
+    Atom<']'>
+  >;
+
+  // Matches a key:value pair where 'key' is a string and 'value' is a JSON value.
   using pair =
   Seq<
     Capture<"key", string, TextNode>,
     Opt<space>,
     Atom<':'>,
     Opt<space>,
-    Capture<"value", Ref<value>, TextNode>
+    Capture<"value", value, TextNode>
   >;
 
+  // Matches a curly-brace-delimited list of key:value pairs.
   using object =
   Seq<
     Atom<'{'>,
     Opt<space>,
-    Opt<comma_separated<
-      Capture<"member", pair, TextNode>
-    >>,
+    Opt<list<Capture<"member", pair, TextNode>>>,
     Opt<space>,
     Atom<'}'>
   >;
 
-  using array =
-  Seq<
-    Atom<'['>,
-    Opt<space>,
-    Opt<comma_separated<Ref<value>>>,
-    Opt<space>,
-    Atom<']'>
-  >;
-
-  // clang-format on
-  //----------------------------------------
-
+  // Matches any valid JSON document
   static TextSpan match(TextNodeContext& ctx, TextSpan body) {
-    return Seq<Opt<space>, Ref<value>, Opt<space>>::match(ctx, body);
+    return Seq<Opt<space>, value, Opt<space>>::match(ctx, body);
   }
 };
 
@@ -81,5 +87,3 @@ struct JsonParser {
 TextSpan parse_json(TextNodeContext& ctx, TextSpan body) {
   return JsonParser::match(ctx, body);
 }
-
-//------------------------------------------------------------------------------
