@@ -30,7 +30,7 @@ const int warmup = 10;
 const int reps = 20;
 #endif
 
-//#define MATCH
+#define MATCH
 #define PARSE
 
 TextSpan match_json(TextContext& ctx, TextSpan body);
@@ -77,13 +77,12 @@ int main(int argc, char** argv) {
 
     //----------------------------------------
 
+#ifdef MATCH
     TextSpan match_end = text;
     for (int rep = 0; rep < (warmup + reps); rep++) {
-      double time_a = utils::timestamp_ms();
+      if (rep >= warmup) match_accum -= utils::timestamp_ms();
       match_end = match_json(ctx1, text);
-      double time_b = utils::timestamp_ms();
-      double time = time_b - time_a;
-      if (rep >= warmup) match_accum += time;
+      if (rep >= warmup) match_accum += utils::timestamp_ms();
     }
 
     if (match_end.begin < text.end) {
@@ -93,17 +92,17 @@ int main(int argc, char** argv) {
       printf("`\n");
       continue;
     }
+#endif
 
     //----------------------------------------
 
+#ifdef PARSE
     TextSpan parse_end = text;
     for (int rep = 0; rep < (warmup + reps); rep++) {
-      double time_a = utils::timestamp_ms();
+      if (rep >= warmup) parse_accum -= utils::timestamp_ms();
       ctx2.reset();
       parse_end = parse_json(ctx2, text);
-      double time_b = utils::timestamp_ms();
-      double time = time_b - time_a;
-      if (rep >= warmup) parse_accum += time;
+      if (rep >= warmup) parse_accum += utils::timestamp_ms();
     }
 
     if (parse_end.begin < text.end) {
@@ -113,6 +112,7 @@ int main(int argc, char** argv) {
       printf("`\n");
       continue;
     }
+#endif
 
     //----------------------------------------
 
