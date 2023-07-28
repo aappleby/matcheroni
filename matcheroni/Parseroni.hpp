@@ -426,7 +426,7 @@ struct TextNodeContext : public NodeContext<TextNode> {
 // any sub-nodes to it, and places it on the context's node list.
 
 template<typename context, typename atom, typename node_type>
-inline void capture(context& ctx, node_type* old_tail, const char* match_name, Span<atom> node_span) {
+inline void capture(context& ctx, typename context::NodeType* old_tail, const char* match_name, Span<atom> node_span) {
 
   auto new_node = new node_type();
   ctx.merge_node(new_node, old_tail);
@@ -447,7 +447,7 @@ struct Capture {
 
     if (tail.is_valid()) {
       Span<atom> node_span = {body.begin, tail.begin};
-      capture(ctx, old_tail, match_name.str_val, node_span);
+      capture<context, atom, node_type>(ctx, old_tail, match_name.str_val, node_span);
     }
 
     return tail;
