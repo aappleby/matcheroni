@@ -127,10 +127,9 @@ struct LinearAlloc {
 
 //------------------------------------------------------------------------------
 
-template<typename atom>
+template<typename NodeType, typename AtomType>
 struct NodeBase {
-  using AtomType = atom;
-  using SpanType = Span<atom>;
+  using SpanType = Span<AtomType>;
 
   NodeBase() {}
   virtual ~NodeBase() {}
@@ -149,7 +148,7 @@ struct NodeBase {
     this->flags = flags;
   }
 
-  NodeBase* child(const char* name) {
+  NodeType* child(const char* name) {
     for (auto c = _child_head; c; c = c->_node_next) {
       if (strcmp(name, c->match_name) == 0) return c;
     }
@@ -162,17 +161,17 @@ struct NodeBase {
     return accum;
   }
 
-  NodeBase* node_prev() { return _node_prev; }
-  NodeBase* node_next() { return _node_next; }
+  NodeType* node_prev() { return _node_prev; }
+  NodeType* node_next() { return _node_next; }
 
-  const NodeBase* node_prev() const { return _node_prev; }
-  const NodeBase* node_next() const { return _node_next; }
+  const NodeType* node_prev() const { return _node_prev; }
+  const NodeType* node_next() const { return _node_next; }
 
-  NodeBase* child_head() { return _child_head; }
-  NodeBase* child_tail() { return _child_tail; }
+  NodeType* child_head() { return _child_head; }
+  NodeType* child_tail() { return _child_tail; }
 
-  const NodeBase* child_head() const { return _child_head; }
-  const NodeBase* child_tail() const { return _child_tail; }
+  const NodeType* child_head() const { return _child_head; }
+  const NodeType* child_tail() const { return _child_tail; }
 
   //----------------------------------------
 
@@ -180,16 +179,17 @@ struct NodeBase {
   SpanType    span;
   uint64_t    flags;
 
-  NodeBase*   _node_prev;
-  NodeBase*   _node_next;
-  NodeBase*   _child_head;
-  NodeBase*   _child_tail;
+  NodeType*   _node_prev;
+  NodeType*   _node_next;
+  NodeType*   _child_head;
+  NodeType*   _child_tail;
 };
 
 //------------------------------------------------------------------------------
 
-template<typename NodeType>
+template<typename _NodeType>
 struct NodeContext {
+  using NodeType = _NodeType;
 
   NodeContext() {
   }
@@ -217,16 +217,16 @@ struct NodeContext {
 
   size_t node_count() {
     size_t accum = 0;
-    for (auto c = top_head(); c; c = c->node_next()) accum += c->node_count();
+    for (auto c = _top_head; c; c = c->node_next()) accum += c->node_count();
     return accum;
   }
 
   //----------------------------------------
 
-  NodeType* top_head() { return _top_head; }
+  //NodeType* top_head() { return _top_head; }
   NodeType* top_tail() { return _top_tail; }
 
-  const NodeType* top_head() const { return _top_head; }
+  //const NodeType* top_head() const { return _top_head; }
   const NodeType* top_tail() const { return _top_tail; }
 
   void set_head(NodeType* head) { _top_head = head; }
@@ -322,7 +322,7 @@ struct NodeContext {
     //----------------------------------------
     // Scan down the node list to find the bookmark
 
-    auto node_b = old_tail ? old_tail->node_next() : top_head();
+    auto node_b = old_tail ? old_tail->node_next() : _top_head;
     for (; node_b; node_b = node_b->node_next()) {
       if (node_b->flags & 1) {
         break;
@@ -344,7 +344,7 @@ struct NodeContext {
     // Enclose its children
 
     if (node_b->node_prev() != old_tail) {
-      auto child_head = old_tail ? old_tail->node_next() : top_head();
+      auto child_head = old_tail ? old_tail->node_next() : _top_head;
       //auto child_head = node_a;
       auto child_tail = node_b->node_prev();
       detach(node_b);
@@ -384,40 +384,13 @@ struct NodeContext {
 //------------------------------------------------------------------------------
 // We'll be parsing text a lot, so these are convenience declarations.
 
-struct TextNode : public NodeBase<char> {
-  using SpanType = TextSpan;
-
-  TextNode* node_prev() { return (TextNode*)_node_prev; }
-  TextNode* node_next() { return (TextNode*)_node_next; }
-
-  const TextNode* node_prev() const { return (TextNode*)_node_prev; }
-  const TextNode* node_next() const { return (TextNode*)_node_next; }
-
-  TextNode* child_head() { return (TextNode*)_child_head; }
-  TextNode* child_tail() { return (TextNode*)_child_tail; }
-
-  const TextNode* child_head() const { return (TextNode*)_child_head; }
-  const TextNode* child_tail() const { return (TextNode*)_child_tail; }
-
+struct TextNode : public NodeBase<TextNode, char> {
   const char* text_head() const { return span.begin; }
   const char* text_tail() const { return span.end; }
 };
 
 struct TextNodeContext : public NodeContext<TextNode> {
-  using AtomType = char;
-  using SpanType = matcheroni::Span<char>;
-  using NodeType = TextNode;
-
   static int atom_cmp(char a, int b) { return (unsigned char)a - b; }
-
-  TextNode* top_head() { return _top_head; }
-  TextNode* top_tail() { return _top_tail; }
-
-  const TextNode* top_head() const { return _top_head; }
-  const TextNode* top_tail() const { return _top_tail; }
-
-  void set_head(TextNode* head) { _top_head = head; }
-  void set_tail(TextNode* tail) { _top_tail = tail; }
 };
 
 //------------------------------------------------------------------------------

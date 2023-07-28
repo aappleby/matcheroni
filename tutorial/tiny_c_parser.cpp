@@ -21,7 +21,7 @@ int main(int argc, char** argv) {
   TokenSpan tok_span(lexer.tokens.data(), lexer.tokens.data() + lexer.tokens.size());
   bool parse_ok = context.parse(body, tok_span);
 
-  for (auto n = context.top_head(); n; n = n->node_next()) {
+  for (auto n = context._top_head; n; n = n->node_next()) {
     utils::print_tree(body, n, 40, 0);
   }
 }

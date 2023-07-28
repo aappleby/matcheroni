@@ -34,7 +34,7 @@ struct InstanceCounter {
     dead++;
   }
 
-  inline static void reset() {
+  inline static void reset_count() {
     live = 0;
     dead = 0;
   }
@@ -253,7 +253,7 @@ inline uint64_t hash_tree(const node_type* node, int depth = 0) {
 template<typename context>
 inline uint64_t hash_context(context& ctx) {
   uint64_t h = 123456789;
-  for (auto node = ctx.top_head(); node; node = node->node_next()) {
+  for (auto node = ctx._top_head; node; node = node->node_next()) {
     h = (h * 373781549) ^ hash_tree(node);
   }
   return h;

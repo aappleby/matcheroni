@@ -54,15 +54,6 @@ class CContext : public matcheroni::NodeContext<CNode> {
     return strcmp_span(a.text, b);
   }
 
-  CNode* top_head() { return (CNode*)_top_head; }
-  CNode* top_tail() { return (CNode*)_top_tail; }
-
-  const CNode* top_head() const { return (CNode*)_top_head; }
-  const CNode* top_tail() const { return (CNode*)_top_tail; }
-
-  void set_head(CNode* head) { _top_head = head; }
-  void set_tail(CNode* tail) { _top_tail = tail; }
-
   void reset();
   //bool parse(std::vector<CToken>& lexemes);
   bool parse(matcheroni::TextSpan text, TokenSpan lexemes);
@@ -90,7 +81,7 @@ class CContext : public matcheroni::NodeContext<CNode> {
   void enclose_nodes(CNode* start, CNode* node);
 
   void debug_dump(std::string& out) {
-    for (auto node = top_head(); node; node = node->node_next()) {
+    for (auto node = _top_head; node; node = node->node_next()) {
       node->debug_dump(out);
     }
   }

@@ -10,23 +10,16 @@ using namespace matcheroni;
 
 //------------------------------------------------------------------------------
 
-struct TestNode : public TextNode, public utils::InstanceCounter<TestNode> {
-  using TextNode::TextNode;
-
-  TestNode* node_prev()  { return (TestNode*)_node_prev; }
-  TestNode* node_next()  { return (TestNode*)_node_next; }
-
-  const TestNode* node_prev() const { return (const TestNode*)_node_prev; }
-  const TestNode* node_next() const { return (const TestNode*)_node_next; }
-
-  TestNode* child_head() { return (TestNode*)_child_head; }
-  TestNode* child_tail() { return (TestNode*)_child_tail; }
-
-  const TestNode* child_head() const { return (const TestNode*)_child_head; }
-  const TestNode* child_tail() const { return (const TestNode*)_child_tail; }
+struct TestNode : public NodeBase<TestNode, char>, public utils::InstanceCounter<TestNode> {
+  const char* text_head() const { return span.begin; }
+  const char* text_tail() const { return span.end; }
 };
 
-//----------------------------------------
+struct TestContext : public NodeContext<TestNode> {
+  static int atom_cmp(char a, int b) { return (unsigned char)a - b; }
+};
+
+//------------------------------------------------------------------------------
 
 void sexp_to_string(TestNode* n, std::string& out) {
   if (strcmp(n->match_name, "atom") == 0) {
@@ -34,7 +27,7 @@ void sexp_to_string(TestNode* n, std::string& out) {
   } else if (strcmp(n->match_name, "list") == 0) {
     out.push_back('(');
     for (auto c = n->child_head(); c; c = c->node_next()) {
-      sexp_to_string(c, out);
+      sexp_to_string((TestNode*)c, out);
       if (c->node_next()) out.push_back(',');
     }
     out.push_back(')');
@@ -57,9 +50,9 @@ void check_hash(context& ctx, uint64_t hash_a) {
 
 void reset_everything() {
   LinearAlloc::inst().reset();
-  utils::InstanceCounter<TestNode>::reset();
-  matcheroni_assert(utils::InstanceCounter<TestNode>::live == 0);
-  matcheroni_assert(utils::InstanceCounter<TestNode>::dead == 0);
+  TestNode::reset_count();
+  matcheroni_assert(TestNode::live == 0);
+  matcheroni_assert(TestNode::dead == 0);
   matcheroni_assert(LinearAlloc::inst().current_size == 0);
   matcheroni_assert(LinearAlloc::inst().max_size == 0);
 }
@@ -68,7 +61,7 @@ void reset_everything() {
 // A mini s-expression parser in ~10 lines of code. :D
 
 struct SExpression {
-  static TextSpan match(TextNodeContext& ctx, TextSpan body) {
+  static TextSpan match(TestContext& ctx, TextSpan body) {
     return Oneof<
       Capture<"atom", atom, TestNode>,
       Capture<"list", list, TestNode>
@@ -93,7 +86,7 @@ void test_basic() {
 
     std::string expression = "(abcd,efgh,(ab),(a,(bc,de)),ghijk)";
 
-    TextNodeContext ctx;
+    TestContext ctx;
     ctx.reset();
     auto text = utils::to_span(expression);
     auto tail = SExpression::match(ctx, text);
@@ -103,7 +96,7 @@ void test_basic() {
 
     printf("Round-trip s-expression:\n");
     std::string new_text;
-    sexp_to_string((TestNode*)ctx.top_head(), new_text);
+    sexp_to_string((TestNode*)ctx._top_head, new_text);
     printf("Old : %s\n", text.begin);
     printf("New : %s\n", new_text.c_str());
     matcheroni_assert(expression == new_text && "Mismatch!");
@@ -119,7 +112,7 @@ void test_basic() {
     matcheroni_assert(utils::InstanceCounter<TestNode>::dead == 0);
   }
 
-  TextNodeContext ctx;
+  TestContext ctx;
   TextSpan span;
   TextSpan tail;
 
@@ -161,7 +154,7 @@ void test_rewind() {
     Capture<"lit", Lit<"abcdef">, TestNode>
   >;
 
-  TextNodeContext ctx;
+  TestContext ctx;
 
   auto text = utils::to_span("abcdef");
   auto tail = pattern::match(ctx, text);
@@ -181,7 +174,7 @@ void test_rewind() {
 
 struct BeginEndTest {
 
-  static TextSpan match(TextNodeContext& ctx, TextSpan body) {
+  static TextSpan match(TestContext& ctx, TextSpan body) {
     return Oneof<
       suffixed<Capture<"atom", atom, TestNode>>,
       suffixed<Capture<"list", list, TestNode>>
@@ -215,7 +208,7 @@ void test_begin_end() {
   printf("test_begin_end()\n");
   reset_everything();
 
-  TextNodeContext ctx;
+  TestContext ctx;
 
   auto text = utils::to_span("[ [abc,ab?,cdb+] , [a,b,c*,d,e,f] ]");
   auto tail = BeginEndTest::match(ctx, text);
@@ -238,7 +231,7 @@ void test_begin_end() {
 // mismatched suffix.
 
 struct Pathological {
-  static TextSpan match(TextNodeContext& ctx, TextSpan body) {
+  static TextSpan match(TestContext& ctx, TextSpan body) {
     return pattern::match(ctx, body);
   }
 
@@ -261,7 +254,7 @@ void test_pathological() {
   printf("test_pathological()\n");
   reset_everything();
 
-  TextNodeContext ctx;
+  TestContext ctx;
 
   // Matching this pattern should produce 7 live nodes and 137250 dead nodes.
   auto text = utils::to_span("[[[[[[a]]]]]]");

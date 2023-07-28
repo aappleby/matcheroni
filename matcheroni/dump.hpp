@@ -144,7 +144,7 @@ inline void print_tree(TextSpan text, const node_type* node, int width, int dept
 
 template<typename context>
 inline void print_context(TextSpan text, const context& ctx, int width) {
-  for (auto node = ctx.top_head(); node; node = node->node_next()) {
+  for (auto node = ctx._top_head; node; node = node->node_next()) {
     print_tree(text, node, width, 0);
   }
 }

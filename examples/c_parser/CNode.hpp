@@ -14,25 +14,9 @@ typedef matcheroni::Span<CToken> TokenSpan;
 
 //------------------------------------------------------------------------------
 
-struct CNode : public matcheroni::NodeBase<CToken> {
+struct CNode : public matcheroni::NodeBase<CNode, CToken> {
   using AtomType = CToken;
   using SpanType = matcheroni::Span<CToken>;
-
-  using base = matcheroni::NodeBase<CToken>;
-
-  CNode* child(const char* name) { return (CNode*)base::child(name); }
-
-  CNode* node_prev() { return (CNode*)_node_prev; }
-  CNode* node_next() { return (CNode*)_node_next; }
-
-  const CNode* node_prev() const { return (CNode*)_node_prev; }
-  const CNode* node_next() const { return (CNode*)_node_next; }
-
-  CNode* child_head() { return (CNode*)_child_head; }
-  CNode* child_tail() { return (CNode*)_child_tail; }
-
-  const CNode* child_head() const { return (CNode*)_child_head; }
-  const CNode* child_tail() const { return (CNode*)_child_tail; }
 
   const char* text_head() const { return span.begin->text.begin; }
   const char* text_tail() const { return (span.end - 1)->text.end; }
