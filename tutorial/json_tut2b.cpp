@@ -8,7 +8,6 @@ using namespace matcheroni;
 
 struct NumberNode : public TextNode {
   using TextNode::TextNode;
-  //virtual ~NumberNode() {}
 
   void init(const char* match_name, TextSpan span, uint64_t flags) {
     TextNode::init(match_name, span, flags);

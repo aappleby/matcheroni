@@ -25,7 +25,6 @@ bool CScope::has_type(CContext& ctx, TokenSpan body, token_list& types) {
   if(ctx.atom_cmp(*body.begin, LEX_IDENTIFIER)) {
     return false;
   }
-  /*+*/ctx.rewind(body);
 
   TextSpan span(body.begin->text.begin, body.begin->text.end);
 

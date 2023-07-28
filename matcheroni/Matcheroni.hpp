@@ -122,11 +122,13 @@ using matcher_function = Span<atom> (*)(context& ctx, Span<atom> body);
 
 struct TextContext {
 
+  void* checkpoint() { return nullptr; }
+
   // We cast to unsigned char as our ranges are generally going to be unsigned.
   static int atom_cmp(char a, int b) { return (unsigned char)a - b; }
 
   // Rewind does nothing as it doesn't interact with trace_depth.
-  template<typename atom> void rewind(Span<atom> body) {}
+  void rewind(void* bookmark) {}
 
   // Tracing requires us to keep track of the nesting depth in the context.
   int trace_depth = 0;
@@ -376,12 +378,14 @@ struct Oneof {
   static Span<atom> match(context& ctx, Span<atom> body) {
     matcheroni_assert(body.is_valid());
 
+    auto bookmark = ctx.checkpoint();
+
     auto tail1 = P::match(ctx, body);
     if (tail1.is_valid()) {
       return tail1;
     }
 
-    /*+*/ ctx.rewind(body);
+    if (bookmark != ctx.checkpoint()) ctx.rewind(bookmark);
     auto tail2 = Oneof<rest...>::match(ctx, body);
 
     if (tail2.is_valid()) {
@@ -434,8 +438,9 @@ struct Opt {
   template <typename context, typename atom>
   static Span<atom> match(context& ctx, Span<atom> body) {
     matcheroni_assert(body.is_valid());
+    auto bookmark = ctx.checkpoint();
     if (auto tail = Oneof<rest...>::match(ctx, body)) return tail;
-    /*+*/ ctx.rewind(body);
+    if (bookmark != ctx.checkpoint()) ctx.rewind(bookmark);
     return body;
   }
 };
@@ -458,12 +463,15 @@ struct Any {
     if (body.is_empty()) return body;
 
     while (1) {
+      auto bookmark = ctx.checkpoint();
       auto tail = Oneof<rest...>::match(ctx, body);
-      if (!tail.is_valid()) break;
+      if (!tail.is_valid()) {
+        if (bookmark != ctx.checkpoint()) ctx.rewind(bookmark);
+        break;
+      }
       body = tail;
     }
 
-    /*+*/ ctx.rewind(body);
     return body;
   }
 };
@@ -507,8 +515,9 @@ struct And {
   template <typename context, typename atom>
   static Span<atom> match(context& ctx, Span<atom> body) {
     matcheroni_assert(body.is_valid());
+    auto bookmark = ctx.checkpoint();
     auto tail = P::match(ctx, body);
-    /*+*/ ctx.rewind(body);
+    if (bookmark != ctx.checkpoint()) ctx.rewind(bookmark);
     return tail.is_valid() ? body : tail;
   }
 };
@@ -524,8 +533,9 @@ struct Not {
   template <typename context, typename atom>
   static Span<atom> match(context& ctx, Span<atom> body) {
     matcheroni_assert(body.is_valid());
+    auto bookmark = ctx.checkpoint();
     auto tail = P::match(ctx, body);
-    /*+*/ ctx.rewind(body);
+    if (bookmark != ctx.checkpoint()) ctx.rewind(bookmark);
     return tail.is_valid() ? body.fail() : body;
   }
 };
@@ -626,9 +636,10 @@ struct Until {
     matcheroni_assert(body.is_valid());
     while(1) {
       if (body.is_empty()) return body;
+      auto bookmark = ctx.checkpoint();
       auto tail = P::match(ctx, body);
       if (tail.is_valid()) {
-        ctx.rewind(body);
+        if (bookmark != ctx.checkpoint()) ctx.rewind(bookmark);
         return body;
       }
       body = body.advance(1);
@@ -933,12 +944,13 @@ template<typename P, typename... rest>
 struct Map {
   template<typename atom>
   static Span<atom> match(context& ctx, Span<atom> body) {
+    auto bookmark = ctx.checkpoint();
     if (P::match_key(a, b)) {
-      ctx.rewind(body);
+      if (bookmark != ctx.checkpoint()) ctx.rewind(bookmark);
       return P::match(ctx, a, b);
     }
     else {
-      ctx.rewind(body);
+      if (bookmark != ctx.checkpoint()) ctx.rewind(bookmark);
       return Map<rest...>::match(ctx, a, b);
     }
   }

@@ -5,8 +5,6 @@
 
 #include "matcheroni/Matcheroni.hpp"
 
-//#define PARSERONI_FAST_MODE
-
 namespace matcheroni {
 
 //------------------------------------------------------------------------------
@@ -141,8 +139,8 @@ struct NodeBase {
   static void  operator delete[](void* p, size_t size) { LinearAlloc::inst().free(p, size); }
 
   //----------------------------------------
+  // Init() should probably be non-virtual for performance.
 
-  // FIXME this virtual might slow things down
   void init(const char* match_name, SpanType span, uint64_t flags) {
     this->match_name = match_name;
     this->span  = span;
@@ -208,7 +206,7 @@ struct NodeContext {
 
     _top_head = nullptr;
     _top_tail = nullptr;
-    _highwater = nullptr;
+    //_highwater = nullptr;
 
     assert(LinearAlloc::inst().is_empty());
   }
@@ -287,14 +285,13 @@ struct NodeContext {
   // we must also throw away any parse nodes that were created during the failed
   // match.
 
-  void rewind(SpanType body) {
-    while (_top_tail && (_top_tail->span.begin >= body.begin)) {
+  NodeType* checkpoint() { return _top_tail; }
+
+  void rewind(NodeType* old_tail) {
+    while(_top_tail != old_tail) {
       auto dead = _top_tail;
-      set_tail((NodeType*)_top_tail->_node_prev);
-#ifndef FAST_MODE
-      //printf("recycling %s\n", dead->match_name);
+      _top_tail = _top_tail->node_prev();
       recycle(dead);
-#endif
     }
   }
 
@@ -302,9 +299,9 @@ struct NodeContext {
   // FIXME could this be faster if there was an append-only version for
   // captures without children?
 
-  void create2(NodeType* new_node, const char* match_name, SpanType span, uint64_t flags, NodeType* old_tail) {
+  void merge_node(NodeType* new_node, NodeType* old_tail) {
 
-    if (span.end > _highwater) _highwater = span.end;
+    //if (span.end > _highwater) _highwater = span.end;
 
     // Move all nodes in (old_tail,new_tail] to be children of new_node and
     // append new_node to the node list.
@@ -316,9 +313,6 @@ struct NodeContext {
       auto child_tail = _top_tail;
       splice(new_node, (NodeType*)child_head, child_tail);
     }
-
-    // FIXME this is calling through vtable, can we make it a static call if we go through Capture?
-    //new_node->init(match_name, span, flags);
   }
 
 
@@ -337,20 +331,6 @@ struct NodeContext {
       // No bookmark = no capture, but _not_ a failure
       return node_b;
     }
-
-    /*
-    // FIXME - this might be faster than tracking old_tail? Benchmark it.
-    // Could use it for create2 also
-    auto node_a = node_b;
-    while(1) {
-      auto prev = node_a->node_prev();
-      if (!prev) break;
-      if (prev->span.b <= bounds.a) {
-        break;
-      }
-      node_a = prev;
-    }
-    */
 
     //----------------------------------------
     // Resize the bookmark's span and clear its bookmark flag
@@ -377,11 +357,8 @@ struct NodeContext {
   // In practice, this means we must delete the "parent" node first and then
   // must delete the child nodes from tail to head.
 
-#ifndef FAST_MODE
   void recycle(NodeType* node) {
-    //printf("recycle!\n");
     if (node == nullptr) return;
-
     auto tail = node->_child_tail;
 
     detach(node);
@@ -393,13 +370,12 @@ struct NodeContext {
       tail = prev;
     }
   }
-#endif
 
   //----------------------------------------
 
   NodeType* _top_head = nullptr;
   NodeType* _top_tail = nullptr;
-  const SpanType::AtomType* _highwater = nullptr;
+  //const SpanType::AtomType* _highwater = nullptr;
   int trace_depth = 0;
 };
 
@@ -443,39 +419,31 @@ struct TextNodeContext : public NodeContext<TextSpan, TextNode> {
 // any sub-nodes to it, and places it on the context's node list.
 
 template<typename context, typename atom, typename node_type>
-inline Span<atom> capture(context& ctx, Span<atom> body, const char* match_name, matcher_function<context, atom> match) {
+inline void capture(context& ctx, node_type* old_tail, const char* match_name, Span<atom> node_span) {
 
-  auto old_tail = ctx.top_tail();
-#ifdef PARSERONI_FAST_MODE
-  auto old_state = LinearAlloc::inst().save_state();
-#endif
+  auto new_node = new node_type();
+  ctx.merge_node(new_node, old_tail);
 
-  auto tail = match(ctx, body);
+  // Init() should probably be non-virtual for performance.
+  new_node->init(match_name, node_span, 0);
 
-  if (tail.is_valid()) {
-    //printf("Capture %s\n", match_name);
-    Span<atom> node_span = {body.begin, tail.begin};
-    auto new_node = new node_type();
-    ctx.create2(new_node, match_name, node_span, 0, old_tail);
-    new_node->init(match_name, node_span, 0);
-    matcheroni_assert(new_node->node_next() != new_node);
-    matcheroni_assert(new_node->node_prev() != new_node);
-  }
-  else {
-    // We don't set the tail back here, rewind will do it.
-#ifdef PARSERONI_FAST_MODE
-    LinearAlloc::inst().restore_state(old_state);
-#endif
-  }
-
-  return tail;
+  matcheroni_assert(new_node->node_next() != new_node);
+  matcheroni_assert(new_node->node_prev() != new_node);
 }
 
 template <StringParam match_name, typename pattern, typename node_type>
 struct Capture {
   template<typename context, typename atom>
   static Span<atom> match(context& ctx, Span<atom> body) {
-    return capture<context, atom, node_type>(ctx, body, match_name.str_val, pattern::match);
+    auto old_tail = ctx.top_tail();
+    auto tail = pattern::match(ctx, body);
+
+    if (tail.is_valid()) {
+      Span<atom> node_span = {body.begin, tail.begin};
+      capture(ctx, old_tail, match_name.str_val, node_span);
+    }
+
+    return tail;
   }
 };
 
@@ -500,20 +468,13 @@ inline Span<atom> capture_begin(context& ctx, Span<atom> body, matcher_function<
   using SpanType = Span<atom>;
 
   auto old_tail = ctx.top_tail();
-#ifdef PARSERONI_FAST_MODE
-    auto old_state = LinearAlloc::inst().save_state();
-#endif
 
   auto tail = match(ctx, body);
   if (tail.is_valid()) {
     Span<atom> bounds(body.begin, tail.begin);
     ctx.enclose_bookmark(old_tail, bounds);
   }
-  else {
-#ifdef PARSERONI_FAST_MODE
-    LinearAlloc::inst().restore_state(old_state);
-#endif
-  }
+
   return tail;
 }
 
@@ -536,7 +497,8 @@ inline Span<atom> capture_end(context& ctx, Span<atom> body, const char* match_n
   if (tail.is_valid()) {
     Span<atom> new_span(tail.begin, tail.begin);
     auto new_node = new node_type();
-    ctx.create2(new_node, match_name, new_span, /*flags*/ 1, ctx.top_tail());
+    ctx.merge_node(new_node, ctx.top_tail());
+    // Init() should probably be non-virtual for performance.
     new_node->init(match_name, new_span, /*flags*/ 1);
   }
   return tail;

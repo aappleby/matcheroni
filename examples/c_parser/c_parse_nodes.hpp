@@ -105,7 +105,6 @@ struct Keyword : public CNode, PatternWrapper<Keyword<lit>> {
   static TokenSpan match(CContext& ctx, TokenSpan body) {
     if (!body.is_valid()) return body.fail();
     if (ctx.atom_cmp(*body.begin, LEX_KEYWORD) != 0) return body.fail();
-    /*+*/ ctx.rewind(body);
     if (ctx.atom_cmp(*body.begin, lit.span()) != 0) return body.fail();
     return body.advance(1);
   }

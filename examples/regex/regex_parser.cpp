@@ -144,7 +144,6 @@ static TextSpan match_regex(TextNodeContext& ctx, TextSpan body) {
   return regex_top::match(ctx, body);
 }
 
-__attribute__((noinline))
 TextSpan parse_regex(TextNodeContext& ctx, TextSpan body) {
   return match_regex(ctx, body);
   //return body.fail();

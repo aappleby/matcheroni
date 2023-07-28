@@ -75,11 +75,11 @@ struct SExpression {
     >::match(ctx, body);
   }
 
-  using space = Atom<' ', '\n', '\r', '\t'>;
+  using space = Some<Atom<' ', '\n', '\r', '\t'>>;
   using atom  = Some<Range<'0','9','a','z','A','Z', '_', '_'>>;
-  using car   = Opt<Ref<match>>;
-  using cdr   = Any<Seq<Atom<','>, Any<space>, Ref<match>>>;
-  using list  = Seq<Atom<'('>, Any<space>, car, Any<space>, cdr, Any<space>, Atom<')'>>;
+  using car   = Ref<match>;
+  using cdr   = Some<Seq<Atom<','>, Any<space>, Ref<match>>>;
+  using list  = Seq<Atom<'('>, Opt<space>, Opt<car>, Opt<space>, Opt<cdr>, Opt<space>, Atom<')'>>;
 };
 
 //----------------------------------------
@@ -90,18 +90,23 @@ void test_basic() {
 
   {
     // Check than we can round-trip a s-expression
+
+    std::string expression = "(abcd,efgh,(ab),(a,(bc,de)),ghijk)";
+
     TextNodeContext ctx;
     ctx.reset();
-    auto text = utils::to_span("(abcd,efgh,(ab),(a,(bc,de)),ghijk)");
+    auto text = utils::to_span(expression);
     auto tail = SExpression::match(ctx, text);
     matcheroni_assert(tail.is_valid() && tail == "");
+
+    utils::print_summary(text, tail, ctx, 50);
 
     printf("Round-trip s-expression:\n");
     std::string new_text;
     sexp_to_string((TestNode*)ctx.top_head(), new_text);
     printf("Old : %s\n", text.begin);
     printf("New : %s\n", new_text.c_str());
-    matcheroni_assert(utils::to_string(text) == new_text && "Mismatch!");
+    matcheroni_assert(expression == new_text && "Mismatch!");
     printf("\n");
 
     utils::print_summary(text, tail, ctx, 50);
