@@ -1806,7 +1806,7 @@ struct NodeTypedef : public CNode, public PatternWrapper<NodeTypedef> {
     }
 
     /*
-    for (auto child = decl->child_head(); child; child = child->node_next()) {
+    for (auto child = decl->child_head; child; child = child->node_next) {
       if (auto decl = child->as_a<NodeDeclarator>()) {
         extract_declarator(ctx, decl);
       }
@@ -1816,7 +1816,7 @@ struct NodeTypedef : public CNode, public PatternWrapper<NodeTypedef> {
 
   static void extract_declarator_list(CContext& ctx, CNode* decls) {
     if (!decls) return;
-    for (auto child = decls->child_head(); child; child = child->node_next()) {
+    for (auto child = decls->child_head; child; child = child->node_next) {
 
       if (strcmp(child->match_name, "decl") == 0) {
         extract_declarator(ctx, child);
@@ -1832,7 +1832,7 @@ struct NodeTypedef : public CNode, public PatternWrapper<NodeTypedef> {
   }
 
   static void extract_type(CContext& ctx) {
-    auto node = ctx.top_tail();
+    auto node = ctx.top_tail;
 
     if (auto c = node->child("union")) {
       extract_declarator_list(ctx, c->child("decls"));

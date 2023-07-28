@@ -137,7 +137,7 @@ template<typename NodeType>
 struct NodeIterator {
   NodeIterator(NodeType* cursor) : n(cursor) {}
   NodeIterator& operator++() {
-    n = n->node_next();
+    n = n->node_next;
     return *this;
   }
   bool operator!=(NodeIterator& b) const { return n != b.n; }
@@ -147,7 +147,7 @@ struct NodeIterator {
 
 template<typename NodeType>
 inline NodeIterator<NodeType> begin(NodeType* parent) {
-  return NodeIterator<NodeType>(parent->child_head());
+  return NodeIterator<NodeType>(parent->child_head);
 }
 
 template<typename NodeType>
@@ -159,7 +159,7 @@ template<typename NodeType>
 struct ConstNodeIterator {
   ConstNodeIterator(const NodeType* cursor) : n(cursor) {}
   ConstNodeIterator& operator++() {
-    n = n->node_next();
+    n = n->node_next;
     return *this;
   }
   bool operator!=(const ConstNodeIterator& b) const { return n != b.n; }
@@ -169,7 +169,7 @@ struct ConstNodeIterator {
 
 template<typename NodeType>
 inline ConstNodeIterator<NodeType> begin(const NodeType* parent) {
-  return ConstNodeIterator<NodeType>(parent->child_head());
+  return ConstNodeIterator<NodeType>(parent->child_head);
 }
 
 template<typename NodeType>
@@ -243,7 +243,7 @@ inline uint64_t hash_tree(const node_type* node, int depth = 0) {
     h = (h * 123456789) ^ *c;
   }
 
-  for (auto c = node->child_head(); c; c = c->node_next()) {
+  for (auto c = node->child_head; c; c = c->node_next) {
     h = (h * 987654321) ^ hash_tree(c, depth + 1);
   }
 
@@ -253,7 +253,7 @@ inline uint64_t hash_tree(const node_type* node, int depth = 0) {
 template<typename context>
 inline uint64_t hash_context(context& ctx) {
   uint64_t h = 123456789;
-  for (auto node = ctx._top_head; node; node = node->node_next()) {
+  for (auto node = ctx.top_head; node; node = node->node_next) {
     h = (h * 373781549) ^ hash_tree(node);
   }
   return h;

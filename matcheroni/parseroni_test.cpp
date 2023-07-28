@@ -26,9 +26,9 @@ void sexp_to_string(TestNode* n, std::string& out) {
     for (auto c = n->span.begin; c < n->span.end; c++) out.push_back(*c);
   } else if (strcmp(n->match_name, "list") == 0) {
     out.push_back('(');
-    for (auto c = n->child_head(); c; c = c->node_next()) {
+    for (auto c = n->child_head; c; c = c->node_next) {
       sexp_to_string((TestNode*)c, out);
-      if (c->node_next()) out.push_back(',');
+      if (c->node_next) out.push_back(',');
     }
     out.push_back(')');
   } else {
@@ -96,7 +96,7 @@ void test_basic() {
 
     printf("Round-trip s-expression:\n");
     std::string new_text;
-    sexp_to_string((TestNode*)ctx._top_head, new_text);
+    sexp_to_string((TestNode*)ctx.top_head, new_text);
     printf("Old : %s\n", text.begin);
     printf("New : %s\n", new_text.c_str());
     matcheroni_assert(expression == new_text && "Mismatch!");

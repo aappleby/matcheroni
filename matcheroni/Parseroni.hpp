@@ -12,6 +12,10 @@ namespace matcheroni {
 // frees must be in LIFO order - if you allocate A, B, and C, you must
 // deallocate in C-B-A order.
 
+// FIXME make this a member of NodeContext and handle placement new/delete
+// Also add a size after each allocation so we can walk backwards and call
+// destructors without having to walk the node tree
+
 struct LinearAlloc {
   struct Slab {
     Slab* prev;
@@ -134,6 +138,8 @@ struct NodeBase {
   NodeBase() {}
   virtual ~NodeBase() {}
 
+  // Commenting these out will force all nodes to use the default allocator,
+  // which slows the JSON benchmark down by 2x.
   static void* operator new     (size_t size)          { return LinearAlloc::inst().alloc(size); }
   static void* operator new[]   (size_t size)          { return LinearAlloc::inst().alloc(size); }
   static void  operator delete  (void* p, size_t size) { LinearAlloc::inst().free(p, size); }
@@ -149,7 +155,7 @@ struct NodeBase {
   }
 
   NodeType* child(const char* name) {
-    for (auto c = _child_head; c; c = c->_node_next) {
+    for (auto c = child_head; c; c = c->node_next) {
       if (strcmp(name, c->match_name) == 0) return c;
     }
     return nullptr;
@@ -157,21 +163,9 @@ struct NodeBase {
 
   size_t node_count() {
     size_t accum = 1;
-    for (auto c = _child_head; c; c = c->_node_next) accum += c->node_count();
+    for (auto c = child_head; c; c = c->node_next) accum += c->node_count();
     return accum;
   }
-
-  NodeType* node_prev() { return _node_prev; }
-  NodeType* node_next() { return _node_next; }
-
-  const NodeType* node_prev() const { return _node_prev; }
-  const NodeType* node_next() const { return _node_next; }
-
-  NodeType* child_head() { return _child_head; }
-  NodeType* child_tail() { return _child_tail; }
-
-  const NodeType* child_head() const { return _child_head; }
-  const NodeType* child_tail() const { return _child_tail; }
 
   //----------------------------------------
 
@@ -179,10 +173,10 @@ struct NodeBase {
   SpanType    span;
   uint64_t    flags;
 
-  NodeType*   _node_prev;
-  NodeType*   _node_next;
-  NodeType*   _child_head;
-  NodeType*   _child_tail;
+  NodeType*   node_prev;
+  NodeType*   node_next;
+  NodeType*   child_head;
+  NodeType*   child_tail;
 };
 
 //------------------------------------------------------------------------------
@@ -190,6 +184,8 @@ struct NodeBase {
 template<typename _NodeType>
 struct NodeContext {
   using NodeType = _NodeType;
+  using SpanType = typename NodeType::SpanType;
+  using AtomType = typename SpanType::AtomType;
 
   NodeContext() {
   }
@@ -199,15 +195,15 @@ struct NodeContext {
   }
 
   void reset() {
-    auto c = _top_tail;
+    auto c = top_tail;
     while (c) {
-      auto prev = c->_node_prev;
+      auto prev = c->node_prev;
       recycle(c);
       c = (NodeType*)prev;
     }
 
-    _top_head = nullptr;
-    _top_tail = nullptr;
+    top_head = nullptr;
+    top_tail = nullptr;
     //_highwater = nullptr;
 
     assert(LinearAlloc::inst().is_empty());
@@ -217,82 +213,70 @@ struct NodeContext {
 
   size_t node_count() {
     size_t accum = 0;
-    for (auto c = _top_head; c; c = c->node_next()) accum += c->node_count();
+    for (auto c = top_head; c; c = c->node_next) accum += c->node_count();
     return accum;
   }
 
   //----------------------------------------
 
-  //NodeType* top_head() { return _top_head; }
-  NodeType* top_tail() { return _top_tail; }
-
-  //const NodeType* top_head() const { return _top_head; }
-  const NodeType* top_tail() const { return _top_tail; }
-
-  void set_head(NodeType* head) { _top_head = head; }
-  void set_tail(NodeType* tail) { _top_tail = tail; }
-
-  //----------------------------------------
-
   void append(NodeType* new_node) {
-    new_node->_node_prev = nullptr;
-    new_node->_node_next = nullptr;
-    new_node->_child_head = nullptr;
-    new_node->_child_tail = nullptr;
+    new_node->node_prev = nullptr;
+    new_node->node_next = nullptr;
+    new_node->child_head = nullptr;
+    new_node->child_tail = nullptr;
 
-    if (_top_tail) {
-      matcheroni_assert(new_node != _top_tail);
-      new_node->_node_prev = _top_tail;
-      _top_tail->_node_next = new_node;
-      _top_tail = new_node;
+    if (top_tail) {
+      matcheroni_assert(new_node != top_tail);
+      new_node->node_prev = top_tail;
+      top_tail->node_next = new_node;
+      top_tail = new_node;
     } else {
-      _top_head = new_node;
-      _top_tail = new_node;
+      top_head = new_node;
+      top_tail = new_node;
     }
   }
 
   //----------------------------------------
 
   void detach(NodeType* n) {
-    if (n->node_prev()) n->node_prev()->_node_next = n->node_next();
-    if (n->node_next()) n->node_next()->_node_prev = n->node_prev();
-    if (_top_head == n) _top_head = n->node_next();
-    if (_top_tail == n) _top_tail = n->node_prev();
-    n->_node_prev = nullptr;
-    n->_node_next = nullptr;
+    if (n->node_prev) n->node_prev->node_next = n->node_next;
+    if (n->node_next) n->node_next->node_prev = n->node_prev;
+    if (top_head == n) top_head = n->node_next;
+    if (top_tail == n) top_tail = n->node_prev;
+    n->node_prev = nullptr;
+    n->node_next = nullptr;
   }
 
   //----------------------------------------
 
   void splice(NodeType* new_node, NodeType* child_head, NodeType* child_tail) {
-    new_node->_node_prev = child_head->_node_prev;
-    new_node->_node_next = child_tail->_node_next;
-    new_node->_child_head = child_head;
-    new_node->_child_tail = child_tail;
+    new_node->node_prev = child_head->node_prev;
+    new_node->node_next = child_tail->node_next;
+    new_node->child_head = child_head;
+    new_node->child_tail = child_tail;
 
-    if (child_head->_node_prev) child_head->_node_prev->_node_next = new_node;
-    if (child_tail->_node_next) child_head->_node_next->_node_prev = new_node;
+    if (child_head->node_prev) child_head->node_prev->node_next = new_node;
+    if (child_tail->node_next) child_head->node_next->node_prev = new_node;
 
-    child_head->_node_prev = nullptr;
-    child_tail->_node_next = nullptr;
+    child_head->node_prev = nullptr;
+    child_tail->node_next = nullptr;
 
-    if (_top_head == child_head) _top_head = new_node;
-    if (_top_tail == child_tail) _top_tail = new_node;
+    if (top_head == child_head) top_head = new_node;
+    if (top_tail == child_tail) top_tail = new_node;
   }
 
   //----------------------------------------
-  // There's one critical detail we need to make the factory work correctly - if
-  // we get partway through a match and then fail for some reason, we must
+  // If we get partway through a match and then fail for some reason, we must
   // "rewind" our match state back to the start of the failed match. This means
   // we must also throw away any parse nodes that were created during the failed
   // match.
 
-  NodeType* checkpoint() { return _top_tail; }
+  NodeType* checkpoint() { return top_tail; }
 
   void rewind(NodeType* old_tail) {
-    while(_top_tail != old_tail) {
-      auto dead = _top_tail;
-      _top_tail = _top_tail->node_prev();
+    while(top_tail != old_tail) {
+      auto dead = top_tail;
+      top_tail = top_tail->node_prev;
       recycle(dead);
     }
   }
@@ -308,45 +292,41 @@ struct NodeContext {
     // Move all nodes in (old_tail,new_tail] to be children of new_node and
     // append new_node to the node list.
 
-    if (old_tail == _top_tail) {
+    if (old_tail == top_tail) {
       append(new_node);
     } else {
-      auto child_head = old_tail ? old_tail->_node_next : _top_head;
-      auto child_tail = _top_tail;
+      auto child_head = old_tail ? old_tail->node_next : top_head;
+      auto child_tail = top_tail;
       splice(new_node, (NodeType*)child_head, child_tail);
     }
   }
 
+  //----------------------------------------
 
   NodeType* enclose_bookmark(NodeType* old_tail, NodeType::SpanType bounds) {
-    //----------------------------------------
-    // Scan down the node list to find the bookmark
 
-    auto node_b = old_tail ? old_tail->node_next() : _top_head;
-    for (; node_b; node_b = node_b->node_next()) {
+    // Scan down the node list to find the bookmark
+    auto node_b = old_tail ? old_tail->node_next : top_head;
+    for (; node_b; node_b = node_b->node_next) {
       if (node_b->flags & 1) {
         break;
       }
     }
 
+    // No bookmark = no capture, but _not_ a failure
     if (node_b == nullptr) {
-      // No bookmark = no capture, but _not_ a failure
       return node_b;
     }
 
-    //----------------------------------------
     // Resize the bookmark's span and clear its bookmark flag
-
     node_b->span = bounds;
     node_b->flags &= ~1;
 
-    //----------------------------------------
     // Enclose its children
-
-    if (node_b->node_prev() != old_tail) {
-      auto child_head = old_tail ? old_tail->node_next() : _top_head;
+    if (node_b->node_prev != old_tail) {
+      auto child_head = old_tail ? old_tail->node_next : top_head;
       //auto child_head = node_a;
-      auto child_tail = node_b->node_prev();
+      auto child_tail = node_b->node_prev;
       detach(node_b);
       splice(node_b, child_head, child_tail);
     }
@@ -361,13 +341,13 @@ struct NodeContext {
 
   void recycle(NodeType* node) {
     if (node == nullptr) return;
-    auto tail = node->_child_tail;
+    auto tail = node->child_tail;
 
     detach(node);
     delete node;
 
     while (tail) {
-      auto prev = tail->_node_prev;
+      auto prev = tail->node_prev;
       recycle((NodeType*)tail);
       tail = prev;
     }
@@ -375,8 +355,8 @@ struct NodeContext {
 
   //----------------------------------------
 
-  NodeType* _top_head = nullptr;
-  NodeType* _top_tail = nullptr;
+  NodeType* top_head = nullptr;
+  NodeType* top_tail = nullptr;
   //const SpanType::AtomType* _highwater = nullptr;
   int trace_depth = 0;
 };
@@ -398,29 +378,21 @@ struct TextNodeContext : public NodeContext<TextNode> {
 // matcher that constructs a new NodeType() for a successful match, attaches
 // any sub-nodes to it, and places it on the context's node list.
 
-template<typename context, typename atom, typename node_type>
-inline void capture(context& ctx, typename context::NodeType* old_tail, const char* match_name, Span<atom> node_span) {
-
-  auto new_node = new node_type();
-  ctx.merge_node(new_node, old_tail);
-
-  // Init() should probably be non-virtual for performance.
-  new_node->init(match_name, node_span, 0);
-
-  matcheroni_assert(new_node->node_next() != new_node);
-  matcheroni_assert(new_node->node_prev() != new_node);
-}
-
 template <StringParam match_name, typename pattern, typename node_type>
 struct Capture {
   template<typename context, typename atom>
   static Span<atom> match(context& ctx, Span<atom> body) {
-    auto old_tail = ctx.top_tail();
+    auto old_tail = ctx.top_tail;
     auto tail = pattern::match(ctx, body);
 
     if (tail.is_valid()) {
       Span<atom> node_span = {body.begin, tail.begin};
-      capture<context, atom, node_type>(ctx, old_tail, match_name.str_val, node_span);
+      //capture<context, node_type>(ctx, old_tail, match_name.str_val, node_span);
+      auto new_node = new node_type();
+      ctx.merge_node(new_node, old_tail);
+
+      // Init() should probably be non-virtual for performance.
+      new_node->init(match_name.str_val, node_span, 0);
     }
 
     return tail;
@@ -443,46 +415,20 @@ struct Capture {
 // If no CaptureEnd is hit inside a CaptureBegin, the capture does not occur
 // but this is _not_ an error.
 
-template <typename context, typename atom>
-inline Span<atom> capture_begin(context& ctx, Span<atom> body, matcher_function<context, atom> match) {
-  using SpanType = Span<atom>;
-
-  auto old_tail = ctx.top_tail();
-
-  auto tail = match(ctx, body);
-  if (tail.is_valid()) {
-    Span<atom> bounds(body.begin, tail.begin);
-    ctx.enclose_bookmark(old_tail, bounds);
-  }
-
-  return tail;
-}
-
-//----------------------------------------
-
 template <typename node_type, typename... rest>
 struct CaptureBegin {
   template<typename context, typename atom>
   static Span<atom> match(context& ctx, Span<atom> body) {
-    return capture_begin<context, atom>(ctx, body, Seq<rest...>::match);
+    auto old_tail = ctx.top_tail;
+    auto tail = Seq<rest...>::match(ctx, body);
+    if (tail.is_valid()) {
+      Span<atom> bounds(body.begin, tail.begin);
+      ctx.enclose_bookmark(old_tail, bounds);
+    }
+
+    return tail;
   }
 };
-
-//----------------------------------------
-
-template<typename context, typename atom, typename node_type>
-inline Span<atom> capture_end(context& ctx, Span<atom> body, const char* match_name, matcher_function<context, atom> match) {
-
-  auto tail = match(ctx, body);
-  if (tail.is_valid()) {
-    Span<atom> new_span(tail.begin, tail.begin);
-    auto new_node = new node_type();
-    ctx.merge_node(new_node, ctx.top_tail());
-    // Init() should probably be non-virtual for performance.
-    new_node->init(match_name, new_span, /*flags*/ 1);
-  }
-  return tail;
-}
 
 //----------------------------------------
 
@@ -490,7 +436,17 @@ template<StringParam match_name, typename P, typename node_type>
 struct CaptureEnd {
   template<typename context, typename atom>
   static Span<atom> match(context& ctx, Span<atom> body) {
-    return capture_end<context, atom, node_type>(ctx, body, match_name.str_val, P::match);
+    //return capture_end<context, atom, node_type>(ctx, body, match_name.str_val, P::match);
+    auto tail = P::match(ctx, body);
+    if (tail.is_valid()) {
+      Span<atom> new_span(tail.begin, tail.begin);
+      auto new_node = new node_type();
+      ctx.merge_node(new_node, ctx.top_tail);
+      // Init() should probably be non-virtual for performance.
+      new_node->init(match_name.str_val, new_span, /*flags*/ 1);
+    }
+    return tail;
+
   }
 };
 

@@ -25,8 +25,8 @@ struct CNode : public matcheroni::NodeBase<CNode, CToken> {
     out += "[";
     out += match_name;
     out += ":";
-    if (child_head()) {
-      for (auto c = child_head(); c; c = c->node_next()) {
+    if (child_head) {
+      for (auto c = child_head; c; c = c->node_next) {
         c->debug_dump(out);
       }
     }
@@ -49,7 +49,7 @@ struct CNode : public matcheroni::NodeBase<CNode, CToken> {
 
   template <typename P>
   P* child() {
-    for (auto cursor = child_head(); cursor; cursor = cursor->node_next()) {
+    for (auto cursor = child_head; cursor; cursor = cursor->node_next) {
       if (cursor->is_a<P>()) {
         return dynamic_cast<P*>(cursor);
       }
@@ -59,7 +59,7 @@ struct CNode : public matcheroni::NodeBase<CNode, CToken> {
 
   template <typename P>
   const P* child() const {
-    for (auto cursor = child_head(); cursor; cursor = cursor->node_next()) {
+    for (auto cursor = child_head; cursor; cursor = cursor->node_next) {
       if (cursor->is_a<P>()) {
         return dynamic_cast<const P*>(cursor);
       }

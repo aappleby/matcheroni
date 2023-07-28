@@ -99,7 +99,7 @@ double sum(TextNode* node) {
   if (strcmp(node->match_name, "number") == 0) {
     result += ((NumberNode*)node)->value;
   }
-  for (auto n = node->child_head(); n; n = n->node_next()) {
+  for (auto n = node->child_head; n; n = n->node_next) {
     result += sum(n);
   }
   return result;
@@ -107,7 +107,7 @@ double sum(TextNode* node) {
 
 double sum(TextNodeContext& context) {
   double result = 0;
-  for (auto n = context._top_head; n; n = n->node_next()) {
+  for (auto n = context.top_head; n; n = n->node_next) {
     result += sum(n);
   }
   return result;

@@ -81,7 +81,7 @@ class CContext : public matcheroni::NodeContext<CNode> {
   void enclose_nodes(CNode* start, CNode* node);
 
   void debug_dump(std::string& out) {
-    for (auto node = _top_head; node; node = node->node_next()) {
+    for (auto node = top_head; node; node = node->node_next) {
       node->debug_dump(out);
     }
   }

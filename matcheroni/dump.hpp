@@ -137,14 +137,14 @@ inline void print_tree(TextSpan text, const node_type* node, int width, int dept
   print_match(a, b, text.end, 0x80FF80, 0xCCCCCC, width);
   print_trellis(depth, node->match_name, "", 0xFFAAAA);
 
-  for (auto c = node->child_head(); c; c = c->node_next()) {
+  for (auto c = node->child_head; c; c = c->node_next) {
     print_tree(text, c, width, depth + 1);
   }
 }
 
 template<typename context>
 inline void print_context(TextSpan text, const context& ctx, int width) {
-  for (auto node = ctx._top_head; node; node = node->node_next()) {
+  for (auto node = ctx.top_head; node; node = node->node_next) {
     print_tree(text, node, width, 0);
   }
 }
@@ -272,7 +272,7 @@ inline void print_tree2(const CNode* node, int depth = 0) {
   TextSpan text(node->span.a->a, node->span.b->a);
 
   print_bar2(depth, text, node->match_name, "");
-  for (auto c = node->child_head(); c; c = c->node_next()) {
+  for (auto c = node->child_head; c; c = c->node_next) {
     print_tree2(c, depth + 1);
   }
 }
