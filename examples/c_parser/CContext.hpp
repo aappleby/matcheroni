@@ -28,8 +28,13 @@ using TokenSpan = matcheroni::Span<CToken>;
 
 //------------------------------------------------------------------------------
 
-class CContext : public matcheroni::NodeContext<TokenSpan, CNode> {
+class CContext : public matcheroni::NodeContext<CNode> {
  public:
+
+  using AtomType = CToken;
+  using SpanType = matcheroni::Span<CToken>;
+  using NodeType = CNode;
+
   CContext();
 
   static int atom_cmp(char a, int b) {

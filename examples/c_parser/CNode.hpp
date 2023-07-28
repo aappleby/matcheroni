@@ -14,8 +14,11 @@ typedef matcheroni::Span<CToken> TokenSpan;
 
 //------------------------------------------------------------------------------
 
-struct CNode : public matcheroni::NodeBase<TokenSpan> {
-  using base = matcheroni::NodeBase<TokenSpan>;
+struct CNode : public matcheroni::NodeBase<CToken> {
+  using AtomType = CToken;
+  using SpanType = matcheroni::Span<CToken>;
+
+  using base = matcheroni::NodeBase<CToken>;
 
   CNode* child(const char* name) { return (CNode*)base::child(name); }
 

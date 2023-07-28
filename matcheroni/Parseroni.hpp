@@ -127,8 +127,10 @@ struct LinearAlloc {
 
 //------------------------------------------------------------------------------
 
-template<typename SpanType>
+template<typename atom>
 struct NodeBase {
+  using AtomType = atom;
+  using SpanType = Span<atom>;
 
   NodeBase() {}
   virtual ~NodeBase() {}
@@ -186,7 +188,7 @@ struct NodeBase {
 
 //------------------------------------------------------------------------------
 
-template<typename SpanType, typename NodeType>
+template<typename NodeType>
 struct NodeContext {
 
   NodeContext() {
@@ -316,7 +318,7 @@ struct NodeContext {
   }
 
 
-  NodeType* enclose_bookmark(NodeType* old_tail, SpanType bounds) {
+  NodeType* enclose_bookmark(NodeType* old_tail, NodeType::SpanType bounds) {
     //----------------------------------------
     // Scan down the node list to find the bookmark
 
@@ -382,7 +384,9 @@ struct NodeContext {
 //------------------------------------------------------------------------------
 // We'll be parsing text a lot, so these are convenience declarations.
 
-struct TextNode : public NodeBase<TextSpan> {
+struct TextNode : public NodeBase<char> {
+  using SpanType = TextSpan;
+
   TextNode* node_prev() { return (TextNode*)_node_prev; }
   TextNode* node_next() { return (TextNode*)_node_next; }
 
@@ -399,7 +403,10 @@ struct TextNode : public NodeBase<TextSpan> {
   const char* text_tail() const { return span.end; }
 };
 
-struct TextNodeContext : public NodeContext<TextSpan, TextNode> {
+struct TextNodeContext : public NodeContext<TextNode> {
+  using AtomType = char;
+  using SpanType = matcheroni::Span<char>;
+  using NodeType = TextNode;
 
   static int atom_cmp(char a, int b) { return (unsigned char)a - b; }
 
