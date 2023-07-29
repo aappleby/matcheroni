@@ -11,6 +11,7 @@ using namespace matcheroni;
 //------------------------------------------------------------------------------
 
 struct TestNode : public NodeBase<TestNode, char>, public utils::InstanceCounter<TestNode> {
+  TextSpan as_text() const { return span; }
   const char* text_head() const { return span.begin; }
   const char* text_tail() const { return span.end; }
 };

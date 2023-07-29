@@ -18,8 +18,9 @@ struct CNode : public matcheroni::NodeBase<CNode, CToken> {
   using AtomType = CToken;
   using SpanType = matcheroni::Span<CToken>;
 
-  const char* text_head() const { return span.begin->text.begin; }
-  const char* text_tail() const { return (span.end - 1)->text.end; }
+  matcheroni::TextSpan as_text() const {
+    return matcheroni::TextSpan(span.begin->text.begin, (span.end - 1)->text.end);
+  }
 
   void debug_dump(std::string& out) {
     out += "[";

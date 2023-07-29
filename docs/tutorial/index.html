@@ -29,13 +29,19 @@
 
 <div class="contents">
 
-<div class="divider">Matcheroni is a toolkit for matching text. Parseroni builds parse trees from Matcheroni matchers.</div>
+<div class="divider">Matcheroni is a pattern-matching toolkit.</div>
 
 <p>
-  Matcheroni is a minimalist C++20 single-header library for building pattern-matchers - similar to regular expressions, but both more and less powerful.<br>
-  <br>
+  Matcheroni is a minimalist, zero-dependency, single-header C++20 library for building pattern-matchers - similar to regular expressions, but both more and less powerful.
+  It's based on
+  <a href="https://en.wikipedia.org/wiki/Parsing_expression_grammar">"Parsing Expression Grammars"</a> (PEGs), which are similar in concept to
+  regular expressions but behave slightly differently.
+</p>
+<div class="divider">Parseroni uses Matcheroni to build parse trees.</div>
+<p>
   Parseroni is a companion single-header library that can capture the content of Matcheroni patterns and assemble them into concrete parse trees.<br>
-  <br>
+</p>
+<p>
   Together the two are concise enough to build a JSON parser in less than a page of code, while still powerful enough to parse C99 with a few helper classes.
 </p>
 

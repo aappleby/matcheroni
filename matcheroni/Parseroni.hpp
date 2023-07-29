@@ -75,7 +75,6 @@ struct LinearAlloc {
   void add_slab() {
     if (top_slab && top_slab->next) {
       top_slab = top_slab->next;
-      matcheroni_assert(top_slab->cursor == 0);
       return;
     }
 
@@ -226,7 +225,6 @@ struct NodeContext {
     new_node->child_tail = nullptr;
 
     if (top_tail) {
-      matcheroni_assert(new_node != top_tail);
       new_node->node_prev = top_tail;
       top_tail->node_next = new_node;
       top_tail = new_node;
@@ -365,6 +363,7 @@ struct NodeContext {
 // We'll be parsing text a lot, so these are convenience declarations.
 
 struct TextNode : public NodeBase<TextNode, char> {
+  TextSpan as_text() const { return span; }
   const char* text_head() const { return span.begin; }
   const char* text_tail() const { return span.end; }
 };

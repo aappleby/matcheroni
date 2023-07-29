@@ -17,14 +17,12 @@
 #define matcheroni_assert(A) assert(A)
 //#define matcheroni_assert(A)
 
-// FIXME make sure everything is tail-call-optimizable
-
 namespace matcheroni {
 
 //------------------------------------------------------------------------------
 // Matcheroni operates on spans of atoms, usually (but not always) characters.
-// Valid spans have non-null a and b pointers, empty spans have equal non-null
-// a and b pointers.
+// Valid spans have non-null begin and end pointers, empty spans have equal
+// non-null begin and end pointers.
 
 template <typename atom>
 struct Span {
