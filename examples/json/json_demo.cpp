@@ -8,8 +8,7 @@
 // SPDX-FileCopyrightText:  2023 Austin Appleby <aappleby@gmail.com>
 // SPDX-License-Identifier: MIT License
 
-#include "matcheroni/Matcheroni.hpp"
-#include "matcheroni/Parseroni.hpp"
+#include "json_parser.hpp"
 #include "matcheroni/Utilities.hpp"
 
 #include <stdio.h>
@@ -21,8 +20,6 @@ constexpr bool verbose   = true;
 constexpr bool dump_tree = true;
 const int warmup = 0;
 const int reps = 1;
-
-TextSpan parse_json(TextNodeContext& ctx, TextSpan body);
 
 //------------------------------------------------------------------------------
 
@@ -44,7 +41,7 @@ int main(int argc, char** argv) {
   double time_accum = 0;
   double line_accum = 0;
 
-  TextNodeContext ctx;
+  JsonContext ctx;
 
   for (auto path : paths) {
     if (verbose) {
@@ -103,8 +100,8 @@ int main(int argc, char** argv) {
     }
 
     if (verbose) {
-      printf("Slab current      %d\n",  LinearAlloc::inst().current_size);
-      printf("Slab max          %d\n",  LinearAlloc::inst().max_size);
+      //printf("Slab current      %d\n",  LinearAlloc::inst().current_size);
+      //printf("Slab max          %d\n",  LinearAlloc::inst().max_size);
       printf("Tree nodes        %ld\n", ctx.node_count());
     }
 

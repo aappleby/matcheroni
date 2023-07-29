@@ -12,53 +12,28 @@ namespace matcheroni {
 // frees must be in LIFO order - if you allocate A, B, and C, you must
 // deallocate in C-B-A order.
 
-// FIXME make this a member of NodeContext and handle placement new/delete
-// Also add a size after each allocation so we can walk backwards and call
-// destructors without having to walk the node tree
-
 struct LinearAlloc {
   struct Slab {
     Slab* prev;
     Slab* next;
-    int cursor;
-    int highwater;
+    char* cursor;
     char buf[];
+    size_t size() { return cursor - buf; }
+    void clear() { cursor = buf; }
   };
 
-  struct SlabState {
-    Slab* top_slab;
-    int   top_cursor;
-    int   current_size;
-  };
-
-  SlabState save_state() {
-    return {
-      top_slab,
-      top_slab->cursor,
-      current_size
-    };
-  }
-
-  void restore_state(SlabState state) {
-    top_slab = state.top_slab;
-    top_slab->cursor = state.top_cursor;
-    current_size = state.current_size;
-  }
-
-  // slab size is 1 hugepage. seems to work ok.
+  // Default slab size is 2 megs = 1 hugepage. Seems to work ok.
   static constexpr int header_size = sizeof(Slab);
   static constexpr int slab_size = 2 * 1024 * 1024 - header_size;
+  static constexpr int alloc_overhead = 8;
 
-  LinearAlloc() { add_slab(); }
+  LinearAlloc() {
+    add_slab();
+  }
 
   void reset() {
-    if (!top_slab) add_slab();
     while (top_slab->prev) top_slab = top_slab->prev;
-    for (auto c = top_slab; c; c = c->next) {
-      c->cursor = 0;
-    }
-    max_size = 0;
-    current_size = 0;
+    for (auto c = top_slab; c; c = c->next) c->clear();
   }
 
   void destroy() {
@@ -81,50 +56,51 @@ struct LinearAlloc {
     auto new_slab = (Slab*)malloc(header_size + slab_size);
     new_slab->prev = nullptr;
     new_slab->next = nullptr;
-    new_slab->cursor = 0;
-    new_slab->highwater = 0;
+    new_slab->cursor = new_slab->buf;
 
     if (top_slab) top_slab->next = new_slab;
     new_slab->prev = top_slab;
     top_slab = new_slab;
   }
 
-  void* alloc(int size) {
-    if (top_slab->cursor + size > slab_size) {
+  void* alloc(int alloc_size) {
+    if (top_slab->size() + alloc_size + alloc_overhead > slab_size) {
       add_slab();
     }
 
-    auto result = top_slab->buf + top_slab->cursor;
-    top_slab->cursor += size;
-
-    current_size += size;
-    if (current_size > max_size) max_size = current_size;
+    auto result = top_slab->cursor;
+    top_slab->cursor += alloc_size;
+    *(uint64_t*)(top_slab->cursor) = alloc_size;
+    top_slab->cursor += alloc_overhead;
 
     return result;
   }
 
-  void free(void* p, int size) {
-    top_slab->cursor -= size;
-    if (top_slab->cursor == 0) {
-      if (top_slab->prev) {
-        top_slab = top_slab->prev;
-      }
+  void free(void* p) {
+    top_slab->cursor -= alloc_overhead;
+    uint64_t alloc_size = *(uint64_t*)top_slab->cursor;
+    top_slab->cursor -= alloc_size;
+
+    if (top_slab->size() == 0 && top_slab->prev) {
+      top_slab = top_slab->prev;
     }
-    current_size -= size;
   }
 
-  static LinearAlloc& inst() {
-    static LinearAlloc inst;
-    return inst;
+  int current_size() const {
+    auto slab = top_slab;
+    while (slab->prev) slab = slab->prev;
+    int sum = 0;
+    for (; slab; slab = slab->next) {
+      sum += slab->size();
+    }
+    return sum;
   }
 
   bool is_empty() const {
-    return current_size == 0;
+    return top_slab->prev == nullptr && top_slab->size() == 0;
   }
 
   Slab* top_slab = nullptr;
-  int current_size = 0;
-  int max_size = 0;
   int refcount = 0;
 };
 
@@ -134,18 +110,7 @@ template<typename NodeType, typename AtomType>
 struct NodeBase {
   using SpanType = Span<AtomType>;
 
-  NodeBase() {}
-  virtual ~NodeBase() {}
-
-  // Commenting these out will force all nodes to use the default allocator,
-  // which slows the JSON benchmark down by 2x.
-  static void* operator new     (size_t size)          { return LinearAlloc::inst().alloc(size); }
-  static void* operator new[]   (size_t size)          { return LinearAlloc::inst().alloc(size); }
-  static void  operator delete  (void* p, size_t size) { LinearAlloc::inst().free(p, size); }
-  static void  operator delete[](void* p, size_t size) { LinearAlloc::inst().free(p, size); }
-
   //----------------------------------------
-  // Init() should probably be non-virtual for performance.
 
   void init(const char* match_name, SpanType span, uint64_t flags) {
     this->match_name = match_name;
@@ -180,32 +145,42 @@ struct NodeBase {
 
 //------------------------------------------------------------------------------
 
-template<typename _NodeType>
+template<typename _NodeType, bool _call_constructors = true, bool _call_destructors = true>
 struct NodeContext {
   using NodeType = _NodeType;
   using SpanType = typename NodeType::SpanType;
   using AtomType = typename SpanType::AtomType;
 
+  static constexpr bool call_constructors = _call_constructors;
+  static constexpr bool call_destructors  = _call_destructors;
+
   NodeContext() {
+    top_head = nullptr;
+    top_tail = nullptr;
+    trace_depth = 0;
   }
 
-  virtual ~NodeContext() {
+  ~NodeContext() {
     reset();
   }
 
   void reset() {
-    auto c = top_tail;
-    while (c) {
-      auto prev = c->node_prev;
-      recycle(c);
-      c = (NodeType*)prev;
+    // Call destructors for all the nodes in the allocator.
+    if (call_destructors) {
+      for (auto slab = alloc.top_slab; slab; slab = slab->prev) {
+        while(slab->cursor > slab->buf) {
+          slab->cursor -= LinearAlloc::alloc_overhead;
+          int alloc_size = *(uint64_t*)slab->cursor;
+          slab->cursor -= alloc_size;
+          NodeType* node = (NodeType*)slab->cursor;
+          node->~NodeType();
+        }
+      }
     }
 
     top_head = nullptr;
     top_tail = nullptr;
-    //_highwater = nullptr;
-
-    assert(LinearAlloc::inst().is_empty());
+    alloc.reset();
   }
 
   //----------------------------------------
@@ -342,7 +317,8 @@ struct NodeContext {
     auto tail = node->child_tail;
 
     detach(node);
-    delete node;
+    if (call_destructors) node->~NodeType();
+    alloc.free(node);
 
     while (tail) {
       auto prev = tail->node_prev;
@@ -353,10 +329,11 @@ struct NodeContext {
 
   //----------------------------------------
 
-  NodeType* top_head = nullptr;
-  NodeType* top_tail = nullptr;
+  LinearAlloc alloc;
+  NodeType* top_head;
+  NodeType* top_tail;
+  int trace_depth;
   //const SpanType::AtomType* _highwater = nullptr;
-  int trace_depth = 0;
 };
 
 //------------------------------------------------------------------------------
@@ -379,6 +356,8 @@ struct TextNodeContext : public NodeContext<TextNode> {
 
 template <StringParam match_name, typename pattern, typename node_type>
 struct Capture {
+  static_assert((sizeof(node_type) & 7) == 0);
+
   template<typename context, typename atom>
   static Span<atom> match(context& ctx, Span<atom> body) {
     auto old_tail = ctx.top_tail;
@@ -386,11 +365,12 @@ struct Capture {
 
     if (tail.is_valid()) {
       Span<atom> node_span = {body.begin, tail.begin};
-      //capture<context, node_type>(ctx, old_tail, match_name.str_val, node_span);
-      auto new_node = new node_type();
-      ctx.merge_node(new_node, old_tail);
 
-      // Init() should probably be non-virtual for performance.
+      node_type* new_node = (node_type*)ctx.alloc.alloc(sizeof(node_type));
+      if (context::call_constructors) {
+        new (new_node) node_type();
+      }
+      ctx.merge_node(new_node, old_tail);
       new_node->init(match_name.str_val, node_span, 0);
     }
 
@@ -416,6 +396,8 @@ struct Capture {
 
 template <typename node_type, typename... rest>
 struct CaptureBegin {
+  static_assert((sizeof(node_type) & 7) == 0);
+
   template<typename context, typename atom>
   static Span<atom> match(context& ctx, Span<atom> body) {
     auto old_tail = ctx.top_tail;
@@ -433,15 +415,20 @@ struct CaptureBegin {
 
 template<StringParam match_name, typename P, typename node_type>
 struct CaptureEnd {
+  static_assert((sizeof(node_type) & 7) == 0);
+
   template<typename context, typename atom>
   static Span<atom> match(context& ctx, Span<atom> body) {
-    //return capture_end<context, atom, node_type>(ctx, body, match_name.str_val, P::match);
     auto tail = P::match(ctx, body);
     if (tail.is_valid()) {
       Span<atom> new_span(tail.begin, tail.begin);
-      auto new_node = new node_type();
+
+      node_type* new_node = (node_type*)ctx.alloc.alloc(sizeof(node_type));
+      if (context::call_constructors) {
+        new (new_node) node_type();
+      }
+
       ctx.merge_node(new_node, ctx.top_tail);
-      // Init() should probably be non-virtual for performance.
       new_node->init(match_name.str_val, new_span, /*flags*/ 1);
     }
     return tail;

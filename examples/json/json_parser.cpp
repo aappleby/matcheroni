@@ -1,8 +1,7 @@
 // SPDX-FileCopyrightText:  2023 Austin Appleby <aappleby@gmail.com>
 // SPDX-License-Identifier: MIT License
 
-#include "matcheroni/Matcheroni.hpp"
-#include "matcheroni/Parseroni.hpp"
+#include "json_parser.hpp"
 #include "matcheroni/Utilities.hpp"
 
 using namespace matcheroni;
@@ -39,13 +38,13 @@ struct JsonParser {
   using list = Seq<P, Any<Seq<Opt<space>, Atom<','>, Opt<space>, P>>>;
 
   // Matches any valid JSON value
-  static TextSpan match_value(TextNodeContext& ctx, TextSpan body) {
+  static TextSpan match_value(JsonContext& ctx, TextSpan body) {
     return Oneof<
-      Capture<"number",  number,  TextNode>,
-      Capture<"string",  string,  TextNode>,
-      Capture<"array",   array,   TextNode>,
-      Capture<"object",  object,  TextNode>,
-      Capture<"keyword", keyword, TextNode>
+      Capture<"number",  number,  JsonNode>,
+      Capture<"string",  string,  JsonNode>,
+      Capture<"array",   array,   JsonNode>,
+      Capture<"object",  object,  JsonNode>,
+      Capture<"keyword", keyword, JsonNode>
     >::match(ctx, body);
   }
   using value = Ref<match_value>;
@@ -55,7 +54,7 @@ struct JsonParser {
   Seq<
     Atom<'['>,
     Opt<space>,
-    Opt<list<Capture<"element", value, TextNode>>>,
+    Opt<list<Capture<"element", value, JsonNode>>>,
     Opt<space>,
     Atom<']'>
   >;
@@ -63,11 +62,11 @@ struct JsonParser {
   // Matches a key:value pair where 'key' is a string and 'value' is a JSON value.
   using pair =
   Seq<
-    Capture<"key", string, TextNode>,
+    Capture<"key", string, JsonNode>,
     Opt<space>,
     Atom<':'>,
     Opt<space>,
-    Capture<"value", value, TextNode>
+    Capture<"value", value, JsonNode>
   >;
 
   // Matches a curly-brace-delimited list of key:value pairs.
@@ -75,18 +74,17 @@ struct JsonParser {
   Seq<
     Atom<'{'>,
     Opt<space>,
-    Opt<list<Capture<"member", pair, TextNode>>>,
+    Opt<list<Capture<"member", pair, JsonNode>>>,
     Opt<space>,
     Atom<'}'>
   >;
 
   // Matches any valid JSON document
-  static TextSpan match(TextNodeContext& ctx, TextSpan body) {
+  static TextSpan match(JsonContext& ctx, TextSpan body) {
     return Seq<Opt<space>, value, Opt<space>>::match(ctx, body);
   }
 };
 
-
-TextSpan parse_json(TextNodeContext& ctx, TextSpan body) {
+TextSpan parse_json(JsonContext& ctx, TextSpan body) {
   return JsonParser::match(ctx, body);
 }

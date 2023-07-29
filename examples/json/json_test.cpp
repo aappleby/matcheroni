@@ -2,15 +2,12 @@
 // SPDX-FileCopyrightText:  2023 Austin Appleby <aappleby@gmail.com>
 // SPDX-License-Identifier: MIT License
 
-#include "matcheroni/Matcheroni.hpp"
-#include "matcheroni/Parseroni.hpp"
+#include "json_parser.hpp"
 #include "matcheroni/Utilities.hpp"
 
 #include <stdio.h>
 
 using namespace matcheroni;
-
-TextSpan parse_json(TextNodeContext& ctx, TextSpan text);
 
 //------------------------------------------------------------------------------
 
@@ -37,7 +34,7 @@ int main(int argc, char** argv) {
   */
 
   TextSpan text = utils::to_span(json);
-  TextNodeContext ctx;
+  JsonContext ctx;
 
   double time_a, time_b;
   TextSpan tail;

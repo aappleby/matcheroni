@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText:  2023 Austin Appleby <aappleby@gmail.com>
 // SPDX-License-Identifier: MIT License
 
-#include "matcheroni/Matcheroni.hpp"
+#include "json_matcher.hpp"
 #include "matcheroni/Utilities.hpp"
 
 using namespace matcheroni;

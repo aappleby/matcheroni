@@ -4682,9 +4682,9 @@ var ___wasm_call_ctors = createExportWrapper("__wasm_call_ctors");
 /** @type {function(...*):?} */
 var _main = Module['_main'] = createExportWrapper("__main_argc_argv");
 /** @type {function(...*):?} */
-var _malloc = createExportWrapper("malloc");
-/** @type {function(...*):?} */
 var _fflush = Module['_fflush'] = createExportWrapper("fflush");
+/** @type {function(...*):?} */
+var _malloc = createExportWrapper("malloc");
 /** @type {function(...*):?} */
 var ___errno_location = createExportWrapper("__errno_location");
 /** @type {function(...*):?} */
@@ -4738,7 +4738,7 @@ var ___cxa_can_catch = createExportWrapper("__cxa_can_catch");
 var ___cxa_is_pointer_type = createExportWrapper("__cxa_is_pointer_type");
 /** @type {function(...*):?} */
 var dynCall_jiji = Module['dynCall_jiji'] = createExportWrapper("dynCall_jiji");
-var ___emscripten_embedded_file_data = Module['___emscripten_embedded_file_data'] = 33579140;
+var ___emscripten_embedded_file_data = Module['___emscripten_embedded_file_data'] = 33578084;
 function invoke_ii(index,a1) {
   var sp = stackSave();
   try {
