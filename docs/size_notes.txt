@@ -1,0 +1,99 @@
+Matcheroni JSON matching/parsing benchmark
+
+----------------------------------------
+Byte total 4609770.000000
+Line total 65959.000000
+Match time 3.492900
+Parse time 4.609600
+Match byte rate  1319.754359 megabytes per second
+Match line rate  18.883736 megalines per second
+Parse byte rate  1000.036880 megabytes per second
+Parse line rate  14.309051 megalines per second
+
+
+optimized build of json_benchmark with only matching turned on produces a single
+match function that is 3524 bytes
+
+json_benchmark with only parse -
+1644 recycle()
+1836 some match
+5787 some match
+
+
+-O3 -flto + size bin + minimized ifdef ranges:
+both   22165
+match  12429
+parse  18747
+none    8628
+
+parse  9736
+match  3418
+common  383
+
+
+
+both  22726
+match 12818
+parse 19024
+none   8628
+
+parse  9908
+match  3702
+common  488
+
+
+
+
+-O3 -flto + size bin
+both   = 22695
+match  = 11469
+parse  = 17682
+none   =  4193
+
+parse  = 11226
+match  =  5013
+common =  2263
+
+-Os -flto + size bin
+
+both   = 15345
+match  = 10673
+parse  = 12373
+none   =  4556
+
+parse  =  4672
+match  =  2972
+common =  3145
+
+
+
+
+
+bah these are ls -al not size bin
+
+-O3 -flto
+
+match + parse = 38768
+only match    = 22288
+only parse    = 32720
+neither       = 16280
+
+parse = 16540
+match = 6048
+neither+match+parse = 38868
+
+-Os -flto
+
+match + parse = 33536
+only match    = 24360
+only parse    = 25864
+neither       = 16632
+parse = 9176
+match = 7672
+neither+match+parse = 33480
+
+-O3 -noflto
+neither 34720
+match 39648
+parse 39648
+both  39648

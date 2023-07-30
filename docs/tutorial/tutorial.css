@@ -1,6 +1,6 @@
 * {
   font-family: monospace;
-  font-size: 14px;
+  font-size: 16px;
   color: #CCC;
 }
 
@@ -103,6 +103,10 @@ p {
   padding:8px;
   width:80ch;
   flex-grow: 1;
+}
+
+.highlight {
+  color: #FFFFBB;
 }
 
 .code_box {

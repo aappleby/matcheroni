@@ -14,6 +14,7 @@
 #include "matcheroni/Utilities.hpp"
 
 using namespace matcheroni;
+using namespace parseroni;
 
 template<StringParam match_name, typename pattern, typename node_type>
 struct Capture3 {

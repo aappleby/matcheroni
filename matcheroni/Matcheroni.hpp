@@ -10,12 +10,8 @@
 // SPDX-License-Identifier: MIT License
 
 #pragma once
-#include <stdio.h>   // for size_t
-#include <assert.h>  // for assert
 
-// Assertions can actually speed things up as they mark code paths as dead
-#define matcheroni_assert(A) assert(A)
-//#define matcheroni_assert(A)
+#define matcheroni_assert(A)
 
 namespace matcheroni {
 
@@ -31,7 +27,7 @@ struct Span {
   constexpr Span() : begin(nullptr), end(nullptr) {}
   constexpr Span(const atom* begin, const atom* end) : begin(begin), end(end) {}
 
-  size_t len() const {
+  int len() const {
     matcheroni_assert(is_valid());
     return end - begin;
   }
@@ -89,7 +85,7 @@ inline int strcmp_span(const Span<char>& s2, const char* lit) {
 
 inline int strcmp_span(const Span<char>& a, const Span<char>& b) {
   if (int c = a.len() - b.len()) return c;
-  for (size_t i = 0; i < a.len(); i++) {
+  for (int i = 0; i < a.len(); i++) {
     if (auto c = a.begin[i] - b.begin[i]) return c;
   }
   return 0;
@@ -120,12 +116,11 @@ using matcher_function = Span<atom> (*)(context& ctx, Span<atom> body);
 
 struct TextContext {
 
-  void* checkpoint() { return nullptr; }
-
   // We cast to unsigned char as our ranges are generally going to be unsigned.
   static int atom_cmp(char a, int b) { return (unsigned char)a - b; }
 
-  // Rewind does nothing as it doesn't interact with trace_depth.
+  // Checkpoint/Rewind does nothing as it doesn't interact with trace_depth.
+  void* checkpoint() { return nullptr; }
   void rewind(void* bookmark) {}
 
   // Tracing requires us to keep track of the nesting depth in the context.
@@ -316,11 +311,11 @@ struct StringParam {
 // Lit<"foo">::match("foobar") == "bar"
 
 template <typename Context, typename SpanType>
-inline SpanType match_lit(Context& ctx, SpanType body, const char* lit, size_t len) {
+inline SpanType match_lit(Context& ctx, SpanType body, const char* lit, int len) {
   matcheroni_assert(body.is_valid());
   if (len > body.len()) return body.fail();
 
-  for (size_t i = 0; i < len; i++) {
+  for (int i = 0; i < len; i++) {
     if (ctx.atom_cmp(*body.begin, *lit)) return body.fail();
     body = body.advance(1);
     lit++;
@@ -782,7 +777,7 @@ struct MatchBackref {
     auto ref = StoreBackref<name, atom, P>::ref;
     if (!ref.is_valid()) return body.fail();
 
-    for (size_t i = 0; i < ref.len(); i++) {
+    for (int i = 0; i < ref.len(); i++) {
       if (body.is_empty()) return body.fail();
       if (ctx.atom_cmp(*body.begin, ref.begin[i])) return body.fail();
       body = body.advance(1);

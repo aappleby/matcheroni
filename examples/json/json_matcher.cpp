@@ -85,7 +85,7 @@ struct JsonMatcher {
   }
 };
 
-
+__attribute__((noinline))
 TextSpan match_json(TextContext& ctx, TextSpan body) {
   return JsonMatcher::match(ctx, body);
 }

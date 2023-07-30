@@ -17,6 +17,7 @@
 #include <string.h>
 
 using namespace matcheroni;
+using namespace parseroni;
 
 TextSpan parse_regex(TextNodeContext& ctx, TextSpan body);
 

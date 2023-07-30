@@ -14,7 +14,7 @@ typedef matcheroni::Span<CToken> TokenSpan;
 
 //------------------------------------------------------------------------------
 
-struct CNode : public matcheroni::NodeBase<CNode, CToken> {
+struct CNode : public parseroni::NodeBase<CNode, CToken> {
   using AtomType = CToken;
   using SpanType = matcheroni::Span<CToken>;
 

@@ -5,6 +5,7 @@
 #include "matcheroni/Utilities.hpp"
 
 using namespace matcheroni;
+using namespace parseroni;
 
 struct JsonParser {
   // Matches any JSON number
@@ -85,6 +86,7 @@ struct JsonParser {
   }
 };
 
+__attribute__((noinline))
 TextSpan parse_json(JsonContext& ctx, TextSpan body) {
   return JsonParser::match(ctx, body);
 }

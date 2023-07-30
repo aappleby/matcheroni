@@ -7,13 +7,12 @@
 #include <string>
 
 using namespace matcheroni;
+using namespace parseroni;
 
 //------------------------------------------------------------------------------
 
 struct TestNode : public NodeBase<TestNode, char>, public utils::InstanceCounter<TestNode> {
   TextSpan as_text() const { return span; }
-  const char* text_head() const { return span.begin; }
-  const char* text_tail() const { return span.end; }
 };
 
 struct TestContext : public NodeContext<TestNode> {
@@ -50,12 +49,9 @@ void check_hash(context& ctx, uint64_t hash_a) {
 //----------------------------------------
 
 void reset_everything() {
-  //LinearAlloc::inst().reset();
   TestNode::reset_count();
   matcheroni_assert(TestNode::live == 0);
   matcheroni_assert(TestNode::dead == 0);
-  //matcheroni_assert(LinearAlloc::inst().current_size == 0);
-  //matcheroni_assert(LinearAlloc::inst().max_size == 0);
 }
 
 //------------------------------------------------------------------------------
@@ -107,15 +103,8 @@ void test_basic() {
 
     check_hash(ctx, 0x7073c4e1b84277f0);
 
-    // these aren't correct because of allocator overhead
-    //matcheroni_assert(LinearAlloc::inst().max_size == sizeof(TestNode) * 11);
-    matcheroni_assert(ctx.alloc.current_size() == (sizeof(TestNode) + LinearAlloc::alloc_overhead) * 11);
-
-    printf("sizeof(TestNode) = %lu\n", sizeof(TestNode));
-    printf("alloc size %d\n", ctx.alloc.current_size());
-
-    matcheroni_assert(utils::InstanceCounter<TestNode>::live == 11);
-    matcheroni_assert(utils::InstanceCounter<TestNode>::dead == 0);
+    matcheroni_assert(TestNode::live == 11);
+    matcheroni_assert(TestNode::dead == 0);
   }
 
   TestContext ctx;
@@ -168,10 +157,8 @@ void test_rewind() {
   utils::print_summary(text, tail, ctx, 50);
   check_hash(ctx, 0x2850a87bce45242a);
 
-  matcheroni_assert(utils::InstanceCounter<TestNode>::live == 1);
-  matcheroni_assert(utils::InstanceCounter<TestNode>::dead == 5);
-  //matcheroni_assert(LinearAlloc::inst().current_size == sizeof(TestNode) * 1);
-  //matcheroni_assert(LinearAlloc::inst().max_size == sizeof(TestNode) * 5);
+  matcheroni_assert(TestNode::live == 1);
+  matcheroni_assert(TestNode::dead == 5);
 
   printf("test_rewind() end\n\n");
 }
@@ -222,10 +209,8 @@ void test_begin_end() {
   utils::print_summary(text, tail, ctx, 50);
   check_hash(ctx, 0x401403cbefc2cba9);
 
-  matcheroni_assert(utils::InstanceCounter<TestNode>::live == 15);
-  matcheroni_assert(utils::InstanceCounter<TestNode>::dead == 0);
-  //matcheroni_assert(LinearAlloc::inst().max_size == sizeof(TestNode) * 15);
-  //matcheroni_assert(LinearAlloc::inst().current_size == sizeof(TestNode) * 15);
+  matcheroni_assert(TestNode::live == 15);
+  matcheroni_assert(TestNode::dead == 0);
 
   printf("test_begin_end() end\n\n");
 }
@@ -279,10 +264,8 @@ void test_pathological() {
   utils::print_summary(text, tail, ctx, 50);
   check_hash(ctx, 0x07a37a832d506209);
 
-  matcheroni_assert(utils::InstanceCounter<TestNode>::live == 7);
-  matcheroni_assert(utils::InstanceCounter<TestNode>::dead == 137250);
-  //matcheroni_assert(LinearAlloc::inst().max_size == sizeof(TestNode) * 7);
-  //matcheroni_assert(LinearAlloc::inst().current_size == sizeof(TestNode) * 7);
+  matcheroni_assert(TestNode::live == 7);
+  matcheroni_assert(TestNode::dead == 137250);
 
   printf("test_pathological() end\n\n");
 }

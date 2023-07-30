@@ -4,6 +4,7 @@
 #pragma once
 
 #include "matcheroni/Matcheroni.hpp"
+#include "matcheroni/Parseroni.hpp"
 #include "matcheroni/Utilities.hpp"
 
 #include "examples/c_parser/c_constants.hpp"
@@ -13,6 +14,7 @@
 #include "examples/SST.hpp"
 
 using namespace matcheroni;
+using namespace parseroni;
 
 #if 0
 template <StringParam match_name, typename P>
@@ -67,8 +69,9 @@ struct TraceToken {
 #endif
 
 template <StringParam match_name, typename pattern>
+using Cap = parseroni::Capture<match_name, pattern, CNode>;
+
 //using Cap = TraceToken<match_name, Capture<match_name, pattern, CNode>>;
-using Cap = Capture<match_name, pattern, CNode>;
 
 //------------------------------------------------------------------------------
 

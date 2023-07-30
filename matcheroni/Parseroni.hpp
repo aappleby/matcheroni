@@ -5,7 +5,9 @@
 
 #include "matcheroni/Matcheroni.hpp"
 
-namespace matcheroni {
+namespace parseroni {
+
+using namespace matcheroni;
 
 //------------------------------------------------------------------------------
 // This is an optimized allocator for Parseroni - it allows for alloc/free, but
@@ -14,12 +16,13 @@ namespace matcheroni {
 
 struct LinearAlloc {
   struct Slab {
+    size_t size() { return cursor - buf; }
+    void clear() { cursor = buf; }
+
     Slab* prev;
     Slab* next;
     char* cursor;
     char buf[];
-    size_t size() { return cursor - buf; }
-    void clear() { cursor = buf; }
   };
 
   // Default slab size is 2 megs = 1 hugepage. Seems to work ok.
@@ -101,7 +104,6 @@ struct LinearAlloc {
   }
 
   Slab* top_slab = nullptr;
-  int refcount = 0;
 };
 
 //------------------------------------------------------------------------------
@@ -260,7 +262,7 @@ struct NodeContext {
 
   void merge_node(NodeType* new_node, NodeType* old_tail) {
 
-    //if (span.end > _highwater) _highwater = span.end;
+    if (new_node->span.end > _highwater) _highwater = new_node->span.end;
 
     // Move all nodes in (old_tail,new_tail] to be children of new_node and
     // append new_node to the node list.
@@ -333,20 +335,7 @@ struct NodeContext {
   NodeType* top_head;
   NodeType* top_tail;
   int trace_depth;
-  //const SpanType::AtomType* _highwater = nullptr;
-};
-
-//------------------------------------------------------------------------------
-// We'll be parsing text a lot, so these are convenience declarations.
-
-struct TextNode : public NodeBase<TextNode, char> {
-  TextSpan as_text() const { return span; }
-  const char* text_head() const { return span.begin; }
-  const char* text_tail() const { return span.end; }
-};
-
-struct TextNodeContext : public NodeContext<TextNode> {
-  static int atom_cmp(char a, int b) { return (unsigned char)a - b; }
+  const SpanType::AtomType* _highwater = nullptr;
 };
 
 //------------------------------------------------------------------------------
@@ -437,5 +426,16 @@ struct CaptureEnd {
 };
 
 //------------------------------------------------------------------------------
+// We'll be parsing text a lot, so these are convenience declarations.
 
-}; // namespace matcheroni
+struct TextNode : public NodeBase<TextNode, char> {
+  TextSpan as_text() const { return span; }
+};
+
+struct TextNodeContext : public NodeContext<TextNode> {
+  static int atom_cmp(char a, int b) { return (unsigned char)a - b; }
+};
+
+//------------------------------------------------------------------------------
+
+}; // namespace parseroni

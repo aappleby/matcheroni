@@ -9,6 +9,7 @@
 #include <stdio.h>
 
 using namespace matcheroni;
+using namespace parseroni;
 
 TextSpan match_toml(TextNodeContext& ctx, TextSpan text);
 

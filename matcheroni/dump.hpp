@@ -142,10 +142,10 @@ inline void print_context(TextSpan text, const context& ctx, int width) {
 inline void print_summary(TextSpan text, TextSpan tail, int width) {
   printf("Match text:\n");
   print_match(text, text, width);
-  printf("\n");
+  printf("\n\n");
   printf("Match result:\n");
   print_match(text, tail, width);
-  printf("\n");
+  printf("\n\n");
 }
 
 template<typename context>

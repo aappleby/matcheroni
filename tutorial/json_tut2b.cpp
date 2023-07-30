@@ -5,18 +5,21 @@
 #include <stdio.h>
 
 using namespace matcheroni;
+using namespace parseroni;
 
 //------------------------------------------------------------------------------
 
 struct JsonNode : public NodeBase<JsonNode, char> {
   TextSpan as_text() const { return span; }
-  const char* text_head() const { return span.begin; }
-  const char* text_tail() const { return span.end; }
+
+  virtual double sum() {
+    double result = 0;
+    for (auto n = child_head; n; n = n->node_next) result += n->sum();
+    return result;
+  }
 };
 
-struct JsonContext : public NodeContext<JsonNode> {
-  static int atom_cmp(char a, int b) { return (unsigned char)a - b; }
-};
+//------------------------------------------------------------------------------
 
 struct NumberNode : public JsonNode {
   void init(const char* match_name, TextSpan span, uint64_t flags) {
@@ -24,7 +27,21 @@ struct NumberNode : public JsonNode {
     value = atof(span.begin);
   }
 
+  virtual double sum() { return value; }
+
   double value = 0;
+};
+
+//------------------------------------------------------------------------------
+
+struct JsonContext : public NodeContext<JsonNode> {
+  static int atom_cmp(char a, int b) { return (unsigned char)a - b; }
+
+  double sum() {
+    double result = 0;
+    for (auto n = top_head; n; n = n->node_next) result += n->sum();
+    return result;
+  }
 };
 
 //------------------------------------------------------------------------------
@@ -105,26 +122,6 @@ struct JsonParser {
   }
 };
 
-double sum(JsonNode* node) {
-  double result = 0;
-  //if (auto num = dynamic_cast<NumberNode*>(node)) {
-  if (strcmp(node->match_name, "number") == 0) {
-    result += ((NumberNode*)node)->value;
-  }
-  for (auto n = node->child_head; n; n = n->node_next) {
-    result += sum(n);
-  }
-  return result;
-}
-
-double sum(JsonContext& context) {
-  double result = 0;
-  for (auto n = context.top_head; n; n = n->node_next) {
-    result += sum(n);
-  }
-  return result;
-}
-
 int main(int argc, char** argv) {
   if (argc < 2) exit(-1);
 
@@ -133,8 +130,8 @@ int main(int argc, char** argv) {
 
   JsonContext ctx;
   TextSpan tail = JsonParser::match(ctx, text);
-  printf("Sum of number nodes: %f\n", sum(ctx));
-  printf("\n");
+
+  printf("Sum of number nodes: %f\n", ctx.sum());
   utils::print_summary(text, tail, ctx, 50);
 
   return tail.is_valid() ? 0 : -1;

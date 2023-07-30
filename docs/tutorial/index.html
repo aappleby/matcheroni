@@ -29,20 +29,19 @@
 
 <div class="contents">
 
-<div class="divider">Matcheroni is a pattern-matching toolkit.</div>
+<div class="divider">Matcheroni & Parseroni - Quick and Easy Parsing in C++20</div>
 
 <p>
-  Matcheroni is a minimalist, zero-dependency, single-header C++20 library for building pattern-matchers - similar to regular expressions, but both more and less powerful.
+  <a href="https://github.com/aappleby/Matcheroni/blob/main/matcheroni/Matcheroni.hpp">Matcheroni</a> is a minimalist, zero-dependency, single-header C++20 library for building pattern-matchers - similar to regular expressions, but both more and less powerful.
   It's based on
   <a href="https://en.wikipedia.org/wiki/Parsing_expression_grammar">"Parsing Expression Grammars"</a> (PEGs), which are similar in concept to
   regular expressions but behave slightly differently.
 </p>
-<div class="divider">Parseroni uses Matcheroni to build parse trees.</div>
 <p>
-  Parseroni is a companion single-header library that can capture the content of Matcheroni patterns and assemble them into concrete parse trees.<br>
+  <a href="https://github.com/aappleby/Matcheroni/blob/main/matcheroni/Parseroni.hpp">Parseroni</a> is a companion single-header library that can capture the content of Matcheroni patterns and assemble them into concrete <a href="https://en.wikipedia.org/wiki/Parse_tree">parse trees</a>.
 </p>
 <p>
-  Together the two are concise enough to build a JSON parser in less than a page of code, while still powerful enough to parse C99 with a few helper classes.
+  In this tutorial, we'll be using Matcheroni and Parseroni to build a JSON parser in less than 100 lines of code.
 </p>
 
 
@@ -70,7 +69,7 @@
 <div class="divider">Parsing JSON, Step 0: "Hello World"</div>
 
 <p>
-Before we jump into JSON syntax, let's start with the Matcheroni equivalent of "Hello World".
+But before we jump into JSON syntax, let's start with the Matcheroni equivalent of "Hello World".
 </p>
 <p>
 The code below is exactly as it appears in the Matcheroni repo and has been compiled into WASM via Emscripten. The panels on the right are live - type into the top box and you'll see the program's output in the lower box.
@@ -100,7 +99,7 @@ using namespace matcheroni;
 </pre>
 
 <p>
-  We're including Matcheroni.hpp and Utilities.hpp, which contains various helper functions that make testing easier. The main code is in the 'matcheroni' namespace, utilities are in 'matcheroni::utils', and there are prefab patterns for various matching tasks in the 'matcheroni::cookbook' namespace.
+  We're including <span class="highlight">Matcheroni.hpp</span> and <span class="highlight">Utilities.hpp</span>, which contains various helper functions that make testing easier. The main code is in the 'matcheroni' namespace, utilities are in 'matcheroni::utils', and there are prefab patterns for various matching tasks in the 'matcheroni::cookbook' namespace.
 </p>
 
 <pre class="centered code_box language-cpp">
@@ -109,9 +108,8 @@ using namespace matcheroni;
 </pre>
 
 <p>
-We read the contents of argv[1] into a string, wrap it in a TextSpan, and do some pattern matching on it.
+Matcheroni operates on spans of atoms, which are roughly equivalent to slices in Rust or Python. In this case our atoms are just characters, though they could be any type. <span class="highlight">TextSpan</span> is just a typedef for <span class="highlight">matcheroni::Span&lt;char&gt;</span>.
 </p>
-
 <pre class="centered code_box language-cpp">
   using pattern = Seq< Lit<"Hello">, Atom<' '>, Lit<"World"> >;
 </pre>
@@ -124,9 +122,21 @@ The pattern we're matching is a sequence consisting of the literal string "Hello
   TextContext ctx;
 </pre>
 
+<p>
+  In most non-trivial uses of Matcheroni, we're going to want to keep track of some application-specific context. Could be
+
+
+
+  Since Matcheroni is most commonly going to be used to match plain text, it
+
+
+
+  matching text is , Matcheroni defines <span class="highlight">using TextSpan = Span&lt;char&gt;;</span>. We read the contents of <span class="highlight">argv[1]</span> into a string, wrap it in a <span class="highlight">TextSpan</span>, and do some pattern matching on it.
+  </p>
+
 
 <p>
-In most non-trivial uses of Matcheroni, we're going to want to keep track of some application-specific context. Context objects _must_ implement two methods - 'atom_cmp' so that Matcheroni knows how to compare two atoms, and 'rewind' to reset the state of the context object when a partial match fails. Matcheroni provides a trivial 'TextContext' that is sufficient for matching plain text.
+Context objects _must_ implement a few methods - 'atom_cmp' so that Matcheroni knows how to compare two atoms, and 'checkpoint/rewind' to reset the state of the context object when a partial match fails. Matcheroni provides a trivial 'TextContext' that is sufficient for matching plain text.
 </p>
 
 <pre class="centered code_box language-cpp">
@@ -151,9 +161,9 @@ Hey, wait a second - what _is_ the pattern matcher, exactly?<br>
 It's "using" what looks like a type, but there are words in it.
 </div>
 <p>
-We can get into it in more detail later, but essentially the matcher is just a tree of templated structs, each of which has a static match() method that does some matching work of its own and then calls into the match() methods of the template arguments.</p>
+We can get into it in more detail later, but essentially the matcher is just a tree of templated structs, each of which has a static <span class="highlight">match()</span> method that does some matching work of its own and then calls into the <span class="highlight">match()</span> methods of the template arguments.</p>
 <p>
-When we call pattern::match(ctx, text), we're calling into the outermost Seq&lt;&gt; (sequence) template's match(), which then calls into Lit&lt;&gt;'s match(), then Atom&lt;&gt;'s match(), and so on. The strings "Hello", "World", and the space character are arguments to the terminal matchers so that the instantiated match() methods have something to compare against.
+When we call <span class="highlight">pattern::match(ctx, text)</span>, we're calling into the outermost sequence template's <span class="highlight">Seq&lt;&gt;::match()</span>, which then calls into <span class="highlight">Lit&lt;&gt;::match()</span>, then <span class="highlight">Atom&lt;&gt;::match()</span>, and so on. The strings "Hello", "World", and the space character are arguments to the terminal matchers so that the instantiated match() methods have something to compare against.
 </p>
 <p>
 Yeah, it's a bit weird - but it works quite well. The resulting template names are enormous, but the code is tiny and surprisingly fast - nearly as fast as what you'd get if you wrote a recursive-descent parser by hand, except with (hopefully) fewer bugs.<br>
@@ -188,20 +198,20 @@ Let's look at a more realistic example - parsing JSON. We'll break the grammar i
 </div>
 
 <p>
-  If you're familiar with regular expressions this should be easy to decipher. Range&lt;a,z&gt; is '[a-z]', Some&lt;x&gt; is 'x+', Opt&lt;x&gt; is 'x?', etecetera. Unlike regular expressions, we can break up our pattern into named reusable pieces - the Matcheroni patterns aren't as concise as regular expressions, but they're easier to read.
+  If you're familiar with regular expressions this should be easy to decipher. <span class="highlight">Range&lt;a,z&gt;</span> is <span class="highlight">[a-z]</span>, <span class="highlight">Some&lt;x&gt;</span> is <span class="highlight">x+</span>, <span class="highlight">Opt&lt;x&gt;</span> is <span class="highlight">x?</span>, etecetera. Unlike regular expressions, we can break up our pattern into named reusable pieces - the Matcheroni patterns aren't as concise as regular expressions, but they're easier to read.
 </p>
 <p>
   Do note that we're not converting the matched string to a floating-point number, only verifying that the input string matches the number pattern defined in the JSON spec. Handling data conversion is farther down in this tutorial.
 </p>
 
 <p>
-  Because JsonParser implements a static match() method with the same signature that Matcheroni uses, we could incorporate it into some other Matcheroni pattern like 'Seq&lt;Some&lt;JsonParser&gt;...'. Being able to re-use chunks of a grammar in that fashion can be quite handy.
-</p>
-<p>
-  Now let's match lists of numbers, strings, and keywords:
+  Because JsonParser implements a static match() method with the same signature that Matcheroni uses, we could incorporate it into some other Matcheroni pattern like <span class="highlight">Seq&lt;Some&lt;JsonParser&gt;...&gt;</span>. Being able to re-use chunks of a grammar in that fashion can be quite handy.
 </p>
 
 <div class="divider">Parsing JSON, Step 2: Matching Strings & Keywords</div>
+<p>
+  Now let's match lists of numbers, strings, and keywords:
+</p>
 
 <div class="live_code" id="json_tut1b">
   <div class="left_panel">
@@ -218,19 +228,19 @@ Let's look at a more realistic example - parsing JSON. We'll break the grammar i
 </div>
 
 <p>
-  There's a couple interesting things to look at here. The 'hex' pattern uses multiple ranges in one template just like '[0-9a-fA-F]' in regex. The 'escape' pattern uses Charset&lt;&gt; which is just a more concise Atom&lt;...&gt;.
+  There's a couple interesting things to look at here. The <span class="highlight">hex</span> pattern uses multiple ranges in one template just like <span class="highlight">[0-9a-fA-F]</span> in regex. The <span class="highlight">escape</span> pattern uses <span class="highlight">Charset&lt;&gt;</span> which is just a more concise <span class="highlight">Atom&lt;...&gt;</span> and <span class="highlight">Rep&lt;&gt;</span> which is equivalent to regex's <span class="highlight">a{N}</span>.
 </p>
 <p>
-  That Range&lt;0x0020,0x10FFFF&gt; though - we're matching plain 8-bit characters, so why the huge constant? Well, that's what's in the JSON spec - and we're not actually matching 8-bit characters yet. The match() methods in the Matcheroni templates are themselves templated - we could pass in a "UTF32Context" and a "UTF32Span" and the matcher will do the right thing (or at least it should, I haven't checked this particular case yet).
+  That <span class="highlight">Range&lt;0x0020, 0x10FFFF&gt;</span> though - we're matching plain 8-bit characters, so why the huge constant? Well, that's what's in the JSON spec - and we're not actually matching 8-bit characters yet. The match() methods in the Matcheroni templates are themselves templated - we could pass in a "UTF32Context" and a "UTF32Span" and the matcher will do the right thing (or at least it should, I haven't checked this particular case yet).
 </p>
 <p>
-  The (work-in-progress) C99 lexer and parser in Matcheroni's example folder takes advantage of this functionality - the lexer matches plain text and produces text spans, the parser matches text spans and produces parse nodes. There are probably other interesting ways of using Matcheroni on things other than text - perhaps parsing binary data, or decoding bus transactions from oscilloscope data?
+  The (work-in-progress) C99 lexer and parser in Matcheroni's example folder takes advantage of this functionality - the lexer matches plain text and produces tokens, the parser matches tokens and produces parse nodes. There are probably other interesting ways of using Matcheroni on things other than text - perhaps parsing binary data, or decoding bus transactions from oscilloscope data?
 </p>
 
 <div class="divider">JSON Part 3: Matching Containers</div>
 
 <p>
-  Let's fold in the remainder of the JSON grammar and look at how we can debug Matcheroni patterns.
+  Let's fold in the remainder of the JSON grammar and look at how we can debug Matcheroni patterns using the Trace&lt;&gt; pattern.
 </p>
 <div class="live_code" id="json_tut1c">
   <div class="left_panel">
@@ -247,24 +257,108 @@ Let's look at a more realistic example - parsing JSON. We'll break the grammar i
 </div>
 
 <p>
-  Lots of things to look at here.
+  If you intentionally add some garbage to the input JSON, you'll see in the trace where the matcher fails.
 </p>
 
 <p>
-  First off, we declare a templated pattern 'list' so that we can make comma-delimited lists out of our other patterns. Factoring out small patterns like this helps readability in larger programs.
+  Code-wise, we've got lots of things to look at here. First off, we declare a templated pattern <span class="highlight">list&lt;&gt;</span> so that we can make comma-delimited lists out of our other patterns. Factoring out small patterns like this helps readability in larger programs.
 </p>
 
 <p>
-  Next we... define a static matcher function that matches types that haven't been declared yet? Yep, that's valid, and it's how we handle recursive patterns.
+  Next we... define a static <span class="highlight">match_value()</span> function that matches types that haven't been declared yet? Yep, that's valid, and it's how we handle recursive patterns.
 </p>
 
 <p>
-  JSON arrays can contain values and JSON values can be arrays - the JSON grammar is recursive by definition. C++ templates, however, cannot contain themselves as arguments. Instead, we define a static matcher function and wrap it in a Ref&lt;&gt; template, which is one of the ways that Matcheroni can call user-defined code. That function is allowed (due to C++ reasons I do not understand) to refer to types in its parent class even before they've been declared. So we can replace type-recursion with call-recursion and everything still works. The Ref&lt;&gt; template can also call functions on your Context object if needed. More on that later.
+  JSON arrays can contain values and JSON values can be arrays - the JSON grammar is recursive by definition through the <span class="highlight">value</span> pattern. C++ templates, however, cannot contain themselves as arguments. Instead, we define a static matcher function <span class="highlight">match_value()</span> and wrap it in a <span class="highlight">Ref&lt;match_value&gt;</span> template, which is one of the ways that Matcheroni can call user-defined code. That function is allowed (due to C++ reasons I do not understand) to refer to types in its parent class even before they've been declared. So we can replace type-recursion with call-recursion and everything still works. The Ref&lt;&gt; template can also call functions on your Context object if needed. More on that later.
 </p>
 
 <p>
-  To debug our patterns, we can wrap them in utils::TraceText&lt;"identifier", pattern&gt;. This will print out a representation of the matcher position before and after each match() call, as you can see on the right. Tracing generates a _lot_ of output though, so use it sparingly.
+  To debug our patterns, we can wrap them in <span class="highlight">utils::TraceText&lt;"identifier", pattern&gt;</span>. This will print out a representation of the matcher position before and after each match() call, as you can see on the right. Tracing generates a _lot_ of output though, so use it sparingly.
 </p>
+
+<div class="divider">Parsing JSON, Step 4: Actually Parsing JSON</div>
+
+<p>
+  Our JSON matcher works, but we need a JSON _parser_ that will build a parse tree we can actually iterate over and do things with. Parseroni.hpp provides some helper code that makes this is fairly straightforward. Parseroni consists of three main parts:
+</p>
+<p>- <span class="highlight">NodeBase&lt;&gt;</span> is a mixin-style parse node base class that stores the child/sibling pointers for each parse node, along with a tag string and the span from the matcher.</p>
+<p>- <span class="highlight">NodeContext&lt;&gt;</span> handles all the pointer bookkeeping needed to create parse trees and uses a specialized allocator to minimize the overhead of creating and destroying parse nodes as we work through all our possible matches.</p>
+<p>- <span class="highlight">Capture&lt;&gt;</span> wraps Matcheroni patterns in the same way as <span class="highlight">Trace&lt;&gt;</span> and tells <span class="highlight">NodeContext&lt;&gt;</span> to create a new <span class="highlight">NodeBase&lt;&gt;</span> and add it to the parse tree if the pattern inside it matches.</p>
+
+<p>For convenience, Parseroni provides specialized versions of these for the common case of matching plain text:</p>
+
+<pre class="centered code_box language-cpp">
+  struct TextNode : public NodeBase&lt;TextNode, char&gt; {
+    TextSpan as_text() const { return span; }
+  };
+
+  struct TextNodeContext : public NodeContext&lt;TextNode&gt; {
+    static int atom_cmp(char a, int b) { return (unsigned char)a - b; }
+  };
+  </pre>
+
+<p>
+And capturing a pattern with them looks like this:
+</p>
+
+<pre class="centered code_box language-cpp">
+// Matches a key:value pair where 'key' is a string and 'value' is a JSON value.
+using pair =
+Seq&lt;
+  Capture&lt;"key", string, TextNode&gt;,
+  Opt&lt;space&gt;,
+  Atom&lt;':'&gt;,
+  Opt&lt;space&gt;,
+  Capture&lt;"value", value, TextNode&gt;
+&gt;;
+</pre>
+
+<p>
+  If we take the code from the previous example and swap out <span class="highlight">Trace&lt;&gt;</span> with <span class="highlight">Capture&lt;&gt;</span> and <span class="highlight">TextContext</span> with <span class="highlight">TextNodeContext</span>, our matcher is now a parser and <span class="highlight">print_summary()</span> can dump out a visualization of the parse tree:
+</p>
+
+
+<div class="live_code" id="json_tut2a">
+  <div class="left_panel">
+    <div class="header_bar">./tutorial/json_tut2a.cpp</div>
+    <div class="source_pane language-cpp"></div>
+  </div>
+  <div class="right_panel">
+    <div class="input_header header_bar">./tutorial/json_tut2a.input</div>
+    <div class="input_pane language-json" contenteditable="true"></div>
+    <div class="spacer"></div>
+    <div class="output_header header_bar">json_tut2a output</div>
+    <div class="output_pane"></div>
+  </div>
+</div>
+
+<p>
+
+</p>
+
+
+
+<div class="divider">Parsing JSON, Step 5: Customization</div>
+<p>
+  Here's tutorial 2b:<br>
+</p>
+<div class="live_code" id="json_tut2b">
+  <div class="left_panel">
+    <div class="header_bar">./tutorial/json_tut2b.cpp</div>
+    <div class="source_pane language-cpp"></div>
+  </div>
+  <div class="right_panel">
+    <div class="input_header header_bar">./tutorial/json_tut2b.input</div>
+    <div class="input_pane language-json" contenteditable="true"></div>
+    <div class="spacer"></div>
+    <div class="output_header header_bar">json_tut2b output</div>
+    <div class="output_pane"></div>
+  </div>
+</div>
+
+
+
+<div class="divider">Code Size & Performance</div>
 
 <p>
   Let's see how much code our JSON parser has generated. Since it compiles down to a whole bunch of tiny functions that get inlined heavily, this is slightly awkward to measure. We can instead compare binary sizes between a version of main() that uses JsonParser::match(), and one that uses Atom&lt;'a'&gt;::match().
@@ -297,52 +391,13 @@ So our JSON matcher generates a little over 8k of code. Tracing adds another 16k
   What about performance?
 </p>
 
-<div class="divider">Parsing JSON, Step 4: Actually Parsing JSON</div>
-
-<p>
-  Here's tutorial 2a:<br>
-</p>
-<div class="live_code" id="json_tut2a">
-  <div class="left_panel">
-    <div class="header_bar">./tutorial/json_tut2a.cpp</div>
-    <div class="source_pane language-cpp"></div>
-  </div>
-  <div class="right_panel">
-    <div class="input_header header_bar">./tutorial/json_tut2a.input</div>
-    <div class="input_pane language-json" contenteditable="true"></div>
-    <div class="spacer"></div>
-    <div class="output_header header_bar">json_tut2b output</div>
-    <div class="output_pane"></div>
-  </div>
-</div>
-
-
-
-
-<div class="divider">Parsing JSON, Step 5: Customization</div>
-<p>
-  Here's tutorial 2b:<br>
-</p>
-<div class="live_code" id="json_tut2b">
-  <div class="left_panel">
-    <div class="header_bar">./tutorial/json_tut2b.cpp</div>
-    <div class="source_pane language-cpp"></div>
-  </div>
-  <div class="right_panel">
-    <div class="input_header header_bar">./tutorial/json_tut2b.input</div>
-    <div class="input_pane language-json" contenteditable="true"></div>
-    <div class="spacer"></div>
-    <div class="output_header header_bar">json_tut2b output</div>
-    <div class="output_pane"></div>
-  </div>
-</div>
 
 
 
 
 
 
-<div class="divider">JSON Part 6: Pitfalls & Caveats</div>
+<div class="divider">Pitfalls & Caveats</div>
 <div class="question">Oneof&lt;&gt; returns the _first_ match</div>
 <div class="question">Some&lt;Opt&lt;&gt;&gt; creates an infinite loop</div>
 <div class="question">Suffixes can cause exponential parsing time</div>

@@ -86,7 +86,9 @@ int main(int argc, char** argv) {
   TextSpan text = utils::to_span(input);
 
   TextContext ctx;
-  auto tail = JsonMatcher::match(ctx, text);
+  TextSpan tail = JsonMatcher::match(ctx, text);
+
+  printf("\n");
   utils::print_summary(text, tail, 50);
 
   return tail.is_valid() ? 0 : -1;

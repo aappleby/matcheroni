@@ -28,7 +28,7 @@ using TokenSpan = matcheroni::Span<CToken>;
 
 //------------------------------------------------------------------------------
 
-class CContext : public matcheroni::NodeContext<CNode> {
+class CContext : public parseroni::NodeContext<CNode> {
  public:
 
   using AtomType = CToken;

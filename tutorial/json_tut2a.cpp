@@ -3,6 +3,7 @@
 #include "matcheroni/Utilities.hpp"
 
 using namespace matcheroni;
+using namespace parseroni;
 
 struct JsonParser {
   // Matches any JSON number

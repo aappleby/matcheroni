@@ -3,6 +3,7 @@
 #include "matcheroni/Utilities.hpp"
 
 using namespace matcheroni;
+using namespace parseroni;
 
 template<StringParam name, typename pattern>
 using Cap = Capture<name, pattern, TextNode>;
