@@ -47,7 +47,7 @@ int main(int argc, char** argv) {
   }
 
   printf("Parsing toml took %f msec\n", time_b - time_a);
-  utils::print_summary(text, tail, ctx, 50);
+  utils::print_summary(ctx, text, tail, 50);
 
   return 0;
 }

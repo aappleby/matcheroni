@@ -428,11 +428,11 @@ struct CaptureEnd {
 //------------------------------------------------------------------------------
 // We'll be parsing text a lot, so these are convenience declarations.
 
-struct TextNode : public NodeBase<TextNode, char> {
+struct TextParseNode : public NodeBase<TextParseNode, char> {
   TextSpan as_text() const { return span; }
 };
 
-struct TextNodeContext : public NodeContext<TextNode> {
+struct TextParseContext : public NodeContext<TextParseNode> {
   static int atom_cmp(char a, int b) { return (unsigned char)a - b; }
 };
 

@@ -11,7 +11,7 @@ int main(int argc, char** argv) {
 
   using pattern = Seq< Lit<"Hello">, Atom<' '>, Lit<"World"> >;
 
-  TextContext ctx;
+  TextMatchContext ctx;
   TextSpan tail = pattern::match(ctx, text);
   utils::print_summary(text, tail, 50);
 

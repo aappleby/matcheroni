@@ -48,7 +48,7 @@ int main(int argc, char** argv) {
   double match_time = 0;
   double parse_time = 0;
 
-  TextContext ctx1;
+  TextMatchContext ctx1;
   JsonContext ctx2;
 
   for (auto path : paths) {
@@ -128,7 +128,7 @@ int main(int argc, char** argv) {
 
     if (dump_tree) {
       printf("Parse tree:\n");
-      utils::print_context(text, ctx2, 40);
+      utils::print_summary(ctx2, text, parse_end, 40);
     }
 
     if (verbose) {

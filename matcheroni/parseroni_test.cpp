@@ -89,7 +89,7 @@ void test_basic() {
     auto tail = SExpression::match(ctx, text);
     matcheroni_assert(tail.is_valid() && tail == "");
 
-    utils::print_summary(text, tail, ctx, 50);
+    utils::print_summary(ctx, text, tail, 50);
 
     printf("Round-trip s-expression:\n");
     std::string new_text;
@@ -99,7 +99,7 @@ void test_basic() {
     matcheroni_assert(expression == new_text && "Mismatch!");
     printf("\n");
 
-    utils::print_summary(text, tail, ctx, 50);
+    utils::print_summary(ctx, text, tail, 50);
 
     check_hash(ctx, 0x7073c4e1b84277f0);
 
@@ -154,7 +154,7 @@ void test_rewind() {
   auto text = utils::to_span("abcdef");
   auto tail = pattern::match(ctx, text);
 
-  utils::print_summary(text, tail, ctx, 50);
+  utils::print_summary(ctx, text, tail, 50);
   check_hash(ctx, 0x2850a87bce45242a);
 
   matcheroni_assert(TestNode::live == 1);
@@ -206,7 +206,7 @@ void test_begin_end() {
   auto text = utils::to_span("[ [abc,ab?,cdb+] , [a,b,c*,d,e,f] ]");
   auto tail = BeginEndTest::match(ctx, text);
 
-  utils::print_summary(text, tail, ctx, 50);
+  utils::print_summary(ctx, text, tail, 50);
   check_hash(ctx, 0x401403cbefc2cba9);
 
   matcheroni_assert(TestNode::live == 15);
@@ -261,7 +261,7 @@ void test_pathological() {
   // {[a]                 }  | | | | |-none
   // {a                   }  | | | | | |-atom
 
-  utils::print_summary(text, tail, ctx, 50);
+  utils::print_summary(ctx, text, tail, 50);
   check_hash(ctx, 0x07a37a832d506209);
 
   matcheroni_assert(TestNode::live == 7);

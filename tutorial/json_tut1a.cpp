@@ -14,7 +14,7 @@ struct JsonMatcher {
   using exponent  = Seq<Atom<'e', 'E'>, Opt<sign>, digits>;
   using number    = Seq<integer, Opt<fraction>, Opt<exponent>>;
 
-  static TextSpan match(TextContext& ctx, TextSpan body) {
+  static TextSpan match(TextMatchContext& ctx, TextSpan body) {
     return number::match(ctx, body);
   }
 };
@@ -25,7 +25,7 @@ int main(int argc, char** argv) {
   std::string input = utils::read(argv[1]);
   TextSpan text = utils::to_span(input);
 
-  TextContext ctx;
+  TextMatchContext ctx;
   auto tail = JsonMatcher::match(ctx, text);
   utils::print_summary(text, tail, 50);
 

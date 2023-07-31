@@ -6,7 +6,7 @@ using namespace matcheroni;
 using namespace parseroni;
 
 template<StringParam name, typename pattern>
-using Cap = Capture<name, pattern, TextNode>;
+using Cap = Capture<name, pattern, TextParseNode>;
 
 // https://epage.github.io/blog/2023/07/winnow-0-5-the-fastest-rust-parser-combinator-library/
 
@@ -44,7 +44,7 @@ using key     = Some<Range<'0','9','a','z','A','Z','_','_','-','-'>>;
 template<typename val, typename delim>
 using delimited_list = Opt<Seq<val, Any<Seq<space, delim, space, val>>, space, Opt<delim>>>;
 
-static TextSpan match_value(TextNodeContext& ctx, TextSpan body);
+static TextSpan match_value(TextParseContext& ctx, TextSpan body);
 using value = Ref<match_value>;
 
 using key_or_str = Oneof<key, string>;
@@ -133,7 +133,7 @@ Any<Seq<
   space
 >>;
 
-static TextSpan match_value(TextNodeContext& ctx, TextSpan body) {
+static TextSpan match_value(TextParseContext& ctx, TextSpan body) {
   using value =
   Oneof<
     Cap<"string", string>,
@@ -146,6 +146,6 @@ static TextSpan match_value(TextNodeContext& ctx, TextSpan body) {
   return value::match(ctx, body);
 }
 
-TextSpan match_toml(TextNodeContext& ctx, TextSpan body) {
+TextSpan match_toml(TextParseContext& ctx, TextSpan body) {
   return tomlFile::match(ctx, body);
 }

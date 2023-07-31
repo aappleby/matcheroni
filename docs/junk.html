@@ -83,7 +83,7 @@ using namespace matcheroni;
 int main(int argc, char** argv) {
   const char* text = "Hello World!";
 
-  TextContext ctx;
+  TextMatchContext ctx;
   TextSpan body = to_span("Hello World!");
   TextSpan tail = Atom&lt;'H'&gt;::match(ctx, body);
   printf("%s\n", tail.begin);
@@ -130,7 +130,7 @@ ello World!
   using namespace matcheroni;
 
   int main(int argc, char** argv) {
-    TextContext context;
+    TextMatchContext context;
     using pattern = Seq&lt;Lit&lt;"Hello"&gt;, Lit&lt;" "&gt;, Lit&lt;"World"&gt;&gt;;
     TextSpan body = to_span("Hello World");
     TextSpan tail = pattern::match(context, body);
@@ -167,7 +167,7 @@ ello World!
   using namespace matcheroni;
 
   int main(int argc, char** argv) {
-    TextContext context;
+    TextMatchContext context;
     using pattern = Seq&lt;Lit&lt;"Hello"&gt;, Lit&lt;" "&gt;, Lit&lt;"World"&gt;&gt;;
     TextSpan body = to_span("Hello Moon");
     TextSpan tail = pattern::match(context, body);
@@ -435,13 +435,13 @@ ello World!
         <p>
           To actually _do_ something with the pattern, we call its static "match" method. Since the matchers are static
           methods and have no state of their own, match() takes a "context" argument which can be any type that implements a
-          few required methods. We aren't doing anything fancy, so we're using Matcheroni's built-in "TextContext".
+          few required methods. We aren't doing anything fancy, so we're using Matcheroni's built-in "TextMatchContext".
         </p>
 
         <pre class="centered code_box language-cpp">
     struct JsonParser {
       ...
-      static TextSpan match(TextContext& ctx, TextSpan body) {
+      static TextSpan match(TextMatchContext& ctx, TextSpan body) {
         return number::match(ctx, body);
       }
     };

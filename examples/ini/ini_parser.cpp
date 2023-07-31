@@ -22,7 +22,7 @@ using doc     = Any<line>;
 bool parse_ini(const char* text) {
   auto span = utils::to_span(text);
 
-  TextContext ctx;
+  TextMatchContext ctx;
   auto tail = doc::match(ctx, span);
   return tail.is_valid();
 }

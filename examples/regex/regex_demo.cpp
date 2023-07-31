@@ -19,7 +19,7 @@
 using namespace matcheroni;
 using namespace parseroni;
 
-TextSpan parse_regex(TextNodeContext& ctx, TextSpan body);
+TextSpan parse_regex(TextParseContext& ctx, TextSpan body);
 
 //------------------------------------------------------------------------------
 // The demo app accepts a quoted regex as its first command line argument,
@@ -39,7 +39,7 @@ int main(int argc, char** argv) {
   // Invoke our regex matcher against the input text. If it matches, we will
   // get a non-null endpoint for the match.
 
-  TextNodeContext ctx;
+  TextParseContext ctx;
   auto text = utils::to_span(argv[1]);
   auto tail = parse_regex(ctx, text);
   utils::print_summary(text, tail, 50);

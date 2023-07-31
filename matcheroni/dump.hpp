@@ -44,29 +44,13 @@ struct SpanDumper {
   void put(char c, uint32_t color) {
     if (color == 0) color = 0xCCCCCC;
     if      (c == ' ' ) { set_color(dim_color(color)); putc('_', stdout); }
+    else if (c == '@' ) { set_color(dim_color(color)); putc('@', stdout); }
     else if (c == '\n') { set_color(dim_color(color)); putc('n', stdout); }
     else if (c == '\r') { set_color(dim_color(color)); putc('r', stdout); }
     else if (c == '\t') { set_color(dim_color(color)); putc('t', stdout); }
     else                { set_color(color);            putc(c,   stdout); }
     len++;
     fflush(stdout);
-  }
-
-  void put(const char* s, uint32_t color = 0) {
-    for (auto c = s; *c; c++) put(*c, color);
-  }
-
-  void put(const char* a, const char* b, uint32_t color = 0) {
-    for (auto c = a; c < b; c++) put(*c, color);
-  }
-
-  void put(TextSpan body, uint32_t color = 0) {
-    for (auto c = body.begin; c < body.end; c++) put(*c, color);
-  }
-
-  void reset() {
-    set_color(0);
-    len = 0;
   }
 };
 
@@ -82,41 +66,36 @@ inline void print_trellis(int depth, const char* name, const char* suffix,
   set_color(color);
   printf("%s %s\n", name, suffix);
   set_color(0);
-  fflush(stdout);
 }
 
 //------------------------------------------------------------------------------
 
-inline void print_match(TextSpan span_a, TextSpan span_b,
-                        uint32_t color_a, uint32_t color_b, size_t width) {
+inline void print_match(const char* a, const char* b, const char* c, uint32_t col_ab, uint32_t col_bc, size_t width) {
   SpanDumper d;
 
-  for (auto cursor = span_a.begin; cursor < span_a.end && d.len < width; cursor++) {
-    d.put(*cursor, color_a);
-  }
+  if (b-a > (int)width) { b = a + width; c = a + width; }
+  if (c-a > (int)width) { c = a + width; }
 
-  for (auto cursor = span_b.begin; cursor < span_b.end && d.len < width; cursor++) {
-    d.put(*cursor, color_b);
-  }
+  for (auto p = a; p < b; p++) d.put(*p, col_ab);
+  for (auto p = b; p < c; p++) d.put(*p, col_bc);
 
-  while (d.len < width) d.put('@', dim_color(color_b));
-
+  while(d.len < width) d.put('@', 0);
   set_color(0);
-  fflush(stdout);
 }
 
-//------------------------------------------------------------------------------
+inline void print_summary(TextSpan text, TextSpan tail, int width) {
+  printf("Match text:\n");
+  print_match(text.begin, text.end, text.end, 0xCCCCCC, 0xCCCCCC, width);
+  printf("\n\n");
 
-inline void print_match(TextSpan span, TextSpan text, size_t width) {
-  if (span.is_valid()) {
-    auto head = span;
-    auto tail = TextSpan(span.end, text.end);
-    print_match(head, tail, 0x80FF80, 0xCCCCCC, width);
-  } else {
-    auto head = TextSpan(text.begin, span.end);
-    auto tail = TextSpan(span.end, text.end);
-    print_match(head, tail, 0xCCCCCC, 0x8080FF, width);
+  printf("Match result:\n");
+  if (tail.is_valid()) {
+    print_match(text.begin, tail.begin, tail.end, 0x80FF80, 0xCCCCCC, width);
   }
+  else {
+    print_match(text.begin, tail.end, text.end, 0xCCCCCC, 0x8080FF, width);
+  }
+  printf("\n\n");
 }
 
 //------------------------------------------------------------------------------
@@ -124,7 +103,10 @@ inline void print_match(TextSpan span, TextSpan text, size_t width) {
 
 template<typename node_type>
 inline void print_tree(TextSpan text, const node_type* node, int width, int depth) {
-  print_match(node->as_text(), text, 0x80FF80, 0xCCCCCC, width);
+
+  auto span = node->as_text();
+
+  print_match(span.begin, span.end, text.end, 0x80FF80, 0xCCCCCC, width);
   print_trellis(depth, node->match_name, "", 0xFFAAAA);
 
   for (auto c = node->child_head; c; c = c->node_next) {
@@ -133,26 +115,12 @@ inline void print_tree(TextSpan text, const node_type* node, int width, int dept
 }
 
 template<typename context>
-inline void print_context(TextSpan text, const context& ctx, int width) {
+inline void print_summary(const context& ctx, TextSpan text, TextSpan tail, int width) {
+  print_summary(text, tail, width);
+  printf("Parse tree:\n");
   for (auto node = ctx.top_head; node; node = node->node_next) {
     print_tree(text, node, width, 0);
   }
-}
-
-inline void print_summary(TextSpan text, TextSpan tail, int width) {
-  printf("Match text:\n");
-  print_match(text, text, width);
-  printf("\n\n");
-  printf("Match result:\n");
-  print_match(text, tail, width);
-  printf("\n\n");
-}
-
-template<typename context>
-inline void print_summary(TextSpan text, TextSpan tail, const context& ctx, int width) {
-  print_summary(text, tail, width);
-  printf("Parse tree:\n");
-  print_context(text, ctx, width);
 }
 
 //------------------------------------------------------------------------------

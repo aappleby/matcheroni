@@ -72,17 +72,18 @@ struct TraceText {
     //print_bar(ctx.trace_depth++, body, name, "?");
     int depth = ctx.trace_depth++;
 
-    print_match(body, body, 50);
+    print_match(body.begin, body.end, body.end, 0xCCCCCC, 0xCCCCCC, 50);
     print_trellis(depth, name, "?", 0xCCCCCC);
 
     auto tail = P::match(ctx, body);
     depth = --ctx.trace_depth;
 
-    print_match(body, tail, 50);
     if (tail.is_valid()) {
+      print_match(body.begin, tail.begin, body.end, 0x80FF80, 0xCCCCCC, 50);
       print_trellis(depth, name, "!", 0x80FF80);
     }
     else {
+      print_match(body.begin, tail.end, body.end, 0xCCCCCC, 0x8080FF, 50);
       print_trellis(depth, name, "X", 0x8080FF);
     }
 

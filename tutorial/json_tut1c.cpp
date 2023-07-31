@@ -32,7 +32,7 @@ struct JsonMatcher {
   using list = Seq<P, Any<Seq<Opt<space>, Atom<','>, Opt<space>, P>>>;
 
   // Matches any valid JSON value
-  static TextSpan match_value(TextContext& ctx, TextSpan body) {
+  static TextSpan match_value(TextMatchContext& ctx, TextSpan body) {
     return Oneof<
       utils::TraceText<"number",  number>,
       utils::TraceText<"string",  string>,
@@ -48,7 +48,7 @@ struct JsonMatcher {
   Seq<
     Atom<'['>,
     Opt<space>,
-    Opt<list<utils::TraceText<"element", value>>>,
+    Opt<list<value>>,
     Opt<space>,
     Atom<']'>
   >;
@@ -74,7 +74,7 @@ struct JsonMatcher {
   >;
 
   // Matches any valid JSON document
-  static TextSpan match(TextContext& ctx, TextSpan body) {
+  static TextSpan match(TextMatchContext& ctx, TextSpan body) {
     return Seq<Opt<space>, value, Opt<space>>::match(ctx, body);
   }
 };
@@ -85,7 +85,7 @@ int main(int argc, char** argv) {
   std::string input = utils::read(argv[1]);
   TextSpan text = utils::to_span(input);
 
-  TextContext ctx;
+  TextMatchContext ctx;
   TextSpan tail = JsonMatcher::match(ctx, text);
 
   printf("\n");

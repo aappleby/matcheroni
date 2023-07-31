@@ -121,7 +121,7 @@ using pattern = PrintMessage<Atom<'a'>>;
 const std::string text = "This does not start with 'a'";
 
 // prints "Match failed!"
-TextContext ctx;
+TextMatchContext ctx;
 pattern::match(ctx, to_span(text));
 ```
 
@@ -254,7 +254,7 @@ Note that it consists of 20 ```using``` declarations and the only actual "code" 
 If you follow along in Appendix A of the [C99 spec](https://www.open-std.org/jtc1/sc22/wg14/www/docs/n1256.pdf), you'll see it lines up quite closely.
 
 ```cpp
-TextSpan match_int(TextContext& ctx, TextSpan) {
+TextSpan match_int(TextMatchContext& ctx, TextSpan) {
   // clang-format off
   using digit                = Range<'0', '9'>;
   using nonzero_digit        = Range<'1', '9'>;

@@ -95,8 +95,7 @@ int main(int argc, char** argv) {
     }
 
     if (dump_tree) {
-      printf("Parse tree:\n");
-      utils::print_context(text, ctx, 40);
+      utils::print_summary(ctx, text, parse_end, 40);
     }
 
     if (verbose) {

@@ -55,7 +55,7 @@ struct JsonParser {
   Seq<
     Atom<'['>,
     Opt<space>,
-    Opt<list<Capture<"element", value, JsonNode>>>,
+    Opt<list<value>>,
     Opt<space>,
     Atom<']'>
   >;

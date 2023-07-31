@@ -114,7 +114,7 @@ using matcher_function = Span<atom> (*)(context& ctx, Span<atom> body);
 // Since we will be matching text 99% of the time, this context class provides
 // the minimal amount of code needed to run and debug Matcheroni patterns.
 
-struct TextContext {
+struct TextMatchContext {
 
   // We cast to unsigned char as our ranges are generally going to be unsigned.
   static int atom_cmp(char a, int b) { return (unsigned char)a - b; }

@@ -38,7 +38,7 @@ struct JsonMatcher {
   using list = Seq<P, Any<Seq<Opt<space>, Atom<','>, Opt<space>, P>>>;
 
   // Matches any valid JSON value
-  static TextSpan match_value(TextContext& ctx, TextSpan body) {
+  static TextSpan match_value(TextMatchContext& ctx, TextSpan body) {
     return Oneof<
       number,
       string,
@@ -80,12 +80,12 @@ struct JsonMatcher {
   >;
 
   // Matches any valid JSON document
-  static TextSpan match(TextContext& ctx, TextSpan body) {
+  static TextSpan match(TextMatchContext& ctx, TextSpan body) {
     return Seq<Opt<space>, value, Opt<space>>::match(ctx, body);
   }
 };
 
 __attribute__((noinline))
-TextSpan match_json(TextContext& ctx, TextSpan body) {
+TextSpan match_json(TextMatchContext& ctx, TextSpan body) {
   return JsonMatcher::match(ctx, body);
 }

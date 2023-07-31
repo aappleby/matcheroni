@@ -60,7 +60,7 @@ p {
   padding-right:40px;
   */
   background-color: #3B3344;
-  border: solid #1A1A1A 1px;
+  border: solid #664466 1px;
   text-align:center;
   font-size:20px;
   width:100%;
@@ -99,6 +99,7 @@ p {
 .text_box {
   display: flex;
   background-color: #1e1e1e;
+  border: solid #444444 1px;
   margin:0px;
   padding:8px;
   width:80ch;
@@ -112,6 +113,7 @@ p {
 .code_box {
   display: flex;
   background-color: #1e1e1e;
+  border: solid #444444 1px;
   margin:0px;
   padding:8px;
   width:80ch;
@@ -146,6 +148,7 @@ p {
   flex-basis: 1;
   flex-grow: 0;
   align-items: stretch;
+  border: solid #444444 1px;
 
   display: flex;
   flex-direction: column;
@@ -157,6 +160,7 @@ p {
   max-height:700px;
   flex-basis: 1;
   flex-grow: 0;
+  border: solid #444444 1px;
 
   display: flex;
   flex-direction: column;

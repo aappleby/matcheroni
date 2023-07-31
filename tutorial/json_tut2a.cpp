@@ -34,13 +34,13 @@ struct JsonParser {
   using list = Seq<P, Any<Seq<Opt<space>, Atom<','>, Opt<space>, P>>>;
 
   // Matches any valid JSON value
-  static TextSpan match_value(TextNodeContext& ctx, TextSpan body) {
+  static TextSpan match_value(TextParseContext& ctx, TextSpan body) {
     return Oneof<
-      Capture<"number",  number,  TextNode>,
-      Capture<"string",  string,  TextNode>,
-      Capture<"array",   array,   TextNode>,
-      Capture<"object",  object,  TextNode>,
-      Capture<"keyword", keyword, TextNode>
+      Capture<"number",  number,  TextParseNode>,
+      Capture<"string",  string,  TextParseNode>,
+      Capture<"array",   array,   TextParseNode>,
+      Capture<"object",  object,  TextParseNode>,
+      Capture<"keyword", keyword, TextParseNode>
     >::match(ctx, body);
   }
   using value = Ref<match_value>;
@@ -50,7 +50,7 @@ struct JsonParser {
   Seq<
     Atom<'['>,
     Opt<space>,
-    Opt<list<Capture<"element", value, TextNode>>>,
+    Opt<list<value>>,
     Opt<space>,
     Atom<']'>
   >;
@@ -58,11 +58,11 @@ struct JsonParser {
   // Matches a key:value pair where 'key' is a string and 'value' is a JSON value.
   using pair =
   Seq<
-    Capture<"key", string, TextNode>,
+    Capture<"key", string, TextParseNode>,
     Opt<space>,
     Atom<':'>,
     Opt<space>,
-    Capture<"value", value, TextNode>
+    Capture<"value", value, TextParseNode>
   >;
 
   // Matches a curly-brace-delimited list of key:value pairs.
@@ -70,13 +70,13 @@ struct JsonParser {
   Seq<
     Atom<'{'>,
     Opt<space>,
-    Opt<list<Capture<"member", pair, TextNode>>>,
+    Opt<list<Capture<"member", pair, TextParseNode>>>,
     Opt<space>,
     Atom<'}'>
   >;
 
   // Matches any valid JSON document
-  static TextSpan match(TextNodeContext& ctx, TextSpan body) {
+  static TextSpan match(TextParseContext& ctx, TextSpan body) {
     return Seq<Opt<space>, value, Opt<space>>::match(ctx, body);
   }
 };
@@ -87,9 +87,9 @@ int main(int argc, char** argv) {
   std::string input = utils::read(argv[1]);
   TextSpan text = utils::to_span(input);
 
-  TextNodeContext ctx;
+  TextParseContext ctx;
   TextSpan tail = JsonParser::match(ctx, text);
-  utils::print_summary(text, tail, ctx, 50);
+  utils::print_summary(ctx, text, tail, 50);
 
   return tail.is_valid() ? 0 : -1;
 }

@@ -11,7 +11,7 @@
 using namespace matcheroni;
 using namespace parseroni;
 
-TextSpan match_toml(TextNodeContext& ctx, TextSpan text);
+TextSpan match_toml(TextParseContext& ctx, TextSpan text);
 
 //------------------------------------------------------------------------------
 
@@ -50,7 +50,7 @@ int main(int argc, char** argv) {
   */
 
   TextSpan text = utils::to_span(toml);
-  TextNodeContext ctx;
+  TextParseContext ctx;
 
   double time_a, time_b;
   TextSpan tail;
@@ -63,7 +63,7 @@ int main(int argc, char** argv) {
   }
 
   printf("Parsing toml took %f msec\n", time_b - time_a);
-  utils::print_summary(text, tail, ctx, 50);
+  utils::print_summary(ctx, text, tail, 50);
 
   return 0;
 }

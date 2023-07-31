@@ -7,39 +7,47 @@
 using namespace matcheroni;
 using namespace parseroni;
 
-//------------------------------------------------------------------------------
-
+// Our base node type is the same as TextParseNode, with the addition of a
+// sum() method.
 struct JsonNode : public NodeBase<JsonNode, char> {
   TextSpan as_text() const { return span; }
 
   virtual double sum() {
     double result = 0;
-    for (auto n = child_head; n; n = n->node_next) result += n->sum();
+    for (auto n = child_head; n; n = n->node_next) {
+      result += n->sum();
+    }
     return result;
   }
 };
 
-//------------------------------------------------------------------------------
-
+// We'll specialize JsonNode for numerical values by overriding init() to also
+// convert the matched text to a double.
 struct NumberNode : public JsonNode {
   void init(const char* match_name, TextSpan span, uint64_t flags) {
     JsonNode::init(match_name, span, flags);
     value = atof(span.begin);
   }
 
-  virtual double sum() { return value; }
+  virtual double sum() {
+    return value;
+  }
 
   double value = 0;
 };
 
-//------------------------------------------------------------------------------
-
+// And our context provides atom_cmp() and sum(). NodeContext<> handles the
+// required checkpoint()/rewind() methods.
 struct JsonContext : public NodeContext<JsonNode> {
-  static int atom_cmp(char a, int b) { return (unsigned char)a - b; }
+  static int atom_cmp(char a, int b) {
+    return (unsigned char)a - b;
+  }
 
   double sum() {
     double result = 0;
-    for (auto n = top_head; n; n = n->node_next) result += n->sum();
+    for (auto n = top_head; n; n = n->node_next) {
+      result += n->sum();
+    }
     return result;
   }
 };
@@ -77,7 +85,12 @@ struct JsonParser {
   // Matches any valid JSON value
   static TextSpan match_value(JsonContext& ctx, TextSpan body) {
     return Oneof<
+
+      // **********
+      // This Capture<> will now create NumberNodes
       Capture<"number",  number,  NumberNode>,
+      // **********
+
       Capture<"string",  string,  JsonNode>,
       Capture<"array",   array,   JsonNode>,
       Capture<"object",  object,  JsonNode>,
@@ -91,7 +104,7 @@ struct JsonParser {
   Seq<
     Atom<'['>,
     Opt<space>,
-    Opt<list<Capture<"element", value, JsonNode>>>,
+    Opt<list<value>>,
     Opt<space>,
     Atom<']'>
   >;
@@ -132,7 +145,8 @@ int main(int argc, char** argv) {
   TextSpan tail = JsonParser::match(ctx, text);
 
   printf("Sum of number nodes: %f\n", ctx.sum());
-  utils::print_summary(text, tail, ctx, 50);
+  printf("\n");
+  utils::print_summary(ctx, text, tail, 50);
 
   return tail.is_valid() ? 0 : -1;
 }
