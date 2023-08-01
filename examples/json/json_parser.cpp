@@ -13,7 +13,7 @@ struct JsonParser {
   using digit     = Range<'0', '9'>;
   using onenine   = Range<'1', '9'>;
   using digits    = Some<digit>;
-  using integer   = Seq<Opt<sign>, Oneof<Seq<onenine, digits>, digit>>;
+  using integer   = Seq<Opt<Atom<'-'>>, Oneof<Seq<onenine, digits>, digit>>;
   using fraction  = Seq<Atom<'.'>, digits>;
   using exponent  = Seq<Atom<'e', 'E'>, Opt<sign>, digits>;
   using number    = Seq<integer, Opt<fraction>, Opt<exponent>>;

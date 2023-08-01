@@ -4684,11 +4684,11 @@ var _main = Module['_main'] = createExportWrapper("__main_argc_argv");
 /** @type {function(...*):?} */
 var _malloc = createExportWrapper("malloc");
 /** @type {function(...*):?} */
+var _free = Module['_free'] = createExportWrapper("free");
+/** @type {function(...*):?} */
 var _fflush = Module['_fflush'] = createExportWrapper("fflush");
 /** @type {function(...*):?} */
 var ___errno_location = createExportWrapper("__errno_location");
-/** @type {function(...*):?} */
-var _free = Module['_free'] = createExportWrapper("free");
 /** @type {function(...*):?} */
 var _setThrew = createExportWrapper("setThrew");
 /** @type {function(...*):?} */
@@ -4738,7 +4738,7 @@ var ___cxa_can_catch = createExportWrapper("__cxa_can_catch");
 var ___cxa_is_pointer_type = createExportWrapper("__cxa_is_pointer_type");
 /** @type {function(...*):?} */
 var dynCall_jiji = Module['dynCall_jiji'] = createExportWrapper("dynCall_jiji");
-var ___emscripten_embedded_file_data = Module['___emscripten_embedded_file_data'] = 33572540;
+var ___emscripten_embedded_file_data = Module['___emscripten_embedded_file_data'] = 33572572;
 function invoke_ii(index,a1) {
   var sp = stackSave();
   try {

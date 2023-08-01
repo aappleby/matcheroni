@@ -189,6 +189,20 @@
       "args" : ["data/json_demo.json"],
     },
 
+    {
+      "name": "json_conformance",
+      "preLaunchTask": "build_matcheroni",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/bin/examples/json/json_conformance",
+      "cwd": "${workspaceFolder}",
+      "setupCommands": [{
+        "description": "Enable pretty-printing for gdb",
+        "text": "-enable-pretty-printing",
+        "ignoreFailures": true
+      }],
+    },
+
     //--------------------------------------------------------------------------
     // TOML
 

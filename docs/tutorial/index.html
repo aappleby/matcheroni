@@ -32,7 +32,7 @@
 <div class="divider">Matcheroni & Parseroni - Quick and Easy Parsing in C++20</div>
 
 <p>
-  <a href="https://github.com/aappleby/Matcheroni/blob/main/matcheroni/Matcheroni.hpp">Matcheroni</a> is a minimalist, zero-dependency, single-header C++20 library for building <a href="https://en.wikipedia.org/wiki/Parsing_expression_grammar">Parsing Expression Grammars (PEGs)</a>. PEGs are similar to regular expressions, but both more and less powerful.
+  <a href="https://github.com/aappleby/Matcheroni/blob/main/matcheroni/Matcheroni.hpp">Matcheroni</a> is a minimalist, zero-dependency, single-header C++20 library for doing pattern matching using <a href="https://en.wikipedia.org/wiki/Parsing_expression_grammar">Parsing Expression Grammars (PEGs)</a>. PEGs are similar to regular expressions, but both more and less powerful.
 <p>
   <a href="https://github.com/aappleby/Matcheroni/blob/main/matcheroni/Parseroni.hpp">Parseroni</a> is a companion single-header library that can capture the content of Matcheroni patterns and assemble them into concrete <a href="https://en.wikipedia.org/wiki/Parse_tree">parse trees</a>.
 </p>
@@ -119,8 +119,24 @@ The pattern we're matching is a sequence consisting of the literal string "Hello
 </pre>
 
 <p>
-  Matcheroni patterns are themselves stateless, but in most non-trivial uses of Matcheroni we're going to want to keep track of some application-specific context. Matcheroni's <span class="highlight">TextMatchContext</span> is a convenience class that contains the minimal amount of code to make things work.
+  Matcheroni patterns are themselves stateless, but in most non-trivial uses of Matcheroni we're going to want to keep track of some application-specific context. Matcheroni's <span class="highlight">TextMatchContext</span> is a convenience class that contains the minimal amount of code needed to make things work.
 </p>
+
+<pre class="centered code_box language-cpp">
+struct TextMatchContext {
+
+  // We cast to unsigned char as our ranges are generally going to be unsigned.
+  static int atom_cmp(char a, int b) { return (unsigned char)a - b; }
+
+  // Checkpoint/Rewind does nothing as it doesn't interact with trace_depth.
+  void* checkpoint() { return nullptr; }
+  void rewind(void* bookmark) {}
+
+  // Tracing requires us to keep track of the nesting depth in the context.
+  int trace_depth = 0;
+};
+</pre>
+
 <p>
   You are free to provide your own context object as long as it implements three functions that Matcheroni requires - <span class="highlight">atom_cmp()</span> to compare atoms (ala strcmp()), <span class="highlight">checkpoint()</span> to generate an opaque token representing the current context's state, and <span class="highlight">rewind()</span> to restore the context to a previous state. <span class="highlight">TextMatchContext</span> has no state to save or restore, so its <span class="highlight">checkpoint()</span> and <span class="highlight">rewind()</span> are no-ops.
 </p>
@@ -148,9 +164,9 @@ Hey, wait a second - what _is_ 'pattern', exactly?<br>
 It looks like a type, but there are words in it.
 </div>
 <p>
-We can get into it in more detail later, but essentially the matcher is just a tree of templated structs, each of which has a static <span class="highlight">match()</span> method that does some matching work of its own and then calls into the <span class="highlight">match()</span> methods of the template arguments.</p>
+We can get into it in more detail later, but essentially the pattern is just a tree of templated structs, each of which has a static <span class="highlight">match()</span> method that does some matching work of its own and then calls into the <span class="highlight">match()</span> methods of the template arguments.</p>
 <p>
-When we call <span class="highlight">pattern::match(ctx, text)</span>, we're calling into the outermost sequence template's <span class="highlight">Seq&lt;&gt;::match()</span>, which then calls into <span class="highlight">Lit&lt;&gt;::match()</span>, then <span class="highlight">Atom&lt;&gt;::match()</span>, and so on. The strings "Hello", "World", and the space character are arguments to the terminal matchers so that the instantiated match() methods have something to compare against.
+When we call <span class="highlight">pattern::match(ctx, text)</span>, we're calling into the outermost sequence template's <span class="highlight">Seq&lt;&gt;::match()</span>, which then calls into <span class="highlight">Lit&lt;&gt;::match()</span>, then <span class="highlight">Atom&lt;&gt;::match()</span>, and so on. The strings "Hello", "World", and the space character are arguments to the terminal templates so that the instantiated match() methods have something to compare against.
 </p>
 <p>
 Yeah, it's a bit weird - but it works quite well. The resulting template names are enormous, but the code is tiny and surprisingly fast - nearly as fast as what you'd get if you wrote a recursive-descent parser by hand, except with (hopefully) fewer bugs.<br>
@@ -167,7 +183,7 @@ Yeah, it's a bit weird - but it works quite well. The resulting template names a
 <div class="divider">Parsing JSON, Step 1: Matching Numbers</div>
 
 <p>
-Now for a real-world example - parsing JSON. We'll break the grammar into a few chunks to make it a bit less overwhelming. Below we've defined a struct <span class="highlight">JsonMatcher</span> that uses the built-in Matcheroni patterns to match JSON-valid numbers. The grammar below is slightly modified from the version on <a href="http://json.org">JSON.org</a> (for reasons that will be explained later) but is equivalent to it.
+Now for a real-world example - parsing JSON. We'll break the grammar into a few chunks to make it a bit less overwhelming. Below we've defined a struct <span class="highlight">JsonMatcher</span> that uses the built-in Matcheroni patterns to match JSON-valid numbers. The grammar below is slightly modified from the version on <a href="http://json.org">JSON.org</a> (for reasons that will be explained later FIXME explain) but is equivalent to it.
 </p>
 
 <div class="live_code" id="json_tut1a">
@@ -275,7 +291,7 @@ using matcher_function = Span&lt;atom&gt; (*)(context& ctx, Span&lt;atom&gt; bod
   JSON objects can contain values and JSON values can be objects - the JSON grammar is recursive by definition through the <span class="highlight">value</span> pattern. C++ templates, however, cannot contain themselves as arguments. Instead, we define a static matcher function <span class="highlight">match_value()</span> and wrap it in a <span class="highlight">Ref&lt;&gt;</span> template, which is one of the ways that Matcheroni can call user-defined code.
 </p>
 <p>
-  Member functions are allowed (due to C++ reasons I do not understand) to refer to types in their parent class even before they've been declared. So we can replace template-recursion with call-recursion and everything still compiles. The <span class="highlight">Ref&lt;&gt;</span> template can also call functions on your Context object if needed. More on that later.
+  Member functions are allowed (due to C++ reasons I do not understand) to refer to types in their parent class even before they've been declared. So we can replace template-recursion with call-recursion and everything still compiles. The <span class="highlight">Ref&lt;&gt;</span> template can also call functions on your Context object if needed. More on that later FIXME write this.
 </p>
 <p>
   With <span class="highlight">value</span> and <span class="highlight">list&lt;&gt;</span> defined, the <span class="highlight">array</span> and <span class="highlight">object</span> patterns aren't too complicated - we match the outermost delimiters surrounding optional whitespace and a comma-delimited list of values or key/value pairs.
@@ -365,7 +381,7 @@ FIXME blurb here about JSON conformance
 So great, we have a JSON parser. It's not very convenient to use though, as it doesn't do any automatic conversion of text into data types like "number" -> float.
 </p>
 <p>
-Earlier I mentioned that Parseroni can make use of user-defined classes for nodes and contexts. Let's create some simple extensions of NodeBase and NodeContext so that we have nodes that can contain floating-point numbers instead of just text. We'll replace TextParseContext/TextParseNode with our new JsonContext/JsonNode, specialize JsonNode to create a NumberNode, and then make Capture&lt;&gt; create NumberNodes when it matches a number.
+Earlier I mentioned that Parseroni can make use of user-defined classes for nodes and contexts. Let's create some simple extensions of <span class="highlight">NodeBase&lt;&gt;</span> and <span class="highlight">NodeContext&lt;&gt;</span> so that we have nodes that can contain floating-point numbers instead of just text. We'll replace <span class="highlight">TextParseContext/TextParseNode</span> with our new <span class="highlight">JsonContext/JsonNode</span>, specialize <span class="highlight">JsonNode</span> to create a <span class="highlight">NumberNode</span>, and then make <span class="highlight">Capture&lt;&gt;</span> create <span class="highlight">NumberNode</span>s when it matches a number.
 </p>
 <div class="live_code" id="json_tut2b">
   <div class="left_panel">
@@ -382,7 +398,7 @@ Earlier I mentioned that Parseroni can make use of user-defined classes for node
 </div>
 
 <p>
-So now we have our own node and context classes, plus a NumberNode that derives from JsonNode and calls atoi() on the text span it receives. To make use of NumberNode, we just have to pass it as the third template argument to Capture&lt;&gt;.
+So now we have our own node and context classes, plus a <span class="highlight">NumberNode</span> that derives from <span class="highlight">JsonNode</span> and calls <span class="highlight">atoi()</span> on the text span it receives. To make use of <span class="highlight">NumberNode</span>, we just have to pass it as the third template argument to <span class="highlight">Capture&lt;&gt;</span>.
 
 Yes, this example is a bit silly, but it illustrates how to start building out your own node types and integrating them into an existing grammar.
 </p>

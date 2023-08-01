@@ -34,12 +34,7 @@ struct LinearAlloc {
     add_slab();
   }
 
-  void reset() {
-    while (top_slab->prev) top_slab = top_slab->prev;
-    for (auto c = top_slab; c; c = c->next) c->clear();
-  }
-
-  void destroy() {
+  ~LinearAlloc() {
     reset();
     auto c = top_slab;
     while (c) {
@@ -48,6 +43,12 @@ struct LinearAlloc {
       c = next;
     }
     top_slab = nullptr;
+  }
+
+
+  void reset() {
+    while (top_slab->prev) top_slab = top_slab->prev;
+    for (auto c = top_slab; c; c = c->next) c->clear();
   }
 
   void add_slab() {
