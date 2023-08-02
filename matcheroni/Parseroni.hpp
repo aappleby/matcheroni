@@ -263,8 +263,6 @@ struct NodeContext {
 
   void merge_node(NodeType* new_node, NodeType* old_tail) {
 
-    if (new_node->span.end > _highwater) _highwater = new_node->span.end;
-
     // Move all nodes in (old_tail,new_tail] to be children of new_node and
     // append new_node to the node list.
 
@@ -420,6 +418,7 @@ struct CaptureEnd {
 
       ctx.merge_node(new_node, ctx.top_tail);
       new_node->init(match_name.str_val, new_span, /*flags*/ 1);
+      // if (new_node->span.end > ctx._highwater) ctx._highwater = new_node->span.end;
     }
     return tail;
 

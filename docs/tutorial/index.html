@@ -29,7 +29,7 @@
 
 <div class="contents">
 
-<div class="divider">Matcheroni & Parseroni - Quick and Easy Parsing in C++20</div>
+<div class="divider">Matcheroni & Parseroni - Quick and Easy JSON Parsing in C++20</div>
 
 <p>
   <a href="https://github.com/aappleby/Matcheroni/blob/main/matcheroni/Matcheroni.hpp">Matcheroni</a> is a minimalist, zero-dependency, single-header C++20 library for doing pattern matching using <a href="https://en.wikipedia.org/wiki/Parsing_expression_grammar">Parsing Expression Grammars (PEGs)</a>. PEGs are similar to regular expressions, but both more and less powerful.
@@ -37,7 +37,7 @@
   <a href="https://github.com/aappleby/Matcheroni/blob/main/matcheroni/Parseroni.hpp">Parseroni</a> is a companion single-header library that can capture the content of Matcheroni patterns and assemble them into concrete <a href="https://en.wikipedia.org/wiki/Parse_tree">parse trees</a>.
 </p>
 <p>
-  In this tutorial, we'll be using Matcheroni and Parseroni to build a JSON parser in less than 100 lines of code.
+  In this tutorial we'll be using Matcheroni and Parseroni to build a JSON parser in less than 100 lines of code that compiles down to around 10 kilobytes of instructions, parses JSON at a gigabyte a second, and compiles in under a second.
 </p>
 
 
@@ -85,7 +85,7 @@ The code below is exactly as it appears in the Matcheroni repo and has been comp
   </div>
 </div>
 
-<p>Let's go through this line-by-line once and we'll then skip over the details in the later tutorials.</p>
+<p>Let's go through this line-by-line once and we'll then skip over the details in the later steps.</p>
 
 <pre class="centered code_box language-cpp">
 #include "matcheroni/Matcheroni.hpp"
@@ -183,7 +183,7 @@ Yeah, it's a bit weird - but it works quite well. The resulting template names a
 <div class="divider">Parsing JSON, Step 1: Matching Numbers</div>
 
 <p>
-Now for a real-world example - parsing JSON. We'll break the grammar into a few chunks to make it a bit less overwhelming. Below we've defined a struct <span class="highlight">JsonMatcher</span> that uses the built-in Matcheroni patterns to match JSON-valid numbers. The grammar below is slightly modified from the version on <a href="http://json.org">JSON.org</a> (for reasons that will be explained later FIXME explain) but is equivalent to it.
+Now for a real-world example - parsing JSON. We'll break the grammar into a few chunks to make it a bit less overwhelming. Below we've defined a struct <span class="highlight">JsonMatcher</span> that uses the built-in Matcheroni patterns to match JSON-valid numbers. The grammar below is slightly modified from the version on <a href="http://json.org">JSON.org</a> (for reasons that will be explained later) but is equivalent to it.
 </p>
 
 <div class="live_code" id="json_tut1a">
@@ -202,7 +202,7 @@ Now for a real-world example - parsing JSON. We'll break the grammar into a few 
 
 <p>
   If you're familiar with regular expressions this should be easy to decipher. <span class="highlight">Range&lt;a,z&gt;</span> is <span class="highlight">[a-z]</span>, <span class="highlight">Some&lt;x&gt;</span> is <span class="highlight">x+</span>,
-  <span class="highlight">Any&lt;x&gt;</span> is <span class="highlight">x*</span>, <span class="highlight">Opt&lt;x&gt;</span> is <span class="highlight">x?</span>, etecetera. Unlike regular expressions, we can break up our pattern into named reusable pieces - the Matcheroni patterns aren't as concise as regular expressions, but they're easier to read.
+  <span class="highlight">Any&lt;x&gt;</span> is <span class="highlight">x*</span>, <span class="highlight">Opt&lt;x&gt;</span> is <span class="highlight">x?</span>, etecetera. Unlike regular expressions, we can break our pattern up into named reusable pieces - the Matcheroni patterns aren't as concise as regular expressions, but they're easier to read.
 </p>
 <p>
 The static member function <span class="highlight">JsonMatcher::match()</span> is a "matcher function" in Matcheroni speak. Matcher functions can do whatever they want, but they must have this function signature:
@@ -220,7 +220,7 @@ using matcher_function = Span&lt;atom&gt; (*)(context& ctx, Span&lt;atom&gt; bod
 
 <div class="divider">Parsing JSON, Step 2: Matching Strings & Keywords</div>
 <p>
-  With numbers taken care of, we can try matching strings and keywords. These are slightly more complicated than numbers, but the patterns here are still almost identical to the <a href="http://json.org">JSON.org</a> versions. We'll also extend <span class="highlight">JsonMatcher::match()</span> to handle whitespace-delimited sequences of numbers, strings, and keywords.
+  With numbers taken care of, we can try matching strings and keywords. These are slightly more complicated than numbers, but the patterns here are still almost identical to the <a href="http://json.org">JSON.org</a> versions. We'll also extend <span class="highlight">JsonMatcher::match()</span> to handle whitespace-delimited sequences of numbers, strings, and keywords so that our interactive demo can be a bit more interesting.
 </p>
 
 <div class="live_code" id="json_tut1b">
@@ -291,7 +291,7 @@ using matcher_function = Span&lt;atom&gt; (*)(context& ctx, Span&lt;atom&gt; bod
   JSON objects can contain values and JSON values can be objects - the JSON grammar is recursive by definition through the <span class="highlight">value</span> pattern. C++ templates, however, cannot contain themselves as arguments. Instead, we define a static matcher function <span class="highlight">match_value()</span> and wrap it in a <span class="highlight">Ref&lt;&gt;</span> template, which is one of the ways that Matcheroni can call user-defined code.
 </p>
 <p>
-  Member functions are allowed (due to C++ reasons I do not understand) to refer to types in their parent class even before they've been declared. So we can replace template-recursion with call-recursion and everything still compiles. The <span class="highlight">Ref&lt;&gt;</span> template can also call functions on your Context object if needed. More on that later FIXME write this.
+  Member functions are allowed (due to C++ reasons I do not understand) to refer to types in their parent class even before they've been declared. So we can replace template-recursion with call-recursion and everything still compiles. The <span class="highlight">Ref&lt;&gt;</span> template can also call functions on your Context object if needed, which is useful for keeping track of statistics.
 </p>
 <p>
   With <span class="highlight">value</span> and <span class="highlight">list&lt;&gt;</span> defined, the <span class="highlight">array</span> and <span class="highlight">object</span> patterns aren't too complicated - we match the outermost delimiters surrounding optional whitespace and a comma-delimited list of values or key/value pairs.
@@ -349,7 +349,7 @@ Seq&lt;
 </pre>
 
 <p>
-  If we take the code from the previous example and swap out <span class="highlight">Trace&lt;&gt;</span> with <span class="highlight">Capture&lt;&gt;</span> and <span class="highlight">TextMatchContext</span> with <span class="highlight">TextParseContext</span>, our matcher is now a parser and <span class="highlight">print_summary()</span> can dump out a visualization of the parse tree:
+  If we take the code from the previous example and swap out <span class="highlight">Trace&lt;&gt;</span> with <span class="highlight">Capture&lt;&gt;</span> and <span class="highlight">TextMatchContext</span> with <span class="highlight">TextParseContext</span>, our matcher is now a parser and <span class="highlight">print_summary()</span> can dump out a visualization of the parse tree. Magic! :D
 </p>
 
 
@@ -370,10 +370,26 @@ Seq&lt;
 <p>
 And that's it, we have a JSON parser in under 100 lines of code. We could probably code-golf it down smaller, but the readability of this version is nice.
 </p>
+<div class="question">You have a parser, but is it actually correct?</div>
 <p>
-FIXME blurb here about JSON conformance
+We can test that. The <a href="https://github.com/nst/JSONTestSuite">JSONTestSuite</a> repo contains a bunch of known-good and known-bad JSON files that we can use with our parser. The conformance test is in <a href="../../examples/json/json_conformance.cpp">json_conformance.cpp</a> - results are
 </p>
 
+<pre class="centered text_box">
+Known good pass 95
+Known good fail 0
+Known bad pass  186
+Known bad fail  0
+Other pass      31
+Other fail      4
+Skipped         2
+</pre>
+<p>
+  So we pass everything in the conformance test except for two tests that we have to skip because they crash. The two skipped tests are <span class="highlight">"n_structure_open_array_object.json"</span> and <span class="highlight">"n_structure_100000_opening_arrays.json"</span> - both of those create tens of thousands of nested-but-unterminated arrays/objects, and since Matcheroni is a recursive-descent parser it immediately overflows the stack.
+</p>
+<p>
+  Changing Matcheroni to stop using the stack for intermediate parse results would be... very hard, so we're not going to fix that. If you need a parser that can handle arbitrarily large malicious inputs, don't use Matcheroni.
+</p>
 
 
 <div class="divider">Parsing JSON, Step 5: Customization</div>
@@ -398,67 +414,230 @@ Earlier I mentioned that Parseroni can make use of user-defined classes for node
 </div>
 
 <p>
-So now we have our own node and context classes, plus a <span class="highlight">NumberNode</span> that derives from <span class="highlight">JsonNode</span> and calls <span class="highlight">atoi()</span> on the text span it receives. To make use of <span class="highlight">NumberNode</span>, we just have to pass it as the third template argument to <span class="highlight">Capture&lt;&gt;</span>.
+So now we have our own node and context classes, plus a <span class="highlight">NumberNode</span> that derives from <span class="highlight">JsonNode</span> and calls <span class="highlight">atof()</span> on the text span it receives. To make use of <span class="highlight">NumberNode</span>, we just have to pass it as the third template argument to <span class="highlight">Capture&lt;&gt;</span>.
 
 Yes, this example is a bit silly, but it illustrates how to start building out your own node types and integrating them into an existing grammar.
 </p>
 
 
-<div class="divider">Code Size & Performance</div>
+<div class="divider">Benchmarking Performance, Code Size, Memory Usage, and Compile Time</div>
 
 <p>
-  Let's see how much code our JSON parser has generated. Since it compiles down to a whole bunch of tiny functions that get inlined heavily, this is slightly awkward to measure. We can instead compare binary sizes between a version of main() that uses JsonParser::match(), and one that uses Atom&lt;'a'&gt;::match().
+Matcheroni looks a bit "magical" in that it does a _lot_ of stuff inside its templates and relies heavily on the compiler's optimization, so it's reasonable to be skeptical of its performance. Let's clear up things with some hard numbers.
+</p>
+
+<div class="question">So how fast is this parser?</div>
+<p>
+There's a benchmark in the repo at <a href="../../examples/json/json_benchmark.cpp">json_benchmark.cpp</a> that parses the test JSON files from <a href="https://github.com/miloyip/nativejson-benchmark">nativejson-benchmark</a> 100 times and reports the median result. These measurements are from json_benchmark compiled using <span class="highlight">-O3 -flto</span> in Ubuntu running under WSL on a Ryzen 5900x.
 </p>
 
 <pre class="centered text_box">
-(Compiled with -O3 -flto)
+With node constructors/destructors disabled:
 
-Atom&lt;'a'&gt;::match()
-~/Matcheroni$ size bin/tutorial/json_tut1c
-   text    data     bss     dec     hex filename
-   6102     768       8    6878    1ade bin/tutorial/json_tut1c
+Byte total 4609770.000000
+Line total 65959.000000
+Match time 3.398600
+Parse time 4.145200
+Match byte rate  1356.373212 megabytes per second
+Match line rate  19.407697 megalines per second
+Parse byte rate  1112.074206 megabytes per second
+Parse line rate  15.912139 megalines per second
 
-JsonParser::match()
-~/Matcheroni$ size bin/tutorial/json_tut1c
-   text    data     bss     dec     hex filename
-  14257     768       8   15033    3ab9 bin/tutorial/json_tut1c
+With node constructors/destructors enabled:
 
-JsonParser::match() (with tracing)
-~/Matcheroni$ size bin/tutorial/json_tut1c
-   text    data     bss     dec     hex filename
-  30320     768       8   31096    7978 bin/tutorial/json_tut1c
+Byte total 4609770.000000
+Line total 65959.000000
+Match time 3.323400
+Parse time 5.297200
+Match byte rate  1387.064452 megabytes per second
+Match line rate  19.846844 megalines per second
+Parse byte rate  870.227667 megabytes per second
+Parse line rate  12.451673 megalines per second
 </pre>
 
 <p>
-So our JSON matcher generates a little over 8k of code. Tracing adds another 16k on top of that, which is more than I would expect but since it's for debugging I'm probably not going to investigate.
+Around a gig a second - a bit more if we disable constructors/destructors, a bit less otherwise. Not bad.
 </p>
+<p>
+Comparing it against the other parsers in the nativejson-benchmark repo is a bit difficult due to some of the tests bit-rotting, but on this machine only "gason", "sajson", and "RapidJson" have parse times in the single-digit milliseconds.
+</p>
+<p>
+To be fair this isn't a 100% apples-to-apples test as the Matcheroni parser isn't doing string->double conversion, but if we add that back in (using a trivial string-to-float implementation) performance is still around 900 megs a second. Don't use stdlib's atof() though, as then perf is ~350 megs a second - ouch!
+</p>
+
+
+<div class="question">What does the compiled code look like?</div>
 
 <p>
-  What about performance?
+  Let's see how much binary code our JSON parser has generated. Since it compiles down to a whole bunch of tiny functions that get inlined heavily, this is slightly awkward to measure. We can instead compare binary sizes between versions of Matcheroni's JSON benchmark with the matcher and parser turned on/off. Some code is common to both the parser and the matcher, but we can do a bit of algebra to measure that as well:
 </p>
 
+<pre class = "centered text_box">
+Benchmark with both match and parse:
+~/Matcheroni$ size bin/examples/json/json_benchmark
+   text    data     bss     dec     hex filename
+  21409     776       8   22193    56b1 bin/examples/json/json_benchmark
 
+Benchmark with only match:
+~/Matcheroni$ size bin/examples/json/json_benchmark
+   text    data     bss     dec     hex filename
+  12399     776       8   13183    337f bin/examples/json/json_benchmark
 
+Benchmark with only parse:
+~/Matcheroni$ size bin/examples/json/json_benchmark
+   text    data     bss     dec     hex filename
+  17775     776       8   18559    487f bin/examples/json/json_benchmark
 
+Benchmark with neither:
+~/Matcheroni$ size bin/examples/json/json_benchmark
+   text    data     bss     dec     hex filename
+   8202     768       8    8978    2312 bin/examples/json/json_benchmark
 
+baseline + common + parse + match = 22193
+baseline + common + parse         = 18559
+baseline + common + match         = 13183
+baseline                          = 8978
 
+baseline = 8978
+common   = 571
+parse    = 9010
+match    = 3634
+</pre>
+
+<p>
+So the parser-only version adds 9k, the matcher-only version adds 3.6k, and there's another 570 bytes of stuff used by both the matcher and parser.
+</p>
+
+<div class="question">Memory consumption? Any memory leaks?</div>
+<p>
+  We can run it through Valgrind:
+</p>
+<pre class="centered text_box">
+~/Matcheroni$ valgrind bin/examples/json/json_benchmark
+==18560== Memcheck, a memory error detector
+==18560== Copyright (C) 2002-2017, and GNU GPL'd, by Julian Seward et al.
+==18560== Using Valgrind-3.18.1 and LibVEX; rerun with -h for copyright info
+==18560== Command: bin/examples/json/json_benchmark
+==18560==
+Matcheroni JSON matching/parsing benchmark
+
+----------------------------------------
+Byte total 4609770.000000
+Line total 65959.000000
+Match time 77.902700
+Parse time 95.793400
+Match byte rate  59.173430 megabytes per second
+Match line rate  0.846684 megalines per second
+Parse byte rate  48.122000 megabytes per second
+Parse line rate  0.688555 megalines per second
+
+==18560==
+==18560== HEAP SUMMARY:
+==18560==     in use at exit: 0 bytes in 0 blocks
+==18560==   total heap usage: 23 allocs, 23 frees, 17,284,917 bytes allocated
+==18560==
+==18560== All heap blocks were freed -- no leaks are possible
+==18560==
+==18560== For lists of detected and suppressed errors, rerun with: -s
+==18560== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)
+</pre>
+<p>
+About 17 megs, or ~7 megs of test overhead and ~10 megs of parse nodes.
+</p>
+
+<div class="question">Matcheroni uses a lot of templates, how bad is the compile time?</div>
+<br>
+<pre class="centered text_box">
+Measured with "ninja -t clean && time ninja bin/examples/json/json_benchmark":
+
+-O3
+real    0m0.546s
+user    0m1.173s
+sys     0m0.070s
+
+-O3 -flto
+real    0m0.716s
+user    0m1.117s
+sys     0m0.027s
+</pre>
+<p>
+  Compile time is less than a second on this Ryzen 5900x under WSL.
+</p>
 
 <div class="divider">Pitfalls & Caveats</div>
+<p>
+  Let's go over a few caveats about Matcheroni before we end the tutorial.
+</p>
+<div class="question">C++ stacks are finite</div>
+<p>
+  Matcheroni is a _recursive_ descent parser and keeps its temporary state on the call stack. Normally this will not be a problem, but as seen in two of the JSON conformance tests, malicious inputs (like a megabyte of '[' characters) _will_ cause a stack overflow.
+</p>
+<p>
+  Don't use Matcheroni in these cases.
+</p>
 <div class="question">Oneof&lt;&gt; returns the _first_ match</div>
+<p>
+  If you translate a BNF or EBNF grammar directly into Matcheroni patterns, you will likely run into problems due to Matcheroni (like all implementations of Parsing Expression Grammars) always choosing the _first_ match in a <span class="highlight">Oneof&lt;&gt;</span> that matches and not the _longest_. So this pattern will not work as expected:
+</p>
+<span class="centered code_box language-cpp">using pattern = Oneof&lt;
+  Lit&lt;"true"&gt;,
+  Lit&lt;"truer"&gt;,
+  Lit&lt;"truest"&gt;
+&gt;;
+</span>
+<p>
+  but this one will:
+</p>
+<span class="centered code_box language-cpp">using pattern = Oneof&lt;
+  Lit&lt;"truest"&gt;,
+  Lit&lt;"truer"&gt;,
+  Lit&lt;"true"&gt;
+&gt;;
+</span>
+<br>
 <div class="question">Some&lt;Opt&lt;&gt;&gt; creates an infinite loop</div>
+<p>
+  <span class="highlight">Some&lt;&gt;/Any&lt;&gt;</span> keeps trying until its inner pattern fails; <span class="highlight">Opt&lt;&gt;</span> never fails but can return an empty match. Put the two together and you have an infinite loop.
+</p>
+<p>
+  I strongly recommend that all your named patterns (number, string, keyword, etc) always match _something_, so that if you nest one inside a Some&lt;&gt; you don't inadvertently hang.
+</p>
 <div class="question">Suffixes can cause exponential parsing time</div>
-
-
-
-
-
+<p>
+Parsers are slow when they have to repeatedly back up, undo some work, and then continue down a different path. Getting 90% of the way through a pattern and then failing due to a mismatched suffix is a good way to accidentally cause an exponential increase in parse time without realizing it.
+</p>
+<p>
+Here's a pattern from parseroni_test.cpp that intentionally exacerbates that behavior:
+</p>
+<span class="centered code_box language-cpp">using pattern =
+Oneof&lt;
+  Capture&lt;"plus",  Seq&lt;Atom&lt;'['&gt;, Ref&lt;match&gt;, Atom&lt;']'&gt;, Atom&lt;'+'&gt;&gt;, TestNode&gt;,
+  Capture&lt;"minus", Seq&lt;Atom&lt;'['&gt;, Ref&lt;match&gt;, Atom&lt;']'&gt;, Atom&lt;'-'&gt;&gt;, TestNode&gt;,
+  Capture&lt;"star",  Seq&lt;Atom&lt;'['&gt;, Ref&lt;match&gt;, Atom&lt;']'&gt;, Atom&lt;'*'&gt;&gt;, TestNode&gt;,
+  Capture&lt;"slash", Seq&lt;Atom&lt;'['&gt;, Ref&lt;match&gt;, Atom&lt;']'&gt;, Atom&lt;'/'&gt;&gt;, TestNode&gt;,
+  Capture&lt;"opt",   Seq&lt;Atom&lt;'['&gt;, Ref&lt;match&gt;, Atom&lt;']'&gt;, Atom&lt;'?'&gt;&gt;, TestNode&gt;,
+  Capture&lt;"eq",    Seq&lt;Atom&lt;'['&gt;, Ref&lt;match&gt;, Atom&lt;']'&gt;, Atom&lt;'='&gt;&gt;, TestNode&gt;,
+  Capture&lt;"none",  Seq&lt;Atom&lt;'['&gt;, Ref&lt;match&gt;, Atom&lt;']'&gt;&gt;, TestNode&gt;,
+  Capture&lt;"atom",  Range&lt;'a','z'&gt;, TestNode&gt;
+&gt;;
+</span>
+<p>
+This pattern matches nested square brackets with a single letter in the middle, plus an optional operator after each right square bracket.
+Parsing "[[[[[[a]]]]]]" with that pattern will produce 137,250 (!) temporary nodes that are created and then immediately deleted due to the lack of a suffix.
+</p>
+<p>
+If you really need to match patterns like this, look at <span class="highlight">CaptureBegin&lt;&gt;</span> and <span class="highlight">CaptureEnd&lt;&gt;</span> instead of <span class="highlight">Capture&lt;&gt;</span> - they're slightly harder to use, but they allow you to change the node type at the end of a match depending on the suffix instead of at the beginning and then backtracking a bunch.
+</p>
 
 
 
 
 <div class="divider">Work-In-Progress C Parser</div>
 
-<p>Tiny C parser</p>
+<p>
+  Lastly, here's a compiled version of the work-in-progress C parser for you to play with. No guarantees that it will work correctly or produce meaningful parse trees, but it has been tested against GCC's library of C torture tests and it at least doesn't crash.
+</p>
+
 <div class="live_code" id="tiny_c_parser">
   <div class="left_panel">
     <div class="header_bar">./tutorial/tiny_c_parser.cpp</div>
@@ -474,41 +653,25 @@ So our JSON matcher generates a little over 8k of code. Tracing adds another 16k
 </div>
 
 
+<div class="divider">Closing remarks</div>
+<p>
+Matcheroni and Parseroni were written to support my own experiments in parsing source code and translating it into other languages. They seem to work surprisingly well - I was really _not_ expecting to see gigabyte-per-second parse rates from JSON when I started putting this tutorial together.
+</p>
+<p>
+I'm very curious to see if people find these tools useful - particularly if it finds some uses in matching/parsing things other than text. Handling binary data in particular could be interesting - there are plenty of other tools to do that, but Matcheroni could potentially allow for parsing text formats with embedded binary data in a cleaner way.
+</p>
+<p>
+All comments, questions, and feedback on this tutorial are welcome.
+</p>
+<p>
+-Austin Appleby (my Github repos are at <a href="https://github.com/aappleby">https://github.com/aappleby</a>)
+</p>
+</div>
 
 
-
-
-
-
-
-
-
-<div class="divider">FAQs</div>
-    <div class="question">
-      Question from reader?
-    </div>
-    <p>
-      Response thingy.
-    </p>
-    <p>
-      <b>Warning and stuff</b>
-    </p>
-
-
-    <div class="divider">Closing remarks</div>
-    <p>
-      Stuff about Matcheroni
-    </p>
-    <p>
-      -Austin Appleby
-    </p>
-  </div>
-
-
-  <script type="text/javascript">
-    console.log("source load starting @ " + performance.now());
-  </script>
-  <script type="module" src="tutorial.js"></script>
+<script type="text/javascript">
+  console.log("source load starting @ " + performance.now());
+</script>
+<script type="module" src="tutorial.js"></script>
 </body>
-
 </html>

@@ -1,6 +1,7 @@
 #pragma once
 #include "matcheroni/Matcheroni.hpp"
 #include "matcheroni/Parseroni.hpp"
+#include <math.h>
 
 // JsonNodes are basically the same as TextNodes
 struct JsonNode : public parseroni::NodeBase<JsonNode, char> {

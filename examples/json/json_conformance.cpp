@@ -79,13 +79,20 @@ int main(int argc, char** argv) {
 
   int n_pass = 0;
   int n_fail = 0;
+  int skipped = 0;
 
   printf("tests_bad... ");
   time = 0;
   for (auto path : tests_bad) {
     // We are a recursive descent parser, these blow our call stack
-    if (path == "conformance/n_structure_open_array_object.json") continue;
-    if (path == "conformance/n_structure_100000_opening_arrays.json") continue;
+    if (path == "conformance/n_structure_open_array_object.json") {
+      skipped++;
+      continue;
+    }
+    if (path == "conformance/n_structure_100000_opening_arrays.json") {
+      skipped++;
+      continue;
+    }
 
     std::string raw_text;
     utils::read(path.c_str(), raw_text);
@@ -130,12 +137,13 @@ int main(int argc, char** argv) {
   }
   printf("%f msec\n", time);
 
-  printf("y_pass %d\n", y_pass);
-  printf("y_fail %d\n", y_fail);
-  printf("n_pass %d\n", n_pass);
-  printf("n_fail %d\n", n_fail);
-  printf("i_pass %d\n", i_pass);
-  printf("i_fail %d\n", i_fail);
+  printf("Known good pass %d\n", y_pass);
+  printf("Known good fail %d\n", y_fail);
+  printf("Known bad pass  %d\n", n_pass);
+  printf("Known bad fail  %d\n", n_fail);
+  printf("Other pass      %d\n", i_pass);
+  printf("Other fail      %d\n", i_fail);
+  printf("Skipped         %d\n", skipped);
 
   return (y_fail || n_fail) ? -1 : 0;
 }

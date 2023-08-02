@@ -53,7 +53,8 @@ struct JsonMatcher {
     Atom<']'>
   >;
 
-  // Matches a key:value pair where 'key' is a string and 'value' is a JSON value.
+  // Matches a key:value pair where 'key' is a string and 'value' is any JSON
+  // value.
   using pair =
   Seq<
     utils::TraceText<"key", string>,

@@ -57,18 +57,17 @@ int main(int argc, char** argv) {
       printf("Parsing %s\n", path);
     }
 
-    char* buf = nullptr;
-    size_t size = 0;
-    utils::read(path, buf, size);
-    if (size == 0) {
+    std::string buf;
+    utils::read(path, buf);
+    if (buf.size() == 0) {
       printf("Could not load %s\n", path);
       continue;
     }
 
-    byte_accum += size;
-    for (size_t i = 0; i < size; i++) if (buf[i] == '\n') line_accum++;
+    byte_accum += buf.size();
+    for (size_t i = 0; i < buf.size(); i++) if (buf[i] == '\n') line_accum++;
 
-    TextSpan text = {buf, buf + size};
+    TextSpan text = utils::to_span(buf);
 
     //----------------------------------------
 
@@ -134,10 +133,9 @@ int main(int argc, char** argv) {
     if (verbose) {
       //printf("Slab current      %d\n",  LinearAlloc::inst().current_size);
       //printf("Slab max          %d\n",  LinearAlloc::inst().max_size);
-      printf("Tree nodes        %ld\n", ctx2.node_count());
     }
-
-    delete [] buf;
+    printf("Sizeof(node) == %ld\n", sizeof(JsonNode));
+    printf("Tree nodes        %ld\n", ctx2.node_count());
   }
 
   printf("\n");
