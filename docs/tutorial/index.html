@@ -29,7 +29,7 @@
 
 <div class="contents">
 
-<div class="divider">Matcheroni & Parseroni - Quick and Easy JSON Parsing in C++20</div>
+<div class="divider">Parsing JSON with Matcheroni & Parseroni</div>
 
 <p>
   <a href="https://github.com/aappleby/Matcheroni/blob/main/matcheroni/Matcheroni.hpp">Matcheroni</a> is a minimalist, zero-dependency, single-header C++20 library for doing pattern matching using <a href="https://en.wikipedia.org/wiki/Parsing_expression_grammar">Parsing Expression Grammars (PEGs)</a>. PEGs are similar to regular expressions, but both more and less powerful.
@@ -37,7 +37,7 @@
   <a href="https://github.com/aappleby/Matcheroni/blob/main/matcheroni/Parseroni.hpp">Parseroni</a> is a companion single-header library that can capture the content of Matcheroni patterns and assemble them into concrete <a href="https://en.wikipedia.org/wiki/Parse_tree">parse trees</a>.
 </p>
 <p>
-  In this tutorial we'll be using Matcheroni and Parseroni to build a JSON parser in less than 100 lines of code that compiles down to around 10 kilobytes of instructions, parses JSON at a gigabyte a second, and compiles in under a second.
+  In this tutorial we'll be using Matcheroni and Parseroni to build a JSON parser in less than 100 lines of code. The parser passes conformance tests, parses JSON at a gigabyte a second, and compiles down to ~10k of binary code in under a second.
 </p>
 
 
@@ -139,6 +139,9 @@ struct TextMatchContext {
 
 <p>
   You are free to provide your own context object as long as it implements three functions that Matcheroni requires - <span class="highlight">atom_cmp()</span> to compare atoms (ala strcmp()), <span class="highlight">checkpoint()</span> to generate an opaque token representing the current context's state, and <span class="highlight">rewind()</span> to restore the context to a previous state. <span class="highlight">TextMatchContext</span> has no state to save or restore, so its <span class="highlight">checkpoint()</span> and <span class="highlight">rewind()</span> are no-ops.
+</p>
+<p>
+  If you want to use <span class="highlight">utils::TraceText&lt;&gt;</span> for debugging (see step 3 of this tutorial), your context also needs a "trace_depth".
 </p>
 
 
@@ -253,7 +256,7 @@ using matcher_function = Span&lt;atom&gt; (*)(context& ctx, Span&lt;atom&gt; bod
   Similarly, if the matcher function's signature was something like <span class="highlight">static UTF32Span match(UTF32MatchContext& ctx, UTF32Span body)</span>, we could pass in UTF-32-encoded text and the matcher will do the right thing (or at least it should, I haven't checked this particular case yet).
 </p>
 <p>
-  The (work-in-progress) C99 lexer and parser in Matcheroni's example folder takes advantage of this functionality - the lexer matches plain text and produces tokens, the parser matches tokens and produces parse nodes. There are probably other interesting ways of using Matcheroni on things other than text - perhaps parsing binary data, or decoding bus transactions from oscilloscope data?
+  The (work-in-progress) C99 <a href="../../examples/c_lexer">lexer</a> and <a href="../../examples/c_parser">parser</a> in Matcheroni's example folder take advantage of this functionality - the lexer matches plain text and produces tokens, the parser matches tokens and produces parse nodes. There are probably other interesting ways of using Matcheroni on things other than text - perhaps parsing binary data, or decoding bus transactions from oscilloscope traces?
 </p>
 
 <div class="divider">JSON Part 3: Matching Containers</div>
@@ -385,7 +388,7 @@ Other fail      4
 Skipped         2
 </pre>
 <p>
-  So we pass everything in the conformance test except for two tests that we have to skip because they crash. The two skipped tests are <span class="highlight">"n_structure_open_array_object.json"</span> and <span class="highlight">"n_structure_100000_opening_arrays.json"</span> - both of those create tens of thousands of nested-but-unterminated arrays/objects, and since Matcheroni is a recursive-descent parser it immediately overflows the stack.
+  So we pass everything in the conformance test except for two tests that we have to skip because they crash. The two skipped tests are <a href="https://github.com/nst/JSONTestSuite/blob/master/test_parsing/n_structure_100000_opening_arrays.json">n_structure_100000_opening_arrays.json</a> and <a href="https://github.com/nst/JSONTestSuite/blob/master/test_parsing/n_structure_open_array_object.json">n_structure_open_array_object.json</a> - both of those create tens of thousands of nested-but-unterminated arrays/objects, and since Matcheroni is a recursive-descent parser it immediately overflows the stack.
 </p>
 <p>
   Changing Matcheroni to stop using the stack for intermediate parse results would be... very hard, so we're not going to fix that. If you need a parser that can handle arbitrarily large malicious inputs, don't use Matcheroni.
@@ -397,7 +400,7 @@ Skipped         2
 So great, we have a JSON parser. It's not very convenient to use though, as it doesn't do any automatic conversion of text into data types like "number" -> float.
 </p>
 <p>
-Earlier I mentioned that Parseroni can make use of user-defined classes for nodes and contexts. Let's create some simple extensions of <span class="highlight">NodeBase&lt;&gt;</span> and <span class="highlight">NodeContext&lt;&gt;</span> so that we have nodes that can contain floating-point numbers instead of just text. We'll replace <span class="highlight">TextParseContext/TextParseNode</span> with our new <span class="highlight">JsonContext/JsonNode</span>, specialize <span class="highlight">JsonNode</span> to create a <span class="highlight">NumberNode</span>, and then make <span class="highlight">Capture&lt;&gt;</span> create <span class="highlight">NumberNode</span>s when it matches a number.
+Earlier I mentioned that Parseroni can make use of user-defined classes for nodes and contexts. Let's create some simple extensions of <span class="highlight">NodeBase&lt;&gt;</span> and <span class="highlight">NodeContext&lt;&gt;</span> so that we have nodes that can contain floating-point numbers instead of just text. We'll replace <span class="highlight">TextParseContext/TextParseNode</span> with our new <span class="highlight">JsonContext/JsonNode</span>, specialize <span class="highlight">JsonNode</span> to create a <span class="highlight">NumberNode</span>, and then make <span class="highlight">Capture&lt;&gt;</span> create <span class="highlight">NumberNodes</span> when it matches a number.
 </p>
 <div class="live_code" id="json_tut2b">
   <div class="left_panel">
@@ -423,7 +426,7 @@ Yes, this example is a bit silly, but it illustrates how to start building out y
 <div class="divider">Benchmarking Performance, Code Size, Memory Usage, and Compile Time</div>
 
 <p>
-Matcheroni looks a bit "magical" in that it does a _lot_ of stuff inside its templates and relies heavily on the compiler's optimization, so it's reasonable to be skeptical of its performance. Let's clear up things with some hard numbers.
+Matcheroni and Parseroni look a bit "magical" in that they do a _lot_ of stuff inside templates, so it's reasonable to be skeptical of its performance. Let's clear up things with some hard numbers.
 </p>
 
 <div class="question">So how fast is this parser?</div>
@@ -568,6 +571,26 @@ sys     0m0.027s
 <p>
   Let's go over a few caveats about Matcheroni before we end the tutorial.
 </p>
+
+<div class="question">Using "using" = big debug symbols.</div>
+<p>
+  It's super convenient to build patterns with the C++ "using" keyword as seen above, but that's not always the best way to structure a larger parser.
+</p>
+<p>
+  Unfortunately for us, the pattern names in the "using" declarations don't show up in the compiled binary's debug symbols, so your call stack will look like a big list of giant nested templates. This makes it nearly impossible to step through a matcher in a debugger because you can't easily look at the function name on the call stack and know where in the pattern you are.
+</p>
+<p>
+  One workaround is to group patterns together like the first JsonMatcher example that matches numbers. Then when you declare <span class="highlight">"using foo = Some&lt;JsonMatcher&gt;..."</span>, at least you'll see "JsonMatcher::match" on the call stack if you need to debug it.
+</p>
+<p>
+You can also have standalone matcher functions and wrap them in <span class="highlight">Ref&lt;&gt;</span> as needed - that does nearly the same thing.
+</p>
+
+<div class="question">Don't delete your source buffers.</div>
+<p>
+  Parseroni stores pointers into the source data (via NodeBase::span) - if you delete the source buffer you parsed, those spans will be invalid. Don't do that.
+</p>
+
 <div class="question">C++ stacks are finite</div>
 <p>
   Matcheroni is a _recursive_ descent parser and keeps its temporary state on the call stack. Normally this will not be a problem, but as seen in two of the JSON conformance tests, malicious inputs (like a megabyte of '[' characters) _will_ cause a stack overflow.
@@ -581,8 +604,8 @@ sys     0m0.027s
 </p>
 <span class="centered code_box language-cpp">using pattern = Oneof&lt;
   Lit&lt;"true"&gt;,
-  Lit&lt;"truer"&gt;,
-  Lit&lt;"truest"&gt;
+  Lit&lt;"truer"&gt;, // will never match
+  Lit&lt;"truest"&gt; // will never match
 &gt;;
 </span>
 <p>
@@ -659,6 +682,9 @@ Matcheroni and Parseroni were written to support my own experiments in parsing s
 </p>
 <p>
 I'm very curious to see if people find these tools useful - particularly if it finds some uses in matching/parsing things other than text. Handling binary data in particular could be interesting - there are plenty of other tools to do that, but Matcheroni could potentially allow for parsing text formats with embedded binary data in a cleaner way.
+</p>
+<p>
+  I'm also interested in seeing what other programming languages can support a Matcheroni-like syntax. Python and Javascript would be obvious options and since they don't need a compilation phase they could be quite dynamic. Rust would be a very interesting option but it doesn't have variadic templates. I'm not sure how I'd put together a user-friendly mix of Rust macros and generics without things getting really weird. OCaml probably has something like Matcheroni built in already :D.
 </p>
 <p>
 All comments, questions, and feedback on this tutorial are welcome.

@@ -16,7 +16,17 @@ body {
   max-width:1600px;
 }
 
+/* unvisited link */
+a:link {
+  color: #CCF;
+}
+
+/* visited link */
+a:visited {
+  color: #DCF;
+}
 p {
+  color: #CCC;
   text-indent:30px;
   margin-left:auto;
   margin-right:auto;
@@ -97,6 +107,7 @@ p {
 }
 
 .text_box {
+  color: #CCC;
   display: flex;
   background-color: #1e1e1e;
   border: solid #444444 1px;
