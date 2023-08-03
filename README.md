@@ -2,24 +2,19 @@
 ### Update 7/18/2023 - Matcheroni is getting a major rewrite plus a parsing framework I'm calling Parseroni. There will be a full live interactive tutorial as well. Please hold off on using this library until those are complete.
 
 ------
-### TL;DR - Copy-paste [Matcheroni.hpp](matcheroni/Matcheroni.hpp) into your C++20 project and you can build simple [parsers](matcheroni/regex_parser.cpp) without needing a parser generator or a regex library.
+### TL;DR
+
+A tutorial for building a JSON parser in Matcheroni+Parseroni can be found [here](https://aappleby.github.io/Matcheroni/tutorial)
+
 ------
 
 # Matcheroni
 
-Matcheroni is a minimal, zero-dependency (not even stdlib), single-file header library for building pattern-matchers, [lexers](matcheroni/examples/c_parser/CLexer.cpp), and [parsers](matcheroni/examples/c_parser/CContext.h) out of trees of C++20 templates.
+[Matcheroni](https://github.com/aappleby/Matcheroni/blob/main/matcheroni/Matcheroni.hpp) is a minimalist, zero-dependency, single-header C++20 library for doing pattern matching using [Parsing Expression Grammars](https://en.wikipedia.org/wiki/Parsing_expression_grammar) (PEGs). PEGs are similar to regular expressions, but both more and less powerful.
 
-Matcheroni is a generalization of [Parsing Expression Grammars](https://en.wikipedia.org/wiki/Parsing_expression_grammar) and can be used in place of regular expressions in many cases.
+[Parseroni](https://github.com/aappleby/Matcheroni/blob/main/matcheroni/Parseroni.hpp) is a companion single-header library that can capture the content of Matcheroni patterns and assemble them into concrete [parse trees](https://en.wikipedia.org/wiki/Parse_tree).
 
-Matcheroni generates tiny code - 100s of bytes for moderately-sized patterns versus 100k+ if you have to include the std::regex library.
-
-Matcheroni generates fast code - often 10x faster than std::regex.
-
-Matcheroni matchers are more readable and more modular than regexes - you can build [large matchers](matcheroni/examples/c_parser/CLexer.cpp) out of small simple matchers without affecting performance.
-
-Matcheroni allows you to freely intermingle C++ code with your matcher templates so that you can build parse trees, log stats, or do whatever else you need to do while processing your data.
-
-Matcheroni doesn't have to match text - you can customize it to match patterns in arrays of any type as long as you define appropriate comparison functions for your types.
+Matcheroni and Parseroni generate tiny, fast parsers that are easy to customize and integrate into your existing codebase.
 
 # Examples
 Matchers are roughly equivalent to regular expressions. A regular expression using the std::regex C++ library
