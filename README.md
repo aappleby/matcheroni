@@ -34,6 +34,7 @@ const std::string text = "aaabbaaccdefxyz";
 // The first argument to match() is a reference to a context object.
 // The second two arguments are the range of text to match against.
 // The match function returns the _end_ of the match, or nullptr if there was no match.
+TextMatchContext ctx;
 TextSpan tail = my_pattern::match(ctx, to_span(text));
 
 // Since we matched "aabbaaccdef", this prints "xyz".
@@ -51,7 +52,7 @@ and it would perform identically to the one-line version.
 Unlike regexes, matchers can be recursive. Note that you can't nest a pattern inside itself directly, as "using pattern" doesn't count as a declaration. Forward-declaring a matcher function and using that in a pattern works though:
 ```cpp
 // Forward-declare our matching function so we can use it recursively.
-const char* match_parens_recurse(void* ctx, const char* a, const char* b);
+TextSpan match_parens_recurse(TextMatchContext& ctx, TextSpan body);
 
 // Define our recursive matching pattern.
 using match_parens =
@@ -62,16 +63,17 @@ Seq<
 >;
 
 // Implement the forward-declared function by recursing into the pattern.
-const char* match_parens_recurse(void* ctx, const char* a, const char* b) {
+TextSpan match_parens_recurse(TextMatchContext& ctx, TextSpan) {
   return match_parens::match(ctx, a, b);
 }
 
 // Now we can use the pattern
 std::string text = "(((foo)bar)baz)tail";
-auto tail = match_parens::match(nullptr, text.data(), text.data() + text.size());
+TextMatchContext ctx;
+TextSpan tail = match_parens::match(ctx, to_span(text));
 printf("%s", tail); // prints "tail"
 ```
-# Building the Matcheroni examples
+# Building the Matcheroni examples and tests
 Install [Ninja](https://ninja-build.org/) if you haven't already, then run ninja in the repo root.
 
 See build.ninja for configuration options.
@@ -85,27 +87,25 @@ I can assure you that that's not the case - binary sizes and compile times for e
 
 Matcheroni is based on two fundamental primitives -
 
- - A **"matching function"** is a function of the form ```atom* match(void* ctx, atom* a, atom* b)```, where ```atom``` can be any data type you can store in an array, ```ctx``` is an opaque pointer to whatever bookkeeping data structure your app requires, and ```a``` and ```b``` are the endpoints of the range of atoms in the array to match against.
+ - A **"matching function"** is a function of the form ```Span<atom> match(Context& ctx, Span<atom> body)```, where ```atom``` can be any data type you can store in an array, ```ctx``` is a reference to a match context object, and ```body``` is a span of atoms to match against. Matching functions should return a valid span representing the _remainder_ of the text if matching succeeds, or a ```(nullptr, fail_location)``` span to indicate failure.
 
  - A **"matcher"** is any class or struct that defines a static matching function named ```match()```.
 
-Matching functions should return a pointer in the range ```[a, b]``` to indicate success or failure - returning ```a``` means the match succeded but did not consume any input, returning ```b``` means the match consumed all the input, returning ```nullptr``` means the match failed, and any other pointer in the range indicates that the match succeeded and consumed some amount of the input.
-
-Matcheroni includes [built-in matchers for most regex-like tasks](matcheroni/Matcheroni.h#L54), but writing your own is straightforward. Matchers can be templated and can do basically whatever they like inside ```match()```. For example, if we wanted to print a message whenever some pattern matches, we could do this:
+Matcheroni includes built-in matchers for most regex-like tasks, but writing your own is straightforward. Matchers can be templated and can do basically whatever they like inside ```match()```. For example, if we wanted to print a message whenever some pattern matches, we could do this:
 
 ```cpp
 template<typename pattern>
 struct PrintMessage {
-  template<typename context_type>
-  static TextSpan match(context_type& ctx, TextSpan body) {
-    TextSpan = pattern::match(ctx, body);
-    if (result) {
+  template<typename context, typename atom>
+  static Span<atom> match(context& ctx, Span<atom> body) {
+    auto tail = pattern::match(ctx, body);
+    if (tail.is_valid()) {
       printf("Match succeeded!\n");
     }
     else {
       printf("Match failed!\n");
     }
-    return result;
+    return tail;
   }
 };
 ```
@@ -149,82 +149,7 @@ While writing the C lexer and parser demos, I found myself needing some addition
 
 # Performance
 
-After compilation, the trees of templates turn into trees of tiny simple function calls. GCC and Clang do an exceptionally good job of optimizing these down into functions that are nearly as small and fast as if you'd written them by hand. The generated assembly looks good, and the code size can actually be smaller than hand-written as GCC can dedupe redundant template instantiations in a lot of cases.
-
-Matcheroni includes a small [benchmark](matcheroni/benchmark.cpp) that compares build time, binary size, and performance against some other popular header-only regex libraries.
-
-[Results of the performance comparison are here](https://docs.google.com/spreadsheets/d/17AjRa8XYFfhlluFPoLMWJUpjH6aI_gf-psUpRgDJIUA/edit?usp=sharing)
-
-Overall results:
-
- - [Matcheroni](https://github.com/aappleby/Matcheroni) adds very little to build time or binary size. Its performance compares favorably with CTRE and Boost, and is vastly faster than std::regex.
- - [SRELL](https://www.akenotsuki.com/misc/srell/en/) is the performance champion but adds a lot to build time and binary size by default.
- - [SRELL](https://www.akenotsuki.com/misc/srell/en/#smaller) in 'minimized' mode is smaller than Boost or std::regex but is still slow to build.
- - [Boost](https://www.boost.org/doc/libs/1_82_0/libs/regex/doc/html/index.html) is fast, has a large impact on build time, and a moderate impact on binary size.
- - [CTRE](https://github.com/hanickadot/compile-time-regular-expressions) is fast, has a large impact on build time, but doesn't add much to the binary size.
- - [std::regex](https://en.cppreference.com/w/cpp/regex) is terrible by all metrics.
-
-So, if you need to do some customized pattern-matching on something like an embedded platform and you want to keep your compile-test cycle fast, give Matcheroni a try.
-
-# A Small Demo - Parsing Regular Expressions
-
-There is a full working example of using Matcheroni to parse a subset of regular expression syntax, build a syntax tree, print the tree, and (optionally) trace the matching process in [regex_parser.cpp](matcheroni/regex_parser.cpp).
-
-```
-~/Matcheroni$ bin/regex_parser "[a-zA-Z]*(foobarbaz|glom.*)?"
-argv[0] = bin/regex_parser
-argv[1] = [a-zA-Z]* (foobarbaz|glom.*)?
-
-Parse tree:
-[a-zA-Z]*              any
-[a-zA-Z]               |--pos_set
-a-z                    |  |--range
-a                      |  |  |--begin
-z                      |  |  |--end
-A-Z                    |  |--range
-A                      |  |  |--begin
-Z                      |  |  |--end
-(foobarbaz|glom.*)?    opt
-(foobarbaz|glom.*)     |--group
-foobarbaz|glom.*       |  |--oneof
-foobarbaz              |  |  |--option
-foobarbaz              |  |  |  |--text
-glom.*                 |  |  |--option
-glom                   |  |  |  |--text
-.*                     |  |  |  |--any
-.                      |  |  |  |  |--dot
-```
-
-This should suffice to cover basic and intermediate usage of Matcheroni, including recursive matching and implementing custom matchers that maintain global state.
-
-# A Larger Demo - Lexing and Parsing C
-This repo contains a work-in-progress example C lexer and parser built using Matcheroni.
-
-The lexer should be conformant to the C99 spec, the parser is less conformant but is still able to parse nearly everything in GCC's torture-test suite.
-
-The output of the parser is a simple tree of parse nodes with all parent/child/sibling links as pointers:
-
-Here's our parser for C's ```for``` loops:
-```cpp
-struct NodeStatementFor : public ParseNode, public NodeMaker<NodeStatementFor> {
-  using pattern =
-  Seq<
-    Keyword<"for">,
-    Atom<'('>,
-    Oneof<
-      Seq<comma_separated<NodeExpression>,  Atom<';'>>,
-      Seq<comma_separated<NodeDeclaration>, Atom<';'>>,
-      Atom<';'>
-    >,
-    Opt<comma_separated<NodeExpression>>,
-    Atom<';'>,
-    Opt<comma_separated<NodeExpression>>,
-    Atom<')'>,
-    Oneof<NodeStatementCompound, NodeStatement>
-  >;
-};
-```
-Note that there's no code or data in the class. That's intentional - the NodeMaker<> helper only requires that a parse node type declares a match pattern and it will take care of the details of matching source code, creating parse nodes, and linking them together into a tree.
+The JSON example contains a benchmark
 
 # Caveats
 
@@ -237,8 +162,6 @@ Matcheroni does not implement any form of [packrat parsing](https://pdos.csail.m
 Recursive matchers create recursive code that can explode your call stack.
 
 Left-recursive matchers can get stuck in an infinite loop - this is true with most versions of Parsing Expression Grammars, it's a fundamental limitation of the algorithm.
-
-Parsers generated with a real parser generator will probably be faster.
 
 # A Particularly Large Matcheroni Pattern
 
