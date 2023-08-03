@@ -1,3 +1,87 @@
+After compilation, the trees of templates turn into trees of tiny simple function calls. GCC and Clang do an exceptionally good job of optimizing these down into functions that are nearly as small and fast as if you'd written them by hand. The generated assembly looks good, and the code size can actually be smaller than hand-written as GCC can dedupe redundant template instantiations in a lot of cases.
+
+Matcheroni includes a small [benchmark](matcheroni/benchmark.cpp) that compares build time, binary size, and performance against some other popular header-only regex libraries.
+
+[Results of the performance comparison are here](https://docs.google.com/spreadsheets/d/17AjRa8XYFfhlluFPoLMWJUpjH6aI_gf-psUpRgDJIUA/edit?usp=sharing)
+
+Overall results:
+
+ - [Matcheroni](https://github.com/aappleby/Matcheroni) adds very little to build time or binary size. Its performance compares favorably with CTRE and Boost, and is vastly faster than std::regex.
+ - [SRELL](https://www.akenotsuki.com/misc/srell/en/) is the performance champion but adds a lot to build time and binary size by default.
+ - [SRELL](https://www.akenotsuki.com/misc/srell/en/#smaller) in 'minimized' mode is smaller than Boost or std::regex but is still slow to build.
+ - [Boost](https://www.boost.org/doc/libs/1_82_0/libs/regex/doc/html/index.html) is fast, has a large impact on build time, and a moderate impact on binary size.
+ - [CTRE](https://github.com/hanickadot/compile-time-regular-expressions) is fast, has a large impact on build time, but doesn't add much to the binary size.
+ - [std::regex](https://en.cppreference.com/w/cpp/regex) is terrible by all metrics.
+
+So, if you need to do some customized pattern-matching on something like an embedded platform and you want to keep your compile-test cycle fast, give Matcheroni a try.
+
+
+
+# A Larger Demo - Lexing and Parsing C
+This repo contains a work-in-progress example C lexer and parser built using Matcheroni.
+
+The lexer should be conformant to the C99 spec, the parser is less conformant but is still able to parse nearly everything in GCC's torture-test suite.
+
+The output of the parser is a simple tree of parse nodes with all parent/child/sibling links as pointers:
+
+Here's our parser for C's ```for``` loops:
+```cpp
+struct NodeStatementFor : public ParseNode, public NodeMaker<NodeStatementFor> {
+  using pattern =
+  Seq<
+    Keyword<"for">,
+    Atom<'('>,
+    Oneof<
+      Seq<comma_separated<NodeExpression>,  Atom<';'>>,
+      Seq<comma_separated<NodeDeclaration>, Atom<';'>>,
+      Atom<';'>
+    >,
+    Opt<comma_separated<NodeExpression>>,
+    Atom<';'>,
+    Opt<comma_separated<NodeExpression>>,
+    Atom<')'>,
+    Oneof<NodeStatementCompound, NodeStatement>
+  >;
+};
+```
+Note that there's no code or data in the class. That's intentional - the NodeMaker<> helper only requires that a parse node type declares a match pattern and it will take care of the details of matching source code, creating parse nodes, and linking them together into a tree.
+
+
+
+
+# A Small Demo - Parsing Regular Expressions
+
+There is a full working example of using Matcheroni to parse a subset of regular expression syntax, build a syntax tree, print the tree, and (optionally) trace the matching process in [regex_parser.cpp](matcheroni/regex_parser.cpp).
+
+```
+~/Matcheroni$ bin/regex_parser "[a-zA-Z]*(foobarbaz|glom.*)?"
+argv[0] = bin/regex_parser
+argv[1] = [a-zA-Z]* (foobarbaz|glom.*)?
+
+Parse tree:
+[a-zA-Z]*              any
+[a-zA-Z]               |--pos_set
+a-z                    |  |--range
+a                      |  |  |--begin
+z                      |  |  |--end
+A-Z                    |  |--range
+A                      |  |  |--begin
+Z                      |  |  |--end
+(foobarbaz|glom.*)?    opt
+(foobarbaz|glom.*)     |--group
+foobarbaz|glom.*       |  |--oneof
+foobarbaz              |  |  |--option
+foobarbaz              |  |  |  |--text
+glom.*                 |  |  |--option
+glom                   |  |  |  |--text
+.*                     |  |  |  |--any
+.                      |  |  |  |  |--dot
+```
+
+This should suffice to cover basic and intermediate usage of Matcheroni, including recursive matching and implementing custom matchers that maintain global state.
+
+
+
 
 // To build a parse tree, we wrap the patterns we want to create nodes for
 // in a Capture<> matcher that will invoke our node factory. We can also wrap
