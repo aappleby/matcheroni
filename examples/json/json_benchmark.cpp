@@ -13,6 +13,7 @@
 #include "matcheroni/Utilities.hpp"
 
 #include <stdio.h>
+#include <algorithm>
 
 using namespace matcheroni;
 

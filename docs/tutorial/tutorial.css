@@ -1,19 +1,18 @@
 * {
   font-family: monospace;
-  font-size: 16px;
+  font-size: 15px;
   color: #CCC;
 }
 
-body {
+html {
   background-color: #444;
 }
 
-.contents {
+body {
   background-color: #222;
   margin:auto;
-  padding:10px;
-  width:85%;
-  max-width:1600px;
+  padding:20px;
+  width:fit-content;
 }
 
 /* unvisited link */
@@ -25,12 +24,17 @@ a:link {
 a:visited {
   color: #DCF;
 }
+
 p {
   color: #CCC;
   text-indent:30px;
   margin-left:auto;
   margin-right:auto;
   max-width:800px;
+}
+
+.highlight {
+  color: #FFFFBB;
 }
 
 /******************************************************************************/
@@ -60,20 +64,13 @@ p {
 /******************************************************************************/
 
 .divider {
-  /*margin:auto;*/
-  margin:0px;
-  padding:0px;
-  padding-top:10px;
-  padding-bottom:10px;
-  /*
-  padding-left:40px;
-  padding-right:40px;
-  */
+  margin:auto;
+  padding:10px;
   background-color: #3B3344;
   border: solid #664466 1px;
   text-align:center;
   font-size:20px;
-  width:100%;
+  max-width:800px;
 }
 
 /******************************************************************************/
@@ -93,32 +90,17 @@ p {
 
 /******************************************************************************/
 
-.flex_row {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 10px;
-}
-
-.flex_col {
-  display: flex;
-  flex-direction: column;
-}
-
 .text_box {
   color: #CCC;
   display: flex;
   background-color: #1e1e1e;
   border: solid #444444 1px;
   margin:0px;
+  margin-left: auto;
+  margin-right: auto;
   padding:8px;
   width:80ch;
   flex-grow: 1;
-}
-
-.highlight {
-  color: #FFFFBB;
 }
 
 .code_box {
@@ -126,21 +108,11 @@ p {
   background-color: #1e1e1e;
   border: solid #444444 1px;
   margin:0px;
+  margin-left: auto;
+  margin-right: auto;
   padding:8px;
   width:80ch;
   flex-grow: 1;
-}
-
-.centered {
-  margin-left: auto;
-  margin-right: auto;
-}
-
-.inline-code {
-  padding: 0px;
-  padding-left: 10px;
-  padding-right: 10px;
-  background-color: #1e1e1e;
 }
 
 /******************************************************************************/
@@ -151,11 +123,10 @@ p {
   flex-wrap: wrap;
   gap: 20px;
   justify-content: center;
-  /*overflow:auto;*/
 }
 
 .left_panel {
-  max-height:700px;
+  max-height:900px;
   flex-basis: 1;
   flex-grow: 0;
   align-items: stretch;
@@ -168,7 +139,7 @@ p {
 }
 
 .right_panel {
-  max-height:700px;
+  max-height:900px;
   flex-basis: 1;
   flex-grow: 0;
   border: solid #444444 1px;
