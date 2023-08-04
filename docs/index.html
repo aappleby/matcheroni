@@ -41,6 +41,36 @@ Matcheroni and Parseroni generate tiny, fast parsers that are easy to customize 
 | [^a-z] | NotRange&lt;'a','z'&gt; |
 | (a\|b) | Oneof&lt;a,b&gt; |
 
+<br>
+
+| PEG            | Regex       | Matcheroni                | Description |
+| -------------- | ----------- | ------------------------- | ----------- |
+| Terminal       |             | Atom&lt;&gt;, Lit&lt;&gt; |             |
+| Sequence       |             |                           |             |
+| Ordered Choice |             |                           |             |
+| Zero-or-more   |             |                           |             |
+| One-or-more    |             |                           |             |
+| Optional       |             |                           |             |
+| And-predicate  |             |                           |             |
+| Not-predicate  |             |                           |             |
+
+
+
+- ```Atom<x, y, ...>``` matches any single "atom" of your input that is equal to one of the template parameters. Atoms can be characters, objects, or whatever as long as you implement ```atom_cmp(...)``` for them. Atoms "consume" input and advance the read cursor when they match.
+- ```Seq<x, y, ...>``` matches sequences of other matchers.
+- ```Oneof<x, y, ...>``` returns the result of the first successful sub-matcher. Like parsing expression grammars, there is no backtracking - if ```x``` matches, we will never back up and try ```y```.
+- ```Any<x>``` is equivalent to ```x*``` in regex - it matches zero or more instances of ```x```.
+- ```Some<x>``` is equivalent to ```x+``` in regex - it matches one or more instances of ```x```.
+- ```Opt<x>``` is equivalent to ```x?``` in regex - it matches exactly 0 or 1 instances of ```x```.
+- ```And<x>``` matches ```x``` but does _not_ advance the read cursor.
+- ```Not<x>``` matches if ```x``` does _not_ match and does _not_ advance the read cursor.
+
+
+# Recipes
+
+
+
+
 
 # Examples
 Matcheroni patterns are roughly equivalent to regular expressions. A regular expression using the std::regex C++ library
@@ -92,21 +122,6 @@ printf("%s", tail); // prints "tail"
 
 
 
-| PEG | Regex | Matcheroni | Description |
-| ----------- | ----------- | ----------- | ----------- |
-| Header      | Title       |
-| Paragraph   | Text        |
-
-
-
-- ```Atom<x, y, ...>``` matches any single "atom" of your input that is equal to one of the template parameters. Atoms can be characters, objects, or whatever as long as you implement ```atom_cmp(...)``` for them. Atoms "consume" input and advance the read cursor when they match.
-- ```Seq<x, y, ...>``` matches sequences of other matchers.
-- ```Oneof<x, y, ...>``` returns the result of the first successful sub-matcher. Like parsing expression grammars, there is no backtracking - if ```x``` matches, we will never back up and try ```y```.
-- ```Any<x>``` is equivalent to ```x*``` in regex - it matches zero or more instances of ```x```.
-- ```Some<x>``` is equivalent to ```x+``` in regex - it matches one or more instances of ```x```.
-- ```Opt<x>``` is equivalent to ```x?``` in regex - it matches exactly 0 or 1 instances of ```x```.
-- ```And<x>``` matches ```x``` but does _not_ advance the read cursor.
-- ```Not<x>``` matches if ```x``` does _not_ match and does _not_ advance the read cursor.
 
 </pre>
 

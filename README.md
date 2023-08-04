@@ -29,10 +29,16 @@ I can assure you that that's not the case - binary sizes and compile times for e
 # Built-in matchers
 Since Matcheroni is based on Parsing Expression Grammars, it includes all the basic rules you'd expect:
 
-| PEG | Regex | Matcheroni | Description |
-| ----------- | ----------- | ----------- | ----------- |
-| Header      | Title       |
-| Paragraph   | Text        |
+| PEG            | Regex       | Matcheroni | Description |
+| -------------- | ----------- | ----------- | ----------- |
+| Sequence       |
+| Ordered Choice |
+| Zero-or-more   |
+| One-or-more    |
+| Optional       |
+| And-predicate  |
+| Not-predicate  |
+
 
 
 
