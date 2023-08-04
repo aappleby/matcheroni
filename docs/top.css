@@ -1,17 +1,41 @@
-* {
+html {
+  background-color: #444;
+  color: #CCC;
   font-family: monospace;
+  font-size: 15px;
 }
 
 body {
-  background-color: #444;
-  margin-left:100px;
-  margin-right:100px;
-  color: #CCC;
+  background-color:#282828;
+  margin:auto;
+  padding: 20px;
+  width: fit-content;
+  max-width: 800px;
 }
 
-a {
-  color: #CCE
+/* unvisited link */
+a:link {
+  color: #CCF;
 }
+
+/* visited link */
+a:visited {
+  color: #DCF;
+}
+
+p {
+  color: #CCC;
+  text-indent:30px;
+  margin-left:auto;
+  margin-right:auto;
+  max-width:800px;
+}
+
+.highlight {
+  color: #FFFFBB;
+}
+
+/******************************************************************************/
 
 pre {
   background-color: #222;
@@ -30,101 +54,3 @@ th, td {
 h1, h2, h3, h4 {
   color: #CCE;
 }
-
-
-.markdown {
-  background-color:#282828;
-  padding: 16px;
-  max-width: 900px;
-  margin:auto;
-}
-
-.plain {
-  display:none;
-}
-
-/*
-b {
-  color: #E99;
-}
-
-p {
-  text-indent: 30px;
-  margin-left:5%;
-  margin-right:5%;
-}
-
-ul {
-  margin-left:5%;
-  margin-right:5%;
-}
-
-.topbar {
-  display: flex;
-  flex-direction: row;
-  gap: 12px;
-  justify-content:space-between;
-}
-
-.topbar_title {
-  display:flex;
-  align-items: center;
-  flex-basis:auto;
-  font-size: 20px;
-  color: #CBF;
-  margin:8px;
-}
-
-.topbar_spacer {
-  display:flex;
-  align-items: center;
-  flex-basis:250px;
-}
-
-.contents {
-  padding: 12px;
-  padding-left: 40px;
-  padding-right: 40px;
-  background-color: #222;
-}
-
-.divider {
-  margin:40px;
-  padding:10px;
-  background-color: #3B3344;
-  border: solid #1A1A1A 1px;
-  text-align:center;
-  font-size:20px;
-}
-
-.live_code {
-  display: flex;
-  flex-direction: row;
-  gap: 12px;
-}
-
-.source_panel {
-  flex-basis: 0;
-  flex-grow: 1;
-}
-
-.header_bar {
-  border: solid #1C1C1C 1px;
-  background-color: #333333;
-  padding: 8px;
-}
-
-.filename {
-  font-weight: 600;
-}
-
-.code_box {
-  display:inline-block;
-  margin-left:120px;
-}
-
-.code_jar {
-  border: solid #1A1A1A 1px;
-  margin: 0px;
-}
-*/

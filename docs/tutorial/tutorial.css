@@ -1,11 +1,8 @@
-* {
-  font-family: monospace;
-  font-size: 15px;
-  color: #CCC;
-}
-
 html {
   background-color: #444;
+  color: #CCC;
+  font-family: monospace;
+  font-size: 15px;
 }
 
 body {
@@ -13,6 +10,7 @@ body {
   margin:auto;
   padding:20px;
   width:fit-content;
+  max-width: 1600px;
 }
 
 /* unvisited link */

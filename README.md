@@ -17,7 +17,7 @@ A tutorial for building a JSON parser in Matcheroni+Parseroni can be found [here
 Matcheroni and Parseroni generate tiny, fast parsers that are easy to customize and integrate into your existing codebase.
 
 # Examples
-Matchers are roughly equivalent to regular expressions. A regular expression using the std::regex C++ library
+Matcheroni patterns are roughly equivalent to regular expressions. A regular expression using the std::regex C++ library
 ```cpp
 std::regex my_pattern("[abc]+def");
 ```

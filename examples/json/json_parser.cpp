@@ -50,6 +50,11 @@ struct JsonParser {
   }
   using value = Ref<match_value>;
 
+  static TextSpan match_parens(JsonContext& ctx, TextSpan body) {
+    return Seq<Atom<'('>, Any<parens, NotAtom<')'>>, Atom<')'>>::match(ctx, body);
+  }
+  using parens = Ref<match_parens>;
+
   // Matches bracket-delimited lists of JSON values
   using array =
   Seq<
