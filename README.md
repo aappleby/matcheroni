@@ -4,8 +4,6 @@
 ------
 ### TL;DR
 
-A tutorial for building a JSON parser in Matcheroni+Parseroni can be found [here](https://aappleby.github.io/Matcheroni/tutorial)
-
 ------
 
 # Matcheroni
@@ -16,63 +14,8 @@ A tutorial for building a JSON parser in Matcheroni+Parseroni can be found [here
 
 Matcheroni and Parseroni generate tiny, fast parsers that are easy to customize and integrate into your existing codebase.
 
-# Examples
-Matcheroni patterns are roughly equivalent to regular expressions. A regular expression using the std::regex C++ library
-```cpp
-std::regex my_pattern("[abc]+def");
-```
-would be expressed in Matcheroni as
-```cpp
-using my_pattern = Seq<Some<Atom<'a','b','c'>>, Lit<"def">>;
-```
-In the above line of code, we are defining the matcher "my_pattern" by nesting the Seq<>, Some<>, Atom<>, and Lit<> matcher templates. The resuling type (not instance) defines a static "match()" function that behaves similarly to the regex.
+A tutorial for building a JSON parser in Matcheroni+Parseroni can be found [here](https://aappleby.github.io/Matcheroni/tutorial)
 
-Unlike std::regex, we don't need to link in any additional libraries or instantiate anything to use it:
-```cpp
-const std::string text = "aaabbaaccdefxyz";
-
-// The first argument to match() is a reference to a context object.
-// The second two arguments are the range of text to match against.
-// The match function returns the _end_ of the match, or nullptr if there was no match.
-TextMatchContext ctx;
-TextSpan tail = my_pattern::match(ctx, to_span(text));
-
-// Since we matched "aabbaaccdef", this prints "xyz".
-printf("%s\n", result);
-```
-
-Matchers are also modular - you could write the above as
-```cpp
-using abc = Atom<'a','b','c'>;
-using def = Lit<"def">;
-using my_pattern = Seq<Some<abc>, def>;
-```
-and it would perform identically to the one-line version.
-
-Unlike regexes, matchers can be recursive. Note that you can't nest a pattern inside itself directly, as "using pattern" doesn't count as a declaration. Forward-declaring a matcher function and using that in a pattern works though:
-```cpp
-// Forward-declare our matching function so we can use it recursively.
-TextSpan match_parens_recurse(TextMatchContext& ctx, TextSpan body);
-
-// Define our recursive matching pattern.
-using match_parens =
-Seq<
-  Atom<'('>,
-  Any<Ref<match_parens_recurse>, NotAtom<')'>>,
-  Atom<')'>
->;
-
-// Implement the forward-declared function by recursing into the pattern.
-TextSpan match_parens_recurse(TextMatchContext& ctx, TextSpan) {
-  return match_parens::match(ctx, a, b);
-}
-
-// Now we can use the pattern
-std::string text = "(((foo)bar)baz)tail";
-TextMatchContext ctx;
-TextSpan tail = match_parens::match(ctx, to_span(text));
-printf("%s", tail); // prints "tail"
-```
 # Building the Matcheroni examples and tests
 Install [Ninja](https://ninja-build.org/) if you haven't already, then run ninja in the repo root.
 
@@ -83,45 +26,15 @@ If you're familiar with C++ templates, you are probably concerned that this libr
 
 I can assure you that that's not the case - binary sizes and compile times for even pretty large matchers are fine, though the resulting debug symbols are so enormous as to be useless.
 
-# Fundamentals
-
-Matcheroni is based on two fundamental primitives -
-
- - A **"matching function"** is a function of the form ```Span<atom> match(Context& ctx, Span<atom> body)```, where ```atom``` can be any data type you can store in an array, ```ctx``` is a reference to a match context object, and ```body``` is a span of atoms to match against. Matching functions should return a valid span representing the _remainder_ of the text if matching succeeds, or a ```(nullptr, fail_location)``` span to indicate failure.
-
- - A **"matcher"** is any class or struct that defines a static matching function named ```match()```.
-
-Matcheroni includes built-in matchers for most regex-like tasks, but writing your own is straightforward. Matchers can be templated and can do basically whatever they like inside ```match()```. For example, if we wanted to print a message whenever some pattern matches, we could do this:
-
-```cpp
-template<typename pattern>
-struct PrintMessage {
-  template<typename context, typename atom>
-  static Span<atom> match(context& ctx, Span<atom> body) {
-    auto tail = pattern::match(ctx, body);
-    if (tail.is_valid()) {
-      printf("Match succeeded!\n");
-    }
-    else {
-      printf("Match failed!\n");
-    }
-    return tail;
-  }
-};
-```
-
-and we could use it like this:
-```cpp
-using pattern = PrintMessage<Atom<'a'>>;
-const std::string text = "This does not start with 'a'";
-
-// prints "Match failed!"
-TextMatchContext ctx;
-pattern::match(ctx, to_span(text));
-```
-
 # Built-in matchers
 Since Matcheroni is based on Parsing Expression Grammars, it includes all the basic rules you'd expect:
+
+| PEG | Regex | Matcheroni | Description |
+| ----------- | ----------- | ----------- | ----------- |
+| Header      | Title       |
+| Paragraph   | Text        |
+
+
 
 - ```Atom<x, y, ...>``` matches any single "atom" of your input that is equal to one of the template parameters. Atoms can be characters, objects, or whatever as long as you implement ```atom_cmp(...)``` for them. Atoms "consume" input and advance the read cursor when they match.
 - ```Seq<x, y, ...>``` matches sequences of other matchers.
