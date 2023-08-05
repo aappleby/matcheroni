@@ -39,6 +39,8 @@ Comparing just the RapidJSON test file against RapidJSON's built-in benchmark al
 | RapidJSON DocumentParse_MemoryPoolAllocator       | 1.30 gb/sec |
 | RapidJSON DocumentParse_MemoryPoolAllocator_SSE42 | 2.85 gb/sec |
 
+So if you _really_ need performance, use RapidJSON in SSE42 mode. Matcheroni is fast, but it's never going to beat SIMD.
+
 # Caveats
 
 Matcheroni requires C++20, which is a non-starter for some projects. There's not a lot I can do about that, as I'm heavily leveraging some newish template stuff that doesn't have any backwards-compatible equivalents.
