@@ -16,6 +16,7 @@ A tutorial for building a JSON parser in Matcheroni+Parseroni can be found [here
 Documentation for Matcheroni can be found [here](https://aappleby.github.io/Matcheroni)
 
 # Building the Matcheroni examples and tests
+
 Install [Ninja](https://ninja-build.org/) if you haven't already, then run ninja in the repo root. The test suite will run as part of the build process.
 
 To rebuild the emscriptened tutorial, run "build -f build_docs.ninja" in the repo root.
@@ -24,17 +25,17 @@ See build.ninja for configuration options.
 
 # Performance
 
-The JSON parser example contains a benchmark that parses the test files from [nativejson-benchmark](https://github.com/miloyip/nativejson-benchmark) 100 times and reports the median parse time.
+The JSON parser example contains a benchmark that parses the test files from [nativejson-benchmark](https://github.com/miloyip/nativejson-benchmark) and [rapidjson](https://github.com/Tencent/rapidjson) 100 times and reports the median parse time for each file and the sum of the medians for all test files.
 
-When built with "-O3 -flto", the benchmark can parse the three test files in about 4.5 milliseconds on my Ryzen 5900x (or around a gigabyte per second) - quite competitive, though not quite apples-to-apples as Parseroni does not automatically convert numeric fields from text to doubles. Adding a quick-and-dirty atof() implementation slows things down to ~900 megabytes per second.
+When built with "-O3 -flto", the benchmark can parse the test files in about 4.8 milliseconds on my Ryzen 5900x (or around a gigabyte per second) - quite competitive, though not quite apples-to-apples as Parseroni does not automatically convert numeric fields from text to doubles. Adding a quick-and-dirty atof() implementation slows things down to ~900 megabytes per second.
 
 The parser itself is about 10k of machine code and compiles in a few hundred milliseconds.
 
-Comparing it with RapidJSON's built-in benchmark also produces favorable numbers (but again, be aware of apples-to-oranges differences):
+Comparing just the RapidJSON test file against RapidJSON's built-in benchmark also produces favorable numbers (but again, be aware of apples-to-oranges differences):
 
 | Benchmark                                         | Result      |
 | ------------------------------------------------- | ----------- |
-| Matcheroni+Parseroni json_benchmark -O3 -flto     | 1.78 gb/sec |
+| Matcheroni+Parseroni json_benchmark -O3 -flto     | 1.51 gb/sec |
 | RapidJSON DocumentParse_MemoryPoolAllocator       | 1.30 gb/sec |
 | RapidJSON DocumentParse_MemoryPoolAllocator_SSE42 | 2.85 gb/sec |
 
