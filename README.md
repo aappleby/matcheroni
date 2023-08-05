@@ -20,7 +20,7 @@ See build.ninja for configuration options.
 
 # Performance
 
-Matcheroni performance is going to depend heavily on the grammar you're parsing, but for comparisons against other libraries we can use the same JSON parser used in the tutorial. It's about 100 lines of code and compiles down into ~10k of machine code in a few hundred milliseconds.
+Matcheroni performance is going to depend heavily on the grammar you're parsing, but for comparisons against other libraries we can use the JSON parser from the tutorial. It's a straightforward translation of the JSON.org spec in about 100 lines of code and compiles down into ~10k of machine code in a few hundred milliseconds.
 
 The benchmark in [examples/json/json_benchmark.cpp](examples/json/json_benchmark.cpp) parses the test files from [nativejson-benchmark](https://github.com/miloyip/nativejson-benchmark) and [rapidjson](https://github.com/Tencent/rapidjson) 100 times and reports the median parse time for each file and the sum of the medians for all test files.
 
