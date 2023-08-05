@@ -24,17 +24,17 @@ Matcheroni performance is going to depend heavily on the grammar you're parsing,
 
 The benchmark in [examples/json/json_benchmark.cpp](examples/json/json_benchmark.cpp) parses the test files from [nativejson-benchmark](https://github.com/miloyip/nativejson-benchmark) and [rapidjson](https://github.com/Tencent/rapidjson) 100 times and reports the median parse time for each file and the sum of the medians for all test files.
 
-When built with "-O3 -flto", the benchmark can parse the three test files from nativejson-benchmark in about 4.3 milliseconds on my Ryzen 5900x - quite competitive, though not quite apples-to-apples as Parseroni does not automatically convert numeric fields from text to doubles and it keeps parse state on the stack (meaning it can overflow if given malicious documents). Adding a quick-and-dirty atof() implementation slows things down to ~5.2 milliseconds.
+When built with "-O3 -flto", the benchmark can parse the three test files from nativejson-benchmark in about 4.3 milliseconds on my Ryzen 5900x - competitive with most other native JSON parsers, though not quite apples-to-apples as Parseroni does not automatically convert numeric fields from text to doubles and it keeps parse state on the stack (meaning it can overflow if given malicious documents). Adding a quick-and-dirty atof() implementation slows things down to ~5.2 milliseconds.
 
-Comparing the RapidJSON test file against RapidJSON's built-in benchmark also produces favorable numbers (but again, be aware of apples-to-oranges differences):
+When measuring parse rate in gigs/sec, the two leading libraries seem to be RapidJSON and simdjson. Matcheroni can't really match their performance, but it doesn't do too bad:
 
-| Benchmark                                         | Result      |
+| Library                                           | rapidjson_sample.json parse rate |
 | ------------------------------------------------- | ----------- |
 | Matcheroni+Parseroni json_benchmark -O3 -flto     | 1.51 gb/sec |
-| RapidJSON DocumentParse_MemoryPoolAllocator       | 1.30 gb/sec |
 | RapidJSON DocumentParse_MemoryPoolAllocator_SSE42 | 2.85 gb/sec |
+| simdjson "quickstart.cpp" -O3 -flto               | 10.01 gb/sec |
 
-So if you're parsing JSON and _really_ need performance, use RapidJSON in SSE42 mode. Matcheroni is fast, but it's never going to beat SIMD.
+So if you're parsing JSON and _really_ need performance, use simdjson. Matcheroni is fast enough for most use cases, but it's never going to beat SIMD.
 
 # Caveats
 
