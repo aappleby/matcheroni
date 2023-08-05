@@ -1,6 +1,6 @@
 # Matcheroni & Parseroni
 
-![cheese_m.jpg](docs/assets/cheese_m.jpg) [Matcheroni](https://github.com/aappleby/Matcheroni/blob/main/matcheroni/Matcheroni.hpp) is a minimalist, zero-dependency, single-header C++20 library for doing pattern matching using [Parsing Expression Grammars](https://en.wikipedia.org/wiki/Parsing_expression_grammar) (PEGs). PEGs are similar to regular expressions, but both more and less powerful.
+![cheese_m.jpg](docs/assets/cheese_m.jpg | width=100) [Matcheroni](https://github.com/aappleby/Matcheroni/blob/main/matcheroni/Matcheroni.hpp) is a minimalist, zero-dependency, single-header C++20 library for doing pattern matching using [Parsing Expression Grammars](https://en.wikipedia.org/wiki/Parsing_expression_grammar) (PEGs). PEGs are similar to regular expressions, but both more and less powerful.
 
 [Parseroni](https://github.com/aappleby/Matcheroni/blob/main/matcheroni/Parseroni.hpp) is a companion single-header library that can capture the content of Matcheroni patterns and assemble them into concrete [parse trees](https://en.wikipedia.org/wiki/Parse_tree).
 
