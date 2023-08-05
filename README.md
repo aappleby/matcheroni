@@ -26,7 +26,7 @@ The benchmark in [examples/json/json_benchmark.cpp](examples/json/json_benchmark
 
 When built with "-O3 -flto", the benchmark can parse the three test files from nativejson-benchmark in about 4.3 milliseconds on my Ryzen 5900x - quite competitive, though not quite apples-to-apples as Parseroni does not automatically convert numeric fields from text to doubles and it keeps parse state on the stack (meaning it can overflow if given malicious documents). Adding a quick-and-dirty atof() implementation slows things down to ~5.2 milliseconds.
 
-Comparing just the RapidJSON test file against RapidJSON's built-in benchmark also produces favorable numbers (but again, be aware of apples-to-oranges differences):
+Comparing the RapidJSON test file against RapidJSON's built-in benchmark also produces favorable numbers (but again, be aware of apples-to-oranges differences):
 
 | Benchmark                                         | Result      |
 | ------------------------------------------------- | ----------- |
