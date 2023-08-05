@@ -1,9 +1,4 @@
-------
-### Update 7/18/2023 - Matcheroni is getting a major rewrite plus a parsing framework I'm calling Parseroni. There will be a full live interactive tutorial as well. Please hold off on using this library until those are complete.
-
-------
-
-# Matcheroni
+# Matcheroni & Parseroni
 
 [Matcheroni](https://github.com/aappleby/Matcheroni/blob/main/matcheroni/Matcheroni.hpp) is a minimalist, zero-dependency, single-header C++20 library for doing pattern matching using [Parsing Expression Grammars](https://en.wikipedia.org/wiki/Parsing_expression_grammar) (PEGs). PEGs are similar to regular expressions, but both more and less powerful.
 
@@ -25,11 +20,11 @@ See build.ninja for configuration options.
 
 # Performance
 
-The JSON parser example contains a benchmark that parses the test files from [nativejson-benchmark](https://github.com/miloyip/nativejson-benchmark) and [rapidjson](https://github.com/Tencent/rapidjson) 100 times and reports the median parse time for each file and the sum of the medians for all test files.
+Matcheroni performance is going to depend heavily on the grammar you're parsing, but for comparisons against other libraries we can use the same JSON parser used in the tutorial. It's about 100 lines of code and compiles down into ~10k of machine code in a few hundred milliseconds.
 
-When built with "-O3 -flto", the benchmark can parse the test files in about 4.8 milliseconds on my Ryzen 5900x (or around a gigabyte per second) - quite competitive, though not quite apples-to-apples as Parseroni does not automatically convert numeric fields from text to doubles. Adding a quick-and-dirty atof() implementation slows things down to ~900 megabytes per second.
+The benchmark in [examples/json/json_benchmark.cpp](examples/json/json_benchmark.cpp) parses the test files from [nativejson-benchmark](https://github.com/miloyip/nativejson-benchmark) and [rapidjson](https://github.com/Tencent/rapidjson) 100 times and reports the median parse time for each file and the sum of the medians for all test files.
 
-The parser itself is about 10k of machine code and compiles in a few hundred milliseconds.
+When built with "-O3 -flto", the benchmark can parse the three test files from nativejson-benchmark in about 4.3 milliseconds on my Ryzen 5900x - quite competitive, though not quite apples-to-apples as Parseroni does not automatically convert numeric fields from text to doubles and it keeps parse state on the stack (meaning it can overflow if given malicious documents). Adding a quick-and-dirty atof() implementation slows things down to ~5.2 milliseconds.
 
 Comparing just the RapidJSON test file against RapidJSON's built-in benchmark also produces favorable numbers (but again, be aware of apples-to-oranges differences):
 
@@ -39,7 +34,7 @@ Comparing just the RapidJSON test file against RapidJSON's built-in benchmark al
 | RapidJSON DocumentParse_MemoryPoolAllocator       | 1.30 gb/sec |
 | RapidJSON DocumentParse_MemoryPoolAllocator_SSE42 | 2.85 gb/sec |
 
-So if you _really_ need performance, use RapidJSON in SSE42 mode. Matcheroni is fast, but it's never going to beat SIMD.
+So if you're parsing JSON and _really_ need performance, use RapidJSON in SSE42 mode. Matcheroni is fast, but it's never going to beat SIMD.
 
 # Caveats
 
