@@ -575,7 +575,7 @@ sys     0m0.027s
   It's super convenient to build patterns with the C++ "using" keyword as seen above, but that's not always the best way to structure a larger parser.
 </p>
 <p>
-  Unfortunately for us, the pattern names in the "using" declarations don't show up in the compiled binary's debug symbols, so your call stack will look like a big list of giant nested templates. This makes it nearly impossible to step through a matcher in a debugger because you can't easily look at the function name on the call stack and know where in the pattern you are.
+  Unfortunately for us, the pattern names in using declarations and typedefs don't show up in the compiled binary's debug symbols, so your call stack will look like a big list of giant nested templates. This makes it nearly impossible to step through a matcher in a debugger because you can't easily look at the function name on the call stack and know where in the pattern you are.
 </p>
 <p>
   One workaround is to group patterns together like the first JsonMatcher example that matches numbers. Then when you declare <span class="highlight">"using foo = Some&lt;JsonMatcher&gt;..."</span>, at least you'll see "JsonMatcher::match" on the call stack if you need to debug it.

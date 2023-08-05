@@ -1,5 +1,6 @@
 include rules.ninja
 
+# FIXME remove this before publishing
 subninja build_docs.ninja
 
 #-------------------------------------------------------------------------------

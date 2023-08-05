@@ -42,21 +42,25 @@ int main(int argc, char** argv) {
     "data/canada.json",
     "data/citm_catalog.json",
     "data/twitter.json",
+    "data/rapidjson_sample.json",
   };
 
-  double byte_accum = 0;
-  double line_accum = 0;
-  double match_time = 0;
-  double parse_time = 0;
+  double all_byte_accum = 0;
+  double all_line_accum = 0;
+  double all_match_time = 0;
+  double all_parse_time = 0;
 
   TextMatchContext ctx1;
   JsonContext ctx2;
 
   for (auto path : paths) {
-    if (verbose) {
-      printf("\n\n----------------------------------------\n");
-      printf("Parsing %s\n", path);
-    }
+    double byte_accum = 0;
+    double line_accum = 0;
+    double match_time = 0;
+    double parse_time = 0;
+
+    printf("----------------------------------------\n");
+    printf("Parsing %s\n", path);
 
     std::string buf;
     utils::read(path, buf);
@@ -134,21 +138,37 @@ int main(int argc, char** argv) {
     if (verbose) {
       //printf("Slab current      %d\n",  LinearAlloc::inst().current_size);
       //printf("Slab max          %d\n",  LinearAlloc::inst().max_size);
+      //printf("Sizeof(node) == %ld\n", sizeof(JsonNode));
     }
-    printf("Sizeof(node) == %ld\n", sizeof(JsonNode));
-    printf("Tree nodes        %ld\n", ctx2.node_count());
+
+    printf("\n");
+    printf("Tree nodes %ld\n", ctx2.node_count());
+    printf("Byte total %f\n", byte_accum);
+    printf("Line total %f\n", line_accum);
+    printf("Match time %f\n", match_time);
+    printf("Parse time %f\n", parse_time);
+    printf("Match byte rate  %f megabytes per second\n", (byte_accum / 1e6) / (match_time / 1e3));
+    printf("Match line rate  %f megalines per second\n", (line_accum / 1e6) / (match_time / 1e3));
+    printf("Parse byte rate  %f megabytes per second\n", (byte_accum / 1e6) / (parse_time / 1e3));
+    printf("Parse line rate  %f megalines per second\n", (line_accum / 1e6) / (parse_time / 1e3));
+
+    all_byte_accum += byte_accum;
+    all_line_accum += line_accum;
+    all_match_time += match_time;
+    all_parse_time += parse_time;
   }
 
-  printf("\n");
   printf("----------------------------------------\n");
-  printf("Byte total %f\n", byte_accum);
-  printf("Line total %f\n", line_accum);
-  printf("Match time %f\n", match_time);
-  printf("Parse time %f\n", parse_time);
-  printf("Match byte rate  %f megabytes per second\n", (byte_accum / 1e6) / (match_time / 1e3));
-  printf("Match line rate  %f megalines per second\n", (line_accum / 1e6) / (match_time / 1e3));
-  printf("Parse byte rate  %f megabytes per second\n", (byte_accum / 1e6) / (parse_time / 1e3));
-  printf("Parse line rate  %f megalines per second\n", (line_accum / 1e6) / (parse_time / 1e3));
+  printf("Results averaged over all test files:\n");
+  printf("\n");
+  printf("Byte total %f\n", all_byte_accum);
+  printf("Line total %f\n", all_line_accum);
+  printf("Match time %f\n", all_match_time);
+  printf("Parse time %f\n", all_parse_time);
+  printf("Match byte rate  %f megabytes per second\n", (all_byte_accum / 1e6) / (all_match_time / 1e3));
+  printf("Match line rate  %f megalines per second\n", (all_line_accum / 1e6) / (all_match_time / 1e3));
+  printf("Parse byte rate  %f megabytes per second\n", (all_byte_accum / 1e6) / (all_parse_time / 1e3));
+  printf("Parse line rate  %f megalines per second\n", (all_line_accum / 1e6) / (all_parse_time / 1e3));
   printf("\n");
 
   return 0;

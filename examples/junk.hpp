@@ -1,3 +1,10 @@
+# It's all a bunch of templates? Really?
+If you're familiar with C++ templates, you are probably concerned that this library will cause your binary size to explode and your compiler to grind to a halt.
+
+I can assure you that that's not the case - binary sizes and compile times for even pretty large matchers are fine, though the resulting debug symbols are so enormous as to be useless.
+
+
+
 After compilation, the trees of templates turn into trees of tiny simple function calls. GCC and Clang do an exceptionally good job of optimizing these down into functions that are nearly as small and fast as if you'd written them by hand. The generated assembly looks good, and the code size can actually be smaller than hand-written as GCC can dedupe redundant template instantiations in a lot of cases.
 
 Matcheroni includes a small [benchmark](matcheroni/benchmark.cpp) that compares build time, binary size, and performance against some other popular header-only regex libraries.

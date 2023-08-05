@@ -28,46 +28,56 @@ Matcheroni and Parseroni generate tiny, fast parsers that are easy to customize 
 
 # Quick Reference
 
-| Regex Syntax | Matcheroni Syntax | Regex Example | Matcheroni Example |
-| ----------- | ----------- | ----------- | ----------- |
-| (single char) | Atom&lt;char&gt; | /a/ | Atom&lt;'a'&gt; |
-| (literal string) | Lit&lt;string&gt; | /foobar/ | Lit&lt;"foobar"&gt; |
-| (sequence of patterns) | Seq&lt;...&gt; | /abc/ | Seq&lt;Atom&lt;'a'&gt;, Atom&lt;'b'&gt;, Atom&lt;'c'&gt;&gt; |
-| pattern* | Any&lt;pattern&gt; | /a*/ | Any&lt;Atom&lt;'a'&gt;&gt; |
-| pattern+ | Some&lt;pattern&gt; | /a+/ | Some&lt;Atom&lt;'a'&gt;&gt;  |
-| pattern? | Opt&lt;pattern&gt; | /a?/ | Opt&lt;Atom&lt;'a'&gt;&gt; |
-| [a-z] | Range&lt;'a','z'&gt; |
-| [a-zA-Z0-9] | Range&lt;'a','z','A','Z','0','9'&gt;|
-| [^a-z] | NotRange&lt;'a','z'&gt; |
-| (a\|b) | Oneof&lt;a,b&gt; |
-
 <br>
 
-| PEG            | Regex       | Matcheroni                | Description |
-| -------------- | ----------- | ------------------------- | ----------- |
-| Terminal       |             | Atom&lt;&gt;, Lit&lt;&gt; |             |
-| Sequence       |             |                           |             |
-| Ordered Choice |             |                           |             |
-| Zero-or-more   |             |                           |             |
-| One-or-more    |             |                           |             |
-| Optional       |             |                           |             |
-| And-predicate  |             |                           |             |
-| Not-predicate  |             |                           |             |
+### Translating from regular expressions to Matcheroni:
+
+| Regex syntax | Matcheroni syntax                   | Description |
+| -----------  | ----------------------------------- | ----------- |
+| abc          | Seq&lt;Atom&lt;'a'&gt;, Atom&lt;'b'&gt;, Atom&lt;'c'&gt;&gt; | Matches a sequence of atoms as individual atoms. |
+| abc          | Lit&lt;"abc"&gt;                    | Matches a literal string |
+| .            | AnyAtom&lt;&gt;                     | Matches _any_ atom (does not actually look at the atom) |
+| \\w          | Range&lt;'a','z','A','Z','0','9'&gt;| Matches "word" characters |
+| [a-z]        | Range&lt;'a','z'&gt;                | Matches a range of atoms. |
+| [a-zA-Z0-9]  | Range&lt;'a','z','A','Z','0','9'&gt;| Matches multiple ranges of atoms. |
+| [^a-z]       | NotRange&lt;'a','z'&gt;             | Matches atoms _not_ in a range. |
+| (a\|b)       | Oneof&lt;a,b&gt;                    | Tests sub-patterns in order, stopping at the first match |
+| a*           | Any&lt;a&gt;                        | Matches zero or more instances of the sub-pattern(s) |
+| a+           | Some&lt;a&gt;                       | Matches one or more instances of the sub-pattern(s) |
+| a?           | Opt&lt;a&gt;                        | Matches zero or one instance of the sub-pattern(s) |
+| a{N}         | Rep&lt;a, N&gt;                     | Matches N repetitions of A |
+| a{M,N}       | RepRange&lt;a, M, N&gt;             | Matches between M and N repetitions of A |
 
 
+### Translating from PEG rules to Matcheroni:
 
-- ```Atom<x, y, ...>``` matches any single "atom" of your input that is equal to one of the template parameters. Atoms can be characters, objects, or whatever as long as you implement ```atom_cmp(...)``` for them. Atoms "consume" input and advance the read cursor when they match.
-- ```Seq<x, y, ...>``` matches sequences of other matchers.
-- ```Oneof<x, y, ...>``` returns the result of the first successful sub-matcher. Like parsing expression grammars, there is no backtracking - if ```x``` matches, we will never back up and try ```y```.
-- ```Any<x>``` is equivalent to ```x*``` in regex - it matches zero or more instances of ```x```.
-- ```Some<x>``` is equivalent to ```x+``` in regex - it matches one or more instances of ```x```.
-- ```Opt<x>``` is equivalent to ```x?``` in regex - it matches exactly 0 or 1 instances of ```x```.
-- ```And<x>``` matches ```x``` but does _not_ advance the read cursor.
-- ```Not<x>``` matches if ```x``` does _not_ match and does _not_ advance the read cursor.
-
+| PEG rules         | Matcheroni syntax                   | Description |
+| ----------------- | ----------------------------------- | ----------- |
+| Terminal          | Atom&lt;'a'&gt;, Lit&lt;"foo"&gt;   | Matches a single atom or a literal string |
+| Sequence          | Seq&lt;a,b&gt;                      | Matches a sequence of sub-patterns. |
+| Ordered Choice    | Oneof&lt;a,b&gt;                    | Tests sub-patterns in order, stopping at the first match |
+| Zero-or-more      | Any&lt;a&gt;                        | Matches zero or more instances of the sub-pattern(s) |
+| One-or-more       | Some&lt;a&gt;                       | Matches one or more instances of the sub-pattern(s) |
+| Optional          | Opt&lt;a&gt;                        | Matches zero or one instance of the sub-pattern(s) |
+| And-predicate     | And&lt;a&gt;                        | Fails matching if the pattern does _not_ match. Does _not_ consume any input. |
+| Not-predicate     | Not&lt;a&gt;                        | Fails matching if the pattern _does_ match. Does _not_ consume any input. |
 
 # Recipes
 
+# Additional built-in matchers for convenience
+While writing the C lexer and parser demos, I found myself needing some additional pieces:
+
+- ```Rep&lt;N, x&gt;``` matches ```x``` N times.
+- ```NotAtom&lt;x, ...&gt;``` is equivalent to ```[^abc]``` in regex, and is faster than ```Seq&lt;Not&lt;Atom&lt;x, ...&gt;&gt;, AnyAtom&gt;```
+- ```Range&lt;x, y&gt;``` is equivalent to ```[x-y]``` in regex.
+- ```Until&lt;x&gt;``` matches anything until X matches, but does not consume X. Equivalent to ```Any&lt;Seq&lt;Not&lt;x&gt;,AnyAtom&gt;&gt;```
+- ```Ref&lt;f&gt;``` allows you to plug arbitrary code into a tree of matchers as long as ```f``` is a valid matching function. Ref can store pointers to free functions or member functions, but if you use member functions be sure to pass a pointer to the source object into the matcher via the ```ctx``` param.
+- ```StoreBackref&lt;x&gt; / MatchBackref&lt;x&gt;``` works like backreferences in regex, with a caveat - the backref is stored as a static variable _in_ the matcher's struct, so be careful with nesting these as you could clobber a backref on accident.
+- ```EOL``` matches newlines and end-of-file, but does not advance past it.
+- ```Lit&lt;x&gt;``` matches a C string literal (only valid for ```char``` atoms)
+- ```Keyword&lt;x&gt;``` matches a C string literal as if it was a single atom - this is only useful if your atom type can represent whole strings.
+- ```Charset&lt;x&gt;``` matches any ```char``` atom in the string literal ```x```, which can be much more concise than ```Atom&lt;'a', 'b', 'c', 'd', ...&gt;```
+- ```Map&lt;x, ...&gt;``` differs from the other matchers in that expects ```x``` to define both ```match()``` and ```match_key()```. ```Map&lt;&gt;``` is like ```Oneof&lt;&gt;``` except that it checks ```match_key()``` first and then returns the result of ```match()``` if the key pattern matched. It does _not_ check other alternatives once the key pattern matches. This should allow for more performant matchers, but I haven't used it much yet.
 
 
 
@@ -124,6 +134,7 @@ printf("%s", tail); // prints "tail"
 
 
 </pre>
+
 
 <div class="markdown"></div>
 
