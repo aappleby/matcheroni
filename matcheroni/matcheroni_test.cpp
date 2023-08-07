@@ -9,6 +9,10 @@ using namespace matcheroni;
 
 TextMatchContext ctx;
 
+bool operator == (TextSpan const& a, const char* text) {
+  return strcmp_span(a, text) == 0;
+}
+
 //------------------------------------------------------------------------------
 
 static int fail_count = 0;
@@ -351,9 +355,9 @@ void test_reprange() {
   TextSpan text;
   TextSpan tail;
 
-  text = utils::to_span("");
+  text = utils::to_span("bbbb");
   tail = RepRange<2, 3, Atom<'a'>>::match(ctx, text);
-  TEST(!tail.is_valid() && std::string(tail.end) == "");
+  TEST(!tail.is_valid() && std::string(tail.end) == "bbbb");
 
   text = utils::to_span("abbbb");
   tail = RepRange<2, 3, Atom<'a'>>::match(ctx, text);

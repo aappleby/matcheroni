@@ -233,7 +233,7 @@ int test_parser(int argc, char** argv) {
   printf("Parsing time   %f msec\n", parse_time);
   printf("Cleanup time   %f msec\n", cleanup_time);
   printf("\n");
-  //printf("Node pool      %d bytes\n", LinearAlloc::inst().max_size);
+  //printf("Node pool      %d bytes\n", LifoAlloc::inst().max_size);
   printf("File pass      %d\n", file_pass);
   printf("File fail      %d\n", file_fail);
   printf("File skip      %d\n", file_skip);

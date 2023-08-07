@@ -14,7 +14,7 @@ using namespace matcheroni;
 // frees must be in LIFO order - if you allocate A, B, and C, you must
 // deallocate in C-B-A order.
 
-struct LinearAlloc {
+struct LifoAlloc {
   struct Slab {
     size_t size() { return cursor - buf; }
     void clear() { cursor = buf; }
@@ -30,11 +30,11 @@ struct LinearAlloc {
   static constexpr int slab_size = 2 * 1024 * 1024 - header_size;
   static constexpr int alloc_overhead = 8;
 
-  LinearAlloc() {
+  LifoAlloc() {
     add_slab();
   }
 
-  ~LinearAlloc() {
+  ~LifoAlloc() {
     reset();
     auto c = top_slab;
     while (c) {
@@ -172,7 +172,7 @@ struct NodeContext {
     if (call_destructors) {
       for (auto slab = alloc.top_slab; slab; slab = slab->prev) {
         while(slab->cursor > slab->buf) {
-          slab->cursor -= LinearAlloc::alloc_overhead;
+          slab->cursor -= LifoAlloc::alloc_overhead;
           int alloc_size = *(uint64_t*)slab->cursor;
           slab->cursor -= alloc_size;
           NodeType* node = (NodeType*)slab->cursor;
@@ -247,7 +247,9 @@ struct NodeContext {
   // we must also throw away any parse nodes that were created during the failed
   // match.
 
-  NodeType* checkpoint() { return top_tail; }
+  NodeType* checkpoint() {
+    return top_tail;
+  }
 
   void rewind(NodeType* old_tail) {
     while(top_tail != old_tail) {
@@ -330,7 +332,7 @@ struct NodeContext {
 
   //----------------------------------------
 
-  LinearAlloc alloc;
+  LifoAlloc alloc;
   NodeType* top_head;
   NodeType* top_tail;
   int trace_depth;

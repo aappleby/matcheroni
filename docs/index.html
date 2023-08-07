@@ -3,7 +3,11 @@
 
 <head>
   <script src="assets/drawdown.js"></script>
+  <script src="assets/highlight.min.js"></script>
+
+  <script src="https://cdn.jsdelivr.net/npm/markdown-it@13.0.1/dist/markdown-it.min.js"></script>
   <link rel="stylesheet" href="top.css" />
+  <link rel="stylesheet" href="assets/vs2015.min.css" />
 
   <title>Matcheroni & Parseroni</title>
   <link rel="icon" type="image/x-icon" href="assets/favicon.ico">
@@ -12,136 +16,49 @@
 
 <body>
 
-<pre class="plain" style="display:none;">
-
-# Matcheroni Documentation
-
-[Matcheroni](https://github.com/aappleby/Matcheroni/blob/main/matcheroni/Matcheroni.hpp) is a minimalist, zero-dependency, single-header C++20 library for doing pattern matching using [Parsing Expression Grammars](https://en.wikipedia.org/wiki/Parsing_expression_grammar) (PEGs). PEGs are similar to regular expressions, but both more and less powerful.
-
-[Parseroni](https://github.com/aappleby/Matcheroni/blob/main/matcheroni/Parseroni.hpp) is a companion single-header library that can capture the content of Matcheroni patterns and assemble them into concrete [parse trees](https://en.wikipedia.org/wiki/Parse_tree).
-
-Matcheroni and Parseroni generate tiny, fast parsers that are easy to customize and integrate into your existing codebase.
-
-# Tutorial
-
-[Check out the tutorial here](tutorial/) - it will walk you through building a JSON parser using Matcheroni and Parseroni.
-
-# Quick Reference
-
-<br>
-
-### Translating from regular expressions to Matcheroni:
-
-| Regex syntax | Matcheroni syntax                   | Description |
-| -----------  | ----------------------------------- | ----------- |
-| abc          | Seq&lt;Atom&lt;'a'&gt;, Atom&lt;'b'&gt;, Atom&lt;'c'&gt;&gt; | Matches a sequence of atoms as individual atoms. |
-| abc          | Lit&lt;"abc"&gt;                    | Matches a literal string |
-| .            | AnyAtom&lt;&gt;                     | Matches _any_ atom (does not actually look at the atom) |
-| \\w          | Range&lt;'a','z','A','Z','0','9'&gt;| Matches "word" characters |
-| [a-z]        | Range&lt;'a','z'&gt;                | Matches a range of atoms. |
-| [a-zA-Z0-9]  | Range&lt;'a','z','A','Z','0','9'&gt;| Matches multiple ranges of atoms. |
-| [^a-z]       | NotRange&lt;'a','z'&gt;             | Matches atoms _not_ in a range. |
-| (a\|b)       | Oneof&lt;a,b&gt;                    | Tests sub-patterns in order, stopping at the first match |
-| a*           | Any&lt;a&gt;                        | Matches zero or more instances of the sub-pattern(s) |
-| a+           | Some&lt;a&gt;                       | Matches one or more instances of the sub-pattern(s) |
-| a?           | Opt&lt;a&gt;                        | Matches zero or one instance of the sub-pattern(s) |
-| a{N}         | Rep&lt;a, N&gt;                     | Matches N repetitions of A |
-| a{M,N}       | RepRange&lt;a, M, N&gt;             | Matches between M and N repetitions of A |
-
-
-### Translating from PEG rules to Matcheroni:
-
-| PEG rules         | Matcheroni syntax                   | Description |
-| ----------------- | ----------------------------------- | ----------- |
-| Terminal          | Atom&lt;'a'&gt;, Lit&lt;"foo"&gt;   | Matches a single atom or a literal string |
-| Sequence          | Seq&lt;a,b&gt;                      | Matches a sequence of sub-patterns. |
-| Ordered Choice    | Oneof&lt;a,b&gt;                    | Tests sub-patterns in order, stopping at the first match |
-| Zero-or-more      | Any&lt;a&gt;                        | Matches zero or more instances of the sub-pattern(s) |
-| One-or-more       | Some&lt;a&gt;                       | Matches one or more instances of the sub-pattern(s) |
-| Optional          | Opt&lt;a&gt;                        | Matches zero or one instance of the sub-pattern(s) |
-| And-predicate     | And&lt;a&gt;                        | Fails matching if the pattern does _not_ match. Does _not_ consume any input. |
-| Not-predicate     | Not&lt;a&gt;                        | Fails matching if the pattern _does_ match. Does _not_ consume any input. |
-
-# Recipes
-
-# Additional built-in matchers for convenience
-While writing the C lexer and parser demos, I found myself needing some additional pieces:
-
-- ```Rep&lt;N, x&gt;``` matches ```x``` N times.
-- ```NotAtom&lt;x, ...&gt;``` is equivalent to ```[^abc]``` in regex, and is faster than ```Seq&lt;Not&lt;Atom&lt;x, ...&gt;&gt;, AnyAtom&gt;```
-- ```Range&lt;x, y&gt;``` is equivalent to ```[x-y]``` in regex.
-- ```Until&lt;x&gt;``` matches anything until X matches, but does not consume X. Equivalent to ```Any&lt;Seq&lt;Not&lt;x&gt;,AnyAtom&gt;&gt;```
-- ```Ref&lt;f&gt;``` allows you to plug arbitrary code into a tree of matchers as long as ```f``` is a valid matching function. Ref can store pointers to free functions or member functions, but if you use member functions be sure to pass a pointer to the source object into the matcher via the ```ctx``` param.
-- ```StoreBackref&lt;x&gt; / MatchBackref&lt;x&gt;``` works like backreferences in regex, with a caveat - the backref is stored as a static variable _in_ the matcher's struct, so be careful with nesting these as you could clobber a backref on accident.
-- ```EOL``` matches newlines and end-of-file, but does not advance past it.
-- ```Lit&lt;x&gt;``` matches a C string literal (only valid for ```char``` atoms)
-- ```Keyword&lt;x&gt;``` matches a C string literal as if it was a single atom - this is only useful if your atom type can represent whole strings.
-- ```Charset&lt;x&gt;``` matches any ```char``` atom in the string literal ```x```, which can be much more concise than ```Atom&lt;'a', 'b', 'c', 'd', ...&gt;```
-- ```Map&lt;x, ...&gt;``` differs from the other matchers in that expects ```x``` to define both ```match()``` and ```match_key()```. ```Map&lt;&gt;``` is like ```Oneof&lt;&gt;``` except that it checks ```match_key()``` first and then returns the result of ```match()``` if the key pattern matched. It does _not_ check other alternatives once the key pattern matches. This should allow for more performant matchers, but I haven't used it much yet.
-
-
-
-
-# Examples
-Matcheroni patterns are roughly equivalent to regular expressions. A regular expression using the std::regex C++ library
-```cpp
-std::regex my_pattern("[abc]+def");
-```
-would be expressed in Matcheroni as
-```cpp
-using my_pattern = Seq&lt;Some&lt;Atom&lt;'a','b','c'&gt;&gt;, Lit&lt;"def"&gt;&gt;;
-```
-In the above line of code, we are defining the matcher "my_pattern" by nesting the Seq<>, Some<>, Atom<>, and Lit<> matcher templates. The resuling type (not instance) defines a static "match()" function that behaves similarly to the regex.
-
-Unlike std::regex, we don't need to link in any additional libraries or instantiate anything to use it:
-```cpp
-const std::string text = "aaabbaaccdefxyz";
-
-// The first argument to match() is a reference to a context object.
-// The second two arguments are the range of text to match against.
-// The match function returns the _end_ of the match, or nullptr if there was no match.
-TextMatchContext ctx;
-TextSpan tail = my_pattern::match(ctx, to_span(text));
-
-// Since we matched "aabbaaccdef", this prints "xyz".
-printf("%s\n", result);
-```
-
-Matchers are also modular - you could write the above as
-```cpp
-using abc = Atom&lt;'a','b','c'&gt;;
-using def = Lit&lt;"def"&gt;;
-using my_pattern = Seq&lt;Some&lt;abc&gt;, def&gt;;
-```
-and it would perform identically to the one-line version.
-
-Unlike regexes, matchers can be recursive. Note that you can't nest a pattern inside itself directly, as "using pattern" doesn't count as a declaration. Forward-declaring a matcher function and using that in a pattern works though (and you can refer to the "using" declaration before it's declared):
-```cpp
-
-static TextSpan match_parens(TextMatchContext& ctx, TextSpan body) {
-  return Seq&lt;Atom&lt;'('&gt;, Any&lt;parens, NotAtom&lt;')'&gt;&gt;, Atom&lt;')'&gt;&gt;::match(ctx, body);
-}
-using parens = Ref&lt;match_parens&gt;;
-
-// Now we can use the pattern
-std::string text = "(((foo)bar)baz)tail";
-TextMatchContext ctx;
-TextSpan tail = parens::match(ctx, to_span(text));
-printf("%s", tail); // prints "tail"
-```
-
-
-
-
-</pre>
-
-
 <div class="markdown"></div>
 
 <script>
-  let ein = document.querySelector(".plain")
+async function doMarkdown() {
+  let response = await fetch("index.md");
+  let text = await response.text();
+
+  var defaults = {
+    html: false, // Enable HTML tags in source
+    xhtmlOut: false, // Use '/' to close single tags (<br />)
+    breaks: false, // Convert '\n' in paragraphs into <br>
+    langPrefix: 'language-', // CSS language prefix for fenced blocks
+    linkify: true, // autoconvert URL-like texts to links
+    typographer: true, // Enable smartypants and other sweet transforms
+    // options below are for demo only
+    _highlight: true, // <= THIS IS WHAT YOU NEED
+    _strict: false,
+    _view: 'html' // html / src / debug
+  };
+
+  // and then do this:
+  defaults.highlight = function (str, lang) {
+    var esc = md.utils.escapeHtml;
+    //console.log(str)
+    //console.log(lang)
+    if (lang && hljs.getLanguage(lang)) {
+      try {
+        return '<pre class="hljs"><code>' +
+              hljs.highlight(str, {language:lang}).value +
+              '</code></pre>';
+      } catch (__) {}
+    }else{
+      return '<pre class="hljs"><code>' + esc(str) + '</code></pre>';
+    }
+  };
+
+
+  let md = window.markdownit(defaults);
   let eout = document.querySelector(".markdown")
-  eout.innerHTML = markdown(ein.innerText)
+  eout.innerHTML = md.render(text);
+}
+
+doMarkdown();
 </script>
 
 </body>

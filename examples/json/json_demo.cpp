@@ -99,8 +99,8 @@ int main(int argc, char** argv) {
     }
 
     if (verbose) {
-      //printf("Slab current      %d\n",  LinearAlloc::inst().current_size);
-      //printf("Slab max          %d\n",  LinearAlloc::inst().max_size);
+      //printf("Slab current      %d\n",  LifoAlloc::inst().current_size);
+      //printf("Slab max          %d\n",  LifoAlloc::inst().max_size);
       printf("Tree nodes        %ld\n", ctx.node_count());
     }
 

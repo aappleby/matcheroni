@@ -2,7 +2,7 @@ html {
   background-color: #444;
   color: #CCC;
   font-family: monospace;
-  font-size: 15px;
+  font-size: 16px;
 }
 
 body {
@@ -10,7 +10,7 @@ body {
   margin:auto;
   padding: 20px;
   width: fit-content;
-  max-width: 800px;
+  max-width: 1200px;
 }
 
 /* unvisited link */
@@ -23,12 +23,28 @@ a:visited {
   color: #DCF;
 }
 
+pre {
+  max-width:80ch;
+  margin:auto;
+}
+
+table tr td { font-size: 14px; }
+
 p {
   color: #CCC;
-  text-indent:30px;
+  /*text-indent:30px;*/
   margin-left:auto;
   margin-right:auto;
-  max-width:800px;
+  /*max-width:800px;*/
+  max-width:80ch;
+}
+
+table {
+  width: 100%;
+}
+
+td {
+  text-align:center;
 }
 
 .highlight {
@@ -36,6 +52,13 @@ p {
 }
 
 /******************************************************************************/
+
+hr {
+  color: #444;
+  background-color: #444;
+  border-color: #6D6D6D;
+  border-width: 2px;
+}
 
 pre {
   background-color: #222;
@@ -45,6 +68,12 @@ pre {
 table, th, td {
   border: 1px solid;
   border-collapse: collapse;
+  background-color: #222;
+}
+
+ul li {
+  width: 80ch;
+  margin:auto;
 }
 
 th, td {
@@ -53,4 +82,7 @@ th, td {
 
 h1, h2, h3, h4 {
   color: #CCE;
+  /*max-width:704px;*/
+  width:fit-content;
+  margin:auto;
 }

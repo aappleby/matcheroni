@@ -38,11 +38,6 @@ struct Span {
     return begin == c.begin && end == c.end;
   }
 
-  bool operator==(const char* text) {
-    matcheroni_assert(is_valid());
-    return strcmp_span(*this, text) == 0;
-  }
-
   bool is_empty() const { return begin && begin == end; }
   bool is_valid() const { return begin; }
 
@@ -51,12 +46,13 @@ struct Span {
   // fails if tail is EOF
   operator bool() const { return begin; }
 
-  //----------------------------------------
-
+  // Returns a "fail" span (nullptr, location) indicating the failure point of
+  // a match.
   [[nodiscard]] Span fail() const {
     return begin ? Span(nullptr, begin) : Span(begin, end);
   }
 
+  // Returns a span with span.begin advanced by 'offset' atoms.
   [[nodiscard]] Span advance(int offset) const {
     matcheroni_assert(begin);
     return {begin + offset, end};
@@ -331,6 +327,8 @@ struct Lit {
   }
 };
 
+// FIXME variadic?
+
 
 //------------------------------------------------------------------------------
 // 'Seq' (sequence) succeeds if all of its sub-matchers succeed in order.
@@ -500,6 +498,8 @@ struct Some {
 // The 'And' predicate matches a pattern but does _not_ advance the cursor.
 // Used for lookahead.
 
+// FIXME variadic?
+
 // And<Atom<'a'>>::match("abcd") == "abcd"
 // And<Atom<'a'>>::match("bcde") == nullptr
 
@@ -520,6 +520,8 @@ struct And {
 
 // Not<Atom<'a'>>::match("abcd") == nullptr
 // Not<Atom<'a'>>::match("bcde") == "bcde"
+
+// FIXME variadic?
 
 template <typename P>
 struct Not {
@@ -595,22 +597,22 @@ struct Rep {
 };
 
 //------------------------------------------------------------------------------
-// 'RepRange' is equivalent '{M,N}' in regex.
+// 'RepRange' is equivalent '{M,N}' in regex. C++ won't let us overload Rep<>
+// to handle both {N} and {M,N} :( .
 
 template <int M, int N, typename P>
 struct RepRange {
   template <typename context, typename atom>
   static Span<atom> match(context& ctx, Span<atom> body) {
     matcheroni_assert(body.is_valid());
-    body = Rep<M, P>::match(ctx, body);
-    if (!body.is_valid()) return body;
-
-    for (auto i = 0; i < N - M; i++) {
+    for (auto i = 0; i < N; i++) {
       auto tail = P::match(ctx, body);
-      if (!tail.is_valid()) break;
+      if (!tail.is_valid()) {
+        if (i < M) return tail;
+        else break;
+      }
       body = tail;
     }
-
     return body;
   }
 };
