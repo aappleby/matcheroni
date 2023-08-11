@@ -5,6 +5,8 @@
 
 #include "matcheroni/Matcheroni.hpp"
 
+#include <stdio.h>
+
 namespace parseroni {
 
 using namespace matcheroni;
@@ -253,6 +255,7 @@ struct NodeContext {
 
   void rewind(NodeType* old_tail) {
     while(top_tail != old_tail) {
+      //printf("rewind!\n");
       auto dead = top_tail;
       top_tail = top_tail->node_prev;
       recycle(dead);

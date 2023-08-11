@@ -115,12 +115,17 @@ inline void print_tree(TextSpan text, const node_type* node, int width, int dept
 }
 
 template<typename context>
-inline void print_summary(const context& ctx, TextSpan text, TextSpan tail, int width) {
-  print_summary(text, tail, width);
+inline void print_trees(const context& ctx, TextSpan text, int width) {
   printf("Parse tree:\n");
   for (auto node = ctx.top_head; node; node = node->node_next) {
     print_tree(text, node, width, 0);
   }
+}
+
+template<typename context>
+inline void print_summary(const context& ctx, TextSpan text, TextSpan tail, int width) {
+  print_summary(text, tail, width);
+  print_trees(ctx, text, width);
 }
 
 //------------------------------------------------------------------------------

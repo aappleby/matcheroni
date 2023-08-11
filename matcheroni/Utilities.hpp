@@ -205,6 +205,10 @@ inline std::string read(const char* path) {
   return buf;
 }
 
+inline std::string read(const std::string& path) {
+  return read(path.c_str());
+}
+
 inline void read(const char* path, std::string& text) {
   struct stat statbuf;
   if (stat(path, &statbuf) == -1) return;

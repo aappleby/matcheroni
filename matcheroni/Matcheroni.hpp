@@ -13,6 +13,8 @@
 
 #define matcheroni_assert(A)
 
+#include <assert.h>
+
 namespace matcheroni {
 
 //------------------------------------------------------------------------------
@@ -33,6 +35,16 @@ struct Span {
   }
 
   //----------------------------------------
+
+  Span operator - (const Span& b) const {
+    const Span& a = *this;
+    if (a.is_valid() && b.is_valid() && a.begin <= b.begin && a.end == b.end) {
+      return Span(a.begin, b.begin);
+    }
+    else {
+      assert(false);
+    }
+  }
 
   bool operator==(const Span& c) const {
     return begin == c.begin && end == c.end;
@@ -56,6 +68,11 @@ struct Span {
   [[nodiscard]] Span advance(int offset) const {
     matcheroni_assert(begin);
     return {begin + offset, end};
+  }
+
+  [[nodiscard]] Span consume() const {
+    matcheroni_assert(begin);
+    return {end, end};
   }
 
   //----------------------------------------
@@ -461,6 +478,7 @@ struct Any {
         break;
       }
       body = tail;
+      if (body.is_empty()) break;
     }
 
     return body;
@@ -508,6 +526,8 @@ struct And {
   template <typename context, typename atom>
   static Span<atom> match(context& ctx, Span<atom> body) {
     matcheroni_assert(body.is_valid());
+    if (body.is_empty()) return body.fail();
+
     auto bookmark = ctx.checkpoint();
     auto tail = P::match(ctx, body);
     if (bookmark != ctx.checkpoint()) ctx.rewind(bookmark);
@@ -528,10 +548,28 @@ struct Not {
   template <typename context, typename atom>
   static Span<atom> match(context& ctx, Span<atom> body) {
     matcheroni_assert(body.is_valid());
+    if (body.is_empty()) return body;
+
     auto bookmark = ctx.checkpoint();
     auto tail = P::match(ctx, body);
     if (bookmark != ctx.checkpoint()) ctx.rewind(bookmark);
     return tail.is_valid() ? body.fail() : body;
+  }
+};
+
+//------------------------------------------------------------------------------
+// Matches 'pattern', sends the matching span to 'sink'.
+
+template<typename pattern, typename sink>
+struct Dispatch {
+  template <typename context, typename atom>
+  static Span<atom> match(context& ctx, Span<atom> body) {
+    auto tail = pattern::match(ctx, body);
+    if (tail.is_valid()) {
+      auto head = body - tail;
+      sink::match(ctx, head);
+    }
+    return tail;
   }
 };
 
@@ -841,6 +879,16 @@ struct DelimitedList {
     return body;
   }
 };
+
+//------------------------------------------------------------------------------
+
+struct Empty {
+  template <typename context, typename atom>
+  static Span<atom> match(context& ctx, Span<atom> body) {
+    return body.is_empty() ? body : body.fail();
+  }
+};
+
 
 //------------------------------------------------------------------------------
 // 'EOL' matches newline and EOF, but does not advance past it.

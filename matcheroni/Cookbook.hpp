@@ -5,6 +5,12 @@ namespace matcheroni {
 namespace cookbook {
 
 //----------------------------------------
+// Splits a file into lines and sends the lines to 'sink'
+
+template<typename sink>
+using to_lines = Any<Seq<Dispatch<Until<Atom<'\n'>>, sink>, Opt<Atom<'\n'>>>>;
+
+//----------------------------------------
 // Character types from ctype.h
 
 using isalnum = Range<'0','9','a','z','A','Z'>;
@@ -50,10 +56,21 @@ using squote_span  = delimited_span<Atom<'\''>, Atom<'\''>>;  // note - no \' su
 using bracket_span = delimited_span<Atom<'['>,  Atom<']'>>;
 using brace_span   = delimited_span<Atom<'{'>,  Atom<'}'>>;
 using paren_span   = delimited_span<Atom<'('>,  Atom<')'>>;
+using angle_span   = delimited_span<Atom<'<'>,  Atom<'>'>>;
 
 // Python's triple-double-quoted string literal
 using triple_quote = Lit<R"(""")">;
 using multiline_string = delimited_span<triple_quote, triple_quote>;
+
+//----------------------------------------
+// C #includes
+
+template<typename sink>
+using c_include_line = Seq<
+  Lit<"#include">,
+  Some<isspace>,
+  Dispatch<Oneof<dquote_span, angle_span>, sink>
+>;
 
 //----------------------------------------
 // Separated = a,   b , c   , d
