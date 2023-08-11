@@ -21,6 +21,12 @@
 namespace matcheroni {
 namespace utils {
 
+inline void print_span(const char* prefix, TextSpan span) {
+  printf("%s", prefix);
+  for (auto c = span.begin; c < span.end; c++) putc(*c, stdout);
+  putc('\n', stdout);
+}
+
 //------------------------------------------------------------------------------
 
 template<typename T>
