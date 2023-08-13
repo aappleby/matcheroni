@@ -142,6 +142,7 @@ struct NodeBase {
   SpanType    span;
   uint64_t    flags;
 
+  NodeType*   node_parent;
   NodeType*   node_prev;
   NodeType*   node_next;
   NodeType*   child_head;
@@ -199,6 +200,7 @@ struct NodeContext {
   //----------------------------------------
 
   void append(NodeType* new_node) {
+    new_node->node_parent = nullptr;
     new_node->node_prev = nullptr;
     new_node->node_next = nullptr;
     new_node->child_head = nullptr;
@@ -238,6 +240,8 @@ struct NodeContext {
 
     child_head->node_prev = nullptr;
     child_tail->node_next = nullptr;
+
+    for (auto c  = child_head; c; c = c->node_next) c->node_parent = new_node;
 
     if (top_head == child_head) top_head = new_node;
     if (top_tail == child_tail) top_tail = new_node;
