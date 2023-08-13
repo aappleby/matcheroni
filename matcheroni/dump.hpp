@@ -102,7 +102,7 @@ inline void print_summary(TextSpan text, TextSpan tail, int width) {
 // Prints a text representation of the parse tree.
 
 template<typename node_type>
-inline void print_tree(TextSpan text, const node_type* node, int width, int depth, int max_depth) {
+inline void print_tree(TextSpan text, const node_type* node, int width, int depth, int max_depth = 0) {
 
   auto span = node->as_text();
 
@@ -117,7 +117,7 @@ inline void print_tree(TextSpan text, const node_type* node, int width, int dept
 }
 
 template<typename context>
-inline void print_trees(const context& ctx, TextSpan text, int width, int max_depth) {
+inline void print_trees(const context& ctx, TextSpan text, int width, int max_depth = 0) {
   printf("Parse tree:\n");
   for (auto node = ctx.top_head; node; node = node->node_next) {
     print_tree(text, node, width, 0, max_depth);
