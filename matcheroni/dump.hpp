@@ -104,7 +104,7 @@ inline void print_summary(TextSpan text, TextSpan tail, int width) {
 template<typename node_type>
 inline void print_tree(TextSpan text, const node_type* node, int width, int depth, int max_depth = 0) {
 
-  auto span = node->as_text();
+  auto span = node->as_text_span();
 
   print_match(span.begin, span.end, text.end, 0x80FF80, 0xCCCCCC, width);
   print_trellis(depth, node->match_name, "", 0xFFAAAA);

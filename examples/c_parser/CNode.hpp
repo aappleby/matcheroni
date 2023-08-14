@@ -18,7 +18,7 @@ struct CNode : public parseroni::NodeBase<CNode, CToken> {
   using AtomType = CToken;
   using SpanType = matcheroni::Span<CToken>;
 
-  matcheroni::TextSpan as_text() const {
+  matcheroni::TextSpan as_text_span() const {
     return matcheroni::TextSpan(span.begin->text.begin, (span.end - 1)->text.end);
   }
 

@@ -12,7 +12,7 @@ using namespace parseroni;
 //------------------------------------------------------------------------------
 
 struct TestNode : public NodeBase<TestNode, char>, public utils::InstanceCounter<TestNode> {
-  TextSpan as_text() const { return span; }
+  TextSpan as_text_span() const { return span; }
 };
 
 struct TestContext : public NodeContext<TestNode> {

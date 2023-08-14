@@ -438,7 +438,7 @@ struct CaptureEnd {
 // We'll be parsing text a lot, so these are convenience declarations.
 
 struct TextParseNode : public NodeBase<TextParseNode, char> {
-  TextSpan as_text() const { return span; }
+  TextSpan as_text_span() const { return span; }
 };
 
 struct TextParseContext : public NodeContext<TextParseNode> {

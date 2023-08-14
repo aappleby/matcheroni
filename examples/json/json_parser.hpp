@@ -5,7 +5,7 @@
 
 // JsonNodes are basically the same as TextNodes
 struct JsonNode : public parseroni::NodeBase<JsonNode, char> {
-  matcheroni::TextSpan as_text() const { return span; }
+  matcheroni::TextSpan as_text_span() const { return span; }
 };
 
 // Our nodes don't have anything to construct or destruct, so we turn

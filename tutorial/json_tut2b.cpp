@@ -10,7 +10,7 @@ using namespace parseroni;
 // Our base node type is the same as TextParseNode, with the addition of a
 // sum() method.
 struct JsonNode : public NodeBase<JsonNode, char> {
-  TextSpan as_text() const { return span; }
+  TextSpan as_text_span() const { return span; }
 
   virtual double sum() {
     double result = 0;
