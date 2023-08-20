@@ -2,10 +2,9 @@
 #include <stdlib.h>  // for malloc/free
 #include <string.h>
 #include <stdint.h>
+#include <stdio.h>
 
 #include "matcheroni/Matcheroni.hpp"
-
-#include <stdio.h>
 
 namespace parseroni {
 
@@ -117,15 +116,15 @@ struct NodeBase {
 
   //----------------------------------------
 
-  void init(const char* match_name, SpanType span, uint64_t flags) {
-    this->match_name = match_name;
+  void init(const char* match_tag, SpanType span, uint64_t flags) {
+    this->match_tag = match_tag;
     this->span  = span;
     this->flags = flags;
   }
 
   NodeType* child(const char* name) {
     for (auto c = child_head; c; c = c->node_next) {
-      if (strcmp(name, c->match_name) == 0) return c;
+      if (strcmp(name, c->match_tag) == 0) return c;
     }
     return nullptr;
   }
@@ -136,9 +135,13 @@ struct NodeBase {
     return accum;
   }
 
+  bool tag_is(const char* name) {
+    return strcmp(match_tag, name) == 0;
+  }
+
   //----------------------------------------
 
-  const char* match_name;
+  const char* match_tag;
   SpanType    span;
   uint64_t    flags;
 
@@ -351,7 +354,7 @@ struct NodeContext {
 // matcher that constructs a new NodeType() for a successful match, attaches
 // any sub-nodes to it, and places it on the context's node list.
 
-template <StringParam match_name, typename pattern, typename node_type>
+template <StringParam match_tag, typename pattern, typename node_type>
 struct Capture {
   static_assert((sizeof(node_type) & 7) == 0);
 
@@ -368,7 +371,7 @@ struct Capture {
         new (new_node) node_type();
       }
       ctx.merge_node(new_node, old_tail);
-      new_node->init(match_name.str_val, node_span, 0);
+      new_node->init(match_tag.str_val, node_span, 0);
     }
 
     return tail;
@@ -410,7 +413,7 @@ struct CaptureBegin {
 
 //----------------------------------------
 
-template<StringParam match_name, typename P, typename node_type>
+template<StringParam match_tag, typename P, typename node_type>
 struct CaptureEnd {
   static_assert((sizeof(node_type) & 7) == 0);
 
@@ -426,7 +429,7 @@ struct CaptureEnd {
       }
 
       ctx.merge_node(new_node, ctx.top_tail);
-      new_node->init(match_name.str_val, new_span, /*flags*/ 1);
+      new_node->init(match_tag.str_val, new_span, /*flags*/ 1);
       // if (new_node->span.end > ctx._highwater) ctx._highwater = new_node->span.end;
     }
     return tail;

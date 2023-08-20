@@ -107,7 +107,7 @@ inline void print_tree(TextSpan text, const node_type* node, int width, int dept
   auto span = node->as_text_span();
 
   print_match(span.begin, span.end, text.end, 0x80FF80, 0xCCCCCC, width);
-  print_trellis(depth, node->match_name, "", 0xFFAAAA);
+  print_trellis(depth, node->match_tag, "", 0xFFAAAA);
 
   if (max_depth && depth == max_depth) return;
 
@@ -236,7 +236,7 @@ inline void print_bar2(int depth, TextSpan body, const char* val, const char* su
 inline void print_tree2(const CNode* node, int depth = 0) {
   TextSpan text(node->span.a->a, node->span.b->a);
 
-  print_bar2(depth, text, node->match_name, "");
+  print_bar2(depth, text, node->match_tag, "");
   for (auto c = node->child_head; c; c = c->node_next) {
     print_tree2(c, depth + 1);
   }
@@ -250,7 +250,7 @@ void CNode::dump_tree(int max_depth, int indentation) {
   const CNode* n = this;
   if (max_depth && indentation == max_depth) return;
 
-  printf("%s %p {%p-%p} ", n->match_name, n, n->span.a, n->span.b);
+  printf("%s %p {%p-%p} ", n->match_tag, n, n->span.a, n->span.b);
   printf("\n");
   */
 

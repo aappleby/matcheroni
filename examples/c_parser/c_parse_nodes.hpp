@@ -1835,7 +1835,7 @@ struct NodeTypedef : public CNode, public PatternWrapper<NodeTypedef> {
     if (!decls) return;
     for (auto child = decls->child_head; child; child = child->node_next) {
 
-      if (strcmp(child->match_name, "decl") == 0) {
+      if (strcmp(child->match_tag, "decl") == 0) {
         extract_declarator(ctx, child);
       }
       else {

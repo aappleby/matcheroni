@@ -22,9 +22,9 @@ struct TestContext : public NodeContext<TestNode> {
 //------------------------------------------------------------------------------
 
 void sexp_to_string(TestNode* n, std::string& out) {
-  if (strcmp(n->match_name, "atom") == 0) {
+  if (strcmp(n->match_tag, "atom") == 0) {
     for (auto c = n->span.begin; c < n->span.end; c++) out.push_back(*c);
-  } else if (strcmp(n->match_name, "list") == 0) {
+  } else if (strcmp(n->match_tag, "list") == 0) {
     out.push_back('(');
     for (auto c = n->child_head; c; c = c->node_next) {
       sexp_to_string((TestNode*)c, out);

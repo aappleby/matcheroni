@@ -66,14 +66,14 @@ struct InstanceCounter {
 // Uncomment this to print a full trace of the regex matching process. Note -
 // the trace will be _very_ long, even for small regexes.
 
-template <StringParam match_name, typename P>
+template <StringParam match_tag, typename P>
 struct TraceText {
   template<typename context, typename atom>
   static Span<atom> match(context& ctx, Span<atom> body) {
     matcheroni_assert(body.is_valid());
     if (body.is_empty()) return body.fail();
 
-    auto name = match_name.str_val;
+    auto name = match_tag.str_val;
 
     //print_bar(ctx.trace_depth++, body, name, "?");
     int depth = ctx.trace_depth++;
@@ -197,7 +197,7 @@ template<typename node_type>
 inline uint64_t hash_tree(const node_type* node, int depth = 0) {
   uint64_t h = 1 + depth * 0x87654321;
 
-  for (auto c = node->match_name; *c; c++) {
+  for (auto c = node->match_tag; *c; c++) {
     h = (h * 975313579) ^ *c;
   }
 
@@ -219,6 +219,77 @@ inline uint64_t hash_context(context& ctx) {
     h = (h * 373781549) ^ hash_tree(node);
   }
   return h;
+}
+
+//------------------------------------------------------------------------------
+
+constexpr uint32_t pack_color(double r, double g, double b) {
+  int ir = int(r * 255.0);
+  int ig = int(g * 255.0);
+  int ib = int(b * 255.0);
+
+  auto result = (ib << 16) | (ig << 8) | (ir << 0);
+  printf("0x%08x\n", result);
+
+  return result;
+}
+
+constexpr uint32_t phi_color(int n) {
+
+  uint32_t colors[12] = {
+    0x00FF7F7F, // COL_BLUE
+    0x00FF7FBF, // COL_PURPLE
+    0x00FF7FFF, // COL_MAGENTA
+    0x00BF7FFF, // COL_PINK
+    0x007F7FFF, // COL_RED
+    0x007FBFFF, // COL_ORANGE
+    0x007FFFFF, // COL_YELLOW
+    0x007FFFBF, // COL_LIME
+    0x007FFF7F, // COL_GREEN
+    0x00BFFF7F, // COL_MINT
+    0x00FFFF7F, // COL_TEAL
+    0x00FFBF7F, // COL_SKY
+  };
+
+  return colors[n % 12];
+
+#if 0
+  //double phi = 1.61803398874989484820;
+  //double theta = (phi - 1.0) * n;
+
+
+  double theta = (1.0 / 12.0) * (n * 1);
+
+  theta = theta - int(theta);
+  theta = theta * 6.0;
+
+  //printf("%f\n", theta);
+
+  double s = 0.5;
+  double v = 1.0;
+
+  double a = theta - int(theta);
+  double b = 1.0;
+  double c = 1.0 - a;
+  double d = 0.0;
+
+  double max = v;
+  double min = (1 - s) * v;
+
+  a = (a * (max - min)) + min;
+  b = (b * (max - min)) + min;
+  c = (c * (max - min)) + min;
+  d = (d * (max - min)) + min;
+
+  //printf("%f %f %f %f\n", a, b, c, d);
+
+  if (theta < 1.0) return pack_color(a, d, b);
+  if (theta < 2.0) return pack_color(b, d, c);
+  if (theta < 3.0) return pack_color(b, a, d);
+  if (theta < 4.0) return pack_color(c, b, d);
+  if (theta < 5.0) return pack_color(d, b, a);
+  else             return pack_color(d, c, b);
+#endif
 }
 
 //------------------------------------------------------------------------------

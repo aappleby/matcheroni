@@ -24,7 +24,7 @@ struct CNode : public parseroni::NodeBase<CNode, CToken> {
 
   void debug_dump(std::string& out) {
     out += "[";
-    out += match_name;
+    out += match_tag;
     out += ":";
     if (child_head) {
       for (auto c = child_head; c; c = c->node_next) {
