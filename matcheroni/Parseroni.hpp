@@ -124,9 +124,15 @@ struct NodeBase {
 
   NodeType* child(const char* name) {
     for (auto c = child_head; c; c = c->node_next) {
-      if (strcmp(name, c->match_tag) == 0) return c;
+      if (c->tag_is(name)) return c;
     }
     return nullptr;
+  }
+
+  size_t child_count() {
+    size_t accum = 0;
+    for (auto c = child_head; c; c = c->node_next) accum++;
+    return accum;
   }
 
   size_t node_count() {
@@ -136,6 +142,7 @@ struct NodeBase {
   }
 
   bool tag_is(const char* name) {
+    if (match_tag == nullptr) return false;
     return strcmp(match_tag, name) == 0;
   }
 
@@ -372,6 +379,58 @@ struct Capture {
       }
       ctx.merge_node(new_node, old_tail);
       new_node->init(match_tag.str_val, node_span, 0);
+    }
+
+    return tail;
+  }
+};
+
+template <typename pattern, typename node_type>
+struct CaptureAnon {
+  static_assert((sizeof(node_type) & 7) == 0);
+
+  template<typename context, typename atom>
+  static Span<atom> match(context& ctx, Span<atom> body) {
+    auto old_tail = ctx.top_tail;
+    auto tail = pattern::match(ctx, body);
+
+    if (tail.is_valid()) {
+      Span<atom> node_span = {body.begin, tail.begin};
+
+      node_type* new_node = (node_type*)ctx.alloc.alloc(sizeof(node_type));
+      if (context::call_constructors) {
+        new (new_node) node_type();
+      }
+      ctx.merge_node(new_node, old_tail);
+      new_node->init(nullptr, node_span, 0);
+    }
+
+    return tail;
+  }
+};
+
+template<StringParam match_tag, typename pattern>
+struct Tag {
+
+  template<typename context, typename atom>
+  static Span<atom> match(context& ctx, Span<atom> body) {
+    auto old_tail = ctx.top_tail;
+    auto tail = pattern::match(ctx, body);
+    if (!tail.is_valid()) return tail;
+
+    int tail_len = 0;
+    for (auto c = ctx.top_tail; c != old_tail; c = c->node_prev) tail_len++;
+
+    if (tail_len) {
+      assert(tail_len == 1);
+      assert(ctx.top_tail->match_tag == nullptr);
+
+      if (ctx.top_tail->match_tag) {
+        ctx.top_tail->match_tag = "<BROKEN>";
+      }
+      else {
+        ctx.top_tail->match_tag = match_tag.str_val;
+      }
     }
 
     return tail;
