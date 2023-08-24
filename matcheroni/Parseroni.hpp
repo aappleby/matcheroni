@@ -208,6 +208,7 @@ struct NodeContext {
   }
 
   //----------------------------------------
+  // FIXME these operations need to be orthogonalized.
 
   void append(NodeType* new_node) {
     new_node->node_parent = nullptr;
@@ -258,6 +259,27 @@ struct NodeContext {
   }
 
   //----------------------------------------
+
+  template<typename node_type>
+  void enclose_tail(int count) {
+
+    node_type* new_node = (node_type*)alloc.alloc(sizeof(node_type));
+    if (call_constructors) {
+      new (new_node) node_type();
+    }
+
+    auto child_head = top_tail;
+    auto child_tail = top_tail;
+
+    for (int i = 0; i < count - 1; i++) {
+      child_head = child_head->node_prev;
+      assert(child_head);
+    }
+
+    splice(new_node, child_head, child_tail);
+  }
+
+  //----------------------------------------
   // If we get partway through a match and then fail for some reason, we must
   // "rewind" our match state back to the start of the failed match. This means
   // we must also throw away any parse nodes that were created during the failed
@@ -277,6 +299,28 @@ struct NodeContext {
   }
 
   //----------------------------------------
+
+  template<typename node_type>
+  node_type* create_node() {
+    node_type* new_node = (node_type*)alloc.alloc(sizeof(node_type));
+    if (call_constructors) {
+      new (new_node) node_type();
+    }
+    return new_node;
+  }
+
+  template<typename node_type>
+  node_type* create_and_append_node(NodeType* old_tail) {
+    node_type* new_node = (node_type*)alloc.alloc(sizeof(node_type));
+    if (call_constructors) {
+      new (new_node) node_type();
+    }
+    merge_node(new_node, old_tail);
+
+    return new_node;
+  }
+
+  //----------------------------------------
   // FIXME could this be faster if there was an append-only version for
   // captures without children?
 
@@ -290,7 +334,7 @@ struct NodeContext {
     } else {
       auto child_head = old_tail ? old_tail->node_next : top_head;
       auto child_tail = top_tail;
-      splice(new_node, (NodeType*)child_head, child_tail);
+      splice(new_node, child_head, child_tail);
     }
   }
 
@@ -372,12 +416,7 @@ struct Capture {
 
     if (tail.is_valid()) {
       Span<atom> node_span = {body.begin, tail.begin};
-
-      node_type* new_node = (node_type*)ctx.alloc.alloc(sizeof(node_type));
-      if (context::call_constructors) {
-        new (new_node) node_type();
-      }
-      ctx.merge_node(new_node, old_tail);
+      auto new_node = ctx.template create_and_append_node<node_type>(old_tail);
       new_node->init(match_tag.str_val, node_span, 0);
     }
 
@@ -396,12 +435,7 @@ struct CaptureAnon {
 
     if (tail.is_valid()) {
       Span<atom> node_span = {body.begin, tail.begin};
-
-      node_type* new_node = (node_type*)ctx.alloc.alloc(sizeof(node_type));
-      if (context::call_constructors) {
-        new (new_node) node_type();
-      }
-      ctx.merge_node(new_node, old_tail);
+      auto new_node = ctx.template create_and_append_node<node_type>(old_tail);
       new_node->init(nullptr, node_span, 0);
     }
 
@@ -423,7 +457,7 @@ struct Tag {
 
     if (tail_len) {
       assert(tail_len == 1);
-      assert(ctx.top_tail->match_tag == nullptr);
+      //assert(ctx.top_tail->match_tag == nullptr);
 
       if (ctx.top_tail->match_tag) {
         ctx.top_tail->match_tag = "<BROKEN>";
@@ -482,12 +516,7 @@ struct CaptureEnd {
     if (tail.is_valid()) {
       Span<atom> new_span(tail.begin, tail.begin);
 
-      node_type* new_node = (node_type*)ctx.alloc.alloc(sizeof(node_type));
-      if (context::call_constructors) {
-        new (new_node) node_type();
-      }
-
-      ctx.merge_node(new_node, ctx.top_tail);
+      auto new_node = ctx.template create_and_append_node<node_type>(ctx.top_tail);
       new_node->init(match_tag.str_val, new_span, /*flags*/ 1);
       // if (new_node->span.end > ctx._highwater) ctx._highwater = new_node->span.end;
     }
