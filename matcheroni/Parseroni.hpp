@@ -241,18 +241,22 @@ struct NodeContext {
   //----------------------------------------
 
   void splice(NodeType* new_node, NodeType* child_head, NodeType* child_tail) {
-    new_node->node_prev = child_head->node_prev;
-    new_node->node_next = child_tail->node_next;
+
+    new_node->node_prev  = child_head->node_prev;
+    new_node->node_next  = child_tail->node_next;
     new_node->child_head = child_head;
     new_node->child_tail = child_tail;
 
     if (child_head->node_prev) child_head->node_prev->node_next = new_node;
-    if (child_tail->node_next) child_head->node_next->node_prev = new_node;
+    if (child_tail->node_next) child_tail->node_next->node_prev = new_node;
 
     child_head->node_prev = nullptr;
     child_tail->node_next = nullptr;
 
-    for (auto c  = child_head; c; c = c->node_next) c->node_parent = new_node;
+    for (auto c  = child_head; c; c = c->node_next) {
+      assert(c->node_parent == nullptr);
+      c->node_parent = new_node;
+    }
 
     if (top_head == child_head) top_head = new_node;
     if (top_tail == child_tail) top_tail = new_node;
