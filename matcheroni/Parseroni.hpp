@@ -242,6 +242,7 @@ struct NodeContext {
 
   void splice(NodeType* new_node, NodeType* child_head, NodeType* child_tail) {
 
+    new_node->span       = SpanType(child_head->span.begin, child_tail->span.end);
     new_node->node_prev  = child_head->node_prev;
     new_node->node_next  = child_tail->node_next;
     new_node->child_head = child_head;
@@ -409,6 +410,7 @@ struct NodeContext {
 // matcher that constructs a new NodeType() for a successful match, attaches
 // any sub-nodes to it, and places it on the context's node list.
 
+/*
 template <StringParam match_tag, typename pattern, typename node_type>
 struct Capture {
   static_assert((sizeof(node_type) & 7) == 0);
@@ -427,6 +429,7 @@ struct Capture {
     return tail;
   }
 };
+*/
 
 template <typename pattern, typename node_type>
 struct CaptureAnon {
