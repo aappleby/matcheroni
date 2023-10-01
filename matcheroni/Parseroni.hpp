@@ -345,7 +345,7 @@ struct NodeContext {
 
   //----------------------------------------
 
-  NodeType* enclose_bookmark(NodeType* old_tail, NodeType::SpanType bounds) {
+  NodeType* enclose_bookmark(NodeType* old_tail, typename NodeType::SpanType bounds) {
 
     // Scan down the node list to find the bookmark
     auto node_b = old_tail ? old_tail->node_next : top_head;
@@ -402,7 +402,7 @@ struct NodeContext {
   NodeType* top_head;
   NodeType* top_tail;
   int trace_depth;
-  const SpanType::AtomType* _highwater = nullptr;
+  const typename SpanType::AtomType* _highwater = nullptr;
 };
 
 //------------------------------------------------------------------------------
