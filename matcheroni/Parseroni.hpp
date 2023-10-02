@@ -116,11 +116,7 @@ struct NodeBase {
 
   //----------------------------------------
 
-  void init(const char* match_tag, SpanType span, uint64_t flags) {
-    this->match_tag = match_tag;
-    this->span  = span;
-    this->flags = flags;
-  }
+  void init() {}
 
   NodeType* child(const char* name) {
     for (auto c = child_head; c; c = c->node_next) {
@@ -423,7 +419,10 @@ struct Capture {
     if (tail.is_valid()) {
       Span<atom> node_span = {body.begin, tail.begin};
       auto new_node = ctx.template create_and_append_node<node_type>(old_tail);
-      new_node->init(match_tag.str_val, node_span, 0);
+      new_node->match_tag = match_tag.str_val;
+      new_node->span = node_span;
+      new_node->flags = 0;
+      new_node->init();
     }
 
     return tail;
@@ -443,7 +442,10 @@ struct CaptureAnon {
     if (tail.is_valid()) {
       Span<atom> node_span = {body.begin, tail.begin};
       auto new_node = ctx.template create_and_append_node<node_type>(old_tail);
-      new_node->init(nullptr, node_span, 0);
+      new_node->match_tag = nullptr;
+      new_node->span = node_span;
+      new_node->flags = 0;
+      new_node->init();
     }
 
     return tail;
@@ -524,7 +526,10 @@ struct CaptureEnd {
       Span<atom> new_span(tail.begin, tail.begin);
 
       auto new_node = ctx.template create_and_append_node<node_type>(ctx.top_tail);
-      new_node->init(match_tag.str_val, new_span, /*flags*/ 1);
+      new_node->match_tag = match_tag.str_val;
+      new_node->span = new_span;
+      new_node->flags = 1;
+      new_node->init();
       // if (new_node->span.end > ctx._highwater) ctx._highwater = new_node->span.end;
     }
     return tail;
