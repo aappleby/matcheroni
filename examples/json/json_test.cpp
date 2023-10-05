@@ -46,7 +46,7 @@ int main(int argc, char** argv) {
     time_b = utils::timestamp_ms();
   }
 
-  printf("Parsing toml took %f msec\n", time_b - time_a);
+  printf("Parsing json took %f msec\n", time_b - time_a);
   utils::print_summary(ctx, text, tail, 50);
 
   return 0;

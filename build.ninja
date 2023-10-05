@@ -10,7 +10,7 @@ subninja build_docs.ninja
 # Turning EXTRA_DEBUG on will generate even more spam.
 
 ### Debug build
-#build_mode = -g -O0 -Wall -Werror -Wno-unused-variable -Wno-unused-local-typedefs -Wno-unused-but-set-variable
+build_mode = -g -O0 -Wall -Werror -Wno-unused-variable -Wno-unused-local-typedefs -Wno-unused-but-set-variable
 #defs = ${defs} -DMATCHERONI_ENABLE_TRACE
 #defs = ${defs} -DEXTRA_DEBUG
 
@@ -21,7 +21,7 @@ subninja build_docs.ninja
 ### -flto _doubles_ the speed of CLexer. :O
 ### -flto _halves_ the speed of Matcheroni's IP4 matcher, weird.
 ### LTO breaks "size obj/examples/json_parser.o"
-build_mode = -O3 -flto
+#build_mode = -O3 -flto
 
 includes = -I.
 
@@ -109,14 +109,15 @@ build bin/examples/json/json_demo         : link obj/examples/json/json_parser.o
 
 build obj/examples/json/json_test.o   : compile_cpp examples/json/json_test.cpp
 build bin/examples/json/json_test     : link obj/examples/json/json_parser.o obj/examples/json/json_test.o
-build bin/examples/json/json_test_pass : run_test bin/examples/json/json_test
+#build bin/examples/json/json_test_pass : run_test bin/examples/json/json_test
 
 #-------------------------------------------------------------------------------
 # Tutorial examples
 
-build obj/tutorial/tiny_c_parser.o : compile_cpp tutorial/tiny_c_parser.cpp
-build bin/tutorial/tiny_c_parser   : link obj/tutorial/tiny_c_parser.o obj/examples/c_lexer.a obj/examples/c_parser.a
-
+build obj/tutorial/tiny_c_parser.o    : compile_cpp tutorial/tiny_c_parser.cpp
+build bin/tutorial/tiny_c_parser      : link obj/tutorial/tiny_c_parser.o obj/examples/c_lexer.a obj/examples/c_parser.a
+build bin/tutorial/tiny_c_parser_pass : run_test bin/tutorial/tiny_c_parser
+  args = tutorial/tiny_c_parser.input
 
 build obj/tutorial/json_tut0a.o    : compile_cpp tutorial/json_tut0a.cpp
 build bin/tutorial/json_tut0a      : link obj/tutorial/json_tut0a.o

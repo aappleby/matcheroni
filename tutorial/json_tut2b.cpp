@@ -24,8 +24,7 @@ struct JsonNode : public NodeBase<JsonNode, char> {
 // We'll specialize JsonNode for numerical values by overriding init() to also
 // convert the matched text to a double.
 struct NumberNode : public JsonNode {
-  void init(const char* match_name, TextSpan span, uint64_t flags) {
-    JsonNode::init(match_name, span, flags);
+  void init() {
     value = atof(span.begin);
   }
 
@@ -136,9 +135,9 @@ struct JsonParser {
 };
 
 int main(int argc, char** argv) {
-  if (argc < 2) exit(-1);
+  const char* filename = argc < 2 ? "tutorial/json_tut2b.input" : argv[1];
 
-  std::string input = utils::read(argv[1]);
+  std::string input = utils::read(filename);
   TextSpan text = utils::to_span(input);
 
   JsonContext ctx;

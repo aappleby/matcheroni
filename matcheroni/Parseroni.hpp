@@ -144,15 +144,15 @@ struct NodeBase {
 
   //----------------------------------------
 
-  const char* match_tag;
+  const char* match_tag = nullptr;
   SpanType    span;
-  uint64_t    flags;
+  uint64_t    flags = 0;
 
-  NodeType*   node_parent;
-  NodeType*   node_prev;
-  NodeType*   node_next;
-  NodeType*   child_head;
-  NodeType*   child_tail;
+  NodeType*   node_parent = nullptr;
+  NodeType*   node_prev = nullptr;
+  NodeType*   node_next = nullptr;
+  NodeType*   child_head = nullptr;
+  NodeType*   child_tail = nullptr;
 };
 
 //------------------------------------------------------------------------------
@@ -429,6 +429,29 @@ struct Capture {
   }
 };
 */
+
+template <StringParam match_tag, typename pattern, typename node_type>
+struct Capture {
+  static_assert((sizeof(node_type) & 7) == 0);
+
+  template<typename context, typename atom>
+  static Span<atom> match(context& ctx, Span<atom> body) {
+    auto old_tail = ctx.top_tail;
+    auto tail = pattern::match(ctx, body);
+
+    if (tail.is_valid()) {
+      Span<atom> node_span = {body.begin, tail.begin};
+      auto new_node = ctx.template create_and_append_node<node_type>(old_tail);
+      new_node->match_tag = match_tag.str_val;
+      new_node->span = node_span;
+      new_node->flags = 0;
+      new_node->init();
+    }
+
+    return tail;
+  }
+};
+
 
 template <typename pattern, typename node_type>
 struct CaptureAnon {

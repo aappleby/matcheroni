@@ -15,7 +15,7 @@ rule link
   command = g++ -Wall ${build_mode} ${in} -lboost_system -lboost_regex -o ${out}
 
 rule run_test
-  command = ${in} ${args} >> /dev/null && touch ${out}
+  command = ${in} ${args} && touch ${out}
 
 rule iwyu
   command = include-what-you-use -std=c++20 -I. ${in} && touch ${out} 2> /dev/null

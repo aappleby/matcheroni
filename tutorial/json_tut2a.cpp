@@ -82,9 +82,9 @@ struct JsonParser {
 };
 
 int main(int argc, char** argv) {
-  if (argc < 2) exit(-1);
+  const char* filename = argc < 2 ? "tutorial/json_tut2a.input" : argv[1];
 
-  std::string input = utils::read(argv[1]);
+  std::string input = utils::read(filename);
   TextSpan text = utils::to_span(input);
 
   TextParseContext ctx;
