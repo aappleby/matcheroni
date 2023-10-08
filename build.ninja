@@ -1,31 +1,10 @@
-include rules.ninja
+platform=X64
 
-# FIXME remove this before publishing
-subninja build_docs.ninja
+target=DEBUG
+#target=RELEASE
+#target=SIZE
 
-#-------------------------------------------------------------------------------
-# Configuration
-
-# Turning tracing on will generate _ton_ of spam in the C parser demo.
-# Turning EXTRA_DEBUG on will generate even more spam.
-
-### Debug build
-build_mode = -g -O0 -Wall -Werror -Wno-unused-variable -Wno-unused-local-typedefs -Wno-unused-but-set-variable
-#defs = ${defs} -DMATCHERONI_ENABLE_TRACE
-#defs = ${defs} -DEXTRA_DEBUG
-
-### -Os needs stripping to minimize size
-#build_mode = -Os -fdata-sections -ffunction-sections -Wl,--gc-sections -Wl,-s
-
-### -O3 needs LTO to maximize performance
-### -flto _doubles_ the speed of CLexer. :O
-### -flto _halves_ the speed of Matcheroni's IP4 matcher, weird.
-### LTO breaks "size obj/examples/json_parser.o"
-#build_mode = -O3 -flto
-
-includes = -I.
-
-#include-what-you-use -Xiwyu --no_fwd_decls -std=c++20 -I. ${in}
+include config.ninja
 
 #-------------------------------------------------------------------------------
 # Tests
@@ -56,17 +35,22 @@ build bin/matcheroni/parseroni_test_pass  : run_test bin/matcheroni/parseroni_te
 #benchmark_defs = ${benchmark_defs} -DREGEX_BENCHMARK_SRELL
 
 # These defines are required to reduce the compiled size of the SRELL library used in the benchmark.
-#benchmark_defs = ${benchmark_defs} -DSRELL_NO_UNICODE_ICASE -DSRELL_NO_UNICODE_PROPERTY -DSRELL_NO_UNICODE_DATA -DSRELL_NO_NAMEDCAPTURE -DSRELL_NO_VMODE
+#benchmark_defs = ${benchmark_defs} -DSRELL_NO_UNICODE_ICASE
+#benchmark_defs = ${benchmark_defs} -DSRELL_NO_UNICODE_PROPERTY
+#benchmark_defs = ${benchmark_defs} -DSRELL_NO_UNICODE_DATA
+#benchmark_defs = ${benchmark_defs} -DSRELL_NO_NAMEDCAPTURE
+#benchmark_defs = ${benchmark_defs} -DSRELL_NO_VMODE
 
 # This SRELL define seems to break things
 #benchmark_defs = ${benchmark_defs} -DSRELL_NO_APIEXT
 
-#defs = ${defs} ${benchmark_defs}
-
 build obj/examples/regex/regex_parser.o : compile_cpp examples/regex/regex_parser.cpp
+  defines = ${defines} ${benchmark_defs}
 
 build obj/examples/regex/regex_benchmark.o : compile_cpp examples/regex/regex_benchmark.cpp
+
 build bin/examples/regex/regex_benchmark   : link obj/examples/regex/regex_parser.o obj/examples/regex/regex_benchmark.o
+  libraries = ${libraries} -lboost_system -lboost_regex
 
 build obj/examples/regex/regex_demo.o   : compile_cpp examples/regex/regex_demo.cpp
 build bin/examples/regex/regex_demo     : link obj/examples/regex/regex_parser.o obj/examples/regex/regex_demo.o
@@ -192,6 +176,3 @@ link $
 #build bin/examples/c_parser/c_parser_test_pass  : run_test bin/examples/c_parser/c_parser_test
 
 #-------------------------------------------------------------------------------
-
-#build obj/c_parser/c_reference_hax.o : compile_cpp examples/c_parser/c_reference_hax.cpp
-#build obj/c_parser/c_reference.o     : compile_cpp examples/c_parser/c_reference.cpp

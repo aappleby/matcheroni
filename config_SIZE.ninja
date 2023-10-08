@@ -1,0 +1,5 @@
+### -Os needs stripping to minimize size
+
+opts_c   = ${opts_c}   -Os -fdata-sections -ffunction-sections -Wl,--gc-sections -Wl,-s
+opts_cpp = ${opts_cpp} -Os -fdata-sections -ffunction-sections -Wl,--gc-sections -Wl,-s
+

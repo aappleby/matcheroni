@@ -1,6 +1,10 @@
-include rules.ninja
+platform=X64
 
-includes = -I.
+#target=DEBUG
+#target=RELEASE
+target=SIZE
+
+include config.ninja
 
 #-------------------------------------------------------------------------------
 # Emscripten

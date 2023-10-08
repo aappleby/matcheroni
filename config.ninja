@@ -1,0 +1,26 @@
+includes = ${includes} -I.
+
+################################################################################
+
+opts_c   = ${opts_c}   -Wall -Werror -Wno-unused-variable -Wno-unused-local-typedefs -Wno-unused-but-set-variable
+opts_c   = ${opts_cpp} -MMD
+
+opts_cpp = ${opts_cpp} -Wall -Werror -Wno-unused-variable -Wno-unused-local-typedefs -Wno-unused-but-set-variable
+opts_cpp = ${opts_cpp} -std=c++20 
+opts_cpp = ${opts_cpp} -MMD
+
+opts_ems = ${opts_ems} -std=c++20 -O2 -MMD
+
+opts_link_ems = ${opts_link_ems} -sEXPORT_ES6
+opts_link_ems = ${opts_link_ems} -sEXPORTED_RUNTIME_METHODS=['FS','callMain']
+opts_link_ems = ${opts_link_ems} -s MODULARIZE=1
+opts_link_ems = ${opts_link_ems} -sNO_DISABLE_EXCEPTION_CATCHING
+opts_link_ems = ${opts_link_ems} -sTOTAL_STACK=32MB
+opts_link_ems = ${opts_link_ems} -sINITIAL_MEMORY=64MB
+opts_link_ems = ${opts_link_ems} -sFORCE_FILESYSTEM
+
+################################################################################
+
+include config_${platform}.ninja
+include config_${target}.ninja
+include rules.ninja

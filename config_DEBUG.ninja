@@ -1,0 +1,9 @@
+# Turning tracing on will generate _ton_ of spam in the C parser demo.
+# Turning EXTRA_DEBUG on will generate even more spam.
+
+opts_c   = ${opts_c}   -g -O0
+opts_cpp = ${opts_cpp} -g -O0
+
+#defines = ${defines} -DMATCHERONI_ENABLE_TRACE
+#defines = ${defines} -DEXTRA_DEBUG
+
