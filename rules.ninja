@@ -10,10 +10,10 @@ rule compile_c
   depfile = ${out}.d
   deps = gcc
 
-rule static_lib
+rule c_library
   command = ar rcs ${out} ${in} > /dev/null
 
-rule link
+rule c_binary
   command = ${toolchain}-g++ ${opts_cpp} ${in} ${libraries} -o ${out}
 
 ################################################################################
@@ -24,12 +24,12 @@ rule compile_c_ems
   deps = gcc
 
 rule compile_cpp_ems
-  command = emcc ${opts_ems} ${includes} ${defines} -c ${in} -o ${out}
+  command = emcc ${ems_opts_cpp} ${includes} ${defines} -c ${in} -o ${out}
   depfile = ${out}.d
   deps = gcc
 
 rule link_ems
-  command = emcc ${opts_link_ems} --embed-file="${embed}" ${in} ${libraries} -o ${out}
+  command = emcc ${ems_opts_ld} --embed-file="${embed}" ${in} ${libraries} -o ${out}
 
 ################################################################################
 
