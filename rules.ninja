@@ -18,17 +18,17 @@ rule c_binary
 
 ################################################################################
 
-rule compile_c_ems
+rule ems_compile_c
   command = emcc ${opts_ems} ${includes} ${defines} -c ${in} -o ${out}
   depfile = ${out}.d
   deps = gcc
 
-rule compile_cpp_ems
+rule ems_compile_cpp
   command = emcc ${ems_opts_cpp} ${includes} ${defines} -c ${in} -o ${out}
   depfile = ${out}.d
   deps = gcc
 
-rule link_ems
+rule ems_js_binary
   command = emcc ${ems_opts_ld} --embed-file="${embed}" ${in} ${libraries} -o ${out}
 
 ################################################################################
@@ -38,10 +38,7 @@ rule run_test
 
 #include-what-you-use -Xiwyu --no_fwd_decls -std=c++20 -I. ${in}
 
-rule iwyu
-  command = include-what-you-use ${opts_cpp} ${includes} ${defines} ${in} && touch ${out} 2> /dev/null
-
-rule command
-  command = ${command}
+#rule iwyu
+#  command = include-what-you-use ${opts_cpp} ${includes} ${defines} ${in} && touch ${out} 2> /dev/null
 
 ################################################################################

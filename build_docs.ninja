@@ -1,26 +1,25 @@
-platform=X64
-
 target=DEBUG
 #target=RELEASE
 #target=SIZE
 
+toolchain=x86_64-linux-gnu
+
 include config.ninja
-include config_${platform}.ninja
 include config_${target}.ninja
 include rules.ninja
 
 #-------------------------------------------------------------------------------
 # Emscripten
 
-build obj/ems/examples/c_lexer/CLexer.o    : compile_cpp_ems examples/c_lexer/CLexer.cpp
-build obj/ems/examples/c_lexer/CToken.o    : compile_cpp_ems examples/c_lexer/CToken.cpp
-build obj/ems/examples/c_parser/CNode.o    : compile_cpp_ems examples/c_parser/CNode.cpp
-build obj/ems/examples/c_parser/CContext.o : compile_cpp_ems examples/c_parser/CContext.cpp
-build obj/ems/examples/c_parser/CScope.o   : compile_cpp_ems examples/c_parser/CScope.cpp
+build obj/ems/examples/c_lexer/CLexer.o    : ems_compile_cpp examples/c_lexer/CLexer.cpp
+build obj/ems/examples/c_lexer/CToken.o    : ems_compile_cpp examples/c_lexer/CToken.cpp
+build obj/ems/examples/c_parser/CNode.o    : ems_compile_cpp examples/c_parser/CNode.cpp
+build obj/ems/examples/c_parser/CContext.o : ems_compile_cpp examples/c_parser/CContext.cpp
+build obj/ems/examples/c_parser/CScope.o   : ems_compile_cpp examples/c_parser/CScope.cpp
 
-build obj/ems/tutorial/tiny_c_parser.o  : compile_cpp_ems tutorial/tiny_c_parser.cpp
+build obj/ems/tutorial/tiny_c_parser.o  : ems_compile_cpp tutorial/tiny_c_parser.cpp
 
-build docs/tutorial/tiny_c_parser.js : link_ems $
+build docs/tutorial/tiny_c_parser.js : ems_js_binary $
   obj/ems/tutorial/tiny_c_parser.o $
   obj/ems/examples/c_lexer/CLexer.o $
   obj/ems/examples/c_lexer/CToken.o $
@@ -31,26 +30,26 @@ build docs/tutorial/tiny_c_parser.js : link_ems $
   embed=tutorial
 
 
-build obj/ems/tutorial/json_tut0a.o  : compile_cpp_ems tutorial/json_tut0a.cpp
-build docs/tutorial/json_tut0a.js    : link_ems obj/ems/tutorial/json_tut0a.o | tutorial/json_tut0a.input
+build obj/ems/tutorial/json_tut0a.o  : ems_compile_cpp tutorial/json_tut0a.cpp
+build docs/tutorial/json_tut0a.js    : ems_js_binary obj/ems/tutorial/json_tut0a.o | tutorial/json_tut0a.input
   embed=tutorial
 
-build obj/ems/tutorial/json_tut1a.o  : compile_cpp_ems tutorial/json_tut1a.cpp
-build docs/tutorial/json_tut1a.js    : link_ems obj/ems/tutorial/json_tut1a.o | tutorial/json_tut1a.input
+build obj/ems/tutorial/json_tut1a.o  : ems_compile_cpp tutorial/json_tut1a.cpp
+build docs/tutorial/json_tut1a.js    : ems_js_binary obj/ems/tutorial/json_tut1a.o | tutorial/json_tut1a.input
   embed=tutorial
 
-build obj/ems/tutorial/json_tut1b.o  : compile_cpp_ems tutorial/json_tut1b.cpp
-build docs/tutorial/json_tut1b.js    : link_ems obj/ems/tutorial/json_tut1b.o | tutorial/json_tut1b.input
+build obj/ems/tutorial/json_tut1b.o  : ems_compile_cpp tutorial/json_tut1b.cpp
+build docs/tutorial/json_tut1b.js    : ems_js_binary obj/ems/tutorial/json_tut1b.o | tutorial/json_tut1b.input
   embed=tutorial
 
-build obj/ems/tutorial/json_tut1c.o  : compile_cpp_ems tutorial/json_tut1c.cpp
-build docs/tutorial/json_tut1c.js    : link_ems obj/ems/tutorial/json_tut1c.o | tutorial/json_tut1c.input
+build obj/ems/tutorial/json_tut1c.o  : ems_compile_cpp tutorial/json_tut1c.cpp
+build docs/tutorial/json_tut1c.js    : ems_js_binary obj/ems/tutorial/json_tut1c.o | tutorial/json_tut1c.input
   embed=tutorial
 
-build obj/ems/tutorial/json_tut2a.o  : compile_cpp_ems tutorial/json_tut2a.cpp
-build docs/tutorial/json_tut2a.js    : link_ems obj/ems/tutorial/json_tut2a.o | tutorial/json_tut2a.input
+build obj/ems/tutorial/json_tut2a.o  : ems_compile_cpp tutorial/json_tut2a.cpp
+build docs/tutorial/json_tut2a.js    : ems_js_binary obj/ems/tutorial/json_tut2a.o | tutorial/json_tut2a.input
   embed=tutorial
 
-build obj/ems/tutorial/json_tut2b.o  : compile_cpp_ems tutorial/json_tut2b.cpp
-build docs/tutorial/json_tut2b.js    : link_ems obj/ems/tutorial/json_tut2b.o | tutorial/json_tut2b.input
+build obj/ems/tutorial/json_tut2b.o  : ems_compile_cpp tutorial/json_tut2b.cpp
+build docs/tutorial/json_tut2b.js    : ems_js_binary obj/ems/tutorial/json_tut2b.o | tutorial/json_tut2b.input
   embed=tutorial
