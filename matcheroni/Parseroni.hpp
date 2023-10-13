@@ -239,10 +239,11 @@ struct NodeContext {
   void splice(NodeType* new_node, NodeType* child_head, NodeType* child_tail) {
 
     new_node->span       = SpanType(child_head->span.begin, child_tail->span.end);
-    new_node->node_prev  = child_head->node_prev;
-    new_node->node_next  = child_tail->node_next;
-    new_node->child_head = child_head;
-    new_node->child_tail = child_tail;
+    new_node->node_parent = nullptr;
+    new_node->node_prev   = child_head->node_prev;
+    new_node->node_next   = child_tail->node_next;
+    new_node->child_head  = child_head;
+    new_node->child_tail  = child_tail;
 
     if (child_head->node_prev) child_head->node_prev->node_next = new_node;
     if (child_tail->node_next) child_tail->node_next->node_prev = new_node;

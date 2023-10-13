@@ -3,13 +3,11 @@ includes = ${includes} -I.
 ################################################################################
 
 opts_c   = ${opts_c}   -Wall -Werror -Wno-unused-variable -Wno-unused-local-typedefs -Wno-unused-but-set-variable
-opts_c   = ${opts_cpp} -MMD
 
 opts_cpp = ${opts_cpp} -Wall -Werror -Wno-unused-variable -Wno-unused-local-typedefs -Wno-unused-but-set-variable
-opts_cpp = ${opts_cpp} -std=c++20 
-opts_cpp = ${opts_cpp} -MMD
+opts_cpp = ${opts_cpp} -std=c++20
 
-ems_opts_cpp = ${ems_opts_cpp} -std=c++20 -O2 -MMD
+ems_opts_cpp = ${ems_opts_cpp} -std=c++20 -O2
 
 ems_opts_ld = ${ems_opts_ld} -sEXPORT_ES6
 ems_opts_ld = ${ems_opts_ld} -sEXPORTED_RUNTIME_METHODS=['FS','callMain']
