@@ -31,22 +31,6 @@ const int reps = 100;
 #define MATCH
 #define PARSE
 
-TextSpan match_parens(TextMatchContext& ctx, TextSpan body);
-using parens = Ref<match_parens>;
-
-TextSpan match_parens(TextMatchContext& ctx, TextSpan body) {
-  using pattern = Seq< Atom<'('>, Opt<parens>, Atom<')'> >;
-  return pattern::match(ctx, body);
-}
-
-struct MyMatcher {
-  static TextSpan match_parens(TextMatchContext& ctx, TextSpan body) {
-    using pattern = Seq< Atom<'('>, Opt<parens>, Atom<')'> >;
-    return pattern::match(ctx, body);
-  }
-  using parens = Ref<match_parens>;
-};
-
 //------------------------------------------------------------------------------
 
 int main(int argc, char** argv) {
