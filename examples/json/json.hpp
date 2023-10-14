@@ -1,7 +1,8 @@
 #pragma once
 #include "matcheroni/Matcheroni.hpp"
 #include "matcheroni/Parseroni.hpp"
-#include <math.h>
+
+matcheroni::TextSpan match_json(matcheroni::TextMatchContext& ctx, matcheroni::TextSpan body);
 
 // JsonNodes are basically the same as TextNodes
 struct JsonNode : public parseroni::NodeBase<JsonNode, char> {
