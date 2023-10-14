@@ -1,5 +1,5 @@
-target=DEBUG
-#target=RELEASE
+#target=DEBUG
+target=RELEASE
 #target=SIZE
 
 toolchain=x86_64-linux-gnu

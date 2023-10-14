@@ -54,7 +54,6 @@ int main(int argc, char** argv) {
   printf("Matcheroni JSON matching/parsing benchmark\n");
 
   const char* paths[] = {
-    // should be 4609770 bytes
     "data/canada.json",
     "data/citm_catalog.json",
     "data/twitter.json",

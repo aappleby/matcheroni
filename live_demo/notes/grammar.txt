@@ -1,0 +1,27 @@
+onenine    := '1'...'9'
+digit      := '0' | onenine
+digits     := digit | digit digits
+fraction   := "" | '.' digits
+sign       := "" | '+' | '-'
+exponent   := "" | 'E' sign digits | 'e' sign digits
+integer    := digit | onenine digits | '-' digit | '-' onenine digits
+number     := integer fraction exponent
+
+hex        := digit | 'A'...'F' | 'a'...'f'
+escape     := '"' | '\' | '/' | 'b' | 'f' | 'n' | 'r' | 't' | 'u' hex hex hex hex
+character  := '0020' . '10FFFF' - '"' - '\' | '\' escape
+characters := "" | character characters
+string     := '"' characters '"'
+
+ws         := "" | '0020' ws | '000A' ws | '000D' ws | '0009' ws
+
+value      := object | array | string | number | "true" | "false" | "null"
+object     := '{' ws '}' | '{' members '}'
+members    := member | member ',' members
+member     := ws string ws ':' element
+array      := '[' ws ']' | '[' elements ']'
+
+element    := ws value ws
+elements   := element | element ',' elements
+
+json       := element

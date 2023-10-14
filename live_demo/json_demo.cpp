@@ -1,123 +1,84 @@
-//------------------------------------------------------------------------------
-// This file is a full working example of using Matcheroni to build a JSON
-// parser.
-
-// Example usage:
-// bin/json_parser test_file.json
-
-// SPDX-FileCopyrightText:  2023 Austin Appleby <aappleby@gmail.com>
-// SPDX-License-Identifier: MIT License
-
-#include "json_parser.hpp"
+#include "matcheroni/Matcheroni.hpp"
+#include "matcheroni/Parseroni.hpp"
 #include "matcheroni/Utilities.hpp"
 
+#include <string>
+#include <vector>
 #include <stdio.h>
+#include <algorithm>
 
 using namespace matcheroni;
+using namespace parseroni;
 
-// Debug config
-constexpr bool verbose   = true;
-constexpr bool dump_tree = true;
+// Benchmark config
+constexpr bool verbose   = false;
+constexpr bool dump_tree = false;
 const int warmup = 0;
-const int reps = 1;
+const int reps = 100;
 
 //------------------------------------------------------------------------------
 
 int main(int argc, char** argv) {
-
   if (argc < 2) {
     printf("Usage: json_demo <filename>\n");
     return 1;
   }
 
-  printf("argv[0] = %s\n", argv[0]);
-  printf("argv[1] = %s\n", argv[1]);
+  const char* path = "twitter.json";
 
-  const char* paths[] = {
-    argv[1]
-  };
+  printf("----------------------------------------\n");
+  printf("Parsing %s\n", path);
 
-  double byte_accum = 0;
-  double time_accum = 0;
-  double line_accum = 0;
+  std::string buf;
+  utils::read(path, buf);
+  if (buf.size() == 0) {
+    printf("Could not load %s\n", path);
+    exit(-1);
+  }
 
-  JsonContext ctx;
+  TextSpan text = utils::to_span(buf);
 
-  for (auto path : paths) {
-    if (verbose) {
-      printf("\n\n----------------------------------------\n");
-      printf("Parsing %s\n", path);
-    }
+  //----------------------------------------
 
-    char* buf = nullptr;
-    size_t size = 0;
-    utils::read(path, buf, size);
-    if (size == 0) {
-      printf("Could not load %s\n", path);
-      continue;
-    }
+  TextParseContext ctx2;
+  TextSpan parse_end = text;
+  std::vector<double> parse_times;
+  parse_times.reserve(reps);
+  for (int rep = 0; rep < reps; rep++) {
 
-    byte_accum += size;
-    for (size_t i = 0; i < size; i++) if (buf[i] == '\n') line_accum++;
 
-    TextSpan text = {buf, buf + size};
-    TextSpan parse_end = text;
-
-    //----------------------------------------
-
-    double path_time_accum = 0;
-
-    for (int rep = 0; rep < (warmup + reps); rep++) {
-      ctx.reset();
-
-      double time_a = utils::timestamp_ms();
-      parse_end = parse_json(ctx, text);
-      double time_b = utils::timestamp_ms();
-
-      if (rep >= warmup) path_time_accum += time_b - time_a;
-    }
-
-    time_accum += path_time_accum;
-
-    //----------------------------------------
+    auto time_a = utils::timestamp_ms();
+    ctx2.reset();
+    parse_end = parse_json(ctx2, text);
+    auto time_b = utils::timestamp_ms();
 
     if (parse_end.begin < text.end) {
       printf("Parse failed!\n");
       printf("Failure near `");
-      //print_flat(TextSpan(ctx.highwater, text.b), 20);
+      printf("%50.50s\n", ctx2._highwater);
       printf("`\n");
-      continue;
+      exit(-1);
     }
 
-    if (verbose) {
-      printf("Parsed %d reps in %f msec\n", reps, path_time_accum);
-      printf("\n");
+    if (rep >= warmup) {
+      parse_times.push_back(time_b - time_a);
     }
+  }
 
-    if (dump_tree) {
-      utils::print_summary(ctx, text, parse_end, 40);
-    }
+  //----------------------------------------
 
-    if (verbose) {
-      //printf("Slab current      %d\n",  LifoAlloc::inst().current_size);
-      //printf("Slab max          %d\n",  LifoAlloc::inst().max_size);
-      printf("Tree nodes        %ld\n", ctx.node_count());
-    }
+  std::sort(parse_times.begin(), parse_times.end());
+  auto parse_time = parse_times[parse_times.size()/2];
 
-    delete [] buf;
+  if (dump_tree) {
+    printf("Parse tree:\n");
+    utils::print_summary(ctx2, text, parse_end, 40);
   }
 
   printf("\n");
-  printf("----------------------------------------\n");
-  printf("Byte accum %f\n", byte_accum);
-  printf("Time accum %f\n", time_accum);
-  printf("Line accum %f\n", line_accum);
-  printf("Byte rate  %f\n", byte_accum / (time_accum / 1000.0));
-  printf("Line rate  %f\n", line_accum / (time_accum / 1000.0));
-  printf("Rep time   %f\n", time_accum / reps);
-  printf("\n");
+  printf("Byte total %f\n", buf.size());
+  printf("Parse time %f\n", parse_time);
+  printf("Parse byte rate  %f megabytes per second\n", (buf.size() / 1e6) / (parse_time / 1e3));
 
   return 0;
 }
-
-//------------------------------------------------------------------------------

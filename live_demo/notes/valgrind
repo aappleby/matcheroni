@@ -1,0 +1,75 @@
+==764411== Memcheck, a memory error detector
+==764411== Copyright (C) 2002-2022, and GNU GPL'd, by Julian Seward et al.
+==764411== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info
+==764411== Command: bin/examples/json/json_benchmark
+==764411==
+Matcheroni JSON matching/parsing benchmark
+----------------------------------------
+Parsing data/canada.json
+
+Tree nodes 167203
+Byte total 2251051.000000
+Line total 9.000000
+Match time 63.056414
+Parse time 80.973685
+Match byte rate  35.699001 megabytes per second
+Match line rate  0.000143 megalines per second
+Parse byte rate  27.799785 megabytes per second
+Parse line rate  0.000111 megalines per second
+----------------------------------------
+Parsing data/citm_catalog.json
+
+Tree nodes 115385
+Byte total 1727204.000000
+Line total 50468.000000
+Match time 31.315390
+Parse time 49.419611
+Match byte rate  55.155117 megabytes per second
+Match line rate  1.611604 megalines per second
+Parse byte rate  34.949769 megabytes per second
+Parse line rate  1.021214 megalines per second
+----------------------------------------
+Parsing data/twitter.json
+
+Tree nodes 53949
+Byte total 631515.000000
+Line total 15482.000000
+Match time 11.596800
+Parse time 18.492193
+Match byte rate  54.455971 megabytes per second
+Match line rate  1.335023 megalines per second
+Parse byte rate  34.150357 megabytes per second
+Parse line rate  0.837218 megalines per second
+----------------------------------------
+Parsing data/rapidjson_sample.json
+
+Tree nodes 7005
+Byte total 687491.000000
+Line total 3314.000000
+Match time 7.729750
+Parse time 9.113121
+Match byte rate  88.940910 megabytes per second
+Match line rate  0.428733 megalines per second
+Parse byte rate  75.439687 megabytes per second
+Parse line rate  0.363651 megalines per second
+----------------------------------------
+Results averaged over all test files:
+
+Byte total 5297261.000000
+Line total 69273.000000
+Match time 113.698354
+Parse time 157.998610
+Match byte rate  46.590481 megabytes per second
+Match line rate  0.609270 megalines per second
+Parse byte rate  33.527263 megabytes per second
+Parse line rate  0.438441 megalines per second
+
+==764411==
+==764411== HEAP SUMMARY:
+==764411==     in use at exit: 0 bytes in 0 blocks
+==764411==   total heap usage: 29 allocs, 29 frees, 20,075,729 bytes allocated
+==764411==
+==764411== All heap blocks were freed -- no leaks are possible
+==764411==
+==764411== For lists of detected and suppressed errors, rerun with: -s
+==764411== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)

@@ -1,0 +1,60 @@
+Matcheroni JSON matching/parsing benchmark
+----------------------------------------
+Parsing data/canada.json
+
+Tree nodes 167203
+Byte total 2251051.000000
+Line total 9.000000
+Match time 2.379702
+Parse time 3.462968
+Match byte rate  945.938189 megabytes per second
+Match line rate  0.003782 megalines per second
+Parse byte rate  650.035172 megabytes per second
+Parse line rate  0.002599 megalines per second
+----------------------------------------
+Parsing data/citm_catalog.json
+
+Tree nodes 115385
+Byte total 1727204.000000
+Line total 50468.000000
+Match time 1.403181
+Parse time 2.326605
+Match byte rate  1230.920316 megabytes per second
+Match line rate  35.966850 megalines per second
+Parse byte rate  742.370965 megabytes per second
+Parse line rate  21.691692 megalines per second
+----------------------------------------
+Parsing data/twitter.json
+
+Tree nodes 53949
+Byte total 631515.000000
+Line total 15482.000000
+Match time 0.553169
+Parse time 0.855441
+Match byte rate  1141.631219 megabytes per second
+Match line rate  27.987830 megalines per second
+Parse byte rate  738.233262 megabytes per second
+Parse line rate  18.098267 megalines per second
+----------------------------------------
+Parsing data/rapidjson_sample.json
+
+Tree nodes 7005
+Byte total 687491.000000
+Line total 3314.000000
+Match time 0.500734
+Parse time 0.683046
+Match byte rate  1372.966485 megabytes per second
+Match line rate  6.618284 megalines per second
+Parse byte rate  1006.507614 megabytes per second
+Parse line rate  4.851796 megalines per second
+----------------------------------------
+Results averaged over all test files:
+
+Byte total 5297261.000000
+Line total 69273.000000
+Match time 4.836786
+Parse time 7.328060
+Match byte rate  1095.202682 megabytes per second
+Match line rate  14.322114 megalines per second
+Parse byte rate  722.873585 megabytes per second
+Parse line rate  9.453116 megalines per second

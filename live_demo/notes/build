@@ -1,0 +1,10 @@
+aappleby@LappytronD:~/repos/matcheroni$ time ninja -v bin/examples/json/json_benchmark
+[1/4] x86_64-linux-gnu-g++  -Wall -Werror -Wno-unused-variable -Wno-unused-local-typedefs -Wno-unused-but-set-variable -std=c++20 -O3 -flto  -I.  -MD -MF obj/examples/json/json_matcher.o.d -c examples/json/json_matcher.cpp -o obj/examples/json/json_matcher.o
+[2/4] x86_64-linux-gnu-g++  -Wall -Werror -Wno-unused-variable -Wno-unused-local-typedefs -Wno-unused-but-set-variable -std=c++20 -O3 -flto  -I.  -MD -MF obj/examples/json/json_parser.o.d -c examples/json/json_parser.cpp -o obj/examples/json/json_parser.o
+[3/4] x86_64-linux-gnu-g++  -Wall -Werror -Wno-unused-variable -Wno-unused-local-typedefs -Wno-unused-but-set-variable -std=c++20 -O3 -flto  -I.  -MD -MF obj/examples/json/json_benchmark.o.d -c examples/json/json_benchmark.cpp -o obj/examples/json/json_benchmark.o
+[4/4] x86_64-linux-gnu-g++  -Wall -Werror -Wno-unused-variable -Wno-unused-local-typedefs -Wno-unused-but-set-variable -std=c++20 -O3 -flto obj/examples/json/json_matcher.o obj/examples/json/json_parser.o obj/examples/json/json_benchmark.o  -o bin/examples/json/json_benchmark
+
+real    0m1.799s
+user    0m2.615s
+sys     0m0.207s
+aappleby@LappytronD:~/repos/matcheroni$

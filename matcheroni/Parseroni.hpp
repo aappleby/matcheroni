@@ -431,6 +431,27 @@ struct Capture {
 };
 */
 
+template <StringParam match_tag, typename pattern>
+struct Capture2 {
+
+  template<typename context, typename atom>
+  static Span<atom> match(context& ctx, Span<atom> body) {
+    auto old_tail = ctx.top_tail;
+    auto tail = pattern::match(ctx, body);
+
+    if (tail.is_valid()) {
+      Span<atom> node_span = {body.begin, tail.begin};
+      auto new_node = ctx.template create_and_append_node<typename context::NodeType>(old_tail);
+      new_node->match_tag = match_tag.str_val;
+      new_node->span = node_span;
+      new_node->flags = 0;
+      new_node->init();
+    }
+
+    return tail;
+  }
+};
+
 template <StringParam match_tag, typename pattern, typename node_type>
 struct Capture {
   static_assert((sizeof(node_type) & 7) == 0);

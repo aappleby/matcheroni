@@ -17,7 +17,7 @@ struct JsonParser {
   using number    = Seq<integer, Opt<fraction>, Opt<exponent>>;
 
   // Matches a JSON string that can contain valid escape characters
-  using space     = Some<Atom<' ', '\n', '\r', '\t'>>;
+  using ws     = Some<Atom<' ', '\n', '\r', '\t'>>;
   using hex       = Range<'0','9','a','f','A','F'>;
   using escape    = Oneof<Charset<"\"\\/bfnrt">, Seq<Atom<'u'>, Rep<4, hex>>>;
   using character = Oneof<
@@ -31,7 +31,7 @@ struct JsonParser {
 
   // Matches a comma-delimited list with embedded whitespace
   template <typename P>
-  using list = Seq<P, Any<Seq<Opt<space>, Atom<','>, Opt<space>, P>>>;
+  using list = Seq<P, Any<Seq<Opt<ws>, Atom<','>, Opt<ws>, P>>>;
 
   // Matches any valid JSON value
   static TextSpan match_value(TextParseContext& ctx, TextSpan body) {
@@ -49,9 +49,9 @@ struct JsonParser {
   using array =
   Seq<
     Atom<'['>,
-    Opt<space>,
+    Opt<ws>,
     Opt<list<value>>,
-    Opt<space>,
+    Opt<ws>,
     Atom<']'>
   >;
 
@@ -59,9 +59,9 @@ struct JsonParser {
   using pair =
   Seq<
     Capture<"key", string, TextParseNode>,
-    Opt<space>,
+    Opt<ws>,
     Atom<':'>,
-    Opt<space>,
+    Opt<ws>,
     Capture<"value", value, TextParseNode>
   >;
 
@@ -69,15 +69,15 @@ struct JsonParser {
   using object =
   Seq<
     Atom<'{'>,
-    Opt<space>,
+    Opt<ws>,
     Opt<list<Capture<"member", pair, TextParseNode>>>,
-    Opt<space>,
+    Opt<ws>,
     Atom<'}'>
   >;
 
   // Matches any valid JSON document
   static TextSpan match(TextParseContext& ctx, TextSpan body) {
-    return Seq<Opt<space>, value, Opt<space>>::match(ctx, body);
+    return Seq<Opt<ws>, value, Opt<ws>>::match(ctx, body);
   }
 };
 
