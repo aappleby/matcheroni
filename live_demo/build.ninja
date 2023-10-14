@@ -1,0 +1,17 @@
+toolchain=x86_64-linux-gnu
+
+opts_cpp = ${opts_cpp} -std=c++20
+opts_cpp = ${opts_cpp} -O3
+opts_cpp = ${opts_cpp} -I..
+
+rule compile_cpp
+  command = ${toolchain}-g++ ${opts_cpp} ${includes} ${defines} -MD -MF ${out}.d -c ${in} -o ${out}
+  depfile = ${out}.d
+  deps = gcc
+
+rule c_binary
+  command = ${toolchain}-g++ ${opts_cpp} ${in} ${libraries} -o ${out}
+
+build obj/json_parser.o : compile_cpp json_parser.cpp
+build obj/json_demo.o   : compile_cpp json_demo.cpp
+build bin/json_demo     : c_binary obj/json_parser.o obj/json_demo.o

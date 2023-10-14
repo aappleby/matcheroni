@@ -146,6 +146,21 @@
     // JSON
 
     {
+      "name": "live_demo",
+      "preLaunchTask": "build_matcheroni",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/bin/live_demo/demo",
+      "cwd": "${workspaceFolder}",
+      "setupCommands": [{
+        "description": "Enable pretty-printing for gdb",
+        "text": "-enable-pretty-printing",
+        "ignoreFailures": true
+      }],
+      "args" : ["live_demo/data.json"],
+    },
+
+    {
       "name": "json_benchmark",
       "preLaunchTask": "build_matcheroni",
       "type": "cppdbg",
