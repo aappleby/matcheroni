@@ -34,7 +34,7 @@ int main(int argc, char** argv) {
   */
 
   TextSpan text = utils::to_span(json);
-  JsonContext ctx;
+  JsonParseContext ctx;
 
   double time_a, time_b;
   TextSpan tail;

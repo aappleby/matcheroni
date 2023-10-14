@@ -41,7 +41,7 @@ int main(int argc, char** argv) {
   double time_accum = 0;
   double line_accum = 0;
 
-  JsonContext ctx;
+  JsonParseContext ctx;
 
   for (auto path : paths) {
     if (verbose) {

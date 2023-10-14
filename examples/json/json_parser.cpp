@@ -32,20 +32,20 @@ template <typename P>
 using list  = Seq<P, Any<Seq<ws, Atom<','>, ws, P>>>;
 
 // Matches any valid JSON value
-static TextSpan match_value(JsonContext& ctx, TextSpan body);
-using value  = Capture<"value", Ref<match_value>, JsonNode>;
+static TextSpan match_value(JsonParseContext& ctx, TextSpan body);
+using value  = Capture<"value", Ref<match_value>, JsonParseNode>;
 
 // Matches bracket-delimited lists of JSON values
 using array  = Seq<Atom<'['>, ws, Opt<list<value>>, ws, Atom<']'>>;
 
 // Matches a key:val pair where 'key' is a string and 'val' is any JSON value.
-using key    = Capture<"key", string, JsonNode>;
-using member = Capture<"member", Seq<key, ws, Atom<':'>, ws, value>, JsonNode>;
+using key    = Capture<"key", string, JsonParseNode>;
+using member = Capture<"member", Seq<key, ws, Atom<':'>, ws, value>, JsonParseNode>;
 
 // Matches a curly-brace-delimited list of key:val pairs.
 using object = Seq<Atom<'{'>, ws, Opt<list<member>>, ws, Atom<'}'>>;
 
-static TextSpan match_value(JsonContext& ctx, TextSpan body) {
+static TextSpan match_value(JsonParseContext& ctx, TextSpan body) {
   using value = Oneof<number, string, array, object, Lit<"true">, Lit<"false">, Lit<"null">>;
   return value::match(ctx, body);
 }
@@ -54,6 +54,6 @@ static TextSpan match_value(JsonContext& ctx, TextSpan body) {
 using json = Seq<ws, value, ws>;
 
 __attribute__((noinline))
-TextSpan parse_json(JsonContext& ctx, TextSpan body) {
+TextSpan parse_json(JsonParseContext& ctx, TextSpan body) {
   return json::match(ctx, body);
 }

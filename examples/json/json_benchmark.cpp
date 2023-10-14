@@ -49,7 +49,7 @@ int main(int argc, char** argv) {
   double all_parse_time = 0;
 
   TextMatchContext ctx1;
-  JsonContext ctx2;
+  JsonParseContext ctx2;
 
   for (auto path : paths) {
     double byte_accum = 0;

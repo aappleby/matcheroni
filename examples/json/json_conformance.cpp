@@ -59,7 +59,7 @@ int main(int argc, char** argv) {
     utils::read(path.c_str(), raw_text);
 
     TextMatchContext ctx2;
-    JsonContext ctx;
+    JsonParseContext ctx;
     TextSpan text = utils::to_span(raw_text);
     time -= utils::timestamp_ms();
     TextSpan tail = parse_json(ctx, text);
@@ -96,7 +96,7 @@ int main(int argc, char** argv) {
     std::string raw_text;
     utils::read(path.c_str(), raw_text);
 
-    JsonContext ctx;
+    JsonParseContext ctx;
     TextSpan text = utils::to_span(raw_text);
     time -= utils::timestamp_ms();
     TextSpan tail = parse_json(ctx, text);
@@ -121,7 +121,7 @@ int main(int argc, char** argv) {
     std::string raw_text;
     utils::read(path.c_str(), raw_text);
 
-    JsonContext ctx;
+    JsonParseContext ctx;
     TextSpan text = utils::to_span(raw_text);
     time -=  utils::timestamp_ms();
     TextSpan tail = parse_json(ctx, text);
