@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT License
 
 #include "json.hpp"
-#include "matcheroni/Utilities.hpp"
 
 using namespace matcheroni;
 using namespace parseroni;
@@ -26,7 +25,7 @@ using character = Oneof<
 using string = Seq<Atom<'"'>, Any<character>, Atom<'"'>>;
 
 template <typename P>
-using list  = Seq<P, Any<Seq<ws, Atom<','>, ws, P>>>;
+using list = Seq<P, Any<Seq<ws, Atom<','>, ws, P>>>;
 
 static TextSpan match_value(JsonMatchContext& ctx, TextSpan body);
 using value  = Ref<match_value>;

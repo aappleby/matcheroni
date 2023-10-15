@@ -87,7 +87,7 @@ void test_basic() {
     ctx.reset();
     auto text = utils::to_span(expression);
     auto tail = SExpression::match(ctx, text);
-    matcheroni_assert(tail.is_valid() && tail == "");
+    matcheroni_assert(tail.is_valid() && tail.is_empty());
 
     utils::print_summary(ctx, text, tail, 50);
 
@@ -114,12 +114,12 @@ void test_basic() {
   ctx.reset();
   span = utils::to_span("((((a))))");
   tail = SExpression::match(ctx, span);
-  matcheroni_assert(tail.is_valid() && tail == "");
+  matcheroni_assert(tail.is_valid() && tail.is_empty());
 
   ctx.reset();
   span = utils::to_span("(((())))");
   tail = SExpression::match(ctx, span);
-  matcheroni_assert(tail.is_valid() && tail == "");
+  matcheroni_assert(tail.is_valid() && tail.is_empty());
 
   ctx.reset();
   span = utils::to_span("(((()))(");

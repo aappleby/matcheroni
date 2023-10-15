@@ -1,10 +1,7 @@
-#include "matcheroni/Matcheroni.hpp"
-#include "matcheroni/Parseroni.hpp"
+#include "live_json.hpp"
 
 using namespace matcheroni;
 using namespace parseroni;
-
-//------------------------------------------------------------------------------
 
 using sign      = Atom<'+', '-'>;
 using digit     = Range<'0', '9'>;
@@ -15,9 +12,7 @@ using fraction  = Seq<Atom<'.'>, digits>;
 using exponent  = Seq<Atom<'e', 'E'>, Opt<sign>, digits>;
 using number    = Seq<integer, Opt<fraction>, Opt<exponent>>;
 
-//------------------------------------------------------------------------------
-
-using ws     = Some<Atom<' ', '\n', '\r', '\t'>>;
+using ws        = Any<Atom<' ', '\n', '\r', '\t'>>;
 using hex       = Range<'0','9','a','f','A','F'>;
 using escape    = Oneof<Charset<"\"\\/bfnrt">, Seq<Atom<'u'>, Rep<4, hex>>>;
 using character = Oneof<
@@ -26,44 +21,31 @@ using character = Oneof<
 >;
 using string = Seq<Atom<'"'>, Any<character>, Atom<'"'>>;
 
-//------------------------------------------------------------------------------
-
-using keyword = Oneof<Lit<"true">, Lit<"false">, Lit<"null">>;
-
 template <typename P>
-using list = Seq<P, Any<Seq<Opt<ws>, Atom<','>, Opt<ws>, P>>>;
+using list = Seq<P, Any<Seq<ws, Atom<','>, ws, P>>>;
 
-static TextSpan match_value(TextParseContext& ctx, TextSpan body) {
-  return Oneof<
-    Capture<"number",  number,  TextParseNode>,
-    Capture<"string",  string,  TextParseNode>,
-    Capture<"array",   array,   TextParseNode>,
-    Capture<"object",  object,  TextParseNode>,
-    Capture<"keyword", keyword, TextParseNode>
-  >::match(ctx, body);
+static TextSpan match_value(JsonParseContext& ctx, TextSpan body);
+using value  = Ref<match_value>;
+using array  = Seq<Atom<'['>, ws, Opt<list<value>>, ws, Atom<']'>>;
+using key    = Capture<"key", string, JsonString>;
+using member = Capture<"member", Seq<key, ws, Atom<':'>, ws, value>, JsonKeyVal>;
+using object = Seq<Atom<'{'>, ws, Opt<list<member>>, ws, Atom<'}'>>;
+
+static TextSpan match_value(JsonParseContext& ctx, TextSpan body) {
+  using value = Oneof<
+    Capture<"val", string,       JsonString>,
+    Capture<"val", number,       JsonNumber>,
+    Capture<"val", array,        JsonArray>,
+    Capture<"val", object,       JsonObject>,
+    Capture<"val", Lit<"true">,  JsonKeyword>,
+    Capture<"val", Lit<"false">, JsonKeyword>,
+    Capture<"val", Lit<"null">,  JsonKeyword>
+  >;
+  return value::match(ctx, body);
 }
-using value = Ref<match_value>;
 
-using array = Seq<Atom<'['>, Opt<ws>, Opt<list<value>>, Opt<ws>, Atom<']'>>;
+using json = Seq<ws, value, ws>;
 
-using pair =
-Seq<
-  Capture<"key", string, TextParseNode>,
-  Opt<ws>,
-  Atom<':'>,
-  Opt<ws>,
-  Capture<"value", value, TextParseNode>
->;
-
-using object = Seq<
-  Atom<'{'>,
-  Opt<ws>,
-  Opt<list<Capture<"member", pair, TextParseNode>>>,
-  Opt<ws>,
-  Atom<'}'>
->;
-
-using json = Seq<Opt<ws>, value, Opt<ws>>;
-
-void parse_json(const char* text, int size, bool verbose) {
+TextSpan parse_json(JsonParseContext& ctx, TextSpan body) {
+  return json::match(ctx, body);
 }

@@ -1,10 +1,11 @@
 #pragma once
-#include <stdlib.h>  // for malloc/free
-#include <string.h>
-#include <stdint.h>
-#include <stdio.h>
 
 #include "matcheroni/Matcheroni.hpp"
+
+#include <new>      // for implicit align_val_t
+#include <stdint.h> // for uint64_t
+#include <stdlib.h> // for malloc/free
+#include <string.h> // for strmp
 
 namespace parseroni {
 
@@ -252,7 +253,7 @@ struct NodeContext {
     child_tail->node_next = nullptr;
 
     for (auto c  = child_head; c; c = c->node_next) {
-      assert(c->node_parent == nullptr);
+      matcheroni_assert(c->node_parent == nullptr);
       c->node_parent = new_node;
     }
 
@@ -275,7 +276,7 @@ struct NodeContext {
 
     for (int i = 0; i < count - 1; i++) {
       child_head = child_head->node_prev;
-      assert(child_head);
+      matcheroni_assert(child_head);
     }
 
     splice(new_node, child_head, child_tail);
@@ -510,8 +511,8 @@ struct Tag {
     for (auto c = ctx.top_tail; c != old_tail; c = c->node_prev) tail_len++;
 
     if (tail_len) {
-      assert(tail_len == 1);
-      //assert(ctx.top_tail->match_tag == nullptr);
+      matcheroni_assert(tail_len == 1);
+      //matcheroni_assertassert(ctx.top_tail->match_tag == nullptr);
 
       if (ctx.top_tail->match_tag) {
         ctx.top_tail->match_tag = "<BROKEN>";

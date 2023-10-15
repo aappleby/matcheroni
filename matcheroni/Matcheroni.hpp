@@ -11,9 +11,8 @@
 
 #pragma once
 
+//#define matcheroni_assert(A) if (!(A)) {__builtin_unreachable();}
 #define matcheroni_assert(A)
-
-#include <assert.h>
 
 namespace matcheroni {
 
@@ -42,7 +41,7 @@ struct Span {
       return Span(a.begin, b.begin);
     }
     else {
-      assert(false);
+      matcheroni_assert(false);
     }
   }
 

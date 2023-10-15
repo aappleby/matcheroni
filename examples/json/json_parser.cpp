@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT License
 
 #include "json.hpp"
-#include "matcheroni/Utilities.hpp"
 
 using namespace matcheroni;
 using namespace parseroni;
@@ -23,19 +22,19 @@ using character = Oneof<
   Seq<Not<Atom<'"'>>, Not<Atom<'\\'>>, Range<0x0020, 0x10FFFF>>,
   Seq<Atom<'\\'>, escape>
 >;
-using string    = Seq<Atom<'"'>, Any<character>, Atom<'"'>>;
+using string = Seq<Atom<'"'>, Any<character>, Atom<'"'>>;
 
 template <typename P>
 using list = Seq<P, Any<Seq<ws, Atom<','>, ws, P>>>;
 
-static TextSpan match_value(JsonParseContext& ctx, TextSpan body);
+TextSpan match_value(JsonParseContext& ctx, TextSpan body);
 using value  = Ref<match_value>;
 using array  = Seq<Atom<'['>, ws, Opt<list<value>>, ws, Atom<']'>>;
 using key    = Capture<"key", string, JsonString>;
 using member = Capture<"member", Seq<key, ws, Atom<':'>, ws, value>, JsonKeyVal>;
 using object = Seq<Atom<'{'>, ws, Opt<list<member>>, ws, Atom<'}'>>;
 
-static TextSpan match_value(JsonParseContext& ctx, TextSpan body) {
+TextSpan match_value(JsonParseContext& ctx, TextSpan body) {
   using value = Oneof<
     Capture<"val", string,       JsonString>,
     Capture<"val", number,       JsonNumber>,
