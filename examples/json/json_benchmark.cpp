@@ -48,7 +48,7 @@ int main(int argc, char** argv) {
   double all_match_time = 0;
   double all_parse_time = 0;
 
-  TextMatchContext ctx1;
+  JsonMatchContext ctx1;
   JsonParseContext ctx2;
 
   for (auto path : paths) {

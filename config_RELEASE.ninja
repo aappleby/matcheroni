@@ -3,5 +3,5 @@
 ### -flto _halves_ the speed of Matcheroni's IP4 matcher, weird.
 ### LTO breaks "size obj/examples/json_parser.o"
 
-opts_c   = ${opts_c}   -O3 -flto
-opts_cpp = ${opts_cpp} -O3 -flto
+opts_c   = ${opts_c}   -O3
+opts_cpp = ${opts_cpp} -O3

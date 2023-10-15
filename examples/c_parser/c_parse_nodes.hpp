@@ -43,6 +43,7 @@ struct TraceToken {
 
     print_match2(text, text, 40);
     print_trellis(depth, name, "?", 0xCCCCCC);
+    printf("\n");
 
     //print_bar(ctx.trace_depth++, text, name, "?");
     auto tail = P::match(ctx, body);
@@ -58,6 +59,7 @@ struct TraceToken {
     }
     else {
       print_trellis(depth, name, "X", 0x8080FF);
+      printf("\n");
     }
 
 

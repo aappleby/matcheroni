@@ -55,7 +55,7 @@ using json    = Seq<Opt<ws>, value, Opt<ws>>;
 
 //------------------------------------------------------------------------------
 
-TextSpan match_json(TextMatchContext& ctx, TextSpan body) {
+TextSpan match_json(JsonMatchContext& ctx, TextSpan body) {
   return json::match(ctx, body);
 }
 

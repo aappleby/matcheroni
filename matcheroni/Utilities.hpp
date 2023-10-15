@@ -80,6 +80,7 @@ struct TraceText {
 
     print_match(body.begin, body.end, body.end, 0xCCCCCC, 0xCCCCCC, 50);
     print_trellis(depth, name, "?", 0xCCCCCC);
+    printf("\n");
 
     auto tail = P::match(ctx, body);
     depth = --ctx.trace_depth;
@@ -87,10 +88,12 @@ struct TraceText {
     if (tail.is_valid()) {
       print_match(body.begin, tail.begin, body.end, 0x80FF80, 0xCCCCCC, 50);
       print_trellis(depth, name, "!", 0x80FF80);
+      printf("\n");
     }
     else {
       print_match(body.begin, tail.end, body.end, 0xCCCCCC, 0x8080FF, 50);
       print_trellis(depth, name, "X", 0x8080FF);
+      printf("\n");
     }
 
     return tail;

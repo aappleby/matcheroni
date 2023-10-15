@@ -9,7 +9,7 @@ using namespace parseroni;
 
 // Our base node type is the same as TextParseNode, with the addition of a
 // sum() method.
-struct JsonParseNode : public NodeBase<JsonParseNode, char> {
+struct JsonNode : public NodeBase<JsonNode, char> {
   TextSpan as_text_span() const { return span; }
 
   virtual double sum() {
@@ -23,7 +23,7 @@ struct JsonParseNode : public NodeBase<JsonParseNode, char> {
 
 // We'll specialize JsonNode for numerical values by overriding init() to also
 // convert the matched text to a double.
-struct NumberNode : public JsonParseNode {
+struct NumberNode : public JsonNode {
   void init() {
     value = atof(span.begin);
   }
@@ -37,7 +37,7 @@ struct NumberNode : public JsonParseNode {
 
 // And our context provides atom_cmp() and sum(). NodeContext<> handles the
 // required checkpoint()/rewind() methods.
-struct JsonParseContext : public NodeContext<JsonParseNode> {
+struct JsonParseContext : public NodeContext<JsonNode> {
   static int atom_cmp(char a, int b) {
     return (unsigned char)a - b;
   }
@@ -90,10 +90,10 @@ struct JsonParser {
       Capture<"number",  number,  NumberNode>,
       // **********
 
-      Capture<"string",  string,  JsonParseNode>,
-      Capture<"array",   array,   JsonParseNode>,
-      Capture<"object",  object,  JsonParseNode>,
-      Capture<"keyword", keyword, JsonParseNode>
+      Capture<"string",  string,  JsonNode>,
+      Capture<"array",   array,   JsonNode>,
+      Capture<"object",  object,  JsonNode>,
+      Capture<"keyword", keyword, JsonNode>
     >::match(ctx, body);
   }
   using value = Ref<match_value>;
@@ -111,11 +111,11 @@ struct JsonParser {
   // Matches a key:value pair where 'key' is a string and 'value' is a JSON value.
   using pair =
   Seq<
-    Capture<"key", string, JsonParseNode>,
+    Capture<"key", string, JsonNode>,
     Opt<ws>,
     Atom<':'>,
     Opt<ws>,
-    Capture<"value", value, JsonParseNode>
+    Capture<"value", value, JsonNode>
   >;
 
   // Matches a curly-brace-delimited list of key:value pairs.
@@ -123,7 +123,7 @@ struct JsonParser {
   Seq<
     Atom<'{'>,
     Opt<ws>,
-    Opt<list<Capture<"member", pair, JsonParseNode>>>,
+    Opt<list<Capture<"member", pair, JsonNode>>>,
     Opt<ws>,
     Atom<'}'>
   >;

@@ -4,6 +4,8 @@
 #include <stdio.h>
 #include <stdlib.h>  // for exit
 #include <string.h>
+#include <typeinfo>
+#include <ctype.h>
 
 #include "matcheroni/Matcheroni.hpp"  // for Span
 
@@ -43,12 +45,15 @@ struct SpanDumper {
 
   void put(char c, uint32_t color) {
     if (color == 0) color = 0xCCCCCC;
-    if      (c == ' ' ) { set_color(dim_color(color)); putc('_', stdout); }
-    else if (c == '@' ) { set_color(dim_color(color)); putc('@', stdout); }
-    else if (c == '\n') { set_color(dim_color(color)); putc('n', stdout); }
-    else if (c == '\r') { set_color(dim_color(color)); putc('r', stdout); }
-    else if (c == '\t') { set_color(dim_color(color)); putc('t', stdout); }
-    else                { set_color(color);            putc(c,   stdout); }
+
+    if      (c == ' ' )  { set_color(dim_color(color)); putc('_', stdout); }
+    else if (c == '@' )  { set_color(dim_color(color)); putc('@', stdout); }
+    else if (isprint(c)) { set_color(color);            putc(c,   stdout); }
+    else if (c == '\n')  { set_color(dim_color(color)); putc('n', stdout); }
+    else if (c == '\r')  { set_color(dim_color(color)); putc('r', stdout); }
+    else if (c == '\t')  { set_color(dim_color(color)); putc('t', stdout); }
+    else                 { set_color(dim_color(color)); putc('?', stdout); }
+
     len++;
     fflush(stdout);
   }
@@ -64,7 +69,7 @@ inline void print_trellis(int depth, const char* name, const char* suffix,
     printf(i == depth - 1 ? "|--" : "|  ");
   }
   set_color(color);
-  printf("%s %s\n", name, suffix);
+  printf("%s %s", name, suffix);
   set_color(0);
 }
 
@@ -99,6 +104,34 @@ inline void print_summary(TextSpan text, TextSpan tail, int width) {
 }
 
 //------------------------------------------------------------------------------
+
+inline void print_typeid_name(const char* name, int max_len = 0) {
+  int name_len = 0;
+
+  while((*name >= '0') && (*name <= '9')) {
+    name_len *= 10;
+    name_len += *name - '0';
+    name++;
+  }
+
+  if (max_len && name_len > max_len) name_len = max_len;
+
+  for (int i = 0; i < name_len; i++) {
+    putc(name[i], stdout);
+  }
+  for (int i = name_len; i < max_len; i++) {
+    putc(' ', stdout);
+  }
+}
+
+//------------------------------------------------------------------------------
+
+template<typename T>
+inline void print_class_name(T* node, int max_len = 0) {
+  print_typeid_name(typeid(*node).name(), max_len);
+}
+
+//------------------------------------------------------------------------------
 // Prints a text representation of the parse tree.
 
 template<typename node_type>
@@ -108,6 +141,17 @@ inline void print_tree(TextSpan text, const node_type* node, int width, int dept
 
   print_match(span.begin, span.end, text.end, 0x80FF80, 0xCCCCCC, width);
   print_trellis(depth, node->match_tag, "", 0xFFAAAA);
+  printf(": ");
+  print_class_name(node);
+  if (node->child_head == nullptr) {
+    auto text_span = node->as_text_span();
+    printf(" = ");
+    set_color(0x80FF80);
+    printf("%.*s", text_span.len(), text_span.begin);
+    set_color(0);
+  }
+  printf("\n");
+
 
   if (max_depth && depth == max_depth) return;
 
@@ -130,159 +174,5 @@ inline void print_summary(const context& ctx, TextSpan text, TextSpan tail, int 
   print_trees(ctx, text, width, 0);
 }
 
-//------------------------------------------------------------------------------
-
-/*
-inline void print_typeid_name(const char* name, int max_len = 0) {
-  int name_len = 0;
-
-  while((*name >= '0') && (*name <= '9')) {
-    name_len *= 10;
-    name_len += *name - '0';
-    name++;
-  }
-
-  if (max_len && name_len > max_len) name_len = max_len;
-
-  for (int i = 0; i < name_len; i++) {
-    putc(name[i], stdout);
-  }
-  for (int i = name_len; i < max_len; i++) {
-    putc(' ', stdout);
-  }
-}
-*/
-
-//------------------------------------------------------------------------------
-
-/*
-template<typename T>
-inline void print_class_name(int max_len = 0) {
-  print_typeid_name(typeid(T).name(), max_len);
-}
-*/
-
 };  // namespace utils
 };  // namespace matcheroni
-
-//------------------------------------------------------------------------------
-
-#if 0
-void CLexer::dump_lexemes() {
-  for (auto& l : tokens) {
-    l.dump();
-    printf("\n");
-  }
-}
-#endif
-
-//----------------------------------------------------------------------------
-
-#if 0
-void CToken::dump() const {
-  const int span_len = 20;
-  std::string dump = "";
-
-  if (type == LEX_BOF) dump = "<bof>";
-  if (type == LEX_EOF) dump = "<eof>";
-
-  for (auto c = a; c < b; c++) {
-    if      (*c == '\n') dump += "\\n";
-    else if (*c == '\t') dump += "\\t";
-    else if (*c == '\r') dump += "\\r";
-    else                 dump += *c;
-    if (dump.size() >= span_len) break;
-  }
-
-  dump = '`' + dump + '`';
-  if (dump.size() > span_len) {
-    dump.resize(span_len - 4);
-    dump = dump + "...`";
-  }
-  while (dump.size() < span_len) dump += " ";
-
-  set_color(type_to_color());
-  printf("%-14.14s ", type_to_str());
-  set_color(0);
-  printf("%s", dump.c_str());
-  set_color(0);
-}
-#endif
-
-//------------------------------------------------------------------------------
-
-#if 0
-inline void print_bar2(int depth, TextSpan body, const char* val, const char* suffix) {
-  set_color(0);
-  printf("{");
-  set_color(0xAAFFAA);
-  print_flat(s, TextSpan(body.b, body.b), 40);
-  set_color(0);
-  printf("}");
-
-  set_color(0x404040);
-  printf(depth == 0 ? " *" : "  ");
-  for (int i = 0; i < depth; i++) {
-    printf(i == depth - 1 ? "|-" : "| ");
-  }
-
-  set_color(0xFFAAAA);
-  printf("%s %s", val, suffix);
-  printf("\n");
-
-  set_color(0);
-}
-
-inline void print_tree2(const CNode* node, int depth = 0) {
-  TextSpan text(node->span.a->a, node->span.b->a);
-
-  print_bar2(depth, text, node->match_tag, "");
-  for (auto c = node->child_head; c; c = c->node_next) {
-    print_tree2(c, depth + 1);
-  }
-}
-#endif
-
-#if 0
-void CNode::dump_tree(int max_depth, int indentation) {
-  print_tree2(this);
-  /*
-  const CNode* n = this;
-  if (max_depth && indentation == max_depth) return;
-
-  printf("%s %p {%p-%p} ", n->match_tag, n, n->span.a, n->span.b);
-  printf("\n");
-  */
-
-  /*
-  printf("{%-40.40s}", escape_span(n).c_str());
-
-  for (int i = 0; i < indentation; i++) printf(" | ");
-
-  if (n->precedence) {
-    printf("[%02d %2d] ",
-      n->precedence,
-      n->assoc
-      //n->assoc > 0 ? '>' : n->assoc < 0 ? '<' : '-'
-    );
-  }
-  else {
-    printf("[-O-] ");
-  }
-
-  if (n->tok_a()) set_color(n->tok_a()->type_to_color());
-  //if (!field.empty()) printf("%-10.10s : ", field.c_str());
-
-  n->print_class_name(20);
-  set_color(0);
-  printf("\n");
-
-  for (auto c = n->head; c; c = c->next) {
-    c->dump_tree(max_depth, indentation + 1);
-  }
-  */
-}
-
-#endif
-
-//------------------------------------------------------------------------------
