@@ -7,10 +7,7 @@ using namespace matcheroni;
 using namespace parseroni;
 
 //------------------------------------------------------------------------------
-
-using JsonContext = matcheroni::TextMatchContext;
-
-//------------------------------------------------------------------------------
+// Numbers
 
 using sign     = Atom<'+', '-'>;
 using digit    = Range<'0', '9'>;
@@ -22,6 +19,7 @@ using exponent = Seq<Atom<'e', 'E'>, Opt<sign>, digits>;
 using number   = Seq<integer, Opt<fraction>, Opt<exponent>>;
 
 //------------------------------------------------------------------------------
+// Strings
 
 using ws = Any<Atom<' ', '\n', '\r', '\t'>>;
 using hex = Range<'0','9','a','f','A','F'>;
@@ -47,6 +45,10 @@ using character = Oneof<
 using string = Seq<Atom<'"'>, Any<character>, Atom<'"'>>;
 
 //------------------------------------------------------------------------------
+// Arrays
+
+using JsonContext = matcheroni::TextMatchContext;
+TextSpan match_value(JsonContext& ctx, TextSpan body);
 
 template <typename pattern>
 using list =
@@ -60,7 +62,6 @@ Seq<
   >>
 >;
 
-TextSpan match_value(JsonContext& ctx, TextSpan body);
 using value  = Ref<match_value>;
 
 using array =
@@ -73,6 +74,7 @@ Seq<
 >;
 
 //------------------------------------------------------------------------------
+// Objects
 
 using key = string;
 
@@ -94,7 +96,7 @@ Seq<
   Atom<'}'>
 >;
 
-//------------------------------------------------------------------------------
+using json = Seq<ws, value, ws>;
 
 TextSpan match_value(JsonContext& ctx, TextSpan body) {
   using value =
@@ -110,9 +112,8 @@ TextSpan match_value(JsonContext& ctx, TextSpan body) {
   return value::match(ctx, body);
 }
 
-using json = Seq<ws, value, ws>;
-
 //------------------------------------------------------------------------------
+// Parser
 
 bool parse_json(const std::string& text, bool verbose) {
   TextSpan body(text.data(), text.data() + text.size());

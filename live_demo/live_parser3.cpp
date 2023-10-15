@@ -7,6 +7,7 @@ using namespace matcheroni;
 using namespace parseroni;
 
 //------------------------------------------------------------------------------
+// Custom node types
 
 struct JsonNode : public parseroni::NodeBase<JsonNode, char> {
   virtual ~JsonNode() {}
@@ -25,6 +26,7 @@ struct JsonContext : public parseroni::NodeContext<JsonNode, true, true> {
 };
 
 //------------------------------------------------------------------------------
+// Numbers
 
 using sign     = Atom<'+', '-'>;
 using digit    = Range<'0', '9'>;
@@ -36,33 +38,31 @@ using exponent = Seq<Atom<'e', 'E'>, Opt<sign>, digits>;
 using number   = Seq<integer, Opt<fraction>, Opt<exponent>>;
 
 //------------------------------------------------------------------------------
+// Strings
 
-using ws = Any<Atom<' ', '\n', '\r', '\t'>>;
-using hex = Range<'0','9','a','f','A','F'>;
-
-using escape = Seq<Atom<'\\'>, Oneof<Charset<"\"\\/bfnrt">, Seq<Atom<'u'>, Rep<4, hex>>>>;
-
+using ws        = Any<Atom<' ', '\n', '\r', '\t'>>;
+using hex       = Range<'0','9','a','f','A','F'>;
+using escape    = Seq<Atom<'\\'>, Oneof<Charset<"\"\\/bfnrt">, Seq<Atom<'u'>, Rep<4, hex>>>>;
 using character = Oneof<Seq<Not<Atom<'"'>>, Not<Atom<'\\'>>, Range<0x0020, 0x10FFFF>>, escape>;
-
-using string = Seq<Atom<'"'>, Any<character>, Atom<'"'>>;
+using string    = Seq<Atom<'"'>, Any<character>, Atom<'"'>>;
 
 //------------------------------------------------------------------------------
-
-template <typename pattern>
-using list = Seq<pattern, Any<Seq<ws, Atom<','>, ws, pattern>>>;
+// Arrays
 
 TextSpan match_value(JsonContext& ctx, TextSpan body);
-using value  = Ref<match_value>;
 
+template <typename pattern>
+using list  = Seq<pattern, Any<Seq<ws, Atom<','>, ws, pattern>>>;
+using value = Ref<match_value>;
 using array = Seq<Atom<'['>, ws, Opt<list<value>>, ws, Atom<']'>>;
 
 //------------------------------------------------------------------------------
+// Objects
 
 using key    = Capture<"key", string, JsonString>;
 using member = Capture<"member", Seq<key, ws, Atom<':'>, ws, value>, JsonKeyVal>;
 using object = Seq<Atom<'{'>, ws, Opt<list<member>>, ws, Atom<'}'>>;
-
-//------------------------------------------------------------------------------
+using json   = Seq<ws, value, ws>;
 
 TextSpan match_value(JsonContext& ctx, TextSpan body) {
   using value =
@@ -78,9 +78,8 @@ TextSpan match_value(JsonContext& ctx, TextSpan body) {
   return value::match(ctx, body);
 }
 
-using json = Seq<ws, value, ws>;
-
 //------------------------------------------------------------------------------
+// Parser
 
 bool parse_json(const std::string& text, bool verbose) {
   TextSpan body(text.data(), text.data() + text.size());
@@ -88,11 +87,7 @@ bool parse_json(const std::string& text, bool verbose) {
   static JsonContext ctx;
   ctx.reset();
   auto result = json::match(ctx, body);
-
-  if (verbose) {
-    if (text.size() < 1024) utils::print_trees(ctx, body, 40, 0);
-    //printf("Parse nodes: %d, ", ctx.alloc.alloc_count);
-  }
+  if (verbose && text.size() < 1024) utils::print_trees(ctx, body, 40, 0);
 
   return result.is_valid();
 }
