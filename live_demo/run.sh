@@ -1,8 +1,15 @@
 #!/bin/bash
 set -v
-g++ -std=c++20 -Os -I.. -c json_matcher.cpp -o obj/json_matcher.o
-#g++ -std=c++20 -Os -I.. -c json_parser.cpp -o obj/json_parser.o
-#g++ -std=c++20 -Os -I.. -c json_demo.cpp -o obj/json_demo.o
-#g++ -std=c++20 -Os -I.. obj/json_parser.o obj/json_demo.o  -o bin/json_demo
+rm -rf bin
+mkdir -p bin
 
-# don't forget the memory usage test
+#g++ -std=c++20 -O3 -I.. -c live_parser0.cpp -o bin/live_parser.o
+#g++ -std=c++20 -O3 -I.. -c live_parser1.cpp -o bin/live_parser.o
+#g++ -std=c++20 -O3 -I.. -c live_parser2.cpp -o bin/live_parser.o
+g++ -std=c++20 -O3 -I.. -c live_parser3.cpp -o bin/live_parser.o
+g++ -std=c++20 -O3 -I.. -c live_demo.cpp -o bin/live_demo.o
+g++ -std=c++20 -O3 bin/live_parser.o bin/live_demo.o  -o bin/live_demo
+
+size bin/live_parser.o
+
+bin/live_demo

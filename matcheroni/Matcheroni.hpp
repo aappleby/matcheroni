@@ -130,9 +130,11 @@ struct TextMatchContext {
   // We cast to unsigned char as our ranges are generally going to be unsigned.
   static int atom_cmp(char a, int b) { return (unsigned char)a - b; }
 
-  // Checkpoint/Rewind does nothing as it doesn't interact with trace_depth.
+  // Checkpoint/Rewind/Reset do nothing as they doesn't interact with
+  // trace_depth.
   void* checkpoint() { return nullptr; }
   void rewind(void* bookmark) {}
+  void reset() {}
 
   // Tracing requires us to keep track of the nesting depth in the context.
   int trace_depth = 0;
@@ -167,9 +169,9 @@ struct Atom<C, rest...> {
 
     if (ctx.atom_cmp(*body.begin, C) == 0) {
       return body.advance(1);
-    } else {
-      return Atom<rest...>::match(ctx, body);
     }
+
+    return Atom<rest...>::match(ctx, body);
   }
 };
 
@@ -182,9 +184,9 @@ struct Atom<C> {
 
     if (ctx.atom_cmp(*body.begin, C) == 0) {
       return body.advance(1);
-    } else {
-      return body.fail();
     }
+
+    return body.fail();
   }
 };
 

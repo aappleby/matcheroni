@@ -51,6 +51,7 @@ struct LifoAlloc {
   void reset() {
     while (top_slab->prev) top_slab = top_slab->prev;
     for (auto c = top_slab; c; c = c->next) c->clear();
+    alloc_count = 0;
   }
 
   void add_slab() {
@@ -79,6 +80,7 @@ struct LifoAlloc {
     *(uint64_t*)(top_slab->cursor) = alloc_size;
     top_slab->cursor += alloc_overhead;
 
+    alloc_count++;
     return result;
   }
 
@@ -90,6 +92,7 @@ struct LifoAlloc {
     if (top_slab->size() == 0 && top_slab->prev) {
       top_slab = top_slab->prev;
     }
+    alloc_count--;
   }
 
   int current_size() const {
@@ -107,6 +110,7 @@ struct LifoAlloc {
   }
 
   Slab* top_slab = nullptr;
+  int alloc_count = 0;
 };
 
 //------------------------------------------------------------------------------
@@ -176,6 +180,8 @@ struct NodeContext {
   ~NodeContext() {
     reset();
   }
+
+  static int atom_cmp(char a, int b) { return (unsigned char)a - b; }
 
   void reset() {
     // Call destructors for all the nodes in the allocator.
@@ -548,7 +554,7 @@ struct TextParseNode : public NodeBase<TextParseNode, char> {
   TextSpan as_text_span() const { return span; }
 };
 
-struct TextParseContext : public NodeContext<TextParseNode> {
+struct TextParseContext : public NodeContext<TextParseNode, false, false> {
   static int atom_cmp(char a, int b) { return (unsigned char)a - b; }
 };
 
