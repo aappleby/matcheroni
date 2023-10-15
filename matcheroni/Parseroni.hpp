@@ -5,7 +5,7 @@
 #include <new>      // for implicit align_val_t
 #include <stdint.h> // for uint64_t
 #include <stdlib.h> // for malloc/free
-#include <string.h> // for strmp
+#include <string.h> // for strcmp
 
 namespace parseroni {
 
@@ -408,51 +408,6 @@ struct NodeContext {
 // matcher that constructs a new NodeType() for a successful match, attaches
 // any sub-nodes to it, and places it on the context's node list.
 
-/*
-template <StringParam match_tag, typename pattern, typename node_type>
-struct Capture {
-  static_assert((sizeof(node_type) & 7) == 0);
-
-  template<typename context, typename atom>
-  static Span<atom> match(context& ctx, Span<atom> body) {
-    auto old_tail = ctx.top_tail;
-    auto tail = pattern::match(ctx, body);
-
-    if (tail.is_valid()) {
-      Span<atom> node_span = {body.begin, tail.begin};
-      auto new_node = ctx.template create_and_append_node<node_type>(old_tail);
-      new_node->match_tag = match_tag.str_val;
-      new_node->span = node_span;
-      new_node->flags = 0;
-      new_node->init();
-    }
-
-    return tail;
-  }
-};
-*/
-
-template <StringParam match_tag, typename pattern>
-struct Capture2 {
-
-  template<typename context, typename atom>
-  static Span<atom> match(context& ctx, Span<atom> body) {
-    auto old_tail = ctx.top_tail;
-    auto tail = pattern::match(ctx, body);
-
-    if (tail.is_valid()) {
-      Span<atom> node_span = {body.begin, tail.begin};
-      auto new_node = ctx.template create_and_append_node<typename context::NodeType>(old_tail);
-      new_node->match_tag = match_tag.str_val;
-      new_node->span = node_span;
-      new_node->flags = 0;
-      new_node->init();
-    }
-
-    return tail;
-  }
-};
-
 template <StringParam match_tag, typename pattern, typename node_type>
 struct Capture {
   static_assert((sizeof(node_type) & 7) == 0);
@@ -475,6 +430,7 @@ struct Capture {
   }
 };
 
+//------------------------------------------------------------------------------
 
 template <typename pattern, typename node_type>
 struct CaptureAnon {
@@ -497,6 +453,8 @@ struct CaptureAnon {
     return tail;
   }
 };
+
+//------------------------------------------------------------------------------
 
 template<StringParam match_tag, typename pattern>
 struct Tag {

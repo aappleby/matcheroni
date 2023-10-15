@@ -11,8 +11,7 @@
 
 #pragma once
 
-//#define matcheroni_assert(A) if (!(A)) {__builtin_unreachable();}
-#define matcheroni_assert(A)
+#define matcheroni_assert(c) while (!(c)) __builtin_unreachable()
 
 namespace matcheroni {
 
@@ -343,9 +342,6 @@ struct Lit {
   }
 };
 
-// FIXME variadic?
-
-
 //------------------------------------------------------------------------------
 // 'Seq' (sequence) succeeds if all of its sub-matchers succeed in order.
 
@@ -515,8 +511,6 @@ struct Some {
 // The 'And' predicate matches a pattern but does _not_ advance the cursor.
 // Used for lookahead.
 
-// FIXME variadic?
-
 // And<Atom<'a'>>::match("abcd") == "abcd"
 // And<Atom<'a'>>::match("bcde") == nullptr
 
@@ -539,8 +533,6 @@ struct And {
 
 // Not<Atom<'a'>>::match("abcd") == nullptr
 // Not<Atom<'a'>>::match("bcde") == "bcde"
-
-// FIXME variadic?
 
 template <typename P>
 struct Not {
@@ -679,66 +671,6 @@ struct Until {
   }
 };
 
-#if 0
-// These patterns need better names and explanations...
-
-// Match some P until we see T. No T = no match.
-template<typename P, typename T>
-struct SomeUntil {
-  template<typename atom>
-  static atom* match(context& ctx, Span<atom> body) {
-    auto tail = AnyUntil<P,T>::match(ctx, body);
-    return tail == body ? body.fail() : tail;
-  }
-};
-
-// Match any P until we see T. No T = no match.
-template<typename P, typename T>
-struct AnyUntil {
-  template<typename atom>
-  static atom* match(context& ctx, Span<atom> body) {
-    while(!body.is_empty()) {
-      if (T::match(ctx, body)) return a;
-      if (auto tail = P::match(ctx, body)) {
-        body = tail;
-      }
-      else {
-        return body.fail();
-      }
-    }
-    return body.fail();
-  }
-};
-
-// Match some P unless it would match T.
-template<typename P, typename T>
-struct SomeUnless {
-  template<typename atom>
-  static atom* match(context& ctx, Span<atom> body) {
-    auto tail = AnyUnless<P,T>::match(ctx, body);
-    return tail == a ? body.fail() : tail;
-  }
-};
-
-// Match any P unless it would match T.
-template<typename P, typename T>
-struct AnyUnless {
-  template<typename atom>
-  static atom* match(context& ctx, Span<atom> body) {
-    while(!body.is_empty()) {
-      if (T::match(ctx, body)) return body;
-      if (auto tail = P::match(ctx, a, b)) {
-        body = tail;
-      }
-      else {
-        break;
-      }
-    }
-    return body;
-  }
-};
-#endif
-
 //------------------------------------------------------------------------------
 // 'Ref' is used to call a user-defined matcher function from a Matcheroni
 // pattern.
@@ -798,10 +730,6 @@ struct StoreBackref {
       return tail;
     }
     ref = {body.begin, tail.begin};
-
-    //printf("Backref: `");
-    //for (auto d = body.a; d < c.a; d++) putc(*d, stdout);
-    //printf("`\n");
     return tail;
   }
 };
@@ -903,38 +831,6 @@ struct EOL {
 };
 
 //------------------------------------------------------------------------------
-// 'Search' is not a matcher, just a convenience helper - searches for a
-// pattern anywhere in the input span and returns offset/length of the match if
-// found.
-
-#if 0
-// broken
-struct SearchResult {
-  operator bool() const { return length > 0; }
-  int offset;
-  int length;
-};
-
-template<typename P>
-struct Search {
-  template<typename atom>
-  static SearchResult search(context& ctx, Span<atom> body) {
-    matcheroni_assert(body.is_valid());
-
-    auto cursor = body;
-    while(1) {
-      auto tail = P::match(ctx, cursor, b);
-      if (tail) {
-        return {cursor-a, tail-cursor};
-      }
-      cursor++;
-      if (cursor == b) return {0,0};
-    }
-  }
-};
-#endif
-
-//------------------------------------------------------------------------------
 // 'Charset' matches larger sets of atoms packed into a string literal, which
 // is more concise than Atom<'a','b','c'...> for large sets of atoms.
 
@@ -954,71 +850,6 @@ struct Charset {
     return body.fail();
   }
 };
-
-//------------------------------------------------------------------------------
-// 'Map' returns the result of the first matcher whose 'match_key' matches the
-// input. Unlike 'Oneof', if the key pattern matches but the value pattern does
-// not, the rest of the options will _not_ be checked. This can make matching
-// much faster by allowing large arrays of options to be broken down into
-// skippable groups.
-
-// WARNING - I haven't tested this at all, I'm not sure if it's even a
-// performance improvement in most cases.
-
-// Note - the key is _NOT_ consumed, as the key pattern may be substantially
-// different than the match pattern (for example matching a single character as
-// a key for a match pattern consisting of a bunch of operators starting with
-// that character)
-
-// Example:
-
-// using Declaration =
-// Map<
-//   KeyVal<Atom<"struct">, NodeStruct>,
-//   KeyVal<Atom<"union">,  NodeUnion>,
-//   KeyVal<Atom<"class",   NodeClass>,
-//   KeyVal<Atom<"enum",    NodeEnum>,
-//   KeyVal<AnyAtom,        NodeVariable>
-// >;
-
-#if 0
-template<typename P, typename... rest>
-struct Map {
-  template<typename atom>
-  static Span<atom> match(context& ctx, Span<atom> body) {
-    auto bookmark = ctx.checkpoint();
-    if (P::match_key(a, b)) {
-      if (bookmark != ctx.checkpoint()) ctx.rewind(bookmark);
-      return P::match(ctx, a, b);
-    }
-    else {
-      if (bookmark != ctx.checkpoint()) ctx.rewind(bookmark);
-      return Map<rest...>::match(ctx, a, b);
-    }
-  }
-};
-
-template <typename P>
-struct Map<P> {
-  template<typename atom>
-  static Span<atom> match(context& ctx, Span<atom> body) {
-    return P::match(ctx, a, b);
-  }
-};
-
-template <typename K, typename V>
-struct KeyVal {
-  template<typename atom>
-  static Span<atom> match_key(context& ctx, Span<atom> body) {
-    return K::match(ctx, a, b);
-  }
-
-  template<typename atom>
-  static Span<atom> match(context& ctx, Span<atom> body) {
-    return V::match(ctx, a, b);
-  }
-};
-#endif
 
 //------------------------------------------------------------------------------
 // 'PatternWrapper' is just a convenience class that lets you do this:
