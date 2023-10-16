@@ -1,7 +1,1 @@
-{
-  "nested" : {
-    "some_key" : "some_value"
-  },
-  "foo" : "bar",
-  "baz" : [1, 2, 3]
-}
+{ "nested" : { "some_key" : "some_value" }, "foo" : "bar", "baz" : [1, 2, 3] }

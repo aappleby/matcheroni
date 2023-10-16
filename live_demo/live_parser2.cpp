@@ -6,6 +6,9 @@
 using namespace matcheroni;
 using namespace parseroni;
 
+using JsonContext = parseroni::TextParseContext;
+using JsonNode    = parseroni::TextParseNode;
+
 //------------------------------------------------------------------------------
 // Numbers
 
@@ -30,7 +33,6 @@ using string    = Seq<Atom<'"'>, Any<character>, Atom<'"'>>;
 //------------------------------------------------------------------------------
 // Arrays
 
-using JsonContext = parseroni::TextParseContext;
 TextSpan match_value(JsonContext& ctx, TextSpan body);
 
 template <typename pattern>
@@ -41,11 +43,9 @@ using array = Seq<Atom<'['>, ws, Opt<list<value>>, ws, Atom<']'>>;
 //------------------------------------------------------------------------------
 // Objects
 
-using JsonNode = parseroni::TextParseNode;
-
 using key    = Capture<"key", string, JsonNode>;
-using member = Capture<"member", Seq<key, ws, Atom<':'>, ws, value>, JsonNode>;
-using object = Seq<Atom<'{'>, ws, Opt<list<member>>, ws, Atom<'}'>>;
+using field  = Capture<"field", Seq<key, ws, Atom<':'>, ws, value>, JsonNode>;
+using object = Seq<Atom<'{'>, ws, Opt<list<field>>, ws, Atom<'}'>>;
 using json   = Seq<ws, value, ws>;
 
 TextSpan match_value(JsonContext& ctx, TextSpan body) {
@@ -67,7 +67,9 @@ bool parse_json(const std::string& text, bool verbose) {
   static JsonContext ctx;
   ctx.reset();
   auto result = json::match(ctx, body);
-  if (verbose && text.size() < 1024) utils::print_trees(ctx, body, 40, 0);
+  //if (verbose && text.size() < 1024) {
+  //  utils::print_trees(ctx, body, 40, 0);
+  //}
 
   return result.is_valid();
 }

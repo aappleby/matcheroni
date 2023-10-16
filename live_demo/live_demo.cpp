@@ -5,6 +5,8 @@
 
 #include "matcheroni/Utilities.hpp"
 
+//#define BENCHMARK
+
 using namespace matcheroni;
 
 bool parse_json(const std::string& text, bool verbose);
@@ -53,7 +55,7 @@ int main(int argc, char** argv) {
 
   const char* path = "data.json";
 
-  printf("Parsing %s:\n", path);
+  printf("Parsing %s: ", path);
 
   std::string buf;
   utils::read(path, buf);
@@ -64,13 +66,15 @@ int main(int argc, char** argv) {
 
   printf("%s\n", buf.data());
 
-  parse_json(buf, true);
-  printf("\n");
+  auto result = parse_json(buf, true);
+  printf(result ? "Parse OK!\n" : "Parse fail!\n");
 
+#ifdef BENCHMARK
   benchmark("canada.json");
   benchmark("rapidjson_sample.json");
   benchmark("twitter.json");
   benchmark("citm_catalog.json");
+#endif
 
   return 0;
 }

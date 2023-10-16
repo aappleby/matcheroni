@@ -1,10 +1,34 @@
 #include "matcheroni/Matcheroni.hpp"
 #include "matcheroni/Parseroni.hpp"
-#include "matcheroni/Utilities.hpp"
 #include <string>
 
 using namespace matcheroni;
 using namespace parseroni;
+
+using JsonContext = matcheroni::TextMatchContext;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 //------------------------------------------------------------------------------
 // Numbers
@@ -18,20 +42,41 @@ using fraction = Seq<Atom<'.'>, digits>;
 using exponent = Seq<Atom<'e', 'E'>, Opt<sign>, digits>;
 using number   = Seq<integer, Opt<fraction>, Opt<exponent>>;
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 //------------------------------------------------------------------------------
 // Strings
 
-using ws = Any<Atom<' ', '\n', '\r', '\t'>>;
+using ws  = Any<Atom<' ', '\n', '\r', '\t'>>;
 using hex = Range<'0','9','a','f','A','F'>;
 
-using escape =
-Seq<
+using escape = Seq<
   Atom<'\\'>,
   Oneof<
     Charset<"\"\\/bfnrt">,
     Seq<Atom<'u'>, Rep<4, hex>>
-  >
->;
+  >>;
 
 using character = Oneof<
   Seq<
@@ -39,30 +84,45 @@ using character = Oneof<
     Not<Atom<'\\'>>,
     Range<0x0020, 0x10FFFF>
   >,
-  escape
->;
+  escape>;
 
 using string = Seq<Atom<'"'>, Any<character>, Atom<'"'>>;
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 //------------------------------------------------------------------------------
 // Arrays
-
-using JsonContext = matcheroni::TextMatchContext;
-TextSpan match_value(JsonContext& ctx, TextSpan body);
 
 template <typename pattern>
 using list =
 Seq<
   pattern,
-  Any<Seq<
-    ws,
-    Atom<','>,
-    ws,
-    pattern
-  >>
+  Any<
+    Seq<ws, Atom<','>, ws, pattern>
+  >
 >;
-
-using value  = Ref<match_value>;
 
 using array =
 Seq<
@@ -73,30 +133,39 @@ Seq<
   Atom<']'>
 >;
 
+
+
+
+
+
+
+
+
+
+
+
+//TextSpan match_value(JsonContext& ctx, TextSpan body);
+//using value  = Ref<match_value>;
+
+
+
+
+
+
+
+
+
+
+
+
+
 //------------------------------------------------------------------------------
 // Objects
 
-using key = string;
-
-using member =
-Seq<
-  key,
-  ws,
-  Atom<':'>,
-  ws,
-  value
->;
-
-using object =
-Seq<
-  Atom<'{'>,
-  ws,
-  Opt<list<member>>,
-  ws,
-  Atom<'}'>
->;
-
-using json = Seq<ws, value, ws>;
+using key    = string;
+using field  = Seq<key, ws, Atom<':'>, ws, value>;
+using object = Seq<Atom<'{'>, ws, Opt<list<field>>, ws, Atom<'}'>>;
+using json   = Seq<ws, value, ws>;
 
 TextSpan match_value(JsonContext& ctx, TextSpan body) {
   using value =
@@ -111,6 +180,30 @@ TextSpan match_value(JsonContext& ctx, TextSpan body) {
   >;
   return value::match(ctx, body);
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 //------------------------------------------------------------------------------
 // Parser

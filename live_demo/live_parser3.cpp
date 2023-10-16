@@ -21,7 +21,7 @@ struct JsonKeyVal  : public JsonNode {};
 struct JsonObject  : public JsonNode {};
 struct JsonKeyword : public JsonNode {};
 
-struct JsonContext : public parseroni::NodeContext<JsonNode, true, true> {
+struct JsonContext : public parseroni::NodeContext<JsonNode> {
   static int atom_cmp(char a, int b) { return (unsigned char)a - b; }
 };
 
@@ -60,8 +60,8 @@ using array = Seq<Atom<'['>, ws, Opt<list<value>>, ws, Atom<']'>>;
 // Objects
 
 using key    = Capture<"key", string, JsonString>;
-using member = Capture<"member", Seq<key, ws, Atom<':'>, ws, value>, JsonKeyVal>;
-using object = Seq<Atom<'{'>, ws, Opt<list<member>>, ws, Atom<'}'>>;
+using field  = Capture<"field", Seq<key, ws, Atom<':'>, ws, value>, JsonKeyVal>;
+using object = Seq<Atom<'{'>, ws, Opt<list<field>>, ws, Atom<'}'>>;
 using json   = Seq<ws, value, ws>;
 
 TextSpan match_value(JsonContext& ctx, TextSpan body) {
@@ -87,7 +87,9 @@ bool parse_json(const std::string& text, bool verbose) {
   static JsonContext ctx;
   ctx.reset();
   auto result = json::match(ctx, body);
-  if (verbose && text.size() < 1024) utils::print_trees(ctx, body, 40, 0);
+  //if (verbose && text.size() < 1024) {
+  //  utils::print_trees(ctx, body, 40, 0);
+  //}
 
   return result.is_valid();
 }

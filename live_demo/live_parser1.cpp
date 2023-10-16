@@ -1,10 +1,11 @@
 #include "matcheroni/Matcheroni.hpp"
 #include "matcheroni/Parseroni.hpp"
-#include "matcheroni/Utilities.hpp"
 #include <string>
 
 using namespace matcheroni;
 using namespace parseroni;
+
+using JsonContext = matcheroni::TextMatchContext;
 
 //------------------------------------------------------------------------------
 // Numbers
@@ -30,7 +31,6 @@ using string    = Seq<Atom<'"'>, Any<character>, Atom<'"'>>;
 //------------------------------------------------------------------------------
 // Arrays
 
-using JsonContext = matcheroni::TextMatchContext;
 TextSpan match_value(JsonContext& ctx, TextSpan body);
 
 template <typename pattern>
@@ -42,8 +42,8 @@ using array = Seq<Atom<'['>, ws, Opt<list<value>>, ws, Atom<']'>>;
 // Objects
 
 using key    = string;
-using member = Seq<key, ws, Atom<':'>, ws, value>;
-using object = Seq<Atom<'{'>, ws, Opt<list<member>>, ws, Atom<'}'>>;
+using field  = Seq<key, ws, Atom<':'>, ws, value>;
+using object = Seq<Atom<'{'>, ws, Opt<list<field>>, ws, Atom<'}'>>;
 using json   = Seq<ws, value, ws>;
 
 TextSpan match_value(JsonContext& ctx, TextSpan body) {
