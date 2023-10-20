@@ -268,6 +268,7 @@ struct NodeContext {
   }
 
   //----------------------------------------
+  // FIXME - MUST MANUALLY CALL INIT() WHEN YOU'RE DONE WITH THIS
 
   template<typename node_type>
   void enclose_tail(int count) {
