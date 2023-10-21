@@ -1,12 +1,12 @@
 ################################################################################
 
 rule compile_cpp
-  command = ${toolchain}-g++ ${opts_cpp} ${includes} ${defines} -MD -MF ${out}.d -c ${in} -o ${out}
+  command = ${toolchain}-g++ ${opts_cpp} ${includes} ${defines} -MMD -MF ${out}.d -c ${in} -o ${out}
   depfile = ${out}.d
   deps = gcc
 
 rule compile_c
-  command = ${toolchain}-gcc ${opts_c} ${includes} ${defines} -MD -MF ${out}.d -c ${in} -o ${out}
+  command = ${toolchain}-gcc ${opts_c} ${includes} ${defines} -MMD -MF ${out}.d -c ${in} -o ${out}
   depfile = ${out}.d
   deps = gcc
 
@@ -19,12 +19,12 @@ rule c_binary
 ################################################################################
 
 rule ems_compile_c
-  command = emcc ${opts_ems} ${includes} ${defines} -MD -MF ${out}.d -c ${in} -o ${out}
+  command = emcc ${opts_ems} ${includes} ${defines} -MMD -MF ${out}.d -c ${in} -o ${out}
   depfile = ${out}.d
   deps = gcc
 
 rule ems_compile_cpp
-  command = emcc ${ems_opts_cpp} ${includes} ${defines} -MD -MF ${out}.d -c ${in} -o ${out}
+  command = emcc ${ems_opts_cpp} ${includes} ${defines} -MMD -MF ${out}.d -c ${in} -o ${out}
   depfile = ${out}.d
   deps = gcc
 
