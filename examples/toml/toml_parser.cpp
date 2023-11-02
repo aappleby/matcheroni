@@ -10,7 +10,7 @@ using Cap = Capture<name, pattern, TextParseNode>;
 
 // https://epage.github.io/blog/2023/07/winnow-0-5-the-fastest-rust-parser-combinator-library/
 
-using space   = Any<Atom<' ','\n'>>;
+using space   = Any<Atoms<' ','\n'>>;
 using comment = Seq<Atom<'#'>, Until<EOL>>;
 
 using cooked_string =
@@ -36,9 +36,9 @@ Seq<
 
 using string  = Oneof<raw_string, cooked_string, single_string>;
 
-using number  = Some<Range<'0','9','_','_'>>;
+using number  = Some<Ranges<'0','9','_','_'>>;
 using boolean = Oneof<Lit<"true">, Lit<"false">>;
-using key     = Some<Range<'0','9','a','z','A','Z','_','_','-','-'>>;
+using key     = Some<Ranges<'0','9','a','z','A','Z','_','_','-','-'>>;
 // using date = ???
 
 template<typename val, typename delim>

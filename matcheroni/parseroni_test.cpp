@@ -65,8 +65,8 @@ struct SExpression {
     >::match(ctx, body);
   }
 
-  using space = Some<Atom<' ', '\n', '\r', '\t'>>;
-  using atom  = Some<Range<'0','9','a','z','A','Z', '_', '_'>>;
+  using space = Some<Atoms<' ', '\n', '\r', '\t'>>;
+  using atom  = Some<Ranges<'0','9','a','z','A','Z', '_', '_'>>;
   using car   = Ref<match>;
   using cdr   = Some<Seq<Atom<','>, Any<space>, Ref<match>>>;
   using list  = Seq<Atom<'('>, Opt<space>, Opt<car>, Opt<space>, Opt<cdr>, Opt<space>, Atom<')'>>;
@@ -188,8 +188,8 @@ struct BeginEndTest {
     >
   >;
 
-  using space = Some<Atom<' ', '\n', '\r', '\t'>>;
-  using atom  = Some<Range<'0','9','a','f','A','F'>>;
+  using space = Some<Atoms<' ', '\n', '\r', '\t'>>;
+  using atom  = Some<Ranges<'0','9','a','f','A','F'>>;
   using car   = Opt<Ref<match>>;
   using cdr   = Any<Seq<Atom<','>, Any<space>, Ref<match>>>;
   using list  = Seq<Atom<'['>, Any<space>, car, Any<space>, cdr, Any<space>, Atom<']'>>;

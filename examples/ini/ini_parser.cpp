@@ -3,12 +3,12 @@
 
 using namespace matcheroni;
 
-using ws      = Any<Atom<' ', '\t'>>;
+using ws      = Any<Atoms<' ', '\t'>>;
 using digit   = Range<'0', '9'>;
-using alpha   = Range<'a', 'z', 'A', 'Z', '_', '_'>;
+using alpha   = Ranges<'a', 'z', 'A', 'Z', '_', '_'>;
 
 using ident   = Seq<alpha, Any<digit, alpha>>;
-using token   = Any<NotAtom<' ', '\t'>>;
+using token   = Any<NotAtoms<' ', '\t'>>;
 using value   = Seq<token, Any<Seq<ws, token>>>;
 
 using section = Seq<Atom<'['>, ws, ident, ws, Atom<']'>, ws, EOL>;

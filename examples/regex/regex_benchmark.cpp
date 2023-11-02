@@ -103,7 +103,7 @@ void benchmark_pattern(TextSpan body) {
   fflush(stdout);
 }
 
-using w = Range<'a','z', 'A','Z', '0','9', '_', '_'>;
+using w = Ranges<'a','z', 'A','Z', '0','9', '_', '_'>;
 using dot = Atom<'.'>;
 using at = Atom<'@'>;
 using plus = Atom<'+'>;
@@ -121,19 +121,19 @@ using matcheroni_url_pattern =
 Seq<
   Some<w>,
   Lit<"://">,
-  Some<NotAtom<'/',' ','\t','\n','?','#'>>,
-  Any<NotAtom<' ','\t','\n','?','#'>>,
+  Some<NotAtoms<'/',' ','\t','\n','?','#'>>,
+  Any<NotAtoms<' ','\t','\n','?','#'>>,
 
   Opt<
     Seq<
       Atom<'?'>,
-      Any<NotAtom<' ','\t','\n','#'>>
+      Any<NotAtoms<' ','\t','\n','#'>>
     >
   >,
   Opt<
     Seq<
       Atom<'#'>,
-      Any<NotAtom<' ','\t','\n'>>
+      Any<NotAtoms<' ','\t','\n'>>
     >
   >
 >;

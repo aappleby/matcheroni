@@ -1,7 +1,9 @@
 #include "matcheroni/Matcheroni.hpp"
 #include "matcheroni/Parseroni.hpp"
+
+#ifdef DEBUG
 #include "matcheroni/Utilities.hpp"
-#include <string>
+#endif
 
 using namespace matcheroni;
 using namespace parseroni;
@@ -12,20 +14,20 @@ using JsonNode    = parseroni::TextParseNode;
 //------------------------------------------------------------------------------
 // Numbers
 
-using sign     = Atom<'+', '-'>;
+using sign     = Atoms<'+', '-'>;
 using digit    = Range<'0', '9'>;
 using onenine  = Range<'1', '9'>;
 using digits   = Some<digit>;
 using integer  = Seq<Opt<Atom<'-'>>, Oneof<Seq<onenine, digits>, digit>>;
 using fraction = Seq<Atom<'.'>, digits>;
-using exponent = Seq<Atom<'e', 'E'>, Opt<sign>, digits>;
+using exponent = Seq<Atoms<'e', 'E'>, Opt<sign>, digits>;
 using number   = Seq<integer, Opt<fraction>, Opt<exponent>>;
 
 //------------------------------------------------------------------------------
 // Strings
 
-using ws        = Any<Atom<' ', '\n', '\r', '\t'>>;
-using hex       = Range<'0','9','a','f','A','F'>;
+using ws        = Any<Atoms<' ', '\n', '\r', '\t'>>;
+using hex       = Ranges<'0','9','a','f','A','F'>;
 using escape    = Seq<Atom<'\\'>, Oneof<Charset<"\"\\/bfnrt">, Seq<Atom<'u'>, Rep<4, hex>>>>;
 using character = Oneof<Seq<Not<Atom<'"'>>, Not<Atom<'\\'>>, Range<0x0020, 0x10FFFF>>, escape>;
 using string    = Seq<Atom<'"'>, Any<character>, Atom<'"'>>;
@@ -61,15 +63,16 @@ TextSpan match_value(JsonContext& ctx, TextSpan body) {
 //------------------------------------------------------------------------------
 // Parser
 
-bool parse_json(const std::string& text, bool verbose) {
-  TextSpan body(text.data(), text.data() + text.size());
+bool parse_json(const char* text, int size) {
+  TextSpan body(text, text + size);
 
   static JsonContext ctx;
   ctx.reset();
   auto result = json::match(ctx, body);
-  //if (verbose && text.size() < 1024) {
-  //  utils::print_trees(ctx, body, 40, 0);
-  //}
+
+#ifdef DEBUG
+  utils::print_trees(ctx, body, 40, 0);
+#endif
 
   return result.is_valid();
 }

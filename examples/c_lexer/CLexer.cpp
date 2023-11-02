@@ -110,7 +110,7 @@ TextSpan match_formfeed(TextMatchContext& ctx, TextSpan body) {
 }
 
 TextSpan match_space(TextMatchContext& ctx, TextSpan body) {
-  using ws = Atom<' ', '\t'>;
+  using ws = Atoms<' ', '\t'>;
   using pattern = Some<ws>;
   return pattern::match(ctx, body);
 }
@@ -132,20 +132,20 @@ TextSpan match_int(TextMatchContext& ctx, TextSpan body) {
   using decimal_constant     = Seq<nonzero_digit, Any<ticked<digit>>>;
 
   using hexadecimal_prefix         = Oneof<Lit<"0x">, Lit<"0X">>;
-  using hexadecimal_digit          = Range<'0','9','a','f','A','F'>;
+  using hexadecimal_digit          = Ranges<'0','9','a','f','A','F'>;
   using hexadecimal_digit_sequence = Seq<hexadecimal_digit, Any<ticked<hexadecimal_digit>>>;
   using hexadecimal_constant       = Seq<hexadecimal_prefix, hexadecimal_digit_sequence>;
 
   using binary_prefix         = Oneof<Lit<"0b">, Lit<"0B">>;
-  using binary_digit          = Atom<'0','1'>;
+  using binary_digit          = Atoms<'0','1'>;
   using binary_digit_sequence = Seq<binary_digit, Any<ticked<binary_digit>>>;
   using binary_constant       = Seq<binary_prefix, binary_digit_sequence>;
 
   using octal_digit        = Range<'0', '7'>;
   using octal_constant     = Seq<Atom<'0'>, Any<ticked<octal_digit>>>;
 
-  using unsigned_suffix        = Atom<'u', 'U'>;
-  using long_suffix            = Atom<'l', 'L'>;
+  using unsigned_suffix        = Atoms<'u', 'U'>;
+  using long_suffix            = Atoms<'l', 'L'>;
   using long_long_suffix       = Oneof<Lit<"ll">, Lit<"LL">>;
   using bit_precise_int_suffix = Oneof<Lit<"wb">, Lit<"WB">>;
 
@@ -163,7 +163,7 @@ TextSpan match_int(TextMatchContext& ctx, TextSpan body) {
   >;
 
   // GCC allows i or j in addition to the normal suffixes for complex-ified types :/...
-  using complex_suffix = Atom<'i', 'j'>;
+  using complex_suffix = Atoms<'i', 'j'>;
 
   // Octal has to be _after_ bin/hex so we don't prematurely match the prefix
   using integer_constant =
@@ -190,11 +190,11 @@ TextSpan match_int(TextMatchContext& ctx, TextSpan body) {
 
 TextSpan match_universal_character_name(TextMatchContext& ctx, TextSpan body) {
   // clang-format off
-  using n_char = NotAtom<'}','\n'>;
+  using n_char = NotAtoms<'}','\n'>;
   using n_char_sequence = Some<n_char>;
   using named_universal_character = Seq<Lit<"\\N{">, n_char_sequence, Lit<"}">>;
 
-  using hexadecimal_digit = Range<'0','9','a','f','A','F'>;
+  using hexadecimal_digit = Ranges<'0','9','a','f','A','F'>;
   using hex_quad = Rep<4, hexadecimal_digit>;
 
   using universal_character_name = Oneof<
@@ -275,20 +275,20 @@ TextSpan match_float(TextMatchContext& ctx, TextSpan body) {
     Seq<digit_sequence, Atom<'.'>>
   >;
 
-  using sign = Atom<'+','-'>;
+  using sign = Atoms<'+','-'>;
 
-  using hexadecimal_digit          = Range<'0','9','a','f','A','F'>;
+  using hexadecimal_digit          = Ranges<'0','9','a','f','A','F'>;
   using hexadecimal_digit_sequence = Seq<hexadecimal_digit, Any<ticked<hexadecimal_digit>>>;
   using hexadecimal_fractional_constant = Oneof<
     Seq<Opt<hexadecimal_digit_sequence>, Atom<'.'>, hexadecimal_digit_sequence>,
     Seq<hexadecimal_digit_sequence, Atom<'.'>>
   >;
 
-  using exponent_part        = Seq<Atom<'e', 'E'>, Opt<sign>, digit_sequence>;
-  using binary_exponent_part = Seq<Atom<'p', 'P'>, Opt<sign>, digit_sequence>;
+  using exponent_part        = Seq<Atoms<'e', 'E'>, Opt<sign>, digit_sequence>;
+  using binary_exponent_part = Seq<Atoms<'p', 'P'>, Opt<sign>, digit_sequence>;
 
   // GCC allows i or j in addition to the normal suffixes for complex-ified types :/...
-  using complex_suffix = Atom<'i', 'j'>;
+  using complex_suffix = Atoms<'i', 'j'>;
 
   using decimal_floating_constant = Oneof<
     Seq< fractional_constant, Opt<exponent_part>, Opt<complex_suffix>, Opt<floating_suffix>, Opt<complex_suffix> >,
@@ -334,7 +334,7 @@ TextSpan match_escape_sequence(TextMatchContext& ctx, TextSpan body) {
     Seq<Lit<"\\o{">, Any<octal_digit>, Lit<"}">>
   >;
 
-  using hexadecimal_digit = Range<'0','9','a','f','A','F'>;
+  using hexadecimal_digit = Ranges<'0','9','a','f','A','F'>;
   using hexadecimal_escape_sequence = Oneof<
     Seq<Lit<"\\x">, Some<hexadecimal_digit>>,
     Seq<Lit<"\\x{">, Any<hexadecimal_digit>, Lit<"}">>
@@ -359,10 +359,10 @@ TextSpan match_char(TextMatchContext& ctx, TextSpan body) {
   // is implementation-defined...
 
   // clang-format off
-  using c_char             = Oneof<Ref<match_escape_sequence>, NotAtom<'\'', '\\', '\n'>>;
+  using c_char             = Oneof<Ref<match_escape_sequence>, NotAtoms<'\'', '\\', '\n'>>;
   //using c_char_sequence    = Some<c_char>;
 
-  using encoding_prefix    = Oneof<Lit<"u8">, Atom<'u', 'U', 'L'>>; // u8 must go first
+  using encoding_prefix    = Oneof<Lit<"u8">, Atoms<'u', 'U', 'L'>>; // u8 must go first
 
   // The spec disallows empty character constants, but...
   //using character_constant = Seq< Opt<encoding_prefix>, Atom<'\''>, c_char_sequence, Atom<'\''> >;
@@ -381,9 +381,9 @@ TextSpan match_cooked_string_literal(TextMatchContext& ctx, TextSpan body) {
   // Note, we add splices here since we're matching before preproccessing.
 
   // clang-format off
-  using s_char          = Oneof<Ref<match_splice>, Ref<match_escape_sequence>, NotAtom<'"', '\\', '\n'>>;
+  using s_char          = Oneof<Ref<match_splice>, Ref<match_escape_sequence>, NotAtoms<'"', '\\', '\n'>>;
   using s_char_sequence = Some<s_char>;
-  using encoding_prefix = Oneof<Lit<"u8">, Atom<'u', 'U', 'L'>>; // u8 must go first
+  using encoding_prefix = Oneof<Lit<"u8">, Atoms<'u', 'U', 'L'>>; // u8 must go first
   using string_literal  = Seq<Opt<encoding_prefix>, Atom<'"'>, Opt<s_char_sequence>, Atom<'"'>>;
   // clang-format on
 
@@ -395,11 +395,11 @@ TextSpan match_cooked_string_literal(TextMatchContext& ctx, TextSpan body) {
 
 TextSpan match_raw_string_literal(TextMatchContext& ctx, TextSpan body) {
   // clang-format off
-  using encoding_prefix    = Oneof<Lit<"u8">, Atom<'u', 'U', 'L'>>; // u8 must go first
+  using encoding_prefix    = Oneof<Lit<"u8">, Atoms<'u', 'U', 'L'>>; // u8 must go first
 
   // We ignore backslash in d_char for similar splice-related reasons
-  //using d_char          = NotAtom<' ', '(', ')', '\\', '\t', '\v', '\f', '\n'>;
-  using d_char          = NotAtom<' ', '(', ')', '\t', '\v', '\f', '\n'>;
+  //using d_char          = NotAtoms<' ', '(', ')', '\\', '\t', '\v', '\f', '\n'>;
+  using d_char          = NotAtoms<' ', '(', ')', '\t', '\v', '\f', '\n'>;
   using d_char_sequence = Some<d_char>;
   using backref_type    = Opt<d_char_sequence>;
 
@@ -499,9 +499,9 @@ TextSpan match_splice(TextMatchContext& ctx, TextSpan body) {
   // clang-format off
   using splice = Seq<
     Atom<'\\'>,
-    Any<Atom<' ','\t'>>,
+    Any<Atoms<' ','\t'>>,
     Opt<Atom<'\r'>>,
-    Any<Atom<' ','\t'>>,
+    Any<Atoms<' ','\t'>>,
     Atom<'\n'>
   >;
   // clang-format on

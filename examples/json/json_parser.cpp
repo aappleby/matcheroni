@@ -6,17 +6,17 @@
 using namespace matcheroni;
 using namespace parseroni;
 
-using sign      = Atom<'+', '-'>;
+using sign      = Atoms<'+', '-'>;
 using digit     = Range<'0', '9'>;
 using onenine   = Range<'1', '9'>;
 using digits    = Some<digit>;
 using integer   = Seq<Opt<Atom<'-'>>, Oneof<Seq<onenine, digits>, digit>>;
 using fraction  = Seq<Atom<'.'>, digits>;
-using exponent  = Seq<Atom<'e', 'E'>, Opt<sign>, digits>;
+using exponent  = Seq<Atoms<'e', 'E'>, Opt<sign>, digits>;
 using number    = Seq<integer, Opt<fraction>, Opt<exponent>>;
 
-using ws        = Any<Atom<' ', '\n', '\r', '\t'>>;
-using hex       = Range<'0','9','a','f','A','F'>;
+using ws        = Any<Atoms<' ', '\n', '\r', '\t'>>;
+using hex       = Ranges<'0','9','a','f','A','F'>;
 using escape    = Oneof<Charset<"\"\\/bfnrt">, Seq<Atom<'u'>, Rep<4, hex>>>;
 using character = Oneof<
   Seq<Not<Atom<'"'>>, Not<Atom<'\\'>>, Range<0x0020, 0x10FFFF>>,

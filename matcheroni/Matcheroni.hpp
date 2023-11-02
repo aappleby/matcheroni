@@ -155,13 +155,10 @@ using TextSpan = Span<char>;
 
 // Examples:
 // Atom<'a'>::match("abcd"...) == "bcd"
-// Atom<'a','c'>::match("cdef"...) == "def"
+// Atoms<'a','c'>::match("cdef"...) == "def"
 
-template <auto... rest>
-struct Atom;
-
-template <auto C, auto... rest>
-struct Atom<C, rest...> {
+template <auto C>
+struct Atom {
   template <typename context, typename atom>
   static Span<atom> match(context& ctx, Span<atom> body) {
     matcheroni_assert(body.is_valid());
@@ -171,12 +168,30 @@ struct Atom<C, rest...> {
       return body.advance(1);
     }
 
-    return Atom<rest...>::match(ctx, body);
+    return body.fail();
+  }
+};
+
+template <auto... rest>
+struct Atoms;
+
+template <auto C, auto... rest>
+struct Atoms<C, rest...> {
+  template <typename context, typename atom>
+  static Span<atom> match(context& ctx, Span<atom> body) {
+    matcheroni_assert(body.is_valid());
+    if (body.is_empty()) return body.fail();
+
+    if (ctx.atom_cmp(*body.begin, C) == 0) {
+      return body.advance(1);
+    }
+
+    return Atoms<rest...>::match(ctx, body);
   }
 };
 
 template <auto C>
-struct Atom<C> {
+struct Atoms<C> {
   template <typename context, typename atom>
   static Span<atom> match(context& ctx, Span<atom> body) {
     matcheroni_assert(body.is_valid());
@@ -194,7 +209,7 @@ struct Atom<C> {
 // 'NotAtom' matches any atom that is _not_ in its argument list, which is a
 // bit faster than using Seq<Not<Atom<...>>, AnyAtom>
 
-template <auto C, auto... rest>
+template <auto C>
 struct NotAtom {
   template <typename context, typename atom>
   static Span<atom> match(context& ctx, Span<atom> body) {
@@ -203,13 +218,28 @@ struct NotAtom {
 
     if (ctx.atom_cmp(*body.begin, C) == 0) {
       return body.fail();
+    } else {
+      return body.advance(1);
     }
-    return NotAtom<rest...>::match(ctx, body);
+  }
+};
+
+template <auto C, auto... rest>
+struct NotAtoms {
+  template <typename context, typename atom>
+  static Span<atom> match(context& ctx, Span<atom> body) {
+    matcheroni_assert(body.is_valid());
+    if (body.is_empty()) return body.fail();
+
+    if (ctx.atom_cmp(*body.begin, C) == 0) {
+      return body.fail();
+    }
+    return NotAtoms<rest...>::match(ctx, body);
   }
 };
 
 template <auto C>
-struct NotAtom<C> {
+struct NotAtoms<C> {
   template <typename context, typename atom>
   static Span<atom> match(context& ctx, Span<atom> body) {
     matcheroni_assert(body.is_valid());
@@ -238,7 +268,7 @@ struct AnyAtom {
 //------------------------------------------------------------------------------
 // 'Range' matches ranges of atoms, equivalent to '[a-b]' in regex.
 
-template <auto RA, decltype(RA) RB, auto... rest>
+template <auto RA, decltype(RA) RB>
 struct Range {
   template <typename context, typename atom>
   static Span<atom> match(context& ctx, Span<atom> body) {
@@ -248,12 +278,26 @@ struct Range {
     if ((ctx.atom_cmp(*body.begin, RA) >= 0) && (ctx.atom_cmp(*body.begin, RB) <= 0)) {
       return body.advance(1);
     }
-    return Range<rest...>::match(ctx, body);
+    return body.fail();
+  }
+};
+
+template <auto RA, decltype(RA) RB, auto... rest>
+struct Ranges {
+  template <typename context, typename atom>
+  static Span<atom> match(context& ctx, Span<atom> body) {
+    matcheroni_assert(body.is_valid());
+    if (body.is_empty()) return body.fail();
+
+    if ((ctx.atom_cmp(*body.begin, RA) >= 0) && (ctx.atom_cmp(*body.begin, RB) <= 0)) {
+      return body.advance(1);
+    }
+    return Ranges<rest...>::match(ctx, body);
   }
 };
 
 template <auto RA, decltype(RA) RB>
-struct Range<RA, RB> {
+struct Ranges<RA, RB> {
   template <typename context, typename atom>
   static Span<atom> match(context& ctx, Span<atom> body) {
     matcheroni_assert(body.is_valid());
@@ -270,7 +314,7 @@ struct Range<RA, RB> {
 // 'NotRange' matches ranges of atoms not in the given range, equivalent to
 // '[^a-b]' in regex.
 
-template <auto RA, decltype(RA) RB, auto... rest>
+template <auto RA, decltype(RA) RB>
 struct NotRange {
   template <typename context, typename atom>
   static Span<atom> match(context& ctx, Span<atom> body) {
@@ -281,12 +325,28 @@ struct NotRange {
       return body.fail();
     }
 
-    return NotRange<rest...>::match(ctx, body);
+    return body.advance(1);
+  }
+};
+
+
+template <auto RA, decltype(RA) RB, auto... rest>
+struct NotRanges {
+  template <typename context, typename atom>
+  static Span<atom> match(context& ctx, Span<atom> body) {
+    matcheroni_assert(body.is_valid());
+    if (body.is_empty()) return body.fail();
+
+    if ((ctx.atom_cmp(*body.begin, RA) >= 0) && (ctx.atom_cmp(*body.begin, RB) <= 0)) {
+      return body.fail();
+    }
+
+    return NotRanges<rest...>::match(ctx, body);
   }
 };
 
 template <auto RA, decltype(RA) RB>
-struct NotRange<RA, RB> {
+struct NotRanges<RA, RB> {
   template <typename context, typename atom>
   static Span<atom> match(context& ctx, Span<atom> body) {
     matcheroni_assert(body.is_valid());

@@ -65,7 +65,7 @@ TextSpan match_int(TextMatchContext& ctx, TextSpan body) {
   using decimal_constant     = Seq<nonzero_digit, Any<ticked<digit>>>;
 
   using hexadecimal_prefix         = Oneof<Lit<"0x">, Lit<"0X">>;
-  using hexadecimal_digit          = Range<'0','9','a','f','A','F'>;
+  using hexadecimal_digit          = Ranges<'0','9','a','f','A','F'>;
   using hexadecimal_digit_sequence = Seq<hexadecimal_digit, Any<ticked<hexadecimal_digit>>>;
   using hexadecimal_constant       = Seq<hexadecimal_prefix, hexadecimal_digit_sequence>;
 

@@ -24,9 +24,9 @@ Matcheroni and Parseroni generate tiny, fast parsers that are easy to customize 
 | a            | Atom<'a'>                     | Matches a single atom. |
 | abc          | Lit<"abc">                    | Matches a literal string. |
 | .            | AnyAtom<>                     | Matches any single atom. |
-| \\w          | Range<'a','z','A','Z','0','9'>| Matches "word" characters. |
+| \\w          | Ranges<'a','z','A','Z','0','9'>| Matches "word" characters. |
 | [a-z]        | Range<'a','z'>                | Matches a range of atoms. |
-| [a-zA-Z0-9]  | Range<'a','z','A','Z','0','9'>| Matches multiple ranges of atoms. |
+| [a-zA-Z0-9]  | Ranges<'a','z','A','Z','0','9'>| Matches multiple ranges of atoms. |
 | [^a-z]       | NotRange<'a','z'>             | Matches atoms _not_ in a range. |
 | (X\|Y)       | Oneof<X,Y>                    | Tests patterns X & Y in order, stopping at the first match. |
 | X*           | Any<X>                        | Matches zero or more instances of pattern X. |
@@ -69,9 +69,9 @@ Items in the Matches column formatted as "a\|b" indicate where the match would e
 | NotAtom<...> | Matches any atom except one of the arguments | NotAtom<'a', 'b', 'c'> | z | a, b, c |
 | AnyAtom | Matches any single atom | AnyAtom | a, b, c, z |  |
 | Range<X,Y> | Matches a single atom in a range of values | Range<'a','z'> | a, b, c | 3 |
-| Range<...> | Matches a single atom in any of the argument ranges | Range<'a','z', 'A','Z', '0','9'> | q, 3, X | $ |
+| Range<...> | Matches a single atom in any of the argument ranges | Ranges<'a','z', 'A','Z', '0','9'> | q, 3, X | $ |
 | NotRange<X,Y> | Matches a single atom not in the argument range | NotRange<'a','z'> | 3, #, ! | a, b, c |
-| NotRange<...> | Matches a single atom not in any argument range | NotRange<'a','z','A','Z','0','9'> | $, ~, ! | q, 3, X |
+| NotRange<...> | Matches a single atom not in any argument range | NotRanges<'a','z','A','Z','0','9'> | $, ~, ! | q, 3, X |
 | Lit<X> | Matches a sequence of atoms with a string literal | Lit<"true"> | true | false |
 | Seq<...> | Matches a sequence of sub-patterns | Seq<Atom<'a'>, Atom<'b'>> | ab | ba |
 | Oneof<...> | Tests sub-patterns in order, stopping at the first match.* | Oneof<Lit<"true">, Lit<"false">> | true, false | null |

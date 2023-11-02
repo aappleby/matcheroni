@@ -32,7 +32,7 @@ static TextSpan match_regex(TextParseContext& ctx, TextSpan body);
 // Our 'control' characters consist of all atoms with special regex meanings.
 
 struct cchar {
-  using pattern = Atom<'\\', '(', ')', '|', '$', '.', '+', '*', '?', '[', ']', '^'>;
+  using pattern = Atoms<'\\', '(', ')', '|', '$', '.', '+', '*', '?', '[', ']', '^'>;
   static TextSpan match(TextParseContext& ctx, TextSpan body) { return pattern::match(ctx, body); }
 };
 
@@ -46,7 +46,7 @@ struct pchar {
 // Plain text is any span of plain characters not followed by an operator.
 
 struct text {
-  using pattern = Some<Seq<pchar, Not<Atom<'*', '+', '?'>>>>;
+  using pattern = Some<Seq<pchar, Not<Atoms<'*', '+', '?'>>>>;
   static TextSpan match(TextParseContext& ctx, TextSpan body) { return pattern::match(ctx, body); }
 };
 

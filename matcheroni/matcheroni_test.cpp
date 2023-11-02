@@ -58,7 +58,7 @@ void test_atom() {
 
   // Providing multiple options in an atom matcher should work.
   text = utils::to_span("abc");
-  tail = Atom<'b', 'a'>::match(ctx, text);
+  tail = Atoms<'b', 'a'>::match(ctx, text);
   TEST(tail.is_valid() && tail == "bc");
 
   // Failed atom matches should leave the fail cursor at BOL
@@ -100,11 +100,11 @@ void test_notatom() {
   TEST(tail.is_valid() && tail == "bc");
 
   text = utils::to_span("abc");
-  tail = NotAtom<'b', 'a'>::match(ctx, text);
+  tail = NotAtoms<'b', 'a'>::match(ctx, text);
   TEST(!tail.is_valid() && std::string(tail.end) == "abc");
 
   text = utils::to_span("abc");
-  tail = NotAtom<'z', 'y'>::match(ctx, text);
+  tail = NotAtoms<'z', 'y'>::match(ctx, text);
   TEST(tail.is_valid() && tail == "bc");
 };
 
@@ -135,27 +135,27 @@ void test_range() {
   TEST(tail.is_valid() && tail == "b");
 
   text = utils::to_span("be");
-  tail = Range<'a','c', 'd', 'f'>::match(ctx, text);
+  tail = Ranges<'a','c', 'd', 'f'>::match(ctx, text);
   TEST(tail.is_valid() && tail == "e");
 
   text = utils::to_span("ez");
-  tail = Range<'a','c', 'd', 'f'>::match(ctx, text);
+  tail = Ranges<'a','c', 'd', 'f'>::match(ctx, text);
   TEST(tail.is_valid() && tail == "z");
 
   text = utils::to_span("zq");
-  tail = Range<'a','c', 'd', 'f'>::match(ctx, text);
+  tail = Ranges<'a','c', 'd', 'f'>::match(ctx, text);
   TEST(!tail.is_valid() && std::string(tail.end) == "zq");
 
   text = utils::to_span("mn");
-  tail = NotRange<'a','c', 'd','f'>::match(ctx, text);
+  tail = NotRanges<'a','c', 'd','f'>::match(ctx, text);
   TEST(tail.is_valid() && tail == "n");
 
   text = utils::to_span("be");
-  tail = NotRange<'a','c', 'd','f'>::match(ctx, text);
+  tail = NotRanges<'a','c', 'd','f'>::match(ctx, text);
   TEST(!tail.is_valid() && std::string(tail.end) == "be");
 
   text = utils::to_span("eb");
-  tail = NotRange<'a','c', 'd','f'>::match(ctx, text);
+  tail = NotRanges<'a','c', 'd','f'>::match(ctx, text);
   TEST(!tail.is_valid() && std::string(tail.end) == "eb");
 }
 
