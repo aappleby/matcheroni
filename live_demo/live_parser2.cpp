@@ -64,10 +64,9 @@ TextSpan match_value(JsonContext& ctx, TextSpan body) {
 // Parser
 
 bool parse_json(const char* text, int size) {
+  static JsonContext ctx;
   TextSpan body(text, text + size);
 
-  static JsonContext ctx;
-  ctx.reset();
   auto result = json::match(ctx, body);
 
 #ifdef DEBUG

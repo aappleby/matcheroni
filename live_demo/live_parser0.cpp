@@ -6,7 +6,7 @@ using namespace matcheroni;
 using namespace parseroni;
 
 using JsonContext = matcheroni::TextMatchContext;
-
+static JsonContext ctx;
 
 
 
@@ -115,6 +115,9 @@ using string = Seq<Atom<'"'>, Any<character>, Atom<'"'>>;
 //------------------------------------------------------------------------------
 // Arrays
 
+TextSpan match_value(JsonContext& ctx, TextSpan body);
+using value  = Ref<match_value>;
+
 template <typename pattern>
 using list =
 Seq<
@@ -144,8 +147,6 @@ Seq<
 
 
 
-//TextSpan match_value(JsonContext& ctx, TextSpan body);
-//using value  = Ref<match_value>;
 
 
 
@@ -236,10 +237,10 @@ TextSpan match_value(JsonContext& ctx, TextSpan body) {
 bool parse_json(const std::string& text, bool verbose) {
   TextSpan body(text.data(), text.data() + text.size());
 
-  static JsonContext ctx;
-  ctx.reset();
+  // The actual parsing code
   auto result = json::match(ctx, body);
 
+  // That's it, we're done.
   return result.is_valid();
 }
 
