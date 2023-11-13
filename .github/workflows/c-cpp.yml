@@ -5,19 +5,12 @@ on:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
-
 jobs:
   build:
-
     runs-on: ubuntu-latest
-
     steps:
     - uses: actions/checkout@v3
-    - name: configure
-      run: echo ./configure
-    - name: make
-      run: echo make
-    - name: make check
-      run: echo make check
-    - name: make distcheck
-      run: echo make distcheck
+    - name: Get Ninja
+      uses: turtlesec-no/get-ninja@main
+    - name: Run Ninja
+      run: ninja
