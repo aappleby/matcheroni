@@ -10,7 +10,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Get Boost
-      run: sudo apt install libboost-regex-dev
+      run: sudo apt install libboost-regex-dev libboost-system-dev
     - name: Get Ninja
       run: sudo apt install ninja-build
     - name: Run Ninja
