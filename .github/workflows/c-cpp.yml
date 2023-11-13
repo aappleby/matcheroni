@@ -9,7 +9,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
+    - name: Get Boost
+      run: sudo apt install libboost-regex-dev
     - name: Get Ninja
-      uses: turtlesec-no/get-ninja@main
+      run: sudo apt install ninja-build
     - name: Run Ninja
       run: ninja
