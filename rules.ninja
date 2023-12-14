@@ -29,7 +29,7 @@ rule ems_compile_cpp
   deps = gcc
 
 rule ems_js_binary
-  command = emcc ${ems_opts_ld} --embed-file="${embed}" ${in} ${libraries} -o ${out}
+  command = emcc ${ems_opts_ld} ${in} ${libraries} -o ${out}
 
 ################################################################################
 

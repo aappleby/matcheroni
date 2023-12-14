@@ -73,6 +73,7 @@ struct TraceToken {
 template <StringParam match_name, typename pattern>
 using Cap = parseroni::Capture<match_name, pattern, CNode>;
 
+//template <StringParam match_name, typename pattern>
 //using Cap = TraceToken<match_name, Capture<match_name, pattern, CNode>>;
 
 //------------------------------------------------------------------------------
@@ -122,7 +123,7 @@ struct Keyword : public CNode, PatternWrapper<Keyword<lit>> {
   static_assert(SST<c_keywords>::contains(lit.str_val));
 
   static TokenSpan match(CContext& ctx, TokenSpan body) {
-    if (!body.is_valid()) return body.fail();
+    if (!body.is_valid() || body.is_empty()) return body.fail();
     if (ctx.atom_cmp(*body.begin, LEX_KEYWORD) != 0) return body.fail();
     if (ctx.atom_cmp(*body.begin, lit.span()) != 0) return body.fail();
     return body.advance(1);
@@ -132,7 +133,7 @@ struct Keyword : public CNode, PatternWrapper<Keyword<lit>> {
 template <StringParam lit>
 struct Literal2 : public CNode, PatternWrapper<Literal2<lit>> {
   static TokenSpan match(CContext& ctx, TokenSpan body) {
-    if (!body.is_valid()) return body.fail();
+    if (!body.is_valid() || body.is_empty()) return body.fail();
     if (ctx.atom_cmp(*body.begin, lit.span()) != 0) return body.fail();
     return body.advance(1);
   }
@@ -142,7 +143,7 @@ struct Literal2 : public CNode, PatternWrapper<Literal2<lit>> {
 
 template <StringParam lit>
 inline TokenSpan match_punct(CContext& ctx, TokenSpan body) {
-  if (!body.is_valid()) return body.fail();
+  if (!body.is_valid() || body.is_empty()) return body.fail();
 
   size_t lit_len = lit.str_len;
   const char* lit_val = lit.str_val;
