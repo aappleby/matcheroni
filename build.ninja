@@ -1,5 +1,5 @@
-#target=DEBUG
-target=RELEASE
+target=DEBUG
+#target=RELEASE
 #target=SIZE
 
 toolchain=x86_64-linux-gnu
@@ -26,7 +26,7 @@ build bin/matcheroni/parseroni_test_pass  : run_test bin/matcheroni/parseroni_te
 #-------------------------------------------------------------------------------
 # Regex parser example
 
-# These are the various regex libraries that Matcheroni can be ed
+# These are the various regex libraries that Matcheroni can be benchmarked
 # against. CTRE and SRELL require that you copy their header into matcheroni/.
 
 #benchmark_defs = ${benchmark_defs} -DREGEX_BENCHMARK_BASELINE

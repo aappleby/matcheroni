@@ -73,6 +73,13 @@ struct Span {
     return {end, end};
   }
 
+  [[nodiscard]] Span take(int offset) {
+    matcheroni_assert(begin);
+    Span result = {begin, begin + offset};
+    begin += offset;
+    return result;
+  }
+
   //----------------------------------------
 
   const atom* begin;
@@ -117,6 +124,9 @@ inline int strcmp_span(const Span<char>& a, const Span<char>& b) {
 
 template <typename context, typename atom>
 using matcher_function = Span<atom> (*)(context& ctx, Span<atom> body);
+
+template <typename context, typename atom>
+using taker_function = Span<atom> (*)(context& ctx, Span<atom> body);
 
 //------------------------------------------------------------------------------
 // Matchers require a context object to perform two essential functions -
@@ -170,6 +180,18 @@ struct Atom {
 
     return body.fail();
   }
+
+  template <typename context, typename atom>
+  static Span<atom> take(context& ctx, Span<atom>& body) {
+    matcheroni_assert(body.is_valid());
+    if (body.is_empty()) return body.fail();
+
+    if (ctx.atom_cmp(*body.begin, C) == 0) {
+      return body.take(1);
+    }
+
+    return body.fail();
+  }
 };
 
 template <auto... rest>
@@ -188,6 +210,18 @@ struct Atoms<C, rest...> {
 
     return Atoms<rest...>::match(ctx, body);
   }
+
+  template <typename context, typename atom>
+  static Span<atom> take(context& ctx, Span<atom>& body) {
+    matcheroni_assert(body.is_valid());
+    if (body.is_empty()) return body.fail();
+
+    if (ctx.atom_cmp(*body.begin, C) == 0) {
+      return body.take(1);
+    }
+
+    return Atoms<rest...>::take(ctx, body);
+  }
 };
 
 template <auto C>
@@ -199,6 +233,18 @@ struct Atoms<C> {
 
     if (ctx.atom_cmp(*body.begin, C) == 0) {
       return body.advance(1);
+    }
+
+    return body.fail();
+  }
+
+  template <typename context, typename atom>
+  static Span<atom> take(context& ctx, Span<atom>& body) {
+    matcheroni_assert(body.is_valid());
+    if (body.is_empty()) return body.fail();
+
+    if (ctx.atom_cmp(*body.begin, C) == 0) {
+      return body.take(1);
     }
 
     return body.fail();
@@ -222,6 +268,18 @@ struct NotAtom {
       return body.advance(1);
     }
   }
+
+  template <typename context, typename atom>
+  static Span<atom> take(context& ctx, Span<atom>& body) {
+    matcheroni_assert(body.is_valid());
+    if (body.is_empty()) return body.fail();
+
+    if (ctx.atom_cmp(*body.begin, C) == 0) {
+      return body.fail();
+    } else {
+      return body.take(1);
+    }
+  }
 };
 
 template <auto C, auto... rest>
@@ -235,6 +293,17 @@ struct NotAtoms {
       return body.fail();
     }
     return NotAtoms<rest...>::match(ctx, body);
+  }
+
+  template <typename context, typename atom>
+  static Span<atom> take(context& ctx, Span<atom>& body) {
+    matcheroni_assert(body.is_valid());
+    if (body.is_empty()) return body.fail();
+
+    if (ctx.atom_cmp(*body.begin, C) == 0) {
+      return body.fail();
+    }
+    return NotAtoms<rest...>::take(ctx, body);
   }
 };
 
@@ -251,6 +320,18 @@ struct NotAtoms<C> {
       return body.advance(1);
     }
   }
+
+  template <typename context, typename atom>
+  static Span<atom> take(context& ctx, Span<atom>& body) {
+    matcheroni_assert(body.is_valid());
+    if (body.is_empty()) return body.fail();
+
+    if (ctx.atom_cmp(*body.begin, C) == 0) {
+      return body.fail();
+    } else {
+      return body.take(1);
+    }
+  }
 };
 
 //------------------------------------------------------------------------------
@@ -262,6 +343,13 @@ struct AnyAtom {
     matcheroni_assert(body.is_valid());
     if (body.is_empty()) return body.fail();
     return body.advance(1);
+  }
+
+  template <typename context, typename atom>
+  static Span<atom> take(context& ctx, Span<atom>& body) {
+    matcheroni_assert(body.is_valid());
+    if (body.is_empty()) return body.fail();
+    return body.take(1);
   }
 };
 
@@ -280,6 +368,17 @@ struct Range {
     }
     return body.fail();
   }
+
+  template <typename context, typename atom>
+  static Span<atom> take(context& ctx, Span<atom>& body) {
+    matcheroni_assert(body.is_valid());
+    if (body.is_empty()) return body.fail();
+
+    if ((ctx.atom_cmp(*body.begin, RA) >= 0) && (ctx.atom_cmp(*body.begin, RB) <= 0)) {
+      return body.take(1);
+    }
+    return body.fail();
+  }
 };
 
 template <auto RA, decltype(RA) RB, auto... rest>
@@ -294,6 +393,17 @@ struct Ranges {
     }
     return Ranges<rest...>::match(ctx, body);
   }
+
+  template <typename context, typename atom>
+  static Span<atom> take(context& ctx, Span<atom>& body) {
+    matcheroni_assert(body.is_valid());
+    if (body.is_empty()) return body.fail();
+
+    if ((ctx.atom_cmp(*body.begin, RA) >= 0) && (ctx.atom_cmp(*body.begin, RB) <= 0)) {
+      return body.take(1);
+    }
+    return Ranges<rest...>::take(ctx, body);
+  }
 };
 
 template <auto RA, decltype(RA) RB>
@@ -305,6 +415,17 @@ struct Ranges<RA, RB> {
 
     if ((ctx.atom_cmp(*body.begin, RA) >= 0) && (ctx.atom_cmp(*body.begin, RB) <= 0)) {
       return body.advance(1);
+    }
+    return body.fail();
+  }
+
+  template <typename context, typename atom>
+  static Span<atom> take(context& ctx, Span<atom>& body) {
+    matcheroni_assert(body.is_valid());
+    if (body.is_empty()) return body.fail();
+
+    if ((ctx.atom_cmp(*body.begin, RA) >= 0) && (ctx.atom_cmp(*body.begin, RB) <= 0)) {
+      return body.take(1);
     }
     return body.fail();
   }
@@ -327,6 +448,18 @@ struct NotRange {
 
     return body.advance(1);
   }
+
+  template <typename context, typename atom>
+  static Span<atom> take(context& ctx, Span<atom>& body) {
+    matcheroni_assert(body.is_valid());
+    if (body.is_empty()) return body.fail();
+
+    if ((ctx.atom_cmp(*body.begin, RA) >= 0) && (ctx.atom_cmp(*body.begin, RB) <= 0)) {
+      return body.fail();
+    }
+
+    return body.take(1);
+  }
 };
 
 
@@ -343,6 +476,18 @@ struct NotRanges {
 
     return NotRanges<rest...>::match(ctx, body);
   }
+
+  template <typename context, typename atom>
+  static Span<atom> take(context& ctx, Span<atom>& body) {
+    matcheroni_assert(body.is_valid());
+    if (body.is_empty()) return body.fail();
+
+    if ((ctx.atom_cmp(*body.begin, RA) >= 0) && (ctx.atom_cmp(*body.begin, RB) <= 0)) {
+      return body.fail();
+    }
+
+    return NotRanges<rest...>::take(ctx, body);
+  }
 };
 
 template <auto RA, decltype(RA) RB>
@@ -357,6 +502,18 @@ struct NotRanges<RA, RB> {
     }
 
     return body.advance(1);
+  }
+
+  template <typename context, typename atom>
+  static Span<atom> take(context& ctx, Span<atom>& body) {
+    matcheroni_assert(body.is_valid());
+    if (body.is_empty()) return body.fail();
+
+    if ((ctx.atom_cmp(*body.begin, RA) >= 0) && (ctx.atom_cmp(*body.begin, RB) <= 0)) {
+      return body.fail();
+    }
+
+    return body.take(1);
   }
 };
 
@@ -389,18 +546,33 @@ inline SpanType match_lit(Context& ctx, SpanType body, const char* lit, int len)
   if (len > body.len()) return body.fail();
 
   for (int i = 0; i < len; i++) {
-    if (ctx.atom_cmp(*body.begin, *lit)) return body.fail();
-    body = body.advance(1);
-    lit++;
+    if (ctx.atom_cmp(body.begin[i], lit[i])) return body.fail();
   }
-  return body;
+  return body.advance(len);
 }
+
+template <typename Context, typename SpanType>
+inline SpanType take_lit(Context& ctx, SpanType& body, const char* lit, int len) {
+  matcheroni_assert(body.is_valid());
+  if (len > body.len()) return body.fail();
+
+  for (int i = 0; i < len; i++) {
+    if (ctx.atom_cmp(body.begin[i], lit[i])) return body.fail();
+  }
+  return body.take(len);
+}
+
 
 template <StringParam lit>
 struct Lit {
   template <typename Context, typename SpanType>
   static SpanType match(Context& ctx, SpanType body) {
     return match_lit(ctx, body, lit.str_val, lit.str_len);
+  }
+
+  template <typename Context, typename SpanType>
+  static SpanType take(Context& ctx, SpanType& body) {
+    return take_lit(ctx, body, lit.str_val, lit.str_len);
   }
 };
 
@@ -418,6 +590,27 @@ struct Seq {
     auto tail = P::match(ctx, body);
     return tail ? Seq<rest...>::match(ctx, tail) : tail;
   }
+
+  template <typename context, typename atom>
+  static Span<atom> take(context& ctx, Span<atom>& body) {
+    matcheroni_assert(body.is_valid());
+
+    auto old_body = body;
+
+    auto head1 = P::take(ctx, body);
+    if (!head1) {
+      body = old_body;
+      return head1;
+    }
+
+    auto head2 = Seq<rest...>::take(ctx, body);
+    if (!head2) {
+      body = old_body;
+      return head2;
+    }
+
+    return {old_body.begin, body.begin};
+  }
 };
 
 template <typename P>
@@ -426,6 +619,12 @@ struct Seq<P> {
   static Span<atom> match(context& ctx, Span<atom> body) {
     matcheroni_assert(body.is_valid());
     return P::match(ctx, body);
+  }
+
+  template <typename context, typename atom>
+  static Span<atom> take(context& ctx, Span<atom>& body) {
+    matcheroni_assert(body.is_valid());
+    return P::take(ctx, body);
   }
 };
 
@@ -460,6 +659,31 @@ struct Oneof {
       return tail1.end > tail2.end ? tail1 : tail2;
     }
   }
+
+  template <typename context, typename atom>
+  static Span<atom> take(context& ctx, Span<atom>& body) {
+    matcheroni_assert(body.is_valid());
+
+    auto old_body = body;
+    auto bookmark = ctx.checkpoint();
+
+    auto head1 = P::take(ctx, body);
+    if (head1.is_valid()) {
+      return head1;
+    }
+
+    if (bookmark != ctx.checkpoint()) ctx.rewind(bookmark);
+
+    auto head2 = Oneof<rest...>::take(ctx, body);
+
+    if (head2.is_valid()) {
+      return head2;
+    } else {
+      // Both attempts failed, return whichever match got farther.
+      body = old_body;
+      return head1.end > head2.end ? head1 : head2;
+    }
+  }
 };
 
 template <typename P>
@@ -468,6 +692,12 @@ struct Oneof<P> {
   static Span<atom> match(context& ctx, Span<atom> body) {
     matcheroni_assert(body.is_valid());
     return P::match(ctx, body);
+  }
+
+  template <typename context, typename atom>
+  static Span<atom> take(context& ctx, Span<atom>& body) {
+    matcheroni_assert(body.is_valid());
+    return P::take(ctx, body);
   }
 };
 
@@ -490,6 +720,11 @@ struct One {
   static Span<atom> match(context& ctx, Span<atom> body) {
     return P::match(ctx, body);
   }
+
+  template <typename context, typename atom>
+  static Span<atom> take(context& ctx, Span<atom>& body) {
+    return P::take(ctx, body);
+  }
 };
 
 //------------------------------------------------------------------------------
@@ -507,6 +742,16 @@ struct Opt {
     if (auto tail = Oneof<rest...>::match(ctx, body)) return tail;
     if (bookmark != ctx.checkpoint()) ctx.rewind(bookmark);
     return body;
+  }
+
+  template <typename context, typename atom>
+  static Span<atom> take(context& ctx, Span<atom>& body) {
+    matcheroni_assert(body.is_valid());
+    auto bookmark = ctx.checkpoint();
+    auto head = Oneof<rest...>::match(ctx, body);
+    if (head.is_valid()) return head;
+    if (bookmark != ctx.checkpoint()) ctx.rewind(bookmark);
+    return {body.head, body.head};
   }
 };
 
@@ -540,6 +785,26 @@ struct Any {
 
     return body;
   }
+
+  template <typename context, typename atom>
+  static Span<atom> take(context& ctx, Span<atom>& body) {
+    matcheroni_assert(body.is_valid());
+    if (body.is_empty()) return body;
+
+    auto start = body.begin;
+
+    while (1) {
+      auto bookmark = ctx.checkpoint();
+      auto head = Oneof<rest...>::match(ctx, body);
+      if (!head.is_valid()) {
+        if (bookmark != ctx.checkpoint()) ctx.rewind(bookmark);
+        break;
+      }
+      if (body.is_empty()) break;
+    }
+
+    return {start, body.begin};
+  }
 };
 
 //------------------------------------------------------------------------------
@@ -550,6 +815,12 @@ struct Nothing {
   static Span<atom> match(context& ctx, Span<atom> body) {
     matcheroni_assert(body.is_valid());
     return body;
+  }
+
+  template <typename context, typename atom>
+  static Span<atom> take(context& ctx, Span<atom>& body) {
+    matcheroni_assert(body.is_valid());
+    return {body.begin, body.begin};
   }
 };
 
@@ -566,6 +837,13 @@ struct Some {
     matcheroni_assert(body.is_valid());
     auto tail = Any<rest...>::match(ctx, body);
     return (tail == body) ? body.fail() : tail;
+  }
+
+  template <typename context, typename atom>
+  static Span<atom> take(context& ctx, Span<atom>& body) {
+    matcheroni_assert(body.is_valid());
+    auto head = Any<rest...>::take(ctx, body);
+    return head.empty() ? body.fail() : head;
   }
 };
 
@@ -588,6 +866,23 @@ struct And {
     if (bookmark != ctx.checkpoint()) ctx.rewind(bookmark);
     return tail.is_valid() ? body : tail;
   }
+
+  template <typename context, typename atom>
+  static Span<atom> take(context& ctx, Span<atom>& body) {
+    matcheroni_assert(body.is_valid());
+    if (body.is_empty()) return body.fail();
+
+    auto bookmark = ctx.checkpoint();
+    // not we do -not- take the pattern, as we don't want to advance body
+    auto tail = P::match(ctx, body);
+    if (bookmark != ctx.checkpoint()) ctx.rewind(bookmark);
+    if (tail.is_valid()) {
+      return {body.begin, body.begin};
+    }
+    else {
+      return {nullptr, body.begin};
+    }
+  }
 };
 
 //------------------------------------------------------------------------------
@@ -608,6 +903,24 @@ struct Not {
     if (bookmark != ctx.checkpoint()) ctx.rewind(bookmark);
     return tail.is_valid() ? body.fail() : body;
   }
+
+  template <typename context, typename atom>
+  static Span<atom> take(context& ctx, Span<atom>& body) {
+    matcheroni_assert(body.is_valid());
+    if (body.is_empty()) return body;
+
+    auto bookmark = ctx.checkpoint();
+    auto tail = P::match(ctx, body);
+    if (bookmark != ctx.checkpoint()) ctx.rewind(bookmark);
+    //return tail.is_valid() ? {nullptr, body.begin} : {body.begin, body.begin};
+
+    if (tail.is_valid()) {
+      return {nullptr, body.begin};
+    }
+    else {
+      return {body.begin, body.begin};
+    }
+  }
 };
 
 //------------------------------------------------------------------------------
@@ -623,6 +936,15 @@ struct Dispatch {
       sink::match(ctx, head);
     }
     return tail;
+  }
+
+  template <typename context, typename atom>
+  static Span<atom> take(context& ctx, Span<atom>& body) {
+    auto head = pattern::take(ctx, body);
+    if (head.is_valid()) {
+      sink::take(ctx, head);
+    }
+    return head;
   }
 };
 
@@ -641,6 +963,20 @@ struct SeqOpt {
     if (auto tail = P::match(ctx, body)) body = tail;
     return SeqOpt<rest...>::match(ctx, body);
   }
+
+  template <typename context, typename atom>
+  static Span<atom> take(context& ctx, Span<atom>& body) {
+    matcheroni_assert(body.is_valid());
+
+    auto begin = body.begin;
+
+    auto head1 = P::take(ctx, body);
+    if (head1) {
+      head1 = SeqOpt<rest...>::take(ctx, body);
+    }
+
+    return {begin, body.begin};
+  }
 };
 
 template <typename P>
@@ -650,6 +986,13 @@ struct SeqOpt<P> {
     matcheroni_assert(body.is_valid());
     if (auto tail = P::match(ctx, body)) body = tail;
     return body;
+  }
+
+  template <typename context, typename atom>
+  static Span<atom> take(context& ctx, Span<atom>& body) {
+    matcheroni_assert(body.is_valid());
+    auto head = P::take(ctx, body);
+    return head ? head : body.take(0);
   }
 };
 
@@ -669,6 +1012,16 @@ struct NotEmpty {
     auto tail = Seq<rest...>::match(ctx, body);
     return tail == body ? body.fail() : tail;
   }
+
+  template <typename context, typename atom>
+  static Span<atom> take(context& ctx, Span<atom>& body) {
+    matcheroni_assert(body.is_valid());
+
+    auto head = Seq<rest...>::take(ctx, body);
+    if ( head.is_empty()) return head.fail();
+    if (!head.is_valid()) return head.fail();
+    return head;
+  }
 };
 
 //------------------------------------------------------------------------------
@@ -684,6 +1037,16 @@ struct Rep {
       if (!body.is_valid()) break;
     }
     return body;
+  }
+
+  template <typename context, typename atom>
+  static Span<atom> take(context& ctx, Span<atom>& body) {
+    matcheroni_assert(body.is_valid());
+    auto begin = body.begin();
+    for (auto i = 0; i < N; i++) {
+      if (!P::take(ctx, body)) return body.fail();
+    }
+    return {begin, body.begin};
   }
 };
 
@@ -705,6 +1068,25 @@ struct RepRange {
       body = tail;
     }
     return body;
+  }
+
+  template <typename context, typename atom>
+  static Span<atom> take(context& ctx, Span<atom>& body) {
+    matcheroni_assert(body.is_valid());
+
+    auto old_body = body;
+
+    int i;
+    for (i = 0; i < N; i++) {
+      if (!P::take(ctx, body)) break;
+    }
+
+    if (i < M) {
+      body = old_body;
+      return body.fail();
+    }
+
+    return {old_body.begin, body.begin};
   }
 };
 
@@ -729,6 +1111,27 @@ struct Until {
         return body;
       }
       body = body.advance(1);
+    }
+  }
+
+  template<typename context, typename atom>
+  static Span<atom> take(context& ctx, Span<atom>& body) {
+    matcheroni_assert(body.is_valid());
+
+    auto begin = body.begin;
+
+    while(1) {
+      if (body.is_empty()) return {begin, body.begin};
+
+      auto bookmark = ctx.checkpoint();
+
+      auto head = P::match(ctx, body);
+      if (head.is_valid()) {
+        if (bookmark != ctx.checkpoint()) ctx.rewind(bookmark);
+        return {begin, body.begin};
+      }
+
+      body.take(1);
     }
   }
 };
@@ -770,6 +1173,25 @@ struct Ref<func> {
   }
 };
 
+template <auto F>
+struct Ref2;
+
+template <typename context, typename atom, Span<atom> (*func)(context& ctx, Span<atom>& body)>
+struct Ref2<func> {
+  static Span<atom> take(context& ctx, Span<atom>& body) {
+    matcheroni_assert(body.is_valid());
+    return func(ctx, body);
+  }
+};
+
+template <typename context, typename atom, Span<atom> (context::*func)(Span<atom>& body)>
+struct Ref2<func> {
+  static Span<atom> take(context& ctx, Span<atom>& body) {
+    matcheroni_assert(body.is_valid());
+    return (ctx.*func)(body);
+  }
+};
+
 //------------------------------------------------------------------------------
 // 'StoreBackref/MatchBackref' stores and matches backreferences.
 // These are currently used for raw string delimiters in the C lexer.
@@ -794,6 +1216,21 @@ struct StoreBackref {
     ref = {body.begin, tail.begin};
     return tail;
   }
+
+  template<typename context>
+  static Span<atom> take(context& ctx, Span<atom>& body) {
+    matcheroni_assert(body.is_valid());
+
+    auto begin = body.begin;
+
+    auto head = P::match(ctx, body);
+    if (!head.is_valid()) {
+      ref = body.fail();
+      return head;
+    }
+    ref = {begin, body.begin};
+    return head;
+  }
 };
 
 template <StringParam name, typename atom, typename P>
@@ -813,6 +1250,22 @@ struct MatchBackref {
     }
 
     return body;
+  }
+
+  template<typename context>
+  static Span<atom> take(context& ctx, Span<atom>& body) {
+    matcheroni_assert(body.is_valid());
+
+    auto ref = StoreBackref<name, atom, P>::ref;
+    if (!ref.is_valid()) return body.fail();
+
+    if (body.len() < ref.len()) return body.fail();
+
+    for (int i = 0; i < ref.len(); i++) {
+      if (ctx.atom_cmp(body.begin[i], ref.begin[i])) return body.fail();
+    }
+
+    return body.take(ref.len());
   }
 };
 
@@ -835,6 +1288,26 @@ struct DelimitedBlock {
       body = element::match(ctx, body);
       if (!body.is_valid()) break;
     }
+    return body;
+  }
+
+  template <typename context, typename atom>
+  static Span<atom> take(context& ctx, Span<atom>& body) {
+    matcheroni_assert(body.is_valid());
+
+    auto begin = body.begin;
+
+    auto l = ldelim::take(ctx, body);
+    if (!l.is_valid()) return body.fail();
+
+    while (1) {
+      auto r = rdelim::match(ctx, body);
+      if (r.is_valid()) return {begin, body.begin};
+
+      auto x = element::match(ctx, body);
+      if (!x.is_valid()) return x;
+    }
+
     return body;
   }
 };
@@ -867,6 +1340,39 @@ struct DelimitedList {
     }
     return body;
   }
+
+  template <typename context, typename atom>
+  static Span<atom> take(context& ctx, Span<atom>& body) {
+    matcheroni_assert(body.is_valid());
+
+    auto bookmark = ctx.checkpoint();
+
+    auto begin = body.begin;
+
+    auto l = ldelim::match(ctx, body);
+    if (!l.is_valid()) return l;
+
+    while (1) {
+      auto r1 = rdelim::take(ctx, body);
+      if (r1.is_valid()) return {begin, body.begin};
+
+      auto it = body = item::take(ctx, body);
+      if (!it.is_valid()) {
+        if (bookmark != ctx.checkpoint()) ctx.rewind(bookmark);
+        return it;
+      }
+
+      auto r2 = rdelim::take(ctx, body);
+      if (r2.is_valid()) return {begin, body.begin};
+
+      auto sep = separator::match(ctx, body);
+      if (!sep.is_valid()) {
+        if (bookmark != ctx.checkpoint()) ctx.rewind(bookmark);
+        return sep;
+      }
+    }
+    return body;
+  }
 };
 
 //------------------------------------------------------------------------------
@@ -874,6 +1380,11 @@ struct DelimitedList {
 struct Empty {
   template <typename context, typename atom>
   static Span<atom> match(context& ctx, Span<atom> body) {
+    return body.is_empty() ? body : body.fail();
+  }
+
+  template <typename context, typename atom>
+  static Span<atom> take(context& ctx, Span<atom>& body) {
     return body.is_empty() ? body : body.fail();
   }
 };
@@ -888,6 +1399,14 @@ struct EOL {
     matcheroni_assert(body.is_valid());
     if (body.is_empty()) return body;
     if (body.begin[0] == atom('\n')) return body;
+    return body.fail();
+  }
+
+  template <typename context, typename atom>
+  static Span<atom> take(context& ctx, Span<atom>& body) {
+    matcheroni_assert(body.is_valid());
+    if (body.is_empty()) return body;
+    if (body.begin[0] == atom('\n')) return {body.begin, body.begin};
     return body.fail();
   }
 };
@@ -907,6 +1426,18 @@ struct Charset {
     for (auto i = 0; i < chars.str_len; i++) {
       if (ctx.atom_cmp(body.begin[0], chars.str_val[i]) == 0) {
         return body.advance(1);
+      }
+    }
+    return body.fail();
+  }
+
+  template <typename context, typename atom>
+  static Span<atom> take(context& ctx, Span<atom>& body) {
+    matcheroni_assert(body.is_valid());
+
+    for (auto i = 0; i < chars.str_len; i++) {
+      if (ctx.atom_cmp(body.begin[0], chars.str_val[i]) == 0) {
+        return body.take(1);
       }
     }
     return body.fail();
