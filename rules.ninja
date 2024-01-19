@@ -1,6 +1,7 @@
 ################################################################################
 
 rule compile_cpp
+  #description = Compiling ${in} -> ${out}
   command = ${toolchain}-g++ ${opts_cpp} ${includes} ${defines} -MMD -MF ${out}.d -c ${in} -o ${out}
   depfile = ${out}.d
   deps = gcc

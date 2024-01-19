@@ -76,7 +76,7 @@ int main(int argc, char** argv) {
   }
 
   {
-    using pattern = Capture<"NodeAccessSpecifier", NodeAccessSpecifier, CNode>;
+    using pattern = Capture<"NodeAccessSpecifier", lit_access_specifier, CNode>;
     source = "public:\n";
     result = "[NodeAccessSpecifier:`public:`]";
     parse_and_dump(pattern::match, source, result);

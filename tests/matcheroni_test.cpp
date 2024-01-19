@@ -10,6 +10,7 @@ using namespace matcheroni;
 TextMatchContext ctx;
 
 bool operator == (TextSpan const& a, const char* text) {
+  if (!a) return false;
   return strcmp_span(a, text) == 0;
 }
 
@@ -107,6 +108,34 @@ void test_atom() {
     head = Atom<'e'>::take(ctx, tail);
     TEST(!head && tail == "");
   }
+
+  /*
+  {
+    ctx.span = utils::to_span("abcde");
+    TextSpan head;
+
+    head = ctx.take<Atom<'a'>>();
+    TEST(head == "a" && ctx.span == "bcde");
+
+    head = ctx.take<Atom<'b'>>();
+    TEST(head == "b" && ctx.span == "cde");
+
+    head = ctx.take<Atom<'z'>>();
+    TEST(!head && ctx.span == "cde");
+
+    head = ctx.take<Atoms<'c', 'd'>>();
+    TEST(head == "c" && ctx.span == "de");
+
+    head = ctx.take<Atoms<'c', 'd'>>();
+    TEST(head == "d" && ctx.span == "e");
+
+    head = ctx.take<AnyAtom>();
+    TEST(head == "e" && ctx.span == "");
+
+    head = ctx.take<Atom<'e'>>();
+    TEST(!head && ctx.span == "");
+  }
+  */
 }
 
 //------------------------------------------------------------------------------
@@ -410,161 +439,316 @@ void test_oneof() {
 //------------------------------------------------------------------------------
 
 void test_opt() {
-  TextSpan text;
-  TextSpan tail;
+  {
+    TextSpan text;
+    TextSpan tail;
 
-  text = utils::to_span("abcd");
-  tail = Opt<Atom<'a'>>::match(ctx, text);
-  TEST(tail.is_valid() && tail == "bcd");
+    text = utils::to_span("abcd");
+    tail = Opt<Atom<'a'>>::match(ctx, text);
+    TEST(tail.is_valid() && tail == "bcd");
 
-  text = utils::to_span("abcd");
-  tail = Opt<Atom<'b'>>::match(ctx, text);
-  TEST(tail.is_valid() && tail == "abcd");
+    text = utils::to_span("abcd");
+    tail = Opt<Atom<'b'>>::match(ctx, text);
+    TEST(tail.is_valid() && tail == "abcd");
+  }
+
+  {
+    TextSpan head, tail;
+
+    tail = utils::to_span("abcd");
+    head = Opt<Atom<'a'>>::take(ctx, tail);
+    TEST(head == "a" && tail == "bcd");
+
+    tail = utils::to_span("abcd");
+    head = Opt<Atom<'b'>>::take(ctx, tail);
+    TEST(head == "" && tail == "abcd");
+  }
 }
 
 //------------------------------------------------------------------------------
 
 void test_any() {
-  TextSpan text;
-  TextSpan tail;
+  {
+    TextSpan text;
+    TextSpan tail;
 
-  text = utils::to_span("");
-  tail = Any<Atom<'a'>>::match(ctx, text);
-  TEST(tail.is_valid() && tail == "");
+    text = utils::to_span("");
+    tail = Any<Atom<'a'>>::match(ctx, text);
+    TEST(tail.is_valid() && tail == "");
 
-  text = utils::to_span("aaaabbbb");
-  tail = Any<Atom<'a'>>::match(ctx, text);
-  TEST(tail.is_valid() && tail == "bbbb");
+    text = utils::to_span("aaaabbbb");
+    tail = Any<Atom<'a'>>::match(ctx, text);
+    TEST(tail.is_valid() && tail == "bbbb");
 
-  text = utils::to_span("aaaabbbb");
-  tail = Any<Atom<'b'>>::match(ctx, text);
-  TEST(tail.is_valid() && tail == "aaaabbbb");
+    text = utils::to_span("aaaabbbb");
+    tail = Any<Atom<'b'>>::match(ctx, text);
+    TEST(tail.is_valid() && tail == "aaaabbbb");
+  }
+
+  {
+    TextSpan head, tail;
+
+    tail = utils::to_span("");
+    head = Any<Atom<'a'>>::take(ctx, tail);
+    TEST(head == "" && tail == "");
+
+    tail = utils::to_span("aaaabbbb");
+    head = Any<Atom<'a'>>::take(ctx, tail);
+    TEST(head == "aaaa" && tail == "bbbb");
+
+    tail = utils::to_span("aaaabbbb");
+    head = Any<Atom<'b'>>::take(ctx, tail);
+    TEST(head == "" && tail == "aaaabbbb");
+  }
 }
 
 //------------------------------------------------------------------------------
 
 void test_some() {
-  TextSpan text;
-  TextSpan tail;
+  {
+    TextSpan text;
+    TextSpan tail;
 
-  text = utils::to_span("");
-  tail = Some<Atom<'a'>>::match(ctx, text);
-  TEST(!tail.is_valid() && std::string(tail.end) == "");
+    text = utils::to_span("");
+    tail = Some<Atom<'a'>>::match(ctx, text);
+    TEST(!tail.is_valid() && std::string(tail.end) == "");
 
-  text = utils::to_span("aaaabbbb");
-  tail = Some<Atom<'a'>>::match(ctx, text);
-  TEST(tail.is_valid() && tail == "bbbb");
+    text = utils::to_span("aaaabbbb");
+    tail = Some<Atom<'a'>>::match(ctx, text);
+    TEST(tail.is_valid() && tail == "bbbb");
 
-  text = utils::to_span("aaaabbbb");
-  tail = Some<Atom<'b'>>::match(ctx, text);
-  TEST(!tail.is_valid() && std::string(tail.end) == "aaaabbbb");
+    text = utils::to_span("aaaabbbb");
+    tail = Some<Atom<'b'>>::match(ctx, text);
+    TEST(!tail.is_valid() && std::string(tail.end) == "aaaabbbb");
+  }
+
+  {
+    TextSpan head, tail;
+
+    tail = utils::to_span("");
+    head = Some<Atom<'a'>>::take(ctx, tail);
+    TEST(!head && tail == "");
+
+    tail = utils::to_span("aaaabbbb");
+    head = Some<Atom<'a'>>::take(ctx, tail);
+    TEST(head == "aaaa" && tail == "bbbb");
+
+    tail = utils::to_span("aaaabbbb");
+    head = Some<Atom<'b'>>::take(ctx, tail);
+    TEST(!head && tail == "aaaabbbb");
+  }
 }
 
 //------------------------------------------------------------------------------
 
 void test_and() {
-  TextSpan text;
-  TextSpan tail;
+  {
+    TextSpan text;
+    TextSpan tail;
 
-  text = utils::to_span("");
-  tail = And<Atom<'a'>>::match(ctx, text);
-  TEST(!tail.is_valid() && std::string(tail.end) == "");
+    text = utils::to_span("");
+    tail = And<Atom<'a'>>::match(ctx, text);
+    TEST(!tail.is_valid() && std::string(tail.end) == "");
 
-  text = utils::to_span("aaaabbbb");
-  tail = And<Atom<'a'>>::match(ctx, text);
-  TEST(tail.is_valid() && tail == "aaaabbbb");
+    text = utils::to_span("aaaabbbb");
+    tail = And<Atom<'a'>>::match(ctx, text);
+    TEST(tail.is_valid() && tail == "aaaabbbb");
 
-  text = utils::to_span("aaaabbbb");
-  tail = And<Atom<'b'>>::match(ctx, text);
-  TEST(!tail.is_valid() && std::string(tail.end) == "aaaabbbb");
+    text = utils::to_span("aaaabbbb");
+    tail = And<Atom<'b'>>::match(ctx, text);
+    TEST(!tail.is_valid() && std::string(tail.end) == "aaaabbbb");
+  }
+
+  {
+    TextSpan head, tail;
+
+    tail = utils::to_span("");
+    head = And<Atom<'a'>>::take(ctx, tail);
+    TEST(!head && tail == "");
+
+    tail = utils::to_span("aaaabbbb");
+    head = And<Atom<'a'>>::take(ctx, tail);
+    TEST(head == "" && tail == "aaaabbbb");
+
+    tail = utils::to_span("aaaabbbb");
+    head = And<Atom<'b'>>::take(ctx, tail);
+    TEST(!head && tail == "aaaabbbb");
+  }
 }
 
 //------------------------------------------------------------------------------
 
 void test_not() {
-  TextSpan text;
-  TextSpan tail;
+  {
+    TextSpan text;
+    TextSpan tail;
 
-  text = utils::to_span("");
-  tail = Not<Atom<'a'>>::match(ctx, text);
-  TEST(tail.is_valid() && tail == "");
+    text = utils::to_span("");
+    tail = Not<Atom<'a'>>::match(ctx, text);
+    TEST(tail.is_valid() && tail == "");
 
-  text = utils::to_span("aaaabbbb");
-  tail = Not<Atom<'a'>>::match(ctx, text);
-  TEST(!tail.is_valid() && std::string(tail.end) == "aaaabbbb");
+    text = utils::to_span("aaaabbbb");
+    tail = Not<Atom<'a'>>::match(ctx, text);
+    TEST(!tail.is_valid() && std::string(tail.end) == "aaaabbbb");
 
-  text = utils::to_span("aaaabbbb");
-  tail = Not<Atom<'b'>>::match(ctx, text);
-  TEST(tail.is_valid() && tail == "aaaabbbb");
+    text = utils::to_span("aaaabbbb");
+    tail = Not<Atom<'b'>>::match(ctx, text);
+    TEST(tail.is_valid() && tail == "aaaabbbb");
+  }
+  {
+    TextSpan head, tail;
+
+    tail = utils::to_span("");
+    head = Not<Atom<'a'>>::take(ctx, tail);
+    TEST(head == "" && tail == "");
+
+    tail = utils::to_span("aaaabbbb");
+    head = Not<Atom<'a'>>::take(ctx, tail);
+    TEST(!head && tail == "aaaabbbb");
+
+    tail = utils::to_span("aaaabbbb");
+    head = Not<Atom<'b'>>::take(ctx, tail);
+    TEST(head == "" && tail == "aaaabbbb");
+  }
 }
 
 //------------------------------------------------------------------------------
 
 void test_rep() {
-  TextSpan text;
-  TextSpan tail;
+  {
+    TextSpan text;
+    TextSpan tail;
 
-  text = utils::to_span("");
-  tail = Rep<3, Atom<'a'>>::match(ctx, text);
-  TEST(!tail.is_valid() && std::string(tail.end) == "");
+    text = utils::to_span("");
+    tail = Rep<3, Atom<'a'>>::match(ctx, text);
+    TEST(!tail.is_valid() && std::string(tail.end) == "");
 
-  text = utils::to_span("aabbbb");
-  tail = Rep<3, Atom<'a'>>::match(ctx, text);
-  TEST(!tail.is_valid() && std::string(tail.end) == "bbbb");
+    text = utils::to_span("aabbbb");
+    tail = Rep<3, Atom<'a'>>::match(ctx, text);
+    TEST(!tail.is_valid() && std::string(tail.end) == "bbbb");
 
-  text = utils::to_span("aaabbbb");
-  tail = Rep<3, Atom<'a'>>::match(ctx, text);
-  TEST(tail.is_valid() && tail == "bbbb");
+    text = utils::to_span("aaabbbb");
+    tail = Rep<3, Atom<'a'>>::match(ctx, text);
+    TEST(tail.is_valid() && tail == "bbbb");
 
-  text = utils::to_span("aaaabbbb");
-  tail = Rep<3, Atom<'a'>>::match(ctx, text);
-  TEST(tail.is_valid() && tail == "abbbb");
+    text = utils::to_span("aaaabbbb");
+    tail = Rep<3, Atom<'a'>>::match(ctx, text);
+    TEST(tail.is_valid() && tail == "abbbb");
+  }
+
+  {
+    TextSpan head, tail;
+
+    tail = utils::to_span("");
+    head = Rep<3, Atom<'a'>>::take(ctx, tail);
+    TEST(!head && tail == "");
+
+    tail = utils::to_span("aabbbb");
+    head = Rep<3, Atom<'a'>>::take(ctx, tail);
+    TEST(!head && tail == "aabbbb");
+
+    tail = utils::to_span("aaabbbb");
+    head = Rep<3, Atom<'a'>>::take(ctx, tail);
+    TEST(head == "aaa" && tail == "bbbb");
+
+    tail = utils::to_span("aaaabbbb");
+    head = Rep<3, Atom<'a'>>::take(ctx, tail);
+    TEST(head == "aaa" && tail == "abbbb");
+  }
 }
 
 //------------------------------------------------------------------------------
 
 void test_reprange() {
-  TextSpan text;
-  TextSpan tail;
+  {
+    TextSpan text;
+    TextSpan tail;
 
-  text = utils::to_span("bbbb");
-  tail = RepRange<2, 3, Atom<'a'>>::match(ctx, text);
-  TEST(!tail.is_valid() && std::string(tail.end) == "bbbb");
+    text = utils::to_span("bbbb");
+    tail = RepRange<2, 3, Atom<'a'>>::match(ctx, text);
+    TEST(!tail.is_valid() && std::string(tail.end) == "bbbb");
 
-  text = utils::to_span("abbbb");
-  tail = RepRange<2, 3, Atom<'a'>>::match(ctx, text);
-  TEST(!tail.is_valid() && std::string(tail.end) == "bbbb");
+    text = utils::to_span("abbbb");
+    tail = RepRange<2, 3, Atom<'a'>>::match(ctx, text);
+    TEST(!tail.is_valid() && std::string(tail.end) == "bbbb");
 
-  text = utils::to_span("aabbbb");
-  tail = RepRange<2, 3, Atom<'a'>>::match(ctx, text);
-  TEST(tail.is_valid() && tail == "bbbb");
+    text = utils::to_span("aabbbb");
+    tail = RepRange<2, 3, Atom<'a'>>::match(ctx, text);
+    TEST(tail.is_valid() && tail == "bbbb");
 
-  text = utils::to_span("aaabbbb");
-  tail = RepRange<2, 3, Atom<'a'>>::match(ctx, text);
-  TEST(tail.is_valid() && tail == "bbbb");
+    text = utils::to_span("aaabbbb");
+    tail = RepRange<2, 3, Atom<'a'>>::match(ctx, text);
+    TEST(tail.is_valid() && tail == "bbbb");
 
-  text = utils::to_span("aaaabbbb");
-  tail = RepRange<2, 3, Atom<'a'>>::match(ctx, text);
-  TEST(tail.is_valid() && tail == "abbbb");
+    text = utils::to_span("aaaabbbb");
+    tail = RepRange<2, 3, Atom<'a'>>::match(ctx, text);
+    TEST(tail.is_valid() && tail == "abbbb");
+  }
+
+  {
+    TextSpan head, tail;
+
+    tail = utils::to_span("bbbb");
+    head = RepRange<2, 3, Atom<'a'>>::take(ctx, tail);
+    TEST(!head && tail == "bbbb");
+
+    tail = utils::to_span("abbbb");
+    head = RepRange<2, 3, Atom<'a'>>::take(ctx, tail);
+    TEST(!head && tail == "abbbb");
+
+    tail = utils::to_span("aabbbb");
+    head = RepRange<2, 3, Atom<'a'>>::take(ctx, tail);
+    TEST(head == "aa" && tail == "bbbb");
+
+    tail = utils::to_span("aaabbbb");
+    head = RepRange<2, 3, Atom<'a'>>::take(ctx, tail);
+    TEST(head == "aaa" && tail == "bbbb");
+
+    tail = utils::to_span("aaaabbbb");
+    head = RepRange<2, 3, Atom<'a'>>::take(ctx, tail);
+    TEST(head == "aaa" && tail == "abbbb");
+  }
 }
 
 //------------------------------------------------------------------------------
 
 void test_until() {
-  TextSpan text;
-  TextSpan tail;
+  {
+    TextSpan text;
+    TextSpan tail;
 
-  text = utils::to_span("");
-  tail = Until<Atom<'b'>>::match(ctx, text);
-  TEST(tail.is_valid() && tail == "");
+    text = utils::to_span("");
+    tail = Until<Atom<'b'>>::match(ctx, text);
+    TEST(tail.is_valid() && tail == "");
 
-  text = utils::to_span("aaaa");
-  tail = Until<Atom<'b'>>::match(ctx, text);
-  TEST(tail.is_valid() && tail == "");
+    text = utils::to_span("aaaa");
+    tail = Until<Atom<'b'>>::match(ctx, text);
+    TEST(tail.is_valid() && tail == "");
 
-  text = utils::to_span("aaaabbbb");
-  tail = Until<Atom<'b'>>::match(ctx, text);
-  TEST(tail.is_valid() && tail == "bbbb");
+    text = utils::to_span("aaaabbbb");
+    tail = Until<Atom<'b'>>::match(ctx, text);
+    TEST(tail.is_valid() && tail == "bbbb");
+  }
+
+  {
+    TextSpan head, tail;
+
+    tail = utils::to_span("");
+    head = Until<Atom<'b'>>::take(ctx, tail);
+    TEST(head == "" && tail == "");
+
+    tail = utils::to_span("bbbb");
+    head = Until<Atom<'b'>>::take(ctx, tail);
+    TEST(head == "" && tail == "bbbb");
+
+    tail = utils::to_span("aaaa");
+    head = Until<Atom<'b'>>::take(ctx, tail);
+    TEST(head == "aaaa" && tail == "");
+
+    tail = utils::to_span("aaaabbbb");
+    head = Until<Atom<'b'>>::take(ctx, tail);
+    TEST(head == "aaaa" && tail == "bbbb");
+  }
 }
 
 
@@ -574,6 +758,19 @@ TextSpan test_matcher(TextMatchContext& ctx, TextSpan body) {
   matcheroni_assert(body.is_valid());
   if (body.is_empty()) return body.fail();
   return body.begin[0] == 'a' ? body.advance(1) : body.fail();
+}
+
+TextSpan test_taker(TextMatchContext& ctx, TextSpan& body) {
+  matcheroni_assert(body.is_valid());
+  if (body.is_empty()) return body.fail();
+  if (body.begin[0] == 'a') {
+    TextSpan result = {body.begin, body.begin + 1};
+    auto _ = body.take(1);
+    return result;
+  }
+  else {
+    return body.fail();
+  }
 }
 
 void test_ref() {
@@ -591,6 +788,14 @@ void test_ref() {
   text = utils::to_span("xyz");
   tail = Ref<test_matcher>::match(ctx, text);
   TEST(!tail.is_valid() && std::string(tail.end) == "xyz");
+
+  {
+    TextSpan head, tail;
+
+    tail = utils::to_span("");
+    head = Ref2<test_taker>::take(ctx, tail);
+    TEST(!head && tail == "");
+  }
 }
 
 //------------------------------------------------------------------------------
@@ -758,6 +963,7 @@ void test_charset() {
 //------------------------------------------------------------------------------
 
 int main(int argc, char** argv) {
+  fprintf(stderr, "This goes to stderr1\n");
   printf("Matcheroni tests\n");
 
   test_span();
@@ -781,6 +987,9 @@ int main(int argc, char** argv) {
   test_delimited_list();
   test_eol();
   test_charset();
+
+  fprintf(stdout, "This goes to stdout\n");
+  fprintf(stderr, "This goes to stderr2\n");
 
   if (!fail_count) {
     printf("All tests pass!\n");

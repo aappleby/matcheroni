@@ -435,6 +435,23 @@ struct Capture {
 
     return tail;
   }
+
+  /*
+  template<typename context, typename atom>
+  static match2(context& ctx) {
+    auto old_tail = ctx.top_tail;
+
+    if (auto span = ctx.take<pattern>()) {
+      auto new_node = ctx.template create_and_append_node<node_type>(old_tail);
+      new_node->match_tag = match_tag.str_val;
+      new_node->span = span;
+      new_node->flags = 0;
+      new_node->init();
+    }
+
+    return ctx.span;
+  }
+  */
 };
 
 //------------------------------------------------------------------------------

@@ -70,8 +70,8 @@ struct TraceToken {
 };
 #endif
 
-template <StringParam match_name, typename pattern>
-using Cap = parseroni::Capture<match_name, pattern, CNode>;
+//template <StringParam match_name, typename pattern>
+//using Cap = parseroni::Capture<match_name, pattern, CNode>;
 
 //template <StringParam match_name, typename pattern>
 //using Cap = TraceToken<match_name, Capture<match_name, pattern, CNode>>;
@@ -80,14 +80,11 @@ using Cap = parseroni::Capture<match_name, pattern, CNode>;
 
 struct NodeAbstractDeclarator;
 struct NodeClass;
-struct NodeClassType;
 struct NodeConstructor;
 struct NodeDeclaration;
 struct NodeDeclarator;
 struct NodeEnum;
-struct NodeEnumType;
 struct NodeExpression;
-struct NodeFunctionDefinition;
 struct NodeInitializer;
 struct NodeInitializerList;
 struct NodeSpecifier;
@@ -190,22 +187,18 @@ struct NodeBuiltinType : public CNode, PatternWrapper<NodeBuiltinType> {
   Seq<
     Any<
       Seq<
-        Cap<"prefix", match_prefix>,
+        Capture<"prefix", match_prefix, CNode>,
         And<match_base>
       >
     >,
-    Cap<"base_type", match_base>,
-    Opt<Cap<"suffix", match_suffix>>
+    Capture<"base_type", match_base, CNode>,
+    Opt<Capture<"suffix", match_suffix, CNode>>
   >;
   // clang-format on
 };
 
 struct NodeTypedefType : public CNode, PatternWrapper<NodeTypedefType> {
-  using pattern =
-  Cap<
-    "typedef",
-    Ref<&CContext::match_typedef_type>
-  >;
+  using pattern = Capture<"typedef", Ref<&CContext::match_typedef_type>, CNode>;
 };
 
 //------------------------------------------------------------------------------
@@ -215,18 +208,18 @@ struct NodeTypedefType : public CNode, PatternWrapper<NodeTypedefType> {
 // - Because "uint8_t *x = 5" gets misparsed as an expression if uint8_t matches
 // as an identifier
 
-struct NodeIdentifier : public CNode {
-  using pattern =
-  Seq<
-    Not<NodeBuiltinType>,
-    Not<NodeTypedefType>,
-    Atom<LEX_IDENTIFIER>
-  >;
-};
+using lit_identifier =
+Seq<
+  Not<NodeBuiltinType>,
+  Not<NodeTypedefType>,
+  Atom<LEX_IDENTIFIER>
+>;
+
+struct NodeIdentifier : public CNode {};
 
 //------------------------------------------------------------------------------
 
-struct NodePreproc : public CNode /*, PatternWrapper<NodePreproc>*/ {
+struct NodePreproc : public CNode {
   using pattern = Atom<LEX_PREPROC>;
 
   static TokenSpan match(CContext& ctx, TokenSpan body) {
@@ -259,15 +252,16 @@ struct NodePreproc : public CNode /*, PatternWrapper<NodePreproc>*/ {
 
 //------------------------------------------------------------------------------
 
-struct NodeConstant : public CNode, PatternWrapper<NodeConstant> {
-  using pattern =
-  Oneof<
-    Cap<"float",  Atom<LEX_FLOAT>>,
-    Cap<"int",    Atom<LEX_INT>>,
-    Cap<"char",   Atom<LEX_CHAR>>,
-    Cap<"string", Some<Atom<LEX_STRING>>>
-  >;
-};
+struct NodeConstant : public CNode {};
+
+using exp_constant =
+Oneof<
+  Atom<LEX_FLOAT>,
+  Atom<LEX_INT>,
+  Atom<LEX_CHAR>,
+  Some<Atom<LEX_STRING>>
+>;
+
 
 //------------------------------------------------------------------------------
 
@@ -333,24 +327,23 @@ struct NodeAsmSuffix : public CNode, PatternWrapper<NodeAsmSuffix> {
       Keyword<"__asm__">
     >,
     Atom<'('>,
-    Cap<"code", Some<NodeAtom<LEX_STRING>>>,
+    Capture<"code", Some<NodeAtom<LEX_STRING>>, CNode>,
     Atom<')'>
   >;
 };
 
 //------------------------------------------------------------------------------
 
+using lit_access_specifier =
+Seq<
+  Oneof<
+    Literal2<"public">,
+    Literal2<"private">
+  >,
+  Atom<':'>
+>;
 
-struct NodeAccessSpecifier : public CNode, PatternWrapper<NodeAccessSpecifier> {
-  using pattern =
-  Seq<
-    Oneof<
-      Literal2<"public">,
-      Literal2<"private">
-    >,
-    Atom<':'>
-  >;
-};
+struct NodeAccessSpecifier : public CNode {};
 
 //------------------------------------------------------------------------------
 // (6.5.4) cast-expression:
@@ -377,7 +370,7 @@ struct NodeExpressionParen : public CNode, PatternWrapper<NodeExpressionParen> {
   using pattern =
   DelimitedList<
     Atom<'('>,
-    Cap<"expression", NodeExpression>,
+    Capture<"expression", NodeExpression, CNode>,
     Atom<','>,
     Atom<')'>
   >;
@@ -392,7 +385,7 @@ struct NodeSuffixParen : public CNode, PatternWrapper<NodeSuffixParen> {
   using pattern =
   DelimitedList<
     Atom<'('>,
-    Cap<"expression", NodeExpression>,
+    Capture<"expression", NodeExpression, CNode>,
     Atom<','>,
     Atom<')'>
   >;
@@ -404,25 +397,25 @@ struct NodeExpressionBraces : public CNode, PatternWrapper<NodeExpressionBraces>
   using pattern =
   DelimitedList<
     Atom<'{'>,
-    Cap<"expression", NodeExpression>,
+    Capture<"expression", NodeExpression, CNode>,
     Atom<','>,
     Atom<'}'>
   >;
 };
 
-struct NodeSuffixBraces : public CNode, PatternWrapper<NodeSuffixBraces> {
+using suffix_braces =
+DelimitedList<
+  Atom<'{'>,
+  Capture<"expression", NodeExpression, CNode>,
+  Atom<','>,
+  Atom<'}'>
+>;
+
+struct NodeSuffixBraces : public CNode {
   NodeSuffixBraces() {
     precedence = 2;
     assoc = 2;
   }
-
-  using pattern =
-  DelimitedList<
-    Atom<'{'>,
-    Cap<"expression", NodeExpression>,
-    Atom<','>,
-    Atom<'}'>
-  >;
 };
 
 
@@ -437,7 +430,7 @@ struct NodeSuffixSubscript : public CNode, PatternWrapper<NodeSuffixSubscript> {
   using pattern =
   DelimitedList<
     Atom<'['>,
-    Cap<"expression", NodeExpression>,
+    Capture<"expression", NodeExpression, CNode>,
     Atom<','>,
     Atom<']'>
   >;
@@ -467,13 +460,14 @@ struct NodeExpressionSizeof : public CNode, PatternWrapper<NodeExpressionSizeof>
   using pattern =
   Seq<
     Keyword<"sizeof">,
-    Cap<
+    Capture<
       "value",
       Oneof<
-        Cap<"type",       NodeParenType>,
-        Cap<"expression", NodeExpressionParen>,
-        Cap<"expression", NodeExpression>
-      >
+        Capture<"type",       NodeParenType, CNode>,
+        Capture<"expression", NodeExpressionParen, CNode>,
+        Capture<"expression", NodeExpression, CNode>
+      >,
+      CNode
     >
   >;
 };
@@ -482,12 +476,13 @@ struct NodeExpressionAlignof : public CNode, PatternWrapper<NodeExpressionAligno
   using pattern =
   Seq<
     Keyword<"__alignof__">,
-    Cap<
+    Capture<
       "value",
       Oneof<
-        Cap<"type",       NodeParenType>,
-        Cap<"expression", NodeExpressionParen>
-      >
+        Capture<"type",       NodeParenType, CNode>,
+        Capture<"expression", NodeExpressionParen, CNode>
+      >,
+      CNode
     >
   >;
 };
@@ -500,9 +495,9 @@ struct NodeExpressionOffsetof : public CNode, PatternWrapper<NodeExpressionOffse
       Keyword<"__builtin_offsetof">
     >,
     Atom<'('>,
-    Cap<"name", NodeTypeName>,
+    Capture<"name", NodeTypeName, CNode>,
     Atom<','>,
-    Cap<"expression", NodeExpression>,
+    Capture<"expression", NodeExpression, CNode>,
     Atom<')'>
   >;
 };
@@ -522,20 +517,20 @@ struct NodePrefixKeyword : public CNode, PatternWrapper<NodePrefixKeyword<lit>> 
 // clang-format off
 using ExpressionPrefixOp =
 Oneof<
-  Cap<"cast",      NodePrefixCast>,
-  Cap<"extension", NodePrefixKeyword<"__extension__">>,
-  Cap<"real",      NodePrefixKeyword<"__real">>,
-  Cap<"real",      NodePrefixKeyword<"__real__">>,
-  Cap<"imag",      NodePrefixKeyword<"__imag">>,
-  Cap<"imag",      NodePrefixKeyword<"__imag__">>,
+  Capture<"cast",      NodePrefixCast,              CNode>,
+  Capture<"extension", Keyword<"__extension__">,    NodePrefixKeyword<"__extension__">>,
+  Capture<"real",      Keyword<"__real">,           NodePrefixKeyword<"__real">>,
+  Capture<"real",      Keyword<"__real__">,         NodePrefixKeyword<"__real__">>,
+  Capture<"imag",      Keyword<"__imag">,           NodePrefixKeyword<"__imag">>,
+  Capture<"imag",      Keyword<"__imag__">,         NodePrefixKeyword<"__imag__">>,
   Capture<"preinc",    NodePrefixOp<"++">::pattern, NodePrefixOp<"++">>,
   Capture<"predec",    NodePrefixOp<"--">::pattern, NodePrefixOp<"--">>,
-  Capture<"preplus",   NodePrefixOp<"+">::pattern, NodePrefixOp<"+">>,
-  Capture<"preminus",  NodePrefixOp<"-">::pattern, NodePrefixOp<"-">>,
-  Capture<"prebang",   NodePrefixOp<"!">::pattern, NodePrefixOp<"!">>,
-  Capture<"pretilde",  NodePrefixOp<"~">::pattern, NodePrefixOp<"~">>,
-  Capture<"prestar",   NodePrefixOp<"*">::pattern, NodePrefixOp<"*">>,
-  Capture<"preamp",    NodePrefixOp<"&">::pattern, NodePrefixOp<"&">>
+  Capture<"preplus",   NodePrefixOp<"+">::pattern,  NodePrefixOp<"+">>,
+  Capture<"preminus",  NodePrefixOp<"-">::pattern,  NodePrefixOp<"-">>,
+  Capture<"prebang",   NodePrefixOp<"!">::pattern,  NodePrefixOp<"!">>,
+  Capture<"pretilde",  NodePrefixOp<"~">::pattern,  NodePrefixOp<"~">>,
+  Capture<"prestar",   NodePrefixOp<"*">::pattern,  NodePrefixOp<"*">>,
+  Capture<"preamp",    NodePrefixOp<"&">::pattern,  NodePrefixOp<"&">>
 >;
 // clang-format on
 
@@ -544,15 +539,15 @@ Oneof<
 // clang-format off
 using ExpressionCore =
 Oneof<
-  Cap<"sizeof",       NodeExpressionSizeof>,
-  Cap<"alignof",      NodeExpressionAlignof>,
-  Cap<"offsetof",     NodeExpressionOffsetof>,
-  Cap<"gcc_compound", NodeExpressionGccCompound>,
-  Cap<"paren",        NodeExpressionParen>,
-  Cap<"init",         NodeInitializerList>,
-  Cap<"braces",       NodeExpressionBraces>,
-  Cap<"identifier",   NodeIdentifier::pattern>,
-  Cap<"constant",     NodeConstant>
+  Capture<"sizeof",       NodeExpressionSizeof,      CNode>,
+  Capture<"alignof",      NodeExpressionAlignof,     CNode>,
+  Capture<"offsetof",     NodeExpressionOffsetof,    CNode>,
+  Capture<"gcc_compound", NodeExpressionGccCompound, CNode>,
+  Capture<"paren",        NodeExpressionParen,       CNode>,
+  Capture<"init",         NodeInitializerList,       CNode>,
+  Capture<"braces",       NodeExpressionBraces,      CNode>,
+  Capture<"identifier",   lit_identifier,            CNode>,
+  Capture<"constant",     exp_constant,              NodeConstant>
 >;
 // clang-format on
 
@@ -561,12 +556,12 @@ Oneof<
 // clang-format off
 using ExpressionSuffixOp =
 Oneof<
-  Cap<"initializer", NodeSuffixInitializerList>,  // must be before NodeSuffixBraces
-  Cap<"braces",      NodeSuffixBraces>,
-  Cap<"paren",       NodeSuffixParen>,
-  Cap<"subscript",   NodeSuffixSubscript>,
-  Cap<"postinc",     NodeSuffixOp<"++">>,
-  Cap<"postdec",     NodeSuffixOp<"--">>
+  Capture<"initializer", NodeSuffixInitializerList, CNode>,  // must be before NodeSuffixBraces
+  Capture<"braces",      suffix_braces,             NodeSuffixBraces>,
+  Capture<"paren",       NodeSuffixParen,           CNode>,
+  Capture<"subscript",   NodeSuffixSubscript,       CNode>,
+  Capture<"postinc",     NodeSuffixOp<"++">,        CNode>,
+  Capture<"postdec",     NodeSuffixOp<"--">,        CNode>
 >;
 // clang-format on
 
@@ -576,11 +571,11 @@ Oneof<
 using unit_pattern =
 Seq<
   Any<
-    Cap<"prefix", ExpressionPrefixOp>
+    Capture<"prefix", ExpressionPrefixOp, CNode>
   >,
   ExpressionCore,
   Any<
-    Cap<"suffix", ExpressionSuffixOp>
+    Capture<"suffix", ExpressionSuffixOp, CNode>
   >
 >;
 // clang-format on
@@ -597,7 +592,7 @@ struct NodeTernaryOp : public CNode, PatternWrapper<NodeTernaryOp> {
   Seq<
     NodeBinaryOp<"?">,
     Opt<
-      Cap<"then", comma_separated<NodeExpression>>
+      Capture<"then", comma_separated<NodeExpression>, CNode>
     >,
     NodeBinaryOp<":">
   >;
@@ -668,11 +663,11 @@ struct NodeExpression : public CNode, PatternWrapper<NodeExpression> {
 
     using pattern =
     Seq<
-      Cap<"unit", unit_pattern>,
+      Capture<"unit", unit_pattern, CNode>,
       Any<
         Seq<
-          Cap<"op", Ref<match_binary_op>>,
-          Cap<"unit", unit_pattern>
+          Capture<"op", Ref<match_binary_op>, CNode>,
+          Capture<"unit", unit_pattern, CNode>
         >
       >
     >;
@@ -844,8 +839,8 @@ struct NodeAttribute : public CNode, public PatternWrapper<NodeAttribute> {
     DelimitedList<
       Seq<Atom<'('>, Atom<'('>>,
       Oneof<
-        Cap<"expression", NodeExpression>,
-        Cap<"keyword", Atom<LEX_KEYWORD>>
+        Capture<"expression", NodeExpression, CNode>,
+        Capture<"keyword", Atom<LEX_KEYWORD>, CNode>
       >,
       Atom<','>,
       Seq<Atom<')'>, Atom<')'>>
@@ -862,12 +857,13 @@ struct NodeAlignas : public CNode, public PatternWrapper<NodeAlignas> {
   Seq<
     Keyword<"_Alignas">,
     Atom<'('>,
-    Cap<
+    Capture<
       "value",
       Oneof<
         NodeTypeDecl,
-        NodeConstant
-      >
+        exp_constant
+      >,
+      CNode
     >,
     Atom<')'>
   >;
@@ -882,7 +878,7 @@ struct NodeDeclspec : public CNode, public PatternWrapper<NodeDeclspec> {
   Seq<
     Keyword<"__declspec">,
     Atom<'('>,
-    Cap<"identifier", NodeIdentifier::pattern>,
+    Capture<"identifier", lit_identifier, CNode>,
     Atom<')'>
   >;
   // clang-format on
@@ -894,10 +890,10 @@ struct NodeModifier : public PatternWrapper<NodeModifier> {
   // This is the slowest matcher in the app, why?
   using pattern =
   Oneof<
-    Cap<"alignas",   NodeAlignas>,
-    Cap<"declspec",  NodeDeclspec>,
-    Cap<"attribute", NodeAttribute>,
-    Cap<"qualifier", NodeQualifier>
+    Capture<"alignas",   NodeAlignas,   CNode>,
+    Capture<"declspec",  NodeDeclspec,  CNode>,
+    Capture<"attribute", NodeAttribute, CNode>,
+    Capture<"qualifier", NodeQualifier, CNode>
   >;
 };
 
@@ -907,11 +903,11 @@ struct NodeTypeDecl : public CNode, public PatternWrapper<NodeTypeDecl> {
   using pattern =
   Seq<
     Any<
-      Cap<"modifier", NodeModifier>
+      Capture<"modifier", NodeModifier, CNode>
     >,
-    Cap<"specifier", NodeSpecifier>,
+    Capture<"specifier", NodeSpecifier, CNode>,
     Opt<
-      Cap<"abstract_decl", NodeAbstractDeclarator>
+      Capture<"abstract_decl", NodeAbstractDeclarator, CNode>
     >
   >;
 };
@@ -921,10 +917,10 @@ struct NodeTypeDecl : public CNode, public PatternWrapper<NodeTypeDecl> {
 struct NodePointer : public CNode, public PatternWrapper<NodePointer> {
   using pattern =
   Seq<
-    Cap<"star", Literal2<"*">>,
+    Capture<"star", Literal2<"*">, CNode>,
     Any<
-      Cap<"star", Literal2<"*">>,
-      Cap<"modifier", NodeModifier>
+      Capture<"star", Literal2<"*">, CNode>,
+      Capture<"modifier", NodeModifier, CNode>
     >
   >;
 };
@@ -935,33 +931,33 @@ struct NodeEllipsis : public CNode, public PatternWrapper<NodeEllipsis> {
   using pattern = Ref<match_punct<"...">>;
 };
 
-//------------------------------------------------------------------------------
-
-struct NodeParam : public CNode, public PatternWrapper<NodeParam> {
-  using pattern =
-  Oneof<
-    Cap<"ellipsis", NodeEllipsis>,
-    Seq<
-      Any<Cap<"modifier", NodeModifier>>,
-      Cap<"specifier", NodeSpecifier>,
-      Any<Cap<"modifier", NodeModifier>>,
-      Cap<"decl", Opt<NodeDeclarator, NodeAbstractDeclarator>>
-    >,
-    Cap<"identifier", NodeIdentifier::pattern>
-  >;
-};
 
 //------------------------------------------------------------------------------
 
-struct NodeParamList : public CNode, public PatternWrapper<NodeParamList> {
-  using pattern =
-  DelimitedList<
-    Atom<'('>,
-    Cap<"param", NodeParam>,
-    Atom<','>,
-    Atom<')'>
-  >;
-};
+using parameter =
+Oneof<
+  Capture<"ellipsis", NodeEllipsis, CNode>,
+  Seq<
+    Any<Capture<"modifier", NodeModifier, CNode>>,
+    Capture<"specifier", NodeSpecifier, CNode>,
+    Any<Capture<"modifier", NodeModifier, CNode>>,
+    Capture<"decl", Opt<NodeDeclarator, NodeAbstractDeclarator>, CNode>
+  >,
+  Capture<"identifier", lit_identifier, CNode>
+>;
+
+struct NodeParam : public CNode {};
+
+//------------------------------------------------------------------------------
+
+using param_list = DelimitedList<
+  Atom<'('>,
+  Capture<"param", parameter, NodeParam>,
+  Atom<','>,
+  Atom<')'>
+>;
+
+struct NodeParamList : public CNode {};
 
 //------------------------------------------------------------------------------
 
@@ -983,7 +979,7 @@ struct NodeTemplateArgs : public CNode, public PatternWrapper<NodeTemplateArgs> 
   using pattern =
   DelimitedList<
     Atom<'<'>,
-    Cap<"arg", NodeExpression>,
+    Capture<"arg", NodeExpression, CNode>,
     Atom<','>,
     Atom<'>'>
   >;
@@ -996,7 +992,7 @@ struct NodeAtomicType : public CNode, public PatternWrapper<NodeAtomicType> {
   Seq<
     Keyword<"_Atomic">,
     Atom<'('>,
-    Cap<"decl", NodeTypeDecl>,
+    Capture<"decl", NodeTypeDecl, CNode>,
     Atom<')'>
   >;
 };
@@ -1010,10 +1006,10 @@ struct NodeSpecifier : public CNode, public PatternWrapper<NodeSpecifier> {
     Oneof<
       // These have to be NodeIdentifier because "void foo(struct S);"
       // is valid even without the definition of S.
-      Seq<NodeLiteral<"class">, Oneof<NodeIdentifier::pattern, NodeTypedefType>>,
-      Seq<Keyword<"union">,     Oneof<NodeIdentifier::pattern, NodeTypedefType>>,
-      Seq<Keyword<"struct">,    Oneof<NodeIdentifier::pattern, NodeTypedefType>>,
-      Seq<Keyword<"enum">,      Oneof<NodeIdentifier::pattern, NodeTypedefType>>,
+      Seq<NodeLiteral<"class">, Oneof<lit_identifier, NodeTypedefType>>,
+      Seq<Keyword<"union">,     Oneof<lit_identifier, NodeTypedefType>>,
+      Seq<Keyword<"struct">,    Oneof<lit_identifier, NodeTypedefType>>,
+      Seq<Keyword<"enum">,      Oneof<lit_identifier, NodeTypedefType>>,
 
       /*
       // If this was C++, we would also need to match these directly
@@ -1023,9 +1019,9 @@ struct NodeSpecifier : public CNode, public PatternWrapper<NodeSpecifier> {
       NodeEnumType,
       */
 
-      Cap<"builtin", NodeBuiltinType>,
-      Cap<"typedef", NodeTypedefType>,
-      Cap<"atomic",  NodeAtomicType>,
+      Capture<"builtin", NodeBuiltinType, CNode>,
+      Capture<"typedef", NodeTypedefType, CNode>,
+      Capture<"atomic",  NodeAtomicType,  CNode>,
       Seq<
         Oneof<
           Keyword<"__typeof__">,
@@ -1060,7 +1056,7 @@ struct NodeTypeName : public CNode, public PatternWrapper<NodeTypeName> {
 //   declaratoropt : constant-expression
 
 struct NodeBitSuffix : public CNode, public PatternWrapper<NodeBitSuffix> {
-  using pattern = Seq<Atom<':'>, Cap<"expression", NodeExpression>>;
+  using pattern = Seq<Atom<':'>, Capture<"expression", NodeExpression, CNode>>;
 };
 
 //------------------------------------------------------------------------------
@@ -1070,18 +1066,18 @@ struct NodeAbstractDeclarator : public CNode,
                                 public PatternWrapper<NodeAbstractDeclarator> {
   using pattern =
   Seq<
-    Opt<Cap<"pointer", NodePointer>>,
+    Opt<Capture<"pointer", NodePointer, CNode>>,
     Opt<
       Seq<
         Atom<'('>,
-        Cap<"abstract_decl", NodeAbstractDeclarator>,
+        Capture<"abstract_decl", NodeAbstractDeclarator, CNode>,
         Atom<')'>
       >
     >,
     Any<
-      Cap<"attribute",    NodeAttribute>,
-      Cap<"array_suffix", NodeArraySuffix>,
-      Cap<"param_list",   NodeParamList>
+      Capture<"attribute",    NodeAttribute, CNode>,
+      Capture<"array_suffix", NodeArraySuffix, CNode>,
+      Capture<"param_list", param_list, NodeParamList>
     >
   >;
 };
@@ -1092,26 +1088,26 @@ struct NodeDeclarator : public CNode, public PatternWrapper<NodeDeclarator> {
   using pattern =
   Seq<
     Any<
-      Cap<"attribute", NodeAttribute>,
-      Cap<"modifier",  NodeModifier>,
-      Cap<"pointer",   NodePointer>
+      Capture<"attribute", NodeAttribute, CNode>,
+      Capture<"modifier",  NodeModifier,  CNode>,
+      Capture<"pointer",   NodePointer,   CNode>
     >,
     Oneof<
-      Cap<"identifier", NodeIdentifier::pattern>,
-      Cap<"declarator",
+      Capture<"identifier", lit_identifier, CNode>,
+      Capture<"declarator",
         Seq<
           Atom<'('>,
           NodeDeclarator,
           Atom<')'>
         >
-      >
+      , CNode>
     >,
     Any<
-      Cap<"asm_suffix",   NodeAsmSuffix>,
-      Cap<"bit_suffix",   NodeBitSuffix>,
-      Cap<"attribute",    NodeAttribute>,
-      Cap<"array_suffix", NodeArraySuffix>,
-      Cap<"param_list",   NodeParamList>
+      Capture<"asm_suffix",   NodeAsmSuffix,   CNode>,
+      Capture<"bit_suffix",   NodeBitSuffix,   CNode>,
+      Capture<"attribute",    NodeAttribute,   CNode>,
+      Capture<"array_suffix", NodeArraySuffix, CNode>,
+      Capture<"param_list",   param_list,      NodeParamList>
     >
   >;
 };
@@ -1123,24 +1119,63 @@ struct NodeDeclaratorList : public CNode,
   // clang-format off
   using pattern =
   comma_separated<
-    Cap<"decl", Seq<
-      Oneof<
-        Seq<
-          Cap<"name", NodeDeclarator>,
-          Opt<Cap<"bit_suffix", NodeBitSuffix>>
+    Capture<
+      "decl",
+      Seq<
+        Oneof<
+          Seq<
+            Capture<"name",           NodeDeclarator, CNode>,
+            Opt<Capture<"bit_suffix", NodeBitSuffix,  CNode>>
+          >,
+          Capture<"bit_suffix", NodeBitSuffix, CNode>
         >,
-        Cap<"bit_suffix", NodeBitSuffix>
-      >,
-      Opt<
-        Seq<
-          Atom<'='>,
-          Cap<"initializer", NodeInitializer>
+        Opt<
+          Seq<
+            Atom<'='>,
+            Capture<"initializer", NodeInitializer, CNode>
+          >
         >
-      >
-    >>
+      >,
+      CNode
+    >
   >;
   // clang-format on
 };
+
+//------------------------------------------------------------------------------
+
+struct NodeFunctionIdentifier : public CNode,
+                                public PatternWrapper<NodeFunctionIdentifier> {
+  // clang-format off
+  using pattern =
+  Seq<
+    Any<NodeAttribute, NodePointer>,
+    Oneof<
+      lit_identifier,
+      Seq<Atom<'('>, NodeFunctionIdentifier, Atom<')'>>
+    >
+  >;
+  // clang-format on
+};
+
+// function-definition:
+//     declaration-specifiers declarator declaration-listopt compound-statement
+
+using definition_function =
+Seq<
+  Any<Capture<"modifier",         NodeModifier,                    CNode>>,
+  Opt<Capture<"func_return_type", NodeSpecifier,                   CNode>>,
+  Any<Capture<"modifier",         NodeModifier,                    CNode>>,
+  One<Capture<"func_identifier",  NodeFunctionIdentifier,          CNode>>,
+  One<Capture<"func_params",      param_list,                      NodeParamList>>,
+  Any<Capture<"modifier",         NodeModifier,                    CNode>>,
+  Opt<Capture<"asm_suffix",       NodeAsmSuffix,                   CNode>>,
+  Opt<Capture<"const",            NodeKeyword<"const">,            CNode>>,
+  Any<Capture<"old_declaration",  Seq<NodeDeclaration, Atom<';'>>, CNode>>, // This is old-style declarations after param list
+  One<Capture<"func_body",        NodeStatementCompound,           CNode>>
+>;
+
+struct NodeFunctionDefinition : public CNode {};
 
 //------------------------------------------------------------------------------
 
@@ -1149,15 +1184,15 @@ struct NodeField : public PatternWrapper<NodeField> {
   using pattern =
   Oneof<
     Atom<';'>,
-    Cap<"access",      NodeAccessSpecifier>,
-    Cap<"constructor", NodeConstructor>,
-    Cap<"function",    NodeFunctionDefinition>,
-    Cap<"struct",      NodeStruct>,
-    Cap<"union",       NodeUnion>,
-    Cap<"template",    NodeTemplate>,
-    Cap<"class",       NodeClass>,
-    Cap<"enum",        NodeEnum>,
-    Cap<"decl",        NodeDeclaration>
+    Capture<"access",      lit_access_specifier, NodeAccessSpecifier>,
+    Capture<"constructor", NodeConstructor,      NodeConstructor>,
+    Capture<"function",    definition_function,  NodeFunctionDefinition>,
+    Capture<"struct",      NodeStruct,           NodeStruct>,
+    Capture<"union",       NodeUnion,            NodeUnion>,
+    Capture<"template",    NodeTemplate,         NodeTemplate>,
+    Capture<"class",       NodeClass,            NodeClass>,
+    Capture<"enum",        NodeEnum,             NodeEnum>,
+    Capture<"decl",        NodeDeclaration,      NodeDeclaration>
   >;
   // clang-format on
 };
@@ -1177,7 +1212,7 @@ struct NodeNamespace : public CNode, public PatternWrapper<NodeNamespace> {
   using pattern =
   Seq<
     Keyword<"namespace">,
-    Cap<"name", Opt<NodeIdentifier::pattern>>,
+    Capture<"name", Opt<lit_identifier>, CNode>,
     Opt<NodeFieldList>
   >;
 };
@@ -1190,7 +1225,7 @@ struct NodeStructType : public CNode, public PatternWrapper<NodeStructType> {
 
 struct NodeStructTypeAdder : public NodeIdentifier {
   static TokenSpan match(CContext& ctx, TokenSpan body) {
-    auto tail = NodeIdentifier::pattern::match(ctx, body);
+    auto tail = lit_identifier::match(ctx, body);
     if (tail.is_valid()) {
       ctx.add_struct_type(body.begin);
       return tail;
@@ -1210,13 +1245,13 @@ struct NodeStruct : public CNode, public PatternWrapper<NodeStruct> {
   // clang-format off
   using pattern =
   Seq<
-    Any<Cap<"modifier",  NodeModifier>>,
+    Any<Capture<"modifier",  NodeModifier, CNode>>,
     Keyword<"struct">,
-    Any<Cap<"attribute", NodeAttribute>>,  // This has to be here, there are a lot of struct __attrib__() foo {};
+    Any<Capture<"attribute", NodeAttribute, CNode>>,  // This has to be here, there are a lot of struct __attrib__() foo {};
     Opt<NodeStructTypeAdder>,
-    Opt<Cap<"fields",    NodeFieldList>>,
-    Any<Cap<"attribute", NodeAttribute>>,
-    Opt<Cap<"decls",     NodeDeclaratorList>>
+    Opt<Capture<"fields",    NodeFieldList, CNode>>,
+    Any<Capture<"attribute", NodeAttribute, CNode>>,
+    Opt<Capture<"decls",     NodeDeclaratorList, CNode>>
   >;
   // clang-format on
 };
@@ -1231,7 +1266,7 @@ struct NodeUnionType : public CNode {
 
 struct NodeUnionTypeAdder : public NodeIdentifier {
   static TokenSpan match(CContext& ctx, TokenSpan body) {
-    auto tail = NodeIdentifier::pattern::match(ctx, body);
+    auto tail = lit_identifier::match(ctx, body);
     if (tail.is_valid()) {
       ctx.add_union_type(body.begin);
       return tail;
@@ -1251,13 +1286,13 @@ struct NodeUnion : public CNode, public PatternWrapper<NodeUnion> {
   // clang-format off
   using pattern =
   Seq<
-    Any<Cap<"modifier", NodeModifier>>,
+    Any<Capture<"modifier", NodeModifier, CNode>>,
     Keyword<"union">,
-    Any<Cap<"attribute", NodeAttribute>>,
+    Any<Capture<"attribute", NodeAttribute, CNode>>,
     Opt<NodeUnionTypeAdder>,
-    Opt<Cap<"fields", NodeFieldList>>,
-    Any<Cap<"attribute", NodeAttribute>>,
-    Opt<Cap<"decls", NodeDeclaratorList>>
+    Opt<Capture<"fields", NodeFieldList, CNode>>,
+    Any<Capture<"attribute", NodeAttribute, CNode>>,
+    Opt<Capture<"decls", NodeDeclaratorList, CNode>>
   >;
   // clang-format on
 };
@@ -1270,7 +1305,7 @@ struct NodeClassType : public CNode, public PatternWrapper<NodeClassType> {
 
 struct NodeClassTypeAdder : public NodeIdentifier {
   static TokenSpan match(CContext& ctx, TokenSpan body) {
-    auto tail = NodeIdentifier::pattern::match(ctx, body);
+    auto tail = lit_identifier::match(ctx, body);
     if (tail.is_valid()) {
       ctx.add_class_type(body.begin);
       return tail;
@@ -1291,36 +1326,35 @@ struct NodeClass : public CNode, public PatternWrapper<NodeClass> {
   // clang-format off
   using pattern =
   Seq<
-    Any<Cap<"modifier",  NodeModifier>>,
+    Any<Capture<"modifier",  NodeModifier, CNode>>,
     NodeLiteral<"class">,
-    Any<Cap<"attribute", NodeAttribute>>,
+    Any<Capture<"attribute", NodeAttribute, CNode>>,
     Opt<NodeClassTypeAdder>,
-    Opt<Cap<"body",      NodeFieldList>>,
-    Any<Cap<"attribute", NodeAttribute>>,
-    Opt<Cap<"decls",     NodeDeclaratorList>>
+    Opt<Capture<"body",      NodeFieldList, CNode>>,
+    Any<Capture<"attribute", NodeAttribute, CNode>>,
+    Opt<Capture<"decls",     NodeDeclaratorList, CNode>>
   >;
   // clang-format on
 };
 
 //------------------------------------------------------------------------------
 
-struct NodeTemplateParams : public CNode,
-                            public PatternWrapper<NodeTemplateParams> {
-  using pattern =
-  DelimitedList<
-    Atom<'<'>,
-    Cap<"param", NodeDeclaration>,
-    Atom<','>,
-    Atom<'>'>
-  >;
-};
+using template_param_list =
+DelimitedList<
+  Atom<'<'>,
+  Capture<"param", NodeDeclaration, CNode>,
+  Atom<','>,
+  Atom<'>'>
+>;
+
+struct NodeTemplateParams : public CNode {};
 
 struct NodeTemplate : public CNode, public PatternWrapper<NodeTemplate> {
   using pattern =
   Seq<
     NodeLiteral<"template">,
-    Cap<"params", NodeTemplateParams>,
-    Cap<"class", NodeClass>
+    Capture<"params", template_param_list, NodeTemplateParams>,
+    Capture<"class", NodeClass, CNode>
   >;
 };
 
@@ -1333,7 +1367,7 @@ struct NodeEnumType : public CNode, public PatternWrapper<NodeEnumType> {
 
 struct NodeEnumTypeAdder : public NodeIdentifier {
   static TokenSpan match(CContext& ctx, TokenSpan body) {
-    auto tail = NodeIdentifier::pattern::match(ctx, body);
+    auto tail = lit_identifier::match(ctx, body);
     if (tail.is_valid()) {
       ctx.add_enum_type(body.begin);
       return tail;
@@ -1352,11 +1386,11 @@ struct NodeEnumTypeAdder : public NodeIdentifier {
 struct NodeEnumerator : public CNode, public PatternWrapper<NodeEnumerator> {
   using pattern =
   Seq<
-    Cap<"name", NodeIdentifier::pattern>,
+    Capture<"name", lit_identifier, CNode>,
     Opt<
       Seq<
         Atom<'='>,
-        Cap<"value", NodeExpression>
+        Capture<"value", NodeExpression, CNode>
       >
     >
   >;
@@ -1366,7 +1400,7 @@ struct NodeEnumerators : public CNode, public PatternWrapper<NodeEnumerators> {
   using pattern =
   DelimitedList<
     Atom<'{'>,
-    Cap<"enumerator", NodeEnumerator>,
+    Capture<"enumerator", NodeEnumerator, CNode>,
     Atom<','>,
     Atom<'}'>
   >;
@@ -1376,13 +1410,13 @@ struct NodeEnum : public CNode, public PatternWrapper<NodeEnum> {
   // clang-format off
   using pattern =
   Seq<
-    Any<Cap<"modifier", NodeModifier>>,
+    Any<Capture<"modifier", NodeModifier, CNode>>,
     Keyword<"enum">,
     Opt<NodeLiteral<"class">>,
     Opt<NodeEnumTypeAdder>,
-    Opt<Seq<Atom<':'>, Cap<"type", NodeTypeDecl>>>,
-    Opt<Cap<"body",  NodeEnumerators>>,
-    Opt<Cap<"decls", NodeDeclaratorList>>
+    Opt<Seq<Atom<':'>, Capture<"type", NodeTypeDecl, CNode>>>,
+    Opt<Capture<"body",  NodeEnumerators, CNode>>,
+    Opt<Capture<"decls", NodeDeclaratorList, CNode>>
   >;
 };
 
@@ -1392,9 +1426,9 @@ struct NodeDesignation : public CNode, public PatternWrapper<NodeDesignation> {
   // clang-format off
   using pattern =
   Some<
-    Seq<Atom<'['>, NodeConstant, Atom<']'>>,
-    Seq<Atom<'['>, NodeIdentifier::pattern, Atom<']'>>,
-    Seq<Atom<'.'>, NodeIdentifier::pattern>
+    Seq<Atom<'['>, exp_constant, Atom<']'>>,
+    Seq<Atom<'['>, lit_identifier, Atom<']'>>,
+    Seq<Atom<'.'>, lit_identifier>
   >;
   // clang-format on
 };
@@ -1403,7 +1437,7 @@ struct NodeInitializerList : public CNode, public PatternWrapper<NodeInitializer
   using pattern = DelimitedList<
       Atom<'{'>,
       Seq<Opt<Seq<NodeDesignation, Atom<'='>>,
-              Seq<NodeIdentifier::pattern, Atom<':'>>  // This isn't in the C grammar but
+              Seq<lit_identifier, Atom<':'>>  // This isn't in the C grammar but
                                               // compndlit-1.c uses it?
               >,
           NodeInitializer>,
@@ -1423,9 +1457,9 @@ struct NodeSuffixInitializerList : public CNode, public PatternWrapper<NodeSuffi
     Seq<
       Opt<
         Seq<NodeDesignation, Atom<'='>>,
-        Seq<NodeIdentifier::pattern, Atom<':'>>  // This isn't in the C grammar but compndlit-1.c uses it?
+        Seq<lit_identifier, Atom<':'>>  // This isn't in the C grammar but compndlit-1.c uses it?
       >,
-      Cap<"initializer", NodeInitializer>
+      Capture<"initializer", NodeInitializer, CNode>
     >,
     Atom<','>,
     Atom<'}'>
@@ -1439,53 +1473,15 @@ struct NodeInitializer : public CNode, public PatternWrapper<NodeInitializer> {
 
 //------------------------------------------------------------------------------
 
-struct NodeFunctionIdentifier : public CNode,
-                                public PatternWrapper<NodeFunctionIdentifier> {
-  // clang-format off
-  using pattern =
-  Seq<
-    Any<NodeAttribute, NodePointer>,
-    Oneof<
-      NodeIdentifier::pattern,
-      Seq<Atom<'('>, NodeFunctionIdentifier, Atom<')'>>
-    >
-  >;
-  // clang-format on
-};
-
-// function-definition:
-//     declaration-specifiers declarator declaration-listopt compound-statement
-
-struct NodeFunctionDefinition : public CNode,
-                                public PatternWrapper<NodeFunctionDefinition> {
-  // clang-format off
-  using pattern =
-  Seq<
-    Any<Cap<"modifier",         NodeModifier>>,
-    Opt<Cap<"func_return_type", NodeSpecifier>>,
-    Any<Cap<"modifier",         NodeModifier>>,
-    One<Cap<"func_identifier",  NodeFunctionIdentifier>>,
-    One<Cap<"func_params",      NodeParamList>>,
-    Any<Cap<"modifier",         NodeModifier>>,
-    Opt<Cap<"asm_suffix",       NodeAsmSuffix>>,
-    Opt<Cap<"const",            NodeKeyword<"const">>>,
-    Any<Cap<"old_declaration",  Seq<NodeDeclaration, Atom<';'>> >>, // This is old-style declarations after param list
-    One<Cap<"func_body",        NodeStatementCompound>>
-  >;
-  // clang-format on
-};
-
-//------------------------------------------------------------------------------
-
 struct NodeConstructor : public CNode, public PatternWrapper<NodeConstructor> {
   // clang-format off
   using pattern =
   Seq<
     NodeClassType,
-    Cap<"params", NodeParamList>,
+    Capture<"params", param_list, NodeParamList>,
     Oneof<
       Atom<';'>,
-      Cap<"body", NodeStatementCompound>
+      Capture<"body", NodeStatementCompound, CNode>
     >
   >;
   // clang-format om
@@ -1499,27 +1495,27 @@ struct NodeDeclaration : public CNode, public PatternWrapper<NodeDeclaration> {
   using pattern =
   Seq<
     Any<
-      Cap<"attribute", NodeAttribute>,
-      Cap<"modifier", NodeModifier>
+      Capture<"attribute", NodeAttribute, CNode>,
+      Capture<"modifier", NodeModifier, CNode>
     >,
     Oneof<
       Seq<
-        Cap<"specifier", NodeSpecifier>,
+        Capture<"specifier", NodeSpecifier, CNode>,
         Any<
-          Cap<"attribute", NodeAttribute>,
-          Cap<"modifier", NodeModifier>
+          Capture<"attribute", NodeAttribute, CNode>,
+          Capture<"modifier", NodeModifier, CNode>
         >,
         Opt<
-          Cap<"decls", NodeDeclaratorList>
+          Capture<"decls", NodeDeclaratorList, CNode>
         >
       >,
       Seq<
-        Opt<Cap<"specifier", NodeSpecifier>>,
+        Opt<Capture<"specifier", NodeSpecifier, CNode>>,
         Any<
-          Cap<"attribute", NodeAttribute>,
-          Cap<"modifier", NodeModifier>
+          Capture<"attribute", NodeAttribute, CNode>,
+          Capture<"modifier", NodeModifier, CNode>
         >,
-        Cap<"decls", NodeDeclaratorList>
+        Capture<"decls", NodeDeclaratorList, CNode>
       >
     >
   >;
@@ -1543,7 +1539,7 @@ struct NodeStatementCompound : public CNode, public PatternWrapper<NodeStatement
   PushPopScope<
     DelimitedBlock<
       Atom<'{'>,
-      Cap<"statement", NodeStatement>,
+      Capture<"statement", NodeStatement, CNode>,
       Atom<'}'>
     >
   >;
@@ -1551,30 +1547,29 @@ struct NodeStatementCompound : public CNode, public PatternWrapper<NodeStatement
 
 //------------------------------------------------------------------------------
 
-struct NodeStatementFor : public CNode, public PatternWrapper<NodeStatementFor> {
-  // clang-format off
-  using pattern =
-  Seq<
-    Keyword<"for">,
-    Atom<'('>,
-    Cap<
-      "init",
-      // This is _not_ the same as
-      // Opt<Oneof<e, x>>, Atom<';'>
-      Oneof<
-        Seq<comma_separated<NodeExpression>,  Atom<';'>>,
-        Seq<comma_separated<NodeDeclaration>, Atom<';'>>,
-        Atom<';'>
-      >
+using statement_for =
+Seq<
+  Keyword<"for">,
+  Atom<'('>,
+  Capture<
+    "init",
+    // This is _not_ the same as
+    // Opt<Oneof<e, x>>, Atom<';'>
+    Oneof<
+      Seq<comma_separated<NodeExpression>,  Atom<';'>>,
+      Seq<comma_separated<NodeDeclaration>, Atom<';'>>,
+      Atom<';'>
     >,
-    Cap<"condition", Opt<comma_separated<NodeExpression>>>,
-    Atom<';'>,
-    Cap<"step", Opt<comma_separated<NodeExpression>>>,
-    Atom<')'>,
-    Oneof<NodeStatementCompound, NodeStatement>
-  >;
-  // clang-format on
-};
+    CNode
+  >,
+  Capture<"condition", Opt<comma_separated<NodeExpression>>, CNode>,
+  Atom<';'>,
+  Capture<"step", Opt<comma_separated<NodeExpression>>, CNode>,
+  Atom<')'>,
+  Oneof<NodeStatementCompound, NodeStatement>
+>;
+
+struct NodeStatementFor : public CNode {};
 
 //------------------------------------------------------------------------------
 
@@ -1586,12 +1581,12 @@ struct NodeStatementIf : public CNode, public PatternWrapper<NodeStatementIf> {
   using pattern =
   Seq<
     Keyword<"if">,
-    Cap<
+    Capture<
       "condition",
       DelimitedList<Atom<'('>, NodeExpression, Atom<','>, Atom<')'>>
-    >,
-    Cap<"then", NodeStatement>,
-    Cap<"else", Opt<NodeStatementElse>>
+    , CNode>,
+    Capture<"then", NodeStatement, CNode>,
+    Capture<"else", Opt<NodeStatementElse>, CNode>
   >;
 };
 
@@ -1601,7 +1596,7 @@ struct NodeStatementReturn : public CNode, public PatternWrapper<NodeStatementRe
   using pattern =
   Seq<
     Keyword<"return">,
-    Cap<"value", Opt<NodeExpression>>,
+    Capture<"value", Opt<NodeExpression>, CNode>,
     Atom<';'>
   >;
 };
@@ -1613,7 +1608,7 @@ struct NodeStatementCase : public CNode, public PatternWrapper<NodeStatementCase
   using pattern =
   Seq<
     Keyword<"case">,
-    Cap<"condition", NodeExpression>,
+    Capture<"condition", NodeExpression, CNode>,
     // case 1...2: - this is supported by GCC?
     Opt<Seq<NodeEllipsis, NodeExpression>>,
     Atom<':'>,
@@ -1621,7 +1616,7 @@ struct NodeStatementCase : public CNode, public PatternWrapper<NodeStatementCase
       Seq<
         Not<Keyword<"case">>,
         Not<Keyword<"default">>,
-        Cap<"body", NodeStatement>
+        Capture<"body", NodeStatement, CNode>
       >
     >
   >;
@@ -1638,79 +1633,72 @@ struct NodeStatementDefault : public CNode, public PatternWrapper<NodeStatementD
       Seq<
         Not<Keyword<"case">>,
         Not<Keyword<"default">>,
-        Cap<"body", NodeStatement>
+        Capture<"body", NodeStatement, CNode>
       >
     >
   >;
   // clang-format on
 };
 
-struct NodeStatementSwitch : public CNode, public PatternWrapper<NodeStatementSwitch> {
-  // clang-format off
-  using pattern =
-  Seq<
-    Keyword<"switch">,
-    Cap<"condition", NodeExpression>,
-    Atom<'{'>,
-    Any<
-      Cap<"case", NodeStatementCase>,
-      Cap<"default", NodeStatementDefault>
-    >,
-    Atom<'}'>
-  >;
-  // clang-format on
-};
+
+using statement_switch =
+Seq<
+  Keyword<"switch">,
+  Capture<"condition", NodeExpression, CNode>,
+  Atom<'{'>,
+  Any<
+    Capture<"case", NodeStatementCase, CNode>,
+    Capture<"default", NodeStatementDefault, CNode>
+  >,
+  Atom<'}'>
+>;
+
+struct NodeStatementSwitch : public CNode {};
 
 //------------------------------------------------------------------------------
 
-struct NodeStatementWhile : public CNode,
-                            public PatternWrapper<NodeStatementWhile> {
-  // clang-format on
-  using pattern =
-  Seq<
-    Keyword<"while">,
-    DelimitedList<
-      Atom<'('>,
-      Cap<"condition", NodeExpression>,
-      Atom<','>,
-      Atom<')'>
-    >,
-    Cap<"body", NodeStatement>
-  >;
-  // clang-format off
-};
+using statement_while =
+Seq<
+  Keyword<"while">,
+  DelimitedList<
+    Atom<'('>,
+    Capture<"condition", NodeExpression, CNode>,
+    Atom<','>,
+    Atom<')'>
+  >,
+  Capture<"body", NodeStatement, CNode>
+>;
+
+struct NodeStatementWhile : public CNode {};
 
 //------------------------------------------------------------------------------
 
-struct NodeStatementDoWhile : public CNode,
-                              public PatternWrapper<NodeStatementDoWhile> {
-  // clang-format off
-  using pattern =
-  Seq<
-    Keyword<"do">,
-    Cap<"body", NodeStatement>,
-    Keyword<"while">,
-    DelimitedList<
-      Atom<'('>,
-      Cap<"condition", NodeExpression>,
-      Atom<','>,
-      Atom<')'>
-    >,
-    Atom<';'>
-  >;
-  // clang-format on
-};
+using statement_dowhile =
+Seq<
+  Keyword<"do">,
+  Capture<"body", NodeStatement, CNode>,
+  Keyword<"while">,
+  DelimitedList<
+    Atom<'('>,
+    Capture<"condition", NodeExpression, CNode>,
+    Atom<','>,
+    Atom<')'>
+  >,
+  Atom<';'>
+>;
+
+struct NodeStatementDoWhile : public CNode {};
 
 //------------------------------------------------------------------------------
 
-struct NodeStatementLabel : public CNode, public PatternWrapper<NodeStatementLabel> {
-  using pattern =
-  Seq<
-    Capture<"name", NodeIdentifier::pattern, NodeIdentifier>,
-    Atom<':'>,
-    Opt<Atom<';'>>
-  >;
-};
+using statement_label =
+Seq<
+  Capture<"name", lit_identifier, NodeIdentifier>,
+  Atom<':'>,
+  Opt<Atom<';'>>
+>;
+
+struct NodeStatementLabel : public CNode {};
 
 //------------------------------------------------------------------------------
 
@@ -1728,10 +1716,10 @@ struct NodeAsmRef : public CNode, public PatternWrapper<NodeAsmRef> {
   // clang-format off
   using pattern =
   Seq<
-    Cap<"name", NodeAtom<LEX_STRING>>,
+    Capture<"name", NodeAtom<LEX_STRING>, CNode>,
     Opt<Seq<
       Atom<'('>,
-      Cap<"value", NodeExpression>,
+      Capture<"value", NodeExpression, CNode>,
       Atom<')'>
     >>
   >;
@@ -1741,7 +1729,7 @@ struct NodeAsmRef : public CNode, public PatternWrapper<NodeAsmRef> {
 struct NodeAsmRefs : public CNode, public PatternWrapper<NodeAsmRefs> {
   using pattern =
   comma_separated<
-    Cap<"ref", NodeAsmRef>
+    Capture<"ref", NodeAsmRef, CNode>
   >;
 };
 
@@ -1762,76 +1750,60 @@ struct NodeAsmQualifiers : public CNode, public PatternWrapper<NodeAsmQualifiers
 
 //------------------------------------------------------------------------------
 
-struct NodeStatementAsm : public CNode, public PatternWrapper<NodeStatementAsm> {
-  // clang-format off
-  using pattern =
-  Seq<
-    Oneof<
-      Keyword<"asm">,
-      Keyword<"__asm">,
-      Keyword<"__asm__">
-    >,
-    Opt<Cap<"qualifiers", NodeAsmQualifiers>>,
-    Atom<'('>,
-    NodeAtom<LEX_STRING>,  // assembly code
-    SeqOpt<
-      // output operands
-      Seq<Atom<':'>, Opt<Cap<"output", NodeAsmRefs>>>,
-      // input operands
-      Seq<Atom<':'>, Opt<Cap<"input", NodeAsmRefs>>>,
-      // clobbers
-      Seq<Atom<':'>, Opt<Cap<"clobbers", NodeAsmRefs>>>,
-      // GotoLabels
-      Seq<Atom<':'>, Opt<Cap<"gotos", comma_separated<NodeIdentifier::pattern>>>>
-    >,
-    Atom<')'>,
-    Atom<';'>
-  >;
-  // clang-format on
-};
+using statement_asm =
+Seq<
+  Oneof<
+    Keyword<"asm">,
+    Keyword<"__asm">,
+    Keyword<"__asm__">
+  >,
+  Opt<Capture<"qualifiers", NodeAsmQualifiers, CNode>>,
+  Atom<'('>,
+  NodeAtom<LEX_STRING>,  // assembly code
+  SeqOpt<
+    // output operands
+    Seq<Atom<':'>, Opt<Capture<"output", NodeAsmRefs, CNode>>>,
+    // input operands
+    Seq<Atom<':'>, Opt<Capture<"input", NodeAsmRefs, CNode>>>,
+    // clobbers
+    Seq<Atom<':'>, Opt<Capture<"clobbers", NodeAsmRefs, CNode>>>,
+    // GotoLabels
+    Seq<Atom<':'>, Opt<Capture<"gotos", comma_separated<lit_identifier>, CNode>>>
+  >,
+  Atom<')'>,
+  Atom<';'>
+>;
+
+struct NodeStatementAsm : public CNode {};
 
 //------------------------------------------------------------------------------
 
-struct NodeTypedef : public CNode, public PatternWrapper<NodeTypedef> {
-  // clang-format off
-  using pattern =
-  Seq<
-    Opt<
-      Keyword<"__extension__">
-    >,
-    Keyword<"typedef">,
-    Cap<
-      "newtype",
-      Oneof<
-        Cap<"struct", NodeStruct>,
-        Cap<"union",  NodeUnion>,
-        Cap<"class",  NodeClass>,
-        Cap<"enum",   NodeEnum>,
-        Cap<"decl",   NodeDeclaration>
-      >
+using def_typedef =
+Seq<
+  Opt<
+    Keyword<"__extension__">
+  >,
+  Keyword<"typedef">,
+  Capture<
+    "newtype",
+    Oneof<
+      Capture<"struct", NodeStruct, CNode>,
+      Capture<"union",  NodeUnion, CNode>,
+      Capture<"class",  NodeClass, CNode>,
+      Capture<"enum",   NodeEnum, CNode>,
+      Capture<"decl",   NodeDeclaration, CNode>
     >
-  >;
-  // clang-format on
+  , CNode>
+>;
+
+struct NodeTypedef : public CNode {
 
   static void extract_declarator(CContext& ctx, CNode* decl) {
-    /*
-    if (auto id = decl->child("identifier")) {
-      ctx.add_typedef_type(id->span.a);
-    }
-    */
     if (auto name = decl->child("name")) {
       if (auto id = name->child("identifier")) {
         ctx.add_typedef_type(id->span.begin);
       }
     }
-
-    /*
-    for (auto child = decl->child_head; child; child = child->node_next) {
-      if (auto decl = child->as_a<NodeDeclarator>()) {
-        extract_declarator(ctx, decl);
-      }
-    }
-    */
   }
 
   static void extract_declarator_list(CContext& ctx, CNode* decls) {
@@ -1844,10 +1816,6 @@ struct NodeTypedef : public CNode, public PatternWrapper<NodeTypedef> {
       else {
         matcheroni_assert(false);
       }
-
-      //if (auto decl = child->as_a<NodeDeclarator>()) {
-      //  extract_declarator(ctx, decl);
-      //}
     }
   }
 
@@ -1883,9 +1851,8 @@ struct NodeTypedef : public CNode, public PatternWrapper<NodeTypedef> {
   }
 
   static TokenSpan match(CContext& ctx, TokenSpan body) {
-    auto tail = pattern::match(ctx, body);
+    auto tail = def_typedef::match(ctx, body);
     if (tail.is_valid()) {
-      //print_context(ctx.text_span, ctx, 40);
       extract_type(ctx);
     }
     return tail;
@@ -1894,10 +1861,10 @@ struct NodeTypedef : public CNode, public PatternWrapper<NodeTypedef> {
 
 //------------------------------------------------------------------------------
 
-struct NodeStatementGoto : public CNode, public PatternWrapper<NodeStatementGoto> {
-  // pr21356.c - Spec says goto should be an identifier, GCC allows expressions
-  using pattern = Seq<Keyword<"goto">, NodeExpression, Atom<';'>>;
-};
+// pr21356.c - Spec says goto should be an identifier, GCC allows expressions
+using statement_goto = Seq<Keyword<"goto">, NodeExpression, Atom<';'>>;
+
+struct NodeStatementGoto : public CNode {};
 
 //------------------------------------------------------------------------------
 
@@ -1906,32 +1873,32 @@ struct NodeStatement : public PatternWrapper<NodeStatement> {
   using pattern =
   Oneof<
     // All of these have keywords or something first
-    Cap<"class",    Seq<NodeClass,   Atom<';'>>>,
-    Cap<"struct",   Seq<NodeStruct,  Atom<';'>>>,
-    Cap<"union",    Seq<NodeUnion,   Atom<';'>>>,
-    Cap<"enum",     Seq<NodeEnum,    Atom<';'>>>,
-    Cap<"typedef",  Seq<NodeTypedef, Atom<';'>>>,
+    Capture<"class",    Seq<NodeClass,   Atom<';'>>, CNode>,
+    Capture<"struct",   Seq<NodeStruct,  Atom<';'>>, CNode>,
+    Capture<"union",    Seq<NodeUnion,   Atom<';'>>, CNode>,
+    Capture<"enum",     Seq<NodeEnum,    Atom<';'>>, CNode>,
+    Capture<"typedef",  Seq<Ref<NodeTypedef::match>, Atom<';'>>, NodeTypedef>,
 
-    Cap<"for",      NodeStatementFor>,
-    Cap<"if",       NodeStatementIf>,
-    Cap<"return",   NodeStatementReturn>,
-    Cap<"switch",   NodeStatementSwitch>,
-    Cap<"dowhile",  NodeStatementDoWhile>,
-    Cap<"while",    NodeStatementWhile>,
-    Cap<"goto",     NodeStatementGoto>,
-    Cap<"asm",      NodeStatementAsm>,
-    Cap<"compound", NodeStatementCompound>,
-    Cap<"break",    NodeStatementBreak>,
-    Cap<"continue", NodeStatementContinue>,
+    Capture<"for",      statement_for,     NodeStatementFor>,
+    Capture<"if",       NodeStatementIf, CNode>,
+    Capture<"return",   NodeStatementReturn, CNode>,
+    Capture<"switch",   statement_switch,  NodeStatementSwitch>,
+    Capture<"dowhile",  statement_dowhile, NodeStatementDoWhile>,
+    Capture<"while",    statement_while,   NodeStatementWhile>,
+    Capture<"goto",     statement_goto,    NodeStatementGoto>,
+    Capture<"asm",      statement_asm,     NodeStatementAsm>,
+    Capture<"compound", NodeStatementCompound, CNode>,
+    Capture<"break",    NodeStatementBreak, CNode>,
+    Capture<"continue", NodeStatementContinue, CNode>,
 
     // These don't - but they might confuse a keyword with an identifier...
-    Cap<"label",    NodeStatementLabel>,
-    Cap<"function", NodeFunctionDefinition>,
+    Capture<"label",    statement_label,     NodeStatementLabel>,
+    Capture<"function", definition_function, NodeFunctionDefinition>,
 
     // If declaration is before expression, we parse "x = 1;" as a declaration
     // because it matches a declarator (bare identifier) + initializer list :/
-    Cap<"expression",  Seq<comma_separated<NodeExpression>, Atom<';'>>>,
-    Cap<"declaration", Seq<NodeDeclaration, Atom<';'>>>,
+    Capture<"expression",  Seq<comma_separated<NodeExpression>, Atom<';'>>, CNode>,
+    Capture<"declaration", Seq<NodeDeclaration, Atom<';'>>, CNode>,
 
     // Extra semicolons
     Atom<';'>
@@ -1946,16 +1913,16 @@ struct NodeTranslationUnit : public CNode, public PatternWrapper<NodeTranslation
   using pattern =
   Any<
     Oneof<
-      Cap<"class",       Seq<NodeClass,  Atom<';'>>>,
-      Cap<"struct",      Seq<NodeStruct, Atom<';'>>>,
-      Cap<"union",       Seq<NodeUnion,  Atom<';'>>>,
-      Cap<"enum",        Seq<NodeEnum,   Atom<';'>>>,
-      Cap<"typedef",     NodeTypedef>,
-      Cap<"preproc",     NodePreproc>,
-      Cap<"template",    Seq<NodeTemplate, Atom<';'>>>,
-      Cap<"function",    NodeFunctionDefinition>,
-      Cap<"declaration", Seq<NodeDeclaration, Atom<';'>>>,
-      Cap<"namespace",   NodeNamespace>,
+      Capture<"class",        Seq<NodeClass,  Atom<';'>>, CNode>,
+      Capture<"struct",       Seq<NodeStruct, Atom<';'>>, CNode>,
+      Capture<"union",        Seq<NodeUnion,  Atom<';'>>, CNode>,
+      Capture<"enum",         Seq<NodeEnum,   Atom<';'>>, CNode>,
+      Capture<"typedef",  Ref<NodeTypedef::match>, NodeTypedef>,
+      Capture<"preproc",  NodePreproc, NodePreproc>,
+      Capture<"template",     Seq<NodeTemplate, Atom<';'>>, CNode>,
+      Capture<"function", definition_function, NodeFunctionDefinition>,
+      Capture<"declaration",  Seq<NodeDeclaration, Atom<';'>>, CNode>,
+      Capture<"namespace",    NodeNamespace, CNode>,
       Atom<';'>
     >
   >;

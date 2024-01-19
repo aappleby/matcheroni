@@ -135,6 +135,8 @@ using taker_function = Span<atom> (*)(context& ctx, Span<atom> body);
 // Since we will be matching text 99% of the time, this context class provides
 // the minimal amount of code needed to run and debug Matcheroni patterns.
 
+using TextSpan = Span<char>;
+
 struct TextMatchContext {
 
   // We cast to unsigned char as our ranges are generally going to be unsigned.
@@ -148,9 +150,22 @@ struct TextMatchContext {
 
   // Tracing requires us to keep track of the nesting depth in the context.
   int trace_depth = 0;
-};
 
-using TextSpan = Span<char>;
+  template<typename pattern>
+  TextSpan take() {
+    auto tail = pattern::match(*this, span);
+    if (tail) {
+      TextSpan head = { span.begin, tail.begin };
+      span = tail;
+      return head;
+    }
+    else {
+      return tail;
+    }
+  }
+
+  TextSpan span;
+};
 
 //------------------------------------------------------------------------------
 // Matcheroni consists of a base set of matcher functions wrapped in templated
@@ -180,6 +195,27 @@ struct Atom {
 
     return body.fail();
   }
+
+  /*
+  template <typename context, typename atom>
+  static Span<atom> match2(context& ctx) {
+    matcheroni_assert(ctx.span.is_valid());
+    if (ctx.span.is_empty()) return ctx.span.fail();
+
+    if (ctx.atom_cmp(*ctx.span.begin, C) == 0) {
+      return ctx.span.advance(1);
+    }
+
+    return ctx.span.fail();
+  }
+
+  template<typename atom>
+  static Span<atom> take2(context& ctx) {
+    if (!ctx.span) return ctx.span.fail();
+    return atom_cmp(*ctx.span.begin, C) ? ctx.span.fail() : ctx.span.take(1);
+  }
+
+  */
 
   template <typename context, typename atom>
   static Span<atom> take(context& ctx, Span<atom>& body) {
@@ -748,10 +784,10 @@ struct Opt {
   static Span<atom> take(context& ctx, Span<atom>& body) {
     matcheroni_assert(body.is_valid());
     auto bookmark = ctx.checkpoint();
-    auto head = Oneof<rest...>::match(ctx, body);
+    auto head = Oneof<rest...>::take(ctx, body);
     if (head.is_valid()) return head;
     if (bookmark != ctx.checkpoint()) ctx.rewind(bookmark);
-    return {body.head, body.head};
+    return {body.begin, body.begin};
   }
 };
 
@@ -795,7 +831,7 @@ struct Any {
 
     while (1) {
       auto bookmark = ctx.checkpoint();
-      auto head = Oneof<rest...>::match(ctx, body);
+      auto head = Oneof<rest...>::take(ctx, body);
       if (!head.is_valid()) {
         if (bookmark != ctx.checkpoint()) ctx.rewind(bookmark);
         break;
@@ -843,7 +879,7 @@ struct Some {
   static Span<atom> take(context& ctx, Span<atom>& body) {
     matcheroni_assert(body.is_valid());
     auto head = Any<rest...>::take(ctx, body);
-    return head.empty() ? body.fail() : head;
+    return head.is_empty() ? body.fail() : head;
   }
 };
 
@@ -1042,11 +1078,14 @@ struct Rep {
   template <typename context, typename atom>
   static Span<atom> take(context& ctx, Span<atom>& body) {
     matcheroni_assert(body.is_valid());
-    auto begin = body.begin();
+    auto old_body = body;
     for (auto i = 0; i < N; i++) {
-      if (!P::take(ctx, body)) return body.fail();
+      if (!P::take(ctx, body)) {
+        body = old_body;
+        return body.fail();
+      }
     }
-    return {begin, body.begin};
+    return {old_body.begin, body.begin};
   }
 };
 
@@ -1131,7 +1170,7 @@ struct Until {
         return {begin, body.begin};
       }
 
-      body.take(1);
+      auto _ = body.take(1);
     }
   }
 };

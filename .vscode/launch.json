@@ -21,7 +21,7 @@
       "preLaunchTask": "build_matcheroni_test",
       "type": "cppdbg",
       "request": "launch",
-      "program": "${workspaceFolder}/bin/matcheroni/matcheroni_test",
+      "program": "${workspaceFolder}/bin/tests/matcheroni_test",
       "cwd": "${workspaceFolder}",
       "setupCommands": [{
         "description": "Enable pretty-printing for gdb",
@@ -35,7 +35,7 @@
       "preLaunchTask": "build_parseroni_test",
       "type": "cppdbg",
       "request": "launch",
-      "program": "${workspaceFolder}/bin/matcheroni/parseroni_test",
+      "program": "${workspaceFolder}/bin/tests/parseroni_test",
       "cwd": "${workspaceFolder}",
       "setupCommands": [{
         "description": "Enable pretty-printing for gdb",
