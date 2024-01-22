@@ -4,20 +4,19 @@
 #include <stdio.h>
 
 #define REGEX_BENCHMARK_BASELINE
-#define REGEX_BENCHMARK_MATCHERONI
 #define REGEX_BENCHMARK_BOOST
+//#define REGEX_BENCHMARK_CTRE
+#define REGEX_BENCHMARK_MATCHERONI
+//#define REGEX_BENCHMARK_SRELL
 #define REGEX_BENCHMARK_STD_REGEX
 
-#ifdef REGEX_BENCHMARK_SRELL
-#include "srell.hpp"
-#endif
-
-#ifdef REGEX_BENCHMARK_STD_REGEX
-#include <regex>
-#endif
 
 #ifdef REGEX_BENCHMARK_BOOST
 #include <boost/regex.hpp>
+#endif
+
+#ifdef REGEX_BENCHMARK_CTRE
+#include "ctre.hpp"
 #endif
 
 #ifdef REGEX_BENCHMARK_MATCHERONI
@@ -26,8 +25,12 @@
 using namespace matcheroni;
 #endif
 
-#ifdef REGEX_BENCHMARK_CTRE
-#include "ctre.hpp"
+#ifdef REGEX_BENCHMARK_SRELL
+#include "srell.hpp"
+#endif
+
+#ifdef REGEX_BENCHMARK_STD_REGEX
+#include <regex>
 #endif
 
 // Reference regexes (as C strings):

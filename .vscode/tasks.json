@@ -5,6 +5,11 @@
   "tasks": [
     {
       "type": "shell",
+      "label": "wipe_build",
+      "command": "rm -rf obj bin",
+    },
+    {
+      "type": "shell",
       "label": "build_matcheroni",
       "command": "ninja",
       "problemMatcher": "$gcc",

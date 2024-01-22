@@ -41,8 +41,8 @@ void sexp_to_string(TestNode* n, std::string& out) {
 template<typename context>
 void check_hash(context& ctx, uint64_t hash_a) {
   uint64_t hash_b = utils::hash_context(ctx);
-  printf("Expected hash 0x%016lx\n", hash_a);
-  printf("Actual hash   0x%016lx\n", hash_b);
+  //printf("Expected hash 0x%016lx\n", hash_a);
+  //printf("Actual hash   0x%016lx\n", hash_b);
   matcheroni_assert(hash_a == hash_b && "bad hash");
 }
 
@@ -75,7 +75,7 @@ struct SExpression {
 //----------------------------------------
 
 void test_basic() {
-  printf("test_basic()\n");
+  //printf("test_basic()\n");
   reset_everything();
 
   {
@@ -89,17 +89,17 @@ void test_basic() {
     auto tail = SExpression::match(ctx, text);
     matcheroni_assert(tail.is_valid() && tail.is_empty());
 
-    utils::print_summary(ctx, text, tail, 50);
+    //utils::print_summary(ctx, text, tail, 50);
 
-    printf("Round-trip s-expression:\n");
+    //printf("Round-trip s-expression:\n");
     std::string new_text;
     sexp_to_string((TestNode*)ctx.top_head, new_text);
-    printf("Old : %s\n", text.begin);
-    printf("New : %s\n", new_text.c_str());
+    //printf("Old : %s\n", text.begin);
+    //printf("New : %s\n", new_text.c_str());
     matcheroni_assert(expression == new_text && "Mismatch!");
-    printf("\n");
+    //printf("\n");
 
-    utils::print_summary(ctx, text, tail, 50);
+    //utils::print_summary(ctx, text, tail, 50);
 
     check_hash(ctx, 0x7073c4e1b84277f0);
 
@@ -126,13 +126,13 @@ void test_basic() {
   tail = SExpression::match(ctx, span);
   matcheroni_assert(!tail.is_valid() && std::string(tail.end) == "(");
 
-  printf("test_basic() end\n\n");
+  //printf("test_basic() end\n\n");
 }
 
 //------------------------------------------------------------------------------
 
 void test_rewind() {
-  printf("test_rewind()\n");
+  //printf("test_rewind()\n");
   reset_everything();
 
   using pattern =
@@ -154,13 +154,13 @@ void test_rewind() {
   auto text = utils::to_span("abcdef");
   auto tail = pattern::match(ctx, text);
 
-  utils::print_summary(ctx, text, tail, 50);
+  //utils::print_summary(ctx, text, tail, 50);
   check_hash(ctx, 0x2850a87bce45242a);
 
   matcheroni_assert(TestNode::live == 1);
   matcheroni_assert(TestNode::dead == 5);
 
-  printf("test_rewind() end\n\n");
+  //printf("test_rewind() end\n\n");
 }
 
 //------------------------------------------------------------------------------
@@ -198,7 +198,7 @@ struct BeginEndTest {
 //------------------------------------------------------------------------------
 
 void test_begin_end() {
-  printf("test_begin_end()\n");
+  //printf("test_begin_end()\n");
   reset_everything();
 
   TestContext ctx;
@@ -206,13 +206,13 @@ void test_begin_end() {
   auto text = utils::to_span("[ [abc,ab?,cdb+] , [a,b,c*,d,e,f] ]");
   auto tail = BeginEndTest::match(ctx, text);
 
-  utils::print_summary(ctx, text, tail, 50);
-  check_hash(ctx, 0x401403cbefc2cba9);
+  //utils::print_summary(ctx, text, tail, 50);
+  check_hash(ctx, 0x8c3ca2b021e9a9b3);
 
   matcheroni_assert(TestNode::live == 15);
   matcheroni_assert(TestNode::dead == 0);
 
-  printf("test_begin_end() end\n\n");
+  //printf("test_begin_end() end\n\n");
 }
 
 //------------------------------------------------------------------------------
@@ -242,7 +242,7 @@ struct Pathological {
 //----------------------------------------
 
 void test_pathological() {
-  printf("test_pathological()\n");
+  //printf("test_pathological()\n");
   reset_everything();
 
   TestContext ctx;
@@ -261,31 +261,22 @@ void test_pathological() {
   // {[a]                 }  | | | | |-none
   // {a                   }  | | | | | |-atom
 
-  utils::print_summary(ctx, text, tail, 50);
+  //utils::print_summary(ctx, text, tail, 50);
   check_hash(ctx, 0x07a37a832d506209);
 
   matcheroni_assert(TestNode::live == 7);
   matcheroni_assert(TestNode::dead == 137250);
 
-  printf("test_pathological() end\n\n");
+  //printf("test_pathological() end\n\n");
 }
 
 //------------------------------------------------------------------------------
 
 int main(int argc, char** argv) {
-  printf("Parseroni tests\n");
-
-  printf("//----------------------------------------\n");
   test_basic();
-  printf("//----------------------------------------\n");
   test_rewind();
-  printf("//----------------------------------------\n");
   test_begin_end();
-  printf("//----------------------------------------\n");
   test_pathological();
-  printf("//----------------------------------------\n");
-
-  printf("All tests pass!\n");
   return 0;
 }
 

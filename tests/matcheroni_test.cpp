@@ -5,6 +5,8 @@
 #include <string.h>
 #include <string>
 
+//a();
+
 using namespace matcheroni;
 
 TextMatchContext ctx;
@@ -963,9 +965,6 @@ void test_charset() {
 //------------------------------------------------------------------------------
 
 int main(int argc, char** argv) {
-  fprintf(stderr, "This goes to stderr1\n");
-  printf("Matcheroni tests\n");
-
   test_span();
   test_atom();
   test_notatom();
@@ -988,16 +987,9 @@ int main(int argc, char** argv) {
   test_eol();
   test_charset();
 
-  fprintf(stdout, "This goes to stdout\n");
-  fprintf(stderr, "This goes to stderr2\n");
+  if (fail_count) printf("Failed %d tests!\n", fail_count);
 
-  if (!fail_count) {
-    printf("All tests pass!\n");
-    return 0;
-  } else {
-    printf("Failed %d tests!\n", fail_count);
-    return -1;
-  }
+  return fail_count ? -1 : 0;
 }
 
 //------------------------------------------------------------------------------

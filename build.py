@@ -1,15 +1,20 @@
 #!/usr/bin/python3
 # Experimental use of hancho.py, beware
 
-import sys
-import glob
 import argparse
+import glob
+import os
 import pprint
+import sys
 
 sys.path.append("symlinks/hancho")
 import hancho
 
+from hancho import Config
+
 pp = pprint.PrettyPrinter(depth=6)
+
+#-fsanitize=undefined
 
 ################################################################################
 
@@ -20,6 +25,7 @@ parser.add_argument('--serial',   default=False, action='store_true', help='Do n
 parser.add_argument('--dry_run',  default=False, action='store_true', help='Do not run commands')
 parser.add_argument('--debug',    default=False, action='store_true', help='Dump debugging information')
 parser.add_argument('--dotty',    default=False, action='store_true', help='Dump dependency graph as dotty')
+parser.add_argument('--release',  default=False, action='store_true', help='Release-mode optimized build')
 (flags, unrecognized) = parser.parse_known_args()
 
 hancho.config.verbose    = flags.verbose
@@ -31,80 +37,119 @@ hancho.config.dotty      = flags.dotty
 
 ################################################################################
 
-"""
 # Turning tracing on will generate _ton_ of spam in the C parser demo.
 # Turning EXTRA_DEBUG on will generate even more spam.
 
 #defines = -DMATCHERONI_ENABLE_TRACE
 #defines = -DEXTRA_DEBUG
-"""
 
-hancho.config.cpp_std    = "-std=c++20"
-hancho.config.warnings   = "-Wall -Werror -Wno-unused-variable -Wno-unused-local-typedefs -Wno-unused-but-set-variable -fsanitize=undefined"
-hancho.config.depfile    = "-MMD -MF {file_out}.d"
-hancho.config.build_type = "-g -O0"
-
-hancho.config.toolchain  = "x86_64-linux-gnu"
-hancho.config.cpp_opts   = "{build_type} {cpp_std} {warnings} {depfile}"
-hancho.config.includes   = "-I."
-hancho.config.defines    = ""
-
-hancho.config.ld_opts    = "{build_type} {warnings}"
-
-compile_cpp = hancho.rule(
-  #description = "Compiling C++ {file_in} => {file_out}",
-  command   = "{toolchain}-g++ {cpp_opts} {includes} {defines} -c {file_in} -o {file_out}",
-  parallel  = True,
+compile_cpp = Config(
+  prototype   = hancho.config,
+  description = "Compiling {file_in} -> {file_out} ({build_type})",
+  command     = "{toolchain}-g++ {build_opt} {cpp_std} {warnings} {depfile} {includes} {defines} -c {file_in} -o {file_out}",
+  build_type  = "debug",
+  build_opt   = "-g -O0",
+  toolchain   = "x86_64-linux-gnu",
+  cpp_std     = "-std=c++20",
+  warnings    = "-Wall -Werror -Wno-unused-variable -Wno-unused-local-typedefs -Wno-unused-but-set-variable",
+  depfile     = "-MMD -MF {file_out}.d",
+  includes    = "-I.",
+  defines     = "",
 )
 
-link_c_lib = hancho.rule(
-  #description = "Bundling {file_out}",
-  command   = "ar rcs {file_out} {join(files_in)}",
+if flags.release:
+  compile_cpp.build_type = "release"
+  compile_cpp.build_opt  = "-O3"
+
+#-------------------------------------------------------------------------------
+
+link_c_lib = Config(
+  prototype   = hancho.config,
+  description = "Bundling {file_out}",
+  command     = "ar rcs {file_out} {join(files_in)}",
 )
 
-link_c_bin  = hancho.rule(
-  #description = "Linking {file_out}",
-  command   = "{toolchain}-g++ {ld_opts} {join(files_in)} {join(deps)} {libraries} -o {file_out}",
+link_c_bin = Config(
+  prototype   = hancho.config,
+  description = "Linking {file_out}",
+  command     = "{toolchain}-g++ {join(files_in)} {join(deps)} {libraries} -o {file_out}",
+  toolchain   = "x86_64-linux-gnu",
+  libraries   = ""
 )
 
-run_test = hancho.rule(
-  #description = "Running test {file_in}",
-  command = "rm -f {file_out} && {file_in} {args} && touch {file_out}",
-)
+#-------------------------------------------------------------------------------
+
+def run_test(name, **kwargs):
+  my_config = Config(
+    prototype   = hancho.config,
+    description = "Running test {file_in}",
+    command     = "rm -f {file_out} && {file_in} {args} && touch {file_out}",
+    args        = "",
+  )
+  bin_name = os.path.join("bin", name)
+  my_config(
+    files_in  = [bin_name],
+    files_out = [bin_name + "_pass"],
+    deps      = [],
+    **kwargs
+  )
+
+#-------------------------------------------------------------------------------
 
 def obj_name(x):
   return "obj/" + hancho.swap_ext(x, ".o")
 
 def compile_dir(dir, **kwargs):
   files = glob.glob(dir + "/*.cpp") + glob.glob(dir + "/*.c")
-  objs  = [obj_name(x) for x in files]
-  compile_cpp(files, objs, **kwargs)
+  objs = []
+  for file in files:
+    obj = obj_name(file)
+    compile_cpp(
+      files_in  = [file],
+      files_out = [obj],
+      deps      = [],
+      **kwargs)
+    objs.append(obj)
   return objs
 
+def c_binary(*, name, srcs, **kwargs):
+  objs = []
+  for src_file in srcs:
+    obj_file = os.path.join("obj", os.path.splitext(src_file)[0] + ".o")
+    compile_cpp(
+      files_in = [src_file],
+      files_out = [obj_file],
+      deps = [],
+      **kwargs)
+    objs.append(obj_file)
+  bin_name = os.path.join("bin", name)
+  link_c_bin(files_in = objs, files_out = [bin_name], deps = [], **kwargs)
 
 #-------------------------------------------------------------------------------
 # Tests
+
 
 #build obj/matcheroni/Matcheroni.hpp.iwyu : iwyu matcheroni/Matcheroni.hpp
 #build obj/matcheroni/Parseroni.hpp.iwyu  : iwyu matcheroni/Parseroni.hpp
 #build obj/matcheroni/Utilities.hpp.iwyu  : iwyu matcheroni/Utilities.hpp
 
-compile_dir("tests")
-link_c_bin ("obj/tests/matcheroni_test.o", "bin/tests/matcheroni_test")
-link_c_bin ("obj/tests/parseroni_test.o",  "bin/tests/parseroni_test")
-run_test   ("bin/tests/matcheroni_test", "bin/tests/matcheroni_test_pass")
-#run_test   ("bin/tests/parseroni_test")
+c_binary(
+  name = "tests/matcheroni_test",
+  srcs = ["tests/matcheroni_test.cpp"]
+)
+
+"""
+c_binary(
+  name = "tests/parseroni_test",
+  srcs = ["tests/parseroni_test.cpp"]
+)
+
+run_test("tests/matcheroni_test")
+run_test("tests/parseroni_test")
 
 #-------------------------------------------------------------------------------
 # These are the various regex libraries that Matcheroni can be benchmarked
 # against. CTRE and SRELL require that you copy their header into matcheroni/.
-
-#benchmark_defs = ${benchmark_defs} -DREGEX_BENCHMARK_BASELINE
-#benchmark_defs = ${benchmark_defs} -DREGEX_BENCHMARK_MATCHERONI
-#benchmark_defs = ${benchmark_defs} -DREGEX_BENCHMARK_CTRE
-#benchmark_defs = ${benchmark_defs} -DREGEX_BENCHMARK_BOOST
-#benchmark_defs = ${benchmark_defs} -DREGEX_BENCHMARK_STD_REGEX
-#benchmark_defs = ${benchmark_defs} -DREGEX_BENCHMARK_SRELL
 
 # These defines are required to reduce the compiled size of the SRELL library used in the benchmark.
 #benchmark_defs = ${benchmark_defs} -DSRELL_NO_UNICODE_ICASE
@@ -113,14 +158,47 @@ run_test   ("bin/tests/matcheroni_test", "bin/tests/matcheroni_test_pass")
 #benchmark_defs = ${benchmark_defs} -DSRELL_NO_NAMEDCAPTURE
 #benchmark_defs = ${benchmark_defs} -DSRELL_NO_VMODE
 
-compile_dir(
-  "examples/regex",
-  defines = "{config.defines} {benchmark_defs}",
-  benchmark_defs = "",
+c_binary(
+  name = "examples/regex/regex_demo",
+  srcs = ["examples/regex/regex_parser.cpp", "examples/regex/regex_demo.cpp"]
 )
 
-link_c_bin(["obj/examples/regex/regex_parser.o", "obj/examples/regex/regex_demo.o"], "bin/examples/regex/regex_demo")
-link_c_bin(["obj/examples/regex/regex_parser.o", "obj/examples/regex/regex_test.o"], "bin/examples/regex/regex_test")
+c_binary(
+  name = "examples/regex/regex_benchmark",
+  srcs = ["examples/regex/regex_parser.cpp", "examples/regex/regex_benchmark.cpp"],
+  libraries = "-lboost_system -lboost_regex",
+  build_opt = "-O3"
+)
+"""
+
+#-------------------------------------------------------------------------------
+# Optimized regex benchmark
+
+"""
+compile_cpp(
+  "examples/regex/regex_parser.cpp",
+  "obj/release/examples/regex/regex_parser.o",
+  build_opt = "-O3",
+  warnings   = "-Wall -Werror -Wno-unused-variable -Wno-unused-local-typedefs -Wno-unused-but-set-variable"
+)
+compile_cpp(
+  "examples/regex/regex_benchmark.cpp",
+  "obj/release/examples/regex/regex_benchmark.o",
+  build_opt = "-O3",
+  warnings   = "-Wall -Werror -Wno-unused-variable -Wno-unused-local-typedefs -Wno-unused-but-set-variable"
+)
+link_c_bin(
+  [
+    "obj/release/examples/regex/regex_parser.o",
+    "obj/release/examples/regex/regex_benchmark.o"
+  ],
+  "bin/release/examples/regex/regex_benchmark",
+  build_opt = "-O3",
+  libraries = "-lboost_system -lboost_regex"
+)
+
+#run_test("bin/examples/regex/regex_demo", "bin/examples/regex/regex_demo_pass", args = "a*")
+#run_test("bin/examples/regex/regex_test", "bin/examples/regex/regex_test_pass", args = "a*")
 
 #-------------------------------------------------------------------------------
 # INI parser example
@@ -253,3 +331,4 @@ link_c_lib(
 #  obj/examples/c_parser.a
 
 #-------------------------------------------------------------------------------
+"""
