@@ -112,14 +112,14 @@ def compile_dir(dir, **kwargs):
     objs.append(obj)
   return objs
 
-def c_binary(*, name, srcs, **kwargs):
+def c_binary(*, name, srcs, deps, **kwargs):
   objs = []
   for src_file in srcs:
     obj_file = os.path.join("obj", os.path.splitext(src_file)[0] + ".o")
     compile_cpp(
       files_in = [src_file],
       files_out = [obj_file],
-      deps = [],
+      deps = deps,
       **kwargs)
     objs.append(obj_file)
   bin_name = os.path.join("bin", name)
@@ -128,20 +128,20 @@ def c_binary(*, name, srcs, **kwargs):
 #-------------------------------------------------------------------------------
 # Tests
 
-
 #build obj/matcheroni/Matcheroni.hpp.iwyu : iwyu matcheroni/Matcheroni.hpp
 #build obj/matcheroni/Parseroni.hpp.iwyu  : iwyu matcheroni/Parseroni.hpp
 #build obj/matcheroni/Utilities.hpp.iwyu  : iwyu matcheroni/Utilities.hpp
 
 c_binary(
   name = "tests/matcheroni_test",
-  srcs = ["tests/matcheroni_test.cpp"]
+  srcs = ["tests/matcheroni_test.cpp"],
+  deps = [],
 )
 
-"""
 c_binary(
   name = "tests/parseroni_test",
-  srcs = ["tests/parseroni_test.cpp"]
+  srcs = ["tests/parseroni_test.cpp"],
+  deps = [],
 )
 
 run_test("tests/matcheroni_test")
@@ -160,42 +160,18 @@ run_test("tests/parseroni_test")
 
 c_binary(
   name = "examples/regex/regex_demo",
-  srcs = ["examples/regex/regex_parser.cpp", "examples/regex/regex_demo.cpp"]
+  srcs = ["examples/regex/regex_parser.cpp", "examples/regex/regex_demo.cpp"],
+  deps = [],
 )
 
 c_binary(
   name = "examples/regex/regex_benchmark",
   srcs = ["examples/regex/regex_parser.cpp", "examples/regex/regex_benchmark.cpp"],
+  deps = [],
   libraries = "-lboost_system -lboost_regex",
-  build_opt = "-O3"
 )
-"""
-
-#-------------------------------------------------------------------------------
-# Optimized regex benchmark
 
 """
-compile_cpp(
-  "examples/regex/regex_parser.cpp",
-  "obj/release/examples/regex/regex_parser.o",
-  build_opt = "-O3",
-  warnings   = "-Wall -Werror -Wno-unused-variable -Wno-unused-local-typedefs -Wno-unused-but-set-variable"
-)
-compile_cpp(
-  "examples/regex/regex_benchmark.cpp",
-  "obj/release/examples/regex/regex_benchmark.o",
-  build_opt = "-O3",
-  warnings   = "-Wall -Werror -Wno-unused-variable -Wno-unused-local-typedefs -Wno-unused-but-set-variable"
-)
-link_c_bin(
-  [
-    "obj/release/examples/regex/regex_parser.o",
-    "obj/release/examples/regex/regex_benchmark.o"
-  ],
-  "bin/release/examples/regex/regex_benchmark",
-  build_opt = "-O3",
-  libraries = "-lboost_system -lboost_regex"
-)
 
 #run_test("bin/examples/regex/regex_demo", "bin/examples/regex/regex_demo_pass", args = "a*")
 #run_test("bin/examples/regex/regex_test", "bin/examples/regex/regex_test_pass", args = "a*")
