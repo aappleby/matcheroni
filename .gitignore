@@ -1,5 +1,4 @@
-obj
-bin
+build
 .vscode/settings.json
 .ninja_deps
 .ninja_log

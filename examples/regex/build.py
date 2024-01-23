@@ -23,8 +23,8 @@ obj_file = os.path.splitext(src_file)[0] + ".o"
 obj_dir  = os.path.join("obj", rel_dir)
 obj_path = os.path.join(obj_dir, obj_file)
 
-bin_dir  = os.path.join("bin", rel_dir)
-bin_path = os.path.join(bin_dir, "regex_benchmark")
+build_dir  = os.path.join("build", rel_dir)
+build_path = os.path.join(build_dir, "regex_benchmark")
 
 print(obj_path)
 print(bin_path)

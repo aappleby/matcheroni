@@ -33,7 +33,7 @@ int main(int argc, char** argv) {
 
   if (argc < 2) {
     printf("Usage: regex_demo \"<your regex>\"\n");
-    return 1;
+    return 0;
   }
 
   // Invoke our regex matcher against the input text. If it matches, we will
