@@ -22,8 +22,8 @@ c_binary(
   srcs = ["tests/parseroni_test.cpp"],
 )
 
-run_test("tests/matcheroni_test")
-run_test("tests/parseroni_test")
+run_test("tests/matcheroni_test", quiet = True)
+run_test("tests/parseroni_test", quiet = True)
 
 #-------------------------------------------------------------------------------
 # These are the various regex libraries that Matcheroni can be benchmarked
@@ -60,7 +60,7 @@ c_binary(
   deps = ["examples/regex/regex_parser.a"],
 )
 
-run_test("examples/regex/regex_test")
+run_test("examples/regex/regex_test", quiet = True)
 
 #-------------------------------------------------------------------------------
 # INI parser example
@@ -112,7 +112,7 @@ c_binary(
   deps = ["examples/json/json_parser.a"]
 )
 
-run_test("examples/json/json_test")
+run_test("examples/json/json_test", quiet = True)
 
 #-------------------------------------------------------------------------------
 # Tutorial examples
@@ -124,12 +124,12 @@ c_binary(name = "tutorial/json_tut1c", srcs = ["tutorial/json_tut1c.cpp"])
 c_binary(name = "tutorial/json_tut2a", srcs = ["tutorial/json_tut2a.cpp"])
 c_binary(name = "tutorial/json_tut2b", srcs = ["tutorial/json_tut2b.cpp"])
 
-run_test("tutorial/json_tut0a")
-run_test("tutorial/json_tut1a")
-run_test("tutorial/json_tut1b")
-run_test("tutorial/json_tut1c")
-run_test("tutorial/json_tut2a")
-run_test("tutorial/json_tut2b")
+run_test("tutorial/json_tut0a", quiet = True)
+run_test("tutorial/json_tut1a", quiet = True)
+run_test("tutorial/json_tut1b", quiet = True)
+run_test("tutorial/json_tut1c", quiet = True)
+run_test("tutorial/json_tut2a", quiet = True)
+run_test("tutorial/json_tut2b", quiet = True)
 
 c_binary(
   name = "tutorial/tiny_c_parser",
@@ -157,7 +157,7 @@ c_binary(
   deps = ["examples/c_lexer.a"]
 )
 
-run_test("examples/c_lexer_test")
+run_test("examples/c_lexer_test", quiet = True)
 
 #-------------------------------------------------------------------------------
 # C parser example (not finished)
@@ -188,4 +188,4 @@ c_binary(
 
 #-------------------------------------------------------------------------------
 
-hancho.hancho_atexit()
+hancho.build()
