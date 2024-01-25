@@ -36,36 +36,36 @@ run_test("tests/parseroni_test", quiet = True)
 #benchmark_defs = ${benchmark_defs} -DSRELL_NO_NAMEDCAPTURE
 #benchmark_defs = ${benchmark_defs} -DSRELL_NO_VMODE
 
-c_library(
+regex_parser = c_library(
   name = "examples/regex/regex_parser.a",
   srcs = ["examples/regex/regex_parser.cpp"],
 )
 
-c_binary(
+regex_demo = c_binary(
   name = "examples/regex/regex_demo",
   srcs = ["examples/regex/regex_demo.cpp"],
-  deps = ["examples/regex/regex_parser.a"],
+  deps = [regex_parser],
 )
 
-c_binary(
+regex_benchmark = c_binary(
   name = "examples/regex/regex_benchmark",
   srcs = ["examples/regex/regex_benchmark.cpp"],
-  deps = ["examples/regex/regex_parser.a"],
+  deps = [regex_parser],
   libs = "-lboost_system -lboost_regex",
 )
 
-c_binary(
+regex_test = c_binary(
   name = "examples/regex/regex_test",
   srcs = ["examples/regex/regex_test.cpp"],
-  deps = ["examples/regex/regex_parser.a"],
+  deps = [regex_parser],
 )
 
-run_test("examples/regex/regex_test", quiet = True)
+run_test2(regex_test, quiet = True)
 
 #-------------------------------------------------------------------------------
 # INI parser example
 
-c_library(
+ini_parser = c_library(
   name = "ini_parser",
   srcs = ["examples/ini/ini_parser.cpp"],
 )
@@ -73,7 +73,7 @@ c_library(
 #-------------------------------------------------------------------------------
 # TOML parser example
 
-c_binary(
+toml_test = c_binary(
   name = "examples/toml/toml_test",
   srcs = ["examples/toml/toml_parser.cpp", "examples/toml/toml_test.cpp"]
 )
@@ -83,86 +83,80 @@ c_binary(
 #-------------------------------------------------------------------------------
 # JSON parser example
 
-c_library(
+json_parser = c_library(
   name = "examples/json/json_parser.a",
   srcs = ["examples/json/json_matcher.cpp", "examples/json/json_parser.cpp"]
 )
 
-c_binary(
+json_conformance = c_binary(
   name = "examples/json/json_conformance",
   srcs = ["examples/json/json_conformance.cpp"],
-  deps = ["examples/json/json_parser.a"]
+  deps = [json_parser]
 )
 
-c_binary(
+json_benchmark = c_binary(
   name = "examples/json/json_benchmark",
   srcs = ["examples/json/json_benchmark.cpp"],
-  deps = ["examples/json/json_parser.a"]
+  deps = [json_parser]
 )
 
-c_binary(
+json_demo = c_binary(
   name = "examples/json/json_demo",
   srcs = ["examples/json/json_demo.cpp"],
-  deps = ["examples/json/json_parser.a"],
+  deps = [json_parser],
 )
 
-c_binary(
+json_test = c_binary(
   name = "examples/json/json_test",
   srcs = ["examples/json/json_test.cpp"],
-  deps = ["examples/json/json_parser.a"]
+  deps = [json_parser]
 )
 
-run_test("examples/json/json_test", quiet = True)
+run_test2(json_test, quiet = True)
 
 #-------------------------------------------------------------------------------
 # Tutorial examples
 
-c_binary(name = "tutorial/json_tut0a", srcs = ["tutorial/json_tut0a.cpp"])
-c_binary(name = "tutorial/json_tut1a", srcs = ["tutorial/json_tut1a.cpp"])
-c_binary(name = "tutorial/json_tut1b", srcs = ["tutorial/json_tut1b.cpp"])
-c_binary(name = "tutorial/json_tut1c", srcs = ["tutorial/json_tut1c.cpp"])
-c_binary(name = "tutorial/json_tut2a", srcs = ["tutorial/json_tut2a.cpp"])
-c_binary(name = "tutorial/json_tut2b", srcs = ["tutorial/json_tut2b.cpp"])
+json_tut0a = c_binary(name = "tutorial/json_tut0a", srcs = ["tutorial/json_tut0a.cpp"])
+json_tut1a = c_binary(name = "tutorial/json_tut1a", srcs = ["tutorial/json_tut1a.cpp"])
+json_tut1b = c_binary(name = "tutorial/json_tut1b", srcs = ["tutorial/json_tut1b.cpp"])
+json_tut1c = c_binary(name = "tutorial/json_tut1c", srcs = ["tutorial/json_tut1c.cpp"])
+json_tut2a = c_binary(name = "tutorial/json_tut2a", srcs = ["tutorial/json_tut2a.cpp"])
+json_tut2b = c_binary(name = "tutorial/json_tut2b", srcs = ["tutorial/json_tut2b.cpp"])
 
-run_test("tutorial/json_tut0a", quiet = True)
-run_test("tutorial/json_tut1a", quiet = True)
-run_test("tutorial/json_tut1b", quiet = True)
-run_test("tutorial/json_tut1c", quiet = True)
-run_test("tutorial/json_tut2a", quiet = True)
-run_test("tutorial/json_tut2b", quiet = True)
-
-c_binary(
-  name = "tutorial/tiny_c_parser",
-  srcs = ["tutorial/tiny_c_parser.cpp"],
-  deps = ["examples/c_lexer.a", "examples/c_parser.a"]
-)
+run_test2(json_tut0a, quiet = True)
+run_test2(json_tut1a, quiet = True)
+run_test2(json_tut1b, quiet = True)
+run_test2(json_tut1c, quiet = True)
+run_test2(json_tut2a, quiet = True)
+run_test2(json_tut2b, quiet = True)
 
 #-------------------------------------------------------------------------------
 # C lexer example (not finished)
 
-c_library(
+c_lexer = c_library(
   name = "examples/c_lexer.a",
   srcs = ["examples/c_lexer/CLexer.cpp", "examples/c_lexer/CToken.cpp"]
 )
 
-c_binary(
+c_lexer_benchmark = c_binary(
   name = "examples/c_lexer_benchmark",
   srcs = ["examples/c_lexer/c_lexer_benchmark.cpp"],
-  deps = ["examples/c_lexer.a"]
+  deps = [c_lexer]
 )
 
-c_binary(
+c_lexer_test = c_binary(
   name = "examples/c_lexer_test",
   srcs = ["examples/c_lexer/c_lexer_test.cpp"],
-  deps = ["examples/c_lexer.a"]
+  deps = [c_lexer]
 )
 
-run_test("examples/c_lexer_test", quiet = True)
+run_test2(c_lexer_test, quiet = True)
 
 #-------------------------------------------------------------------------------
 # C parser example (not finished)
 
-c_library(
+c_parser = c_library(
   name = "examples/c_parser.a",
   srcs = [
     "examples/c_parser/CContext.cpp",
@@ -171,20 +165,28 @@ c_library(
   ]
 )
 
-c_binary(
+c_parser_benchmark = c_binary(
   name = "examples/c_parser_benchmark",
   srcs = ["examples/c_parser/c_parser_benchmark.cpp"],
-  deps = ["examples/c_lexer.a", "examples/c_parser.a"]
+  deps = [c_lexer, c_parser]
 )
 
-c_binary(
+c_parser_test = c_binary(
   name = "examples/c_parser_test",
   srcs = ["examples/c_parser/c_parser_test.cpp"],
-  deps = ["examples/c_lexer.a", "examples/c_parser.a"]
+  deps = [c_lexer, c_parser]
 )
 
 # Broken?
 #run_test("examples/c_parser_test")
+
+#-------------------------------------------------------------------------------
+
+tiny_c_parser = c_binary(
+  name = "tutorial/tiny_c_parser",
+  srcs = ["tutorial/tiny_c_parser.cpp"],
+  deps = [c_lexer, c_parser]
+)
 
 #-------------------------------------------------------------------------------
 

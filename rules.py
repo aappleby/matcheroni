@@ -1,6 +1,6 @@
-import os
 import sys
 import argparse
+from os import path
 
 sys.path.append("symlinks/hancho")
 import hancho
@@ -28,15 +28,16 @@ hancho.config.force   = flags.force
 
 #-------------------------------------------------------------------------------
 
-base_config = Config(
-  prototype   = hancho.config,
+base_config = hancho.config(
   name        = "base_config",
   build_type  = "debug",
   out_dir     = "build/{build_type}",
 )
 
-rule_compile_cpp = Config(
-  prototype   = base_config,
+if flags.release:
+  base_config.build_type = "release"
+
+rule_compile_cpp = base_config(
   name        = "rule_compile_cpp",
   description = "Compiling {file_in} -> {file_out} ({build_type})",
   command     = "{toolchain}-g++ {build_opt} {cpp_std} {warnings} {depfile} {includes} {defines} -c {file_in} -o {file_out}",
@@ -49,30 +50,24 @@ rule_compile_cpp = Config(
   defines     = "",
 )
 
-if flags.release:
-  base_config.build_type = "release"
-
 #-------------------------------------------------------------------------------
 
-link_c_lib = Config(
+link_c_lib = base_config(
   name        = "link_c_lib",
-  prototype   = base_config,
   description = "Bundling {file_out}",
   command     = "ar rcs {file_out} {join(files_in)}",
 )
 
-link_c_bin = Config(
+link_c_bin = base_config(
   name        = "link_c_bin",
-  prototype   = base_config,
   description = "Linking {file_out}",
   command     = "{toolchain}-g++ {join(files_in)} {join(deps)} {libs} -o {file_out}",
   toolchain   = "x86_64-linux-gnu",
   libs        = ""
 )
 
-test_rule = Config(
+test_rule = base_config(
   name        = "test_rule",
-  prototype   = base_config,
   description = "Running test {file_in}",
   command     = "rm -f {file_out} && {file_in} {args} && touch {file_out}",
   args        = "",
@@ -81,36 +76,54 @@ test_rule = Config(
 #-------------------------------------------------------------------------------
 
 def run_test(name, **kwargs):
-  bin_name = os.path.join("{out_dir}", name)
-  test_rule(files_in  = [bin_name], files_out = [bin_name + "_pass"], **kwargs)
+  c = test_rule(
+    files_in  = [path.join("{out_dir}", name)],
+    files_out = [path.join("{out_dir}", name) + "_pass"],
+    **kwargs)
+  hancho.queue(c)
+
+def run_test2(name, **kwargs):
+  c = test_rule(
+    files_in  = [name],
+    files_out = [name + "_pass"],
+    **kwargs)
+  hancho.queue(c)
 
 #-------------------------------------------------------------------------------
 
 def compile_srcs(srcs, **kwargs):
   objs = []
   for src_file in srcs:
-    obj_file = os.path.splitext(src_file)[0] + ".o"
-    obj_file = os.path.join("{out_dir}", obj_file)
-    rule_compile_cpp(files_in = [src_file], files_out = [obj_file], **kwargs)
-    objs.append(obj_file)
+    obj_file = path.splitext(src_file)[0] + ".o"
+    obj_file = path.join("{out_dir}", obj_file)
+    c = rule_compile_cpp(
+      files_in = [src_file],
+      files_out = [obj_file],
+      **kwargs
+    )
+    objs.append(hancho.queue(c)[0])
   return objs
 
 #-------------------------------------------------------------------------------
 
 def c_binary(*, name, srcs, deps = [], **kwargs):
-  hancho.queue(hancho.Config(
-    prototype = link_c_bin,
+  c = link_c_bin(
     files_in  = compile_srcs(srcs, **kwargs),
-    files_out = [os.path.join("{out_dir}", name)],
-    deps      = [os.path.join("{out_dir}", dep) for dep in deps],
-    **kwargs))
+    files_out = [path.join("{out_dir}", name)],
+    deps      = deps,
+    **kwargs)
+  return hancho.queue(c)[0]
 
 #-------------------------------------------------------------------------------
 
 def c_library(*, name, srcs, deps = [], **kwargs):
   objs = compile_srcs(srcs, **kwargs)
-  bin_name = os.path.join("{out_dir}", name)
-  deps = [os.path.join("{out_dir}", dep) for dep in deps]
-  link_c_lib(files_in = objs, files_out = [bin_name], deps = deps, **kwargs)
+
+  c = link_c_lib(
+    files_in = objs,
+    files_out = [path.join("{out_dir}", name)],
+    deps = deps,
+    **kwargs)
+  return hancho.queue(c)[0]
 
 #-------------------------------------------------------------------------------
