@@ -40,6 +40,9 @@ if flags.release:
 rule_compile_cpp = base_config(
   name        = "rule_compile_cpp",
   description = "Compiling {file_in} -> {file_out} ({build_type})",
+  #files_out   = ["{out_dir}/{swap_ext(file_in, '.o')}"],
+  #files_out   = ["{out_dir}/{swap_ext(file_in, '.o')}"],
+  file_out    = "{out_dir}/{swap_ext(file_in, '.o')}",
   command     = "{toolchain}-g++ {build_opt} {cpp_std} {warnings} {depfile} {includes} {defines} -c {file_in} -o {file_out}",
   build_opt   = "{'-O3' if build_type == 'release' else '-g -O0'}",
   toolchain   = "x86_64-linux-gnu",
@@ -61,9 +64,9 @@ link_c_lib = base_config(
 link_c_bin = base_config(
   name        = "link_c_bin",
   description = "Linking {file_out}",
-  command     = "{toolchain}-g++ {join(files_in)} {join(deps)} {libs} -o {file_out}",
+  command     = "{toolchain}-g++ {join(files_in)} {join(libs)} {sys_libs} -o {file_out}",
   toolchain   = "x86_64-linux-gnu",
-  libs        = ""
+  sys_libs    = ""
 )
 
 test_rule = base_config(
@@ -106,23 +109,25 @@ def compile_srcs(srcs, **kwargs):
 
 #-------------------------------------------------------------------------------
 
-def c_binary(*, name, srcs, deps = [], **kwargs):
+def c_binary(*, name, srcs, libs = [], deps = [], **kwargs):
   c = link_c_bin(
     files_in  = compile_srcs(srcs, **kwargs),
     files_out = [path.join("{out_dir}", name)],
-    deps      = deps,
+    libs = libs,
+    deps = libs + deps,
     **kwargs)
   return hancho.queue(c)[0]
 
 #-------------------------------------------------------------------------------
 
-def c_library(*, name, srcs, deps = [], **kwargs):
+def c_library(*, name, srcs, libs = [], deps = [], **kwargs):
   objs = compile_srcs(srcs, **kwargs)
 
   c = link_c_lib(
-    files_in = objs,
+    files_in = objs + libs,
     files_out = [path.join("{out_dir}", name)],
-    deps = deps,
+    libs = libs,
+    deps = libs + deps,
     **kwargs)
   return hancho.queue(c)[0]
 

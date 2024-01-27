@@ -5,6 +5,47 @@ from rules import *
 
 #-fsanitize=undefined
 
+
+matcheroni_test_o = hancho.queue(
+  rule_compile_cpp(file_in = "tests/matcheroni_test.cpp")
+)
+
+print(matcheroni_test_o)
+
+
+"""
+mimo = hancho.config(
+  command = "echo {join(files_in)} {join(files_out)}",
+  files_in  = ["tests/matcheroni_test.cpp", "tests/parseroni_test.cpp"],
+  files_out = ["foo", "bar"],
+)
+hancho.queue(mimo)
+
+miso = hancho.config(
+  command = "echo {join(files_in)} {file_out}",
+  files_in  = ["tests/matcheroni_test.cpp", "tests/parseroni_test.cpp"],
+  file_out  = "foo",
+)
+hancho.queue(miso)
+
+simo = hancho.config(
+  command = "echo {file_in} {join(files_out)}",
+  file_in   = "tests/matcheroni_test.cpp",
+  files_out = ["foo", "bar"],
+)
+hancho.queue(simo)
+
+siso = hancho.config(
+  command  = "echo {file_in} {file_out}",
+  file_in  = "tests/matcheroni_test.cpp",
+  file_out = "foo",
+)
+hancho.queue(siso)
+"""
+
+
+
+"""
 #-------------------------------------------------------------------------------
 # Tests
 
@@ -44,20 +85,20 @@ regex_parser = c_library(
 regex_demo = c_binary(
   name = "examples/regex/regex_demo",
   srcs = ["examples/regex/regex_demo.cpp"],
-  deps = [regex_parser],
+  libs = [regex_parser],
 )
 
 regex_benchmark = c_binary(
   name = "examples/regex/regex_benchmark",
   srcs = ["examples/regex/regex_benchmark.cpp"],
-  deps = [regex_parser],
-  libs = "-lboost_system -lboost_regex",
+  libs = [regex_parser],
+  sys_libs = "-lboost_system -lboost_regex",
 )
 
 regex_test = c_binary(
   name = "examples/regex/regex_test",
   srcs = ["examples/regex/regex_test.cpp"],
-  deps = [regex_parser],
+  libs = [regex_parser],
 )
 
 run_test2(regex_test, quiet = True)
@@ -91,25 +132,25 @@ json_parser = c_library(
 json_conformance = c_binary(
   name = "examples/json/json_conformance",
   srcs = ["examples/json/json_conformance.cpp"],
-  deps = [json_parser]
+  libs = [json_parser]
 )
 
 json_benchmark = c_binary(
   name = "examples/json/json_benchmark",
   srcs = ["examples/json/json_benchmark.cpp"],
-  deps = [json_parser]
+  libs = [json_parser]
 )
 
 json_demo = c_binary(
   name = "examples/json/json_demo",
   srcs = ["examples/json/json_demo.cpp"],
-  deps = [json_parser],
+  libs = [json_parser],
 )
 
 json_test = c_binary(
   name = "examples/json/json_test",
   srcs = ["examples/json/json_test.cpp"],
-  deps = [json_parser]
+  libs = [json_parser]
 )
 
 run_test2(json_test, quiet = True)
@@ -142,13 +183,13 @@ c_lexer = c_library(
 c_lexer_benchmark = c_binary(
   name = "examples/c_lexer_benchmark",
   srcs = ["examples/c_lexer/c_lexer_benchmark.cpp"],
-  deps = [c_lexer]
+  libs = [c_lexer]
 )
 
 c_lexer_test = c_binary(
   name = "examples/c_lexer_test",
   srcs = ["examples/c_lexer/c_lexer_test.cpp"],
-  deps = [c_lexer]
+  libs = [c_lexer]
 )
 
 run_test2(c_lexer_test, quiet = True)
@@ -168,13 +209,13 @@ c_parser = c_library(
 c_parser_benchmark = c_binary(
   name = "examples/c_parser_benchmark",
   srcs = ["examples/c_parser/c_parser_benchmark.cpp"],
-  deps = [c_lexer, c_parser]
+  libs = [c_lexer, c_parser]
 )
 
 c_parser_test = c_binary(
   name = "examples/c_parser_test",
   srcs = ["examples/c_parser/c_parser_test.cpp"],
-  deps = [c_lexer, c_parser]
+  libs = [c_lexer, c_parser]
 )
 
 # Broken?
@@ -185,9 +226,10 @@ c_parser_test = c_binary(
 tiny_c_parser = c_binary(
   name = "tutorial/tiny_c_parser",
   srcs = ["tutorial/tiny_c_parser.cpp"],
-  deps = [c_lexer, c_parser]
+  libs = [c_lexer, c_parser]
 )
 
 #-------------------------------------------------------------------------------
+"""
 
 hancho.build()
