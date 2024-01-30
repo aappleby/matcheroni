@@ -1,31 +1,17 @@
 #!/usr/bin/python3
 # Experimental use of hancho.py, beware
 
-from rules import *
+import hancho
 
-#-fsanitize=undefined
+hancho.load("rules.hancho")
+
+print(c_binary)
+
+hancho.load("examples/c_lexer/hancho")
+#hancho.load("tests/build.hancho")
 
 
-#-------------------------------------------------------------------------------
-# Tests
-
-#build obj/matcheroni/Matcheroni.hpp.iwyu : iwyu matcheroni/Matcheroni.hpp
-#build obj/matcheroni/Parseroni.hpp.iwyu  : iwyu matcheroni/Parseroni.hpp
-#build obj/matcheroni/Utilities.hpp.iwyu  : iwyu matcheroni/Utilities.hpp
-
-matcheroni_test = c_binary(
-  name = "tests/matcheroni_test",
-  srcs = ["tests/matcheroni_test.cpp"],
-)
-
-parseroni_test = c_binary(
-  name = "tests/parseroni_test",
-  srcs = ["tests/parseroni_test.cpp"],
-)
-
-run_test(matcheroni_test, quiet = True)
-run_test(parseroni_test, quiet = True)
-
+"""
 #-------------------------------------------------------------------------------
 # These are the various regex libraries that Matcheroni can be benchmarked
 # against. CTRE and SRELL require that you copy their header into matcheroni/.
@@ -37,158 +23,161 @@ run_test(parseroni_test, quiet = True)
 #benchmark_defs = ${benchmark_defs} -DSRELL_NO_NAMEDCAPTURE
 #benchmark_defs = ${benchmark_defs} -DSRELL_NO_VMODE
 
-regex_parser = c_library(
-  name = "examples/regex/regex_parser.a",
-  srcs = ["examples/regex/regex_parser.cpp"],
-)
+with hancho.cwd("examples"):
+  with hancho.cwd("regex"):
+    regex_parser = c_library(
+      name = "regex_parser.a",
+      srcs = ["regex_parser.cpp"],
+    )
 
-regex_demo = c_binary(
-  name = "examples/regex/regex_demo",
-  srcs = ["examples/regex/regex_demo.cpp"],
-  deps = [regex_parser],
-)
+    regex_demo = c_binary(
+      name = "regex_demo",
+      srcs = ["regex_demo.cpp"],
+      deps = [regex_parser],
+    )
 
-regex_benchmark = c_binary(
-  name = "examples/regex/regex_benchmark",
-  srcs = ["examples/regex/regex_benchmark.cpp"],
-  deps = [regex_parser],
-  sys_libs = "-lboost_system -lboost_regex",
-)
+    regex_benchmark = c_binary(
+      name = "regex_benchmark",
+      srcs = ["regex_benchmark.cpp"],
+      deps = [regex_parser],
+      gcc_opt  = compile_cpp.gcc_opt  + " "                              + compile_cpp.cmd('pkg-config --cflags-only-other gtk+-3.0'),
+      includes = compile_cpp.includes + " "                              + compile_cpp.cmd('pkg-config --cflags-only-I gtk+-3.0'),
+      sys_libs = link_c_bin.sys_libs  + " -lboost_system -lboost_regex " + compile_cpp.cmd('pkg-config --libs gtk+-3.0'),
+    )
 
-regex_test = c_binary(
-  name = "examples/regex/regex_test",
-  srcs = ["examples/regex/regex_test.cpp"],
-  deps = [regex_parser],
-)
+    regex_test = c_binary(
+      name = "regex_test",
+      srcs = ["regex_test.cpp"],
+      deps = [regex_parser],
+    )
 
-run_test(regex_test, quiet = True)
+    test_rule(file_in = regex_test, quiet = True)
 
 #-------------------------------------------------------------------------------
 # INI parser example
 
-ini_parser = c_library(
-  name = "ini_parser",
-  srcs = ["examples/ini/ini_parser.cpp"],
-)
+with hancho.cwd("ini"):
+  ini_parser = c_library(name = "ini_parser", srcs = ["ini_parser.cpp"])
 
 #-------------------------------------------------------------------------------
 # TOML parser example
 
-toml_test = c_binary(
-  name = "examples/toml/toml_test",
-  srcs = ["examples/toml/toml_parser.cpp", "examples/toml/toml_test.cpp"]
-)
-
-run_test(toml_test, quiet = True)
+with hancho.cwd("toml"):
+  toml_test = c_binary(name = "toml_test", srcs = ["toml_parser.cpp", "toml_test.cpp"])
+  test_rule(file_in = toml_test, quiet = True)
 
 #-------------------------------------------------------------------------------
 # JSON parser example
 
-json_parser = c_library(
-  name = "examples/json/json_parser.a",
-  srcs = ["examples/json/json_matcher.cpp", "examples/json/json_parser.cpp"]
-)
+with hancho.cwd("json"):
+  json_parser = c_library(
+    name = "json_parser.a",
+    srcs = ["json_matcher.cpp", "json_parser.cpp"]
+  )
 
-json_conformance = c_binary(
-  name = "examples/json/json_conformance",
-  srcs = ["examples/json/json_conformance.cpp"],
-  deps = [json_parser]
-)
+  json_conformance = c_binary(
+    name = "json_conformance",
+    srcs = ["json_conformance.cpp"],
+    deps = [json_parser]
+  )
 
-json_benchmark = c_binary(
-  name = "examples/json/json_benchmark",
-  srcs = ["examples/json/json_benchmark.cpp"],
-  deps = [json_parser]
-)
+  json_benchmark = c_binary(
+    name = "json_benchmark",
+    srcs = ["json_benchmark.cpp"],
+    deps = [json_parser]
+  )
 
-json_demo = c_binary(
-  name = "examples/json/json_demo",
-  srcs = ["examples/json/json_demo.cpp"],
-  deps = [json_parser],
-)
+  json_demo = c_binary(
+    name = "json_demo",
+    srcs = ["json_demo.cpp"],
+    deps = [json_parser],
+  )
 
-json_test = c_binary(
-  name = "examples/json/json_test",
-  srcs = ["examples/json/json_test.cpp"],
-  deps = [json_parser]
-)
+  json_test = c_binary(
+    name = "json_test",
+    srcs = ["json_test.cpp"],
+    deps = [json_parser]
+  )
 
-run_test(json_test, quiet = True)
-
-#-------------------------------------------------------------------------------
-# Tutorial examples
-
-json_tut0a = c_binary(name = "tutorial/json_tut0a", srcs = ["tutorial/json_tut0a.cpp"])
-json_tut1a = c_binary(name = "tutorial/json_tut1a", srcs = ["tutorial/json_tut1a.cpp"])
-json_tut1b = c_binary(name = "tutorial/json_tut1b", srcs = ["tutorial/json_tut1b.cpp"])
-json_tut1c = c_binary(name = "tutorial/json_tut1c", srcs = ["tutorial/json_tut1c.cpp"])
-json_tut2a = c_binary(name = "tutorial/json_tut2a", srcs = ["tutorial/json_tut2a.cpp"])
-json_tut2b = c_binary(name = "tutorial/json_tut2b", srcs = ["tutorial/json_tut2b.cpp"])
-
-run_test(json_tut0a, quiet = True)
-run_test(json_tut1a, quiet = True)
-run_test(json_tut1b, quiet = True)
-run_test(json_tut1c, quiet = True)
-run_test(json_tut2a, quiet = True)
-run_test(json_tut2b, quiet = True)
+  test_rule(file_in = json_test, quiet = True)
 
 #-------------------------------------------------------------------------------
 # C lexer example (not finished)
 
-c_lexer = c_library(
-  name = "examples/c_lexer.a",
-  srcs = ["examples/c_lexer/CLexer.cpp", "examples/c_lexer/CToken.cpp"]
-)
+with hancho.cwd("c_lexer"):
+  c_lexer = c_library(
+    name = "c_lexer.a",
+    srcs = ["CLexer.cpp", "CToken.cpp"]
+  )
 
-c_lexer_benchmark = c_binary(
-  name = "examples/c_lexer_benchmark",
-  srcs = ["examples/c_lexer/c_lexer_benchmark.cpp"],
-  deps = [c_lexer]
-)
+  c_lexer_benchmark = c_binary(
+    name = "c_lexer_benchmark",
+    srcs = ["c_lexer_benchmark.cpp"],
+    deps = [c_lexer]
+  )
 
-c_lexer_test = c_binary(
-  name = "examples/c_lexer_test",
-  srcs = ["examples/c_lexer/c_lexer_test.cpp"],
-  deps = [c_lexer]
-)
+  c_lexer_test = c_binary(
+    name = "c_lexer_test",
+    srcs = ["c_lexer_test.cpp"],
+    deps = [c_lexer]
+  )
 
-run_test(c_lexer_test, quiet = True)
+  test_rule(file_in = c_lexer_test, quiet = True)
 
 #-------------------------------------------------------------------------------
 # C parser example (not finished)
 
-c_parser = c_library(
-  name = "examples/c_parser.a",
-  srcs = [
-    "examples/c_parser/CContext.cpp",
-    "examples/c_parser/CNode.cpp",
-    "examples/c_parser/CScope.cpp"
-  ]
-)
+with hancho.cwd("c_parser"):
+  c_parser = c_library(
+    name = "c_parser.a",
+    srcs = [
+      "CContext.cpp",
+      "CNode.cpp",
+      "CScope.cpp"
+    ]
+  )
 
-c_parser_benchmark = c_binary(
-  name = "examples/c_parser_benchmark",
-  srcs = ["examples/c_parser/c_parser_benchmark.cpp"],
-  deps = [c_lexer, c_parser]
-)
+  c_parser_benchmark = c_binary(
+    name = "c_parser_benchmark",
+    srcs = ["c_parser_benchmark.cpp"],
+    deps = [c_lexer, c_parser]
+  )
 
-c_parser_test = c_binary(
-  name = "examples/c_parser_test",
-  srcs = ["examples/c_parser/c_parser_test.cpp"],
-  deps = [c_lexer, c_parser]
-)
+  c_parser_test = c_binary(
+    name = "c_parser_test",
+    srcs = ["c_parser_test.cpp"],
+    deps = [c_lexer, c_parser]
+  )
 
-# Broken?
-#run_test("examples/c_parser_test")
-
-#-------------------------------------------------------------------------------
-
-tiny_c_parser = c_binary(
-  name = "tutorial/tiny_c_parser",
-  srcs = ["tutorial/tiny_c_parser.cpp"],
-  deps = [c_lexer, c_parser]
-)
+  # Broken?
+  #test_rule(file_in = "examples/c_parser_test", quiet = True)
 
 #-------------------------------------------------------------------------------
+# Tutorial examples
+
+with hancho.cwd("tutorial"):
+  json_tut0a = c_binary(name = "json_tut0a", srcs = ["json_tut0a.cpp"])
+  json_tut1a = c_binary(name = "json_tut1a", srcs = ["json_tut1a.cpp"])
+  json_tut1b = c_binary(name = "json_tut1b", srcs = ["json_tut1b.cpp"])
+  json_tut1c = c_binary(name = "json_tut1c", srcs = ["json_tut1c.cpp"])
+  json_tut2a = c_binary(name = "json_tut2a", srcs = ["json_tut2a.cpp"])
+  json_tut2b = c_binary(name = "json_tut2b", srcs = ["json_tut2b.cpp"])
+
+  test_rule(file_in = json_tut0a, quiet = True)
+  test_rule(file_in = json_tut1a, quiet = True)
+  test_rule(file_in = json_tut1b, quiet = True)
+  test_rule(file_in = json_tut1c, quiet = True)
+  test_rule(file_in = json_tut2a, quiet = True)
+  test_rule(file_in = json_tut2b, quiet = True)
+
+  tiny_c_parser = c_binary(
+    name = "tiny_c_parser",
+    srcs = ["tiny_c_parser.cpp"],
+    deps = [c_lexer, c_parser]
+  )
+
+
+#-------------------------------------------------------------------------------
+"""
 
 hancho.build()

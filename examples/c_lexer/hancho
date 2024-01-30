@@ -1,0 +1,26 @@
+
+
+compile_cpp(file_in = "CLexer.cpp")
+
+"""
+c_lexer = c_library(
+  name = "c_lexer.a",
+  srcs = ["CLexer.cpp", "CToken.cpp"],
+)
+"""
+
+"""
+c_lexer_benchmark = c_binary(
+  name = "c_lexer_benchmark",
+  srcs = ["c_lexer_benchmark.cpp"],
+  deps = [c_lexer]
+)
+
+c_lexer_test = c_binary(
+  name = "c_lexer_test",
+  srcs = ["c_lexer_test.cpp"],
+  deps = [c_lexer]
+)
+
+test_rule(file_in = c_lexer_test, quiet = True)
+"""

@@ -1,0 +1,19 @@
+#-------------------------------------------------------------------------------
+# Tests
+
+#build obj/matcheroni/Matcheroni.hpp.iwyu : iwyu matcheroni/Matcheroni.hpp
+#build obj/matcheroni/Parseroni.hpp.iwyu  : iwyu matcheroni/Parseroni.hpp
+#build obj/matcheroni/Utilities.hpp.iwyu  : iwyu matcheroni/Utilities.hpp
+
+matcheroni_test = c_binary(
+  name = "matcheroni_test",
+  srcs = ["matcheroni_test.cpp"],
+)
+
+parseroni_test = c_binary(
+  name = "parseroni_test",
+  srcs = ["parseroni_test.cpp"],
+)
+
+test_rule(file_in = matcheroni_test, quiet = True)
+test_rule(file_in = parseroni_test, quiet = True)

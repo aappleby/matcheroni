@@ -5,6 +5,8 @@
 #include <string.h>
 #include <string>
 
+#include "dummy.h"
+
 //a();
 
 using namespace matcheroni;

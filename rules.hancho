@@ -1,11 +1,4 @@
-import sys
 import argparse
-from os import path
-
-sys.path.append("symlinks/hancho")
-import hancho
-
-from hancho import Config
 
 #-------------------------------------------------------------------------------
 
@@ -31,7 +24,6 @@ hancho.config.force   = flags.force
 base_config = hancho.config.extend(
   name        = "base_config",
   build_type  = "debug",
-  out_dir     = "build/{build_type}",
 )
 
 if flags.release:
@@ -39,39 +31,36 @@ if flags.release:
 
 #-------------------------------------------------------------------------------
 
-rule_compile_cpp = base_config.extend(
-  name        = "rule_compile_cpp",
+compile_cpp = base_config.extend(
   description = "Compiling {file_in} -> {file_out} ({build_type})",
-  command     = "{toolchain}-g++ {cpp_std} {build_opt} {warnings} {depfile} {includes} {defines} -c {file_in} -o {file_out}",
+  command     = "{toolchain}-g++ {cpp_std} {gcc_opt} {warnings} {includes} {defines} -c {file_in} -o {file_out}",
 
   toolchain   = "x86_64-linux-gnu",
   cpp_std     = "-std=c++20",
-  build_opt   = "{'-O3' if build_type == 'release' else '-g -O0'}",
+  gcc_opt     = "{'-O3' if build_type == 'release' else '-g -O0'} -MMD",
   warnings    = "-Wall -Werror -Wno-unused-variable -Wno-unused-local-typedefs -Wno-unused-but-set-variable",
-  depfile     = "-MMD -MF {file_out}.d",
   includes    = "-I.",
   defines     = "",
-  file_out    = "{out_dir}/{swap_ext(file_in, '.o')}",
+  file_out    = "{swap_ext(file_in, '.o')}",
+  depfile     = "{swap_ext(file_in, '.d')}",
 )
 
 link_c_lib = base_config.extend(
-  name        = "link_c_lib",
   description = "Bundling {file_out}",
   command     = "ar rcs {file_out} {join(files_in)}",
 )
 
 link_c_bin = base_config.extend(
-  name        = "link_c_bin",
   description = "Linking {file_out}",
-  command     = "{toolchain}-g++ {build_opt} {warnings} {join(files_in)} {join(deps)} {sys_libs} -o {file_out}",
-  build_opt   = "{'-O3' if build_type == 'release' else '-g -O0'}",
+  command     = "{toolchain}-g++ {ld_opt} {warnings} {join(files_in)} {join(deps)} {sys_libs} -o {file_out}",
+
   toolchain   = "x86_64-linux-gnu",
+  ld_opt      = "{'-O3' if build_type == 'release' else '-g -O0'}",
   warnings    = "-Wall",
   sys_libs    = "",
 )
 
 test_rule = base_config.extend(
-  name        = "test_rule",
   description = "Running test {file_in}",
   command     = "rm -f {file_out} && {file_in} {args} && touch {file_out}",
   file_out    = "{file_in}_pass",
@@ -80,24 +69,15 @@ test_rule = base_config.extend(
 
 #-------------------------------------------------------------------------------
 
-def run_test(name, **kwargs):
-  return test_rule(file_in = name, **kwargs)
-
-#-------------------------------------------------------------------------------
-
 def compile_srcs(srcs, **kwargs):
-  objs = []
-  for src_file in srcs:
-    result = rule_compile_cpp(file_in = src_file, **kwargs)
-    objs.append(result)
-  return objs
+  return [compile_cpp(file_in = f, **kwargs) for f in srcs]
 
 #-------------------------------------------------------------------------------
 
 def c_binary(*, name, srcs, **kwargs):
   return link_c_bin(
     files_in = compile_srcs(srcs, **kwargs),
-    file_out = "{out_dir}/" + name,
+    file_out = name,
     **kwargs
   )
 
@@ -106,7 +86,7 @@ def c_binary(*, name, srcs, **kwargs):
 def c_library(*, name, srcs, **kwargs):
   return link_c_lib(
     files_in = compile_srcs(srcs, **kwargs),
-    file_out = "{out_dir}/" + name,
+    file_out = name,
     **kwargs)
 
 #-------------------------------------------------------------------------------

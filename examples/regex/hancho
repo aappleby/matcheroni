@@ -1,0 +1,27 @@
+regex_parser = c_library(
+  name = "regex_parser.a",
+  srcs = ["regex_parser.cpp"],
+)
+
+regex_demo = c_binary(
+  name = "regex_demo",
+  srcs = ["regex_demo.cpp"],
+  deps = [regex_parser],
+)
+
+regex_benchmark = c_binary(
+  name = "regex_benchmark",
+  srcs = ["regex_benchmark.cpp"],
+  deps = [regex_parser],
+  gcc_opt  = compile_cpp.gcc_opt  + " "                              + compile_cpp.cmd('pkg-config --cflags-only-other gtk+-3.0'),
+  includes = compile_cpp.includes + " "                              + compile_cpp.cmd('pkg-config --cflags-only-I gtk+-3.0'),
+  sys_libs = link_c_bin.sys_libs  + " -lboost_system -lboost_regex " + compile_cpp.cmd('pkg-config --libs gtk+-3.0'),
+)
+
+regex_test = c_binary(
+  name = "regex_test",
+  srcs = ["regex_test.cpp"],
+  deps = [regex_parser],
+)
+
+test_rule(file_in = regex_test, quiet = True)
