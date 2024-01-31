@@ -1,2 +1,0 @@
-#hancho.load("c_lexer/build.hancho")
-#hancho.load("regex/hancho")

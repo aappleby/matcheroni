@@ -15,5 +15,5 @@ parseroni_test = c_binary(
   srcs = ["parseroni_test.cpp"],
 )
 
-test_rule(file_in = matcheroni_test, quiet = True)
-test_rule(file_in = parseroni_test, quiet = True)
+test_rule(files_in = matcheroni_test, quiet = True)
+test_rule(files_in = parseroni_test, quiet = True)

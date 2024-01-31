@@ -32,8 +32,8 @@ if flags.release:
 #-------------------------------------------------------------------------------
 
 compile_cpp = base_config.extend(
-  description = "Compiling {file_in} -> {file_out} ({build_type})",
-  command     = "{toolchain}-g++ {cpp_std} {gcc_opt} {warnings} {includes} {defines} -c {file_in} -o {file_out}",
+  description = "Compiling {files_in[0]} -> {files_out[0]} ({build_type})",
+  command     = "{toolchain}-g++ {cpp_std} {gcc_opt} {warnings} {includes} {defines} -c {files_in[0]} -o {files_out[0]}",
 
   toolchain   = "x86_64-linux-gnu",
   cpp_std     = "-std=c++20",
@@ -41,18 +41,18 @@ compile_cpp = base_config.extend(
   warnings    = "-Wall -Werror -Wno-unused-variable -Wno-unused-local-typedefs -Wno-unused-but-set-variable",
   includes    = "-I.",
   defines     = "",
-  file_out    = "{swap_ext(file_in, '.o')}",
-  depfile     = "{swap_ext(file_in, '.d')}",
+  files_out   = "{swap_ext(files_in[0], '.o')}",
+  depfile     = "{swap_ext(files_in[0], '.d')}",
 )
 
 link_c_lib = base_config.extend(
-  description = "Bundling {file_out}",
-  command     = "ar rcs {file_out} {join(files_in)}",
+  description = "Bundling {files_out[0]}",
+  command     = "ar rcs {files_out[0]} {join(files_in)}",
 )
 
 link_c_bin = base_config.extend(
-  description = "Linking {file_out}",
-  command     = "{toolchain}-g++ {ld_opt} {warnings} {join(files_in)} {join(deps)} {sys_libs} -o {file_out}",
+  description = "Linking {files_out[0]}",
+  command     = "{toolchain}-g++ {ld_opt} {warnings} {join(files_in)} {join(deps)} {sys_libs} -o {files_out[0]}",
 
   toolchain   = "x86_64-linux-gnu",
   ld_opt      = "{'-O3' if build_type == 'release' else '-g -O0'}",
@@ -61,23 +61,23 @@ link_c_bin = base_config.extend(
 )
 
 test_rule = base_config.extend(
-  description = "Running test {file_in}",
-  command     = "rm -f {file_out} && {file_in} {args} && touch {file_out}",
-  file_out    = "{file_in}_pass",
+  description = "Running test {files_in[0]}",
+  command     = "rm -f {files_out[0]} && {files_in[0]} {args} && touch {files_out[0]}",
+  files_out   = ["{files_in[0]}_pass"],
   args        = "",
 )
 
 #-------------------------------------------------------------------------------
 
 def compile_srcs(srcs, **kwargs):
-  return [compile_cpp(file_in = f, **kwargs) for f in srcs]
+  return [compile_cpp(files_in = [f], **kwargs) for f in srcs]
 
 #-------------------------------------------------------------------------------
 
 def c_binary(*, name, srcs, **kwargs):
   return link_c_bin(
-    files_in = compile_srcs(srcs, **kwargs),
-    file_out = name,
+    files_in  = compile_srcs(srcs, **kwargs),
+    files_out = [name],
     **kwargs
   )
 
@@ -85,8 +85,8 @@ def c_binary(*, name, srcs, **kwargs):
 
 def c_library(*, name, srcs, **kwargs):
   return link_c_lib(
-    files_in = compile_srcs(srcs, **kwargs),
-    file_out = name,
+    files_in  = compile_srcs(srcs, **kwargs),
+    files_out = [name],
     **kwargs)
 
 #-------------------------------------------------------------------------------

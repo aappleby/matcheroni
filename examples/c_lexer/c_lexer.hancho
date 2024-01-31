@@ -1,6 +1,13 @@
+print()
+print("========================================")
+print(f"loading c_lexer/c_lexer.hancho")
+print(f"file    {__file__}")
+print(f"cwd     {os.getcwd()}")
+print()
 
+print(compile_cpp)
 
-compile_cpp(file_in = "CLexer.cpp")
+compile_cpp(files_in = ["CLexer.cpp"])
 
 """
 c_lexer = c_library(
@@ -22,5 +29,5 @@ c_lexer_test = c_binary(
   deps = [c_lexer]
 )
 
-test_rule(file_in = c_lexer_test, quiet = True)
+test_rule(files_in = c_lexer_test, quiet = True)
 """

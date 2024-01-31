@@ -1,14 +1,49 @@
 #!/usr/bin/python3
-# Experimental use of hancho.py, beware
 
+import os, sys
+
+print("importing hancho")
+sys.stdout.flush()
 import hancho
+print("importing hancho done")
+sys.stdout.flush()
 
-hancho.load("rules.hancho")
+print()
+print("========================================")
+print(f"loading matcheroni/build.py")
+print(f"file    {__file__}")
+print(f"cwd     {os.getcwd()}")
+print()
 
-print(c_binary)
+hancho.include("rules.hancho")
+hancho.include("examples/examples.hancho")
 
-hancho.load("examples/c_lexer/hancho")
-#hancho.load("tests/build.hancho")
+
+
+
+
+print(f"os.getcwd {os.getcwd()}")
+
+
+
+
+
+
+
+"""
+./rules.hancho
+
+./tests/hancho
+./examples/hancho
+./examples/c_lexer/hancho
+./examples/regex/hancho
+"""
+
+
+
+
+#hancho.include("rules.hancho")
+#hancho.include("tests/build.hancho")
 
 
 """
@@ -51,7 +86,7 @@ with hancho.cwd("examples"):
       deps = [regex_parser],
     )
 
-    test_rule(file_in = regex_test, quiet = True)
+    test_rule(files_in = [regex_test], quiet = True)
 
 #-------------------------------------------------------------------------------
 # INI parser example
@@ -64,7 +99,7 @@ with hancho.cwd("ini"):
 
 with hancho.cwd("toml"):
   toml_test = c_binary(name = "toml_test", srcs = ["toml_parser.cpp", "toml_test.cpp"])
-  test_rule(file_in = toml_test, quiet = True)
+  test_rule(files_in = [toml_test], quiet = True)
 
 #-------------------------------------------------------------------------------
 # JSON parser example
@@ -99,7 +134,7 @@ with hancho.cwd("json"):
     deps = [json_parser]
   )
 
-  test_rule(file_in = json_test, quiet = True)
+  test_rule(files_in = [json_test], quiet = True)
 
 #-------------------------------------------------------------------------------
 # C lexer example (not finished)
@@ -122,7 +157,7 @@ with hancho.cwd("c_lexer"):
     deps = [c_lexer]
   )
 
-  test_rule(file_in = c_lexer_test, quiet = True)
+  test_rule(files_in = [c_lexer_test], quiet = True)
 
 #-------------------------------------------------------------------------------
 # C parser example (not finished)
@@ -150,7 +185,7 @@ with hancho.cwd("c_parser"):
   )
 
   # Broken?
-  #test_rule(file_in = "examples/c_parser_test", quiet = True)
+  #test_rule(files_in = [c_parser_test], quiet = True)
 
 #-------------------------------------------------------------------------------
 # Tutorial examples
@@ -163,12 +198,12 @@ with hancho.cwd("tutorial"):
   json_tut2a = c_binary(name = "json_tut2a", srcs = ["json_tut2a.cpp"])
   json_tut2b = c_binary(name = "json_tut2b", srcs = ["json_tut2b.cpp"])
 
-  test_rule(file_in = json_tut0a, quiet = True)
-  test_rule(file_in = json_tut1a, quiet = True)
-  test_rule(file_in = json_tut1b, quiet = True)
-  test_rule(file_in = json_tut1c, quiet = True)
-  test_rule(file_in = json_tut2a, quiet = True)
-  test_rule(file_in = json_tut2b, quiet = True)
+  test_rule(files_in = json_tut0a, quiet = True)
+  test_rule(files_in = json_tut1a, quiet = True)
+  test_rule(files_in = json_tut1b, quiet = True)
+  test_rule(files_in = json_tut1c, quiet = True)
+  test_rule(files_in = json_tut2a, quiet = True)
+  test_rule(files_in = json_tut2b, quiet = True)
 
   tiny_c_parser = c_binary(
     name = "tiny_c_parser",

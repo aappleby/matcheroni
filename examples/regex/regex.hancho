@@ -24,4 +24,4 @@ regex_test = c_binary(
   deps = [regex_parser],
 )
 
-test_rule(file_in = regex_test, quiet = True)
+test_rule(files_in = regex_test, quiet = True)
