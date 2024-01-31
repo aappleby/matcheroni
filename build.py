@@ -1,28 +1,20 @@
 #!/usr/bin/python3
 
 import os, sys
-
-print("importing hancho")
-sys.stdout.flush()
 import hancho
-print("importing hancho done")
-sys.stdout.flush()
 
-print()
-print("========================================")
-print(f"loading matcheroni/build.py")
-print(f"file    {__file__}")
-print(f"cwd     {os.getcwd()}")
-print()
+"""
+./examples/regex/regex.hancho
+./symlinks/hancho
+"""
 
 hancho.include("rules.hancho")
 hancho.include("examples/examples.hancho")
+hancho.include("tests/tests.hancho")
 
 
 
 
-
-print(f"os.getcwd {os.getcwd()}")
 
 
 

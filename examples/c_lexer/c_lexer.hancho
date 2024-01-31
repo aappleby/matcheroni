@@ -1,22 +1,10 @@
-print()
-print("========================================")
-print(f"loading c_lexer/c_lexer.hancho")
-print(f"file    {__file__}")
-print(f"cwd     {os.getcwd()}")
-print()
+# Matcheroni C lexer demo
 
-print(compile_cpp)
-
-compile_cpp(files_in = ["CLexer.cpp"])
-
-"""
 c_lexer = c_library(
   name = "c_lexer.a",
   srcs = ["CLexer.cpp", "CToken.cpp"],
 )
-"""
 
-"""
 c_lexer_benchmark = c_binary(
   name = "c_lexer_benchmark",
   srcs = ["c_lexer_benchmark.cpp"],
@@ -30,4 +18,3 @@ c_lexer_test = c_binary(
 )
 
 test_rule(files_in = c_lexer_test, quiet = True)
-"""
