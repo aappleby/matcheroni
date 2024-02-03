@@ -1,10 +1,14 @@
 #-------------------------------------------------------------------------------
 # C parser example (not finished)
 
-# Hmm, this file requires "c_lexer" - how should that be plumbed in?
-# It works because globals, but that seems like a bad idea.
+import os
+import rules
+import examples.c_lexer
 
-c_parser = c_library(
+old_dir = os.getcwd()
+os.chdir(os.path.split(__file__)[0])
+
+c_parser = rules.c_library(
   name = "c_parser.a",
   srcs = [
     "CContext.cpp",
@@ -13,17 +17,19 @@ c_parser = c_library(
   ]
 )
 
-c_parser_benchmark = c_binary(
+c_parser_benchmark = rules.c_binary(
   name = "c_parser_benchmark",
   srcs = ["c_parser_benchmark.cpp"],
-  deps = [c_lexer, c_parser]
+  deps = [examples.c_lexer.c_lexer, c_parser]
 )
 
-c_parser_test = c_binary(
+c_parser_test = rules.c_binary(
   name = "c_parser_test",
   srcs = ["c_parser_test.cpp"],
-  deps = [c_lexer, c_parser]
+  deps = [examples.c_lexer.c_lexer, c_parser]
 )
 
 # Broken?
 #test_rule(files_in = [c_parser_test], quiet = True)
+
+os.chdir(old_dir)

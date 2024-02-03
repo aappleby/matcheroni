@@ -1,9 +1,0 @@
-#-------------------------------------------------------------------------------
-# Examples
-
-hancho.include("c_lexer")
-hancho.include("c_parser")
-hancho.include("ini")
-hancho.include("json")
-hancho.include("regex")
-hancho.include("toml")

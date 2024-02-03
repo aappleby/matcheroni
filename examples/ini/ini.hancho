@@ -1,4 +1,0 @@
-#-------------------------------------------------------------------------------
-# INI parser example
-
-ini_parser = c_library(name = "ini_parser", srcs = ["ini_parser.cpp"])

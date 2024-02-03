@@ -1,9 +1,8 @@
-
-#pprint.pprint(globals())
+import argparse
+import hancho
 
 #-------------------------------------------------------------------------------
 
-"""
 parser = argparse.ArgumentParser()
 
 parser.add_argument('--verbose',  default=False, action='store_true', help='Print verbose build info')
@@ -21,7 +20,7 @@ hancho.config.dryrun  = flags.dryrun
 hancho.config.debug   = flags.debug
 hancho.config.dotty   = flags.dotty
 hancho.config.force   = flags.force
-"""
+
 #-------------------------------------------------------------------------------
 
 base_config = hancho.config.extend(
@@ -29,7 +28,6 @@ base_config = hancho.config.extend(
   build_type  = "debug",
 )
 
-"""
 if flags.release:
   base_config.build_type = "release"
 
@@ -88,13 +86,9 @@ def c_binary(*, name, srcs, **kwargs):
 #-------------------------------------------------------------------------------
 
 def c_library(*, name, srcs, **kwargs):
-  #print(c_library)
-  #pprint.pprint(globals())
-  print(pprint)
   return link_c_lib(
     files_in  = compile_srcs(srcs, **kwargs),
     files_out = [name],
     **kwargs)
 
 #-------------------------------------------------------------------------------
-"""

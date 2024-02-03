@@ -1,33 +1,41 @@
 #-------------------------------------------------------------------------------
 # Matcheroni JSON parser example
 
-json_parser = c_library(
+import rules
+
+import os
+old_dir = os.getcwd()
+os.chdir(os.path.split(__file__)[0])
+
+json_parser = rules.c_library(
   name = "json_parser.a",
   srcs = ["json_matcher.cpp", "json_parser.cpp"]
 )
 
-json_conformance = c_binary(
+json_conformance = rules.c_binary(
   name = "json_conformance",
   srcs = ["json_conformance.cpp"],
   deps = [json_parser]
 )
 
-json_benchmark = c_binary(
+json_benchmark = rules.c_binary(
   name = "json_benchmark",
   srcs = ["json_benchmark.cpp"],
   deps = [json_parser]
 )
 
-json_demo = c_binary(
+json_demo = rules.c_binary(
   name = "json_demo",
   srcs = ["json_demo.cpp"],
   deps = [json_parser],
 )
 
-json_test = c_binary(
+json_test = rules.c_binary(
   name = "json_test",
   srcs = ["json_test.cpp"],
   deps = [json_parser]
 )
 
-test_rule(files_in = [json_test], quiet = True)
+rules.test_rule(files_in = [json_test], quiet = True)
+
+os.chdir(old_dir)

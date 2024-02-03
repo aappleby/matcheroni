@@ -1,6 +1,0 @@
-#-------------------------------------------------------------------------------
-# TOML parser example
-
-toml_test = c_binary(name = "toml_test", srcs = ["toml_parser.cpp", "toml_test.cpp"])
-
-test_rule(files_in = [toml_test], quiet = True)
