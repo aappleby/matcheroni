@@ -1,3 +1,16 @@
+#-------------------------------------------------------------------------------
+# Matcheroni regex parsing example
+
+# These are the various regex libraries that Matcheroni can be benchmarked
+# against. CTRE and SRELL require that you copy their header into matcheroni/.
+
+# These defines are required to reduce the compiled size of the SRELL library used in the benchmark.
+#benchmark_defs = ${benchmark_defs} -DSRELL_NO_UNICODE_ICASE
+#benchmark_defs = ${benchmark_defs} -DSRELL_NO_UNICODE_PROPERTY
+#benchmark_defs = ${benchmark_defs} -DSRELL_NO_UNICODE_DATA
+#benchmark_defs = ${benchmark_defs} -DSRELL_NO_NAMEDCAPTURE
+#benchmark_defs = ${benchmark_defs} -DSRELL_NO_VMODE
+
 regex_parser = c_library(
   name = "regex_parser.a",
   srcs = ["regex_parser.cpp"],

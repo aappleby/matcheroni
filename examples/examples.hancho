@@ -1,9 +1,9 @@
-#print()
-#print("========================================")
-#print(f"loading examples/examples.hancho")
-#print(f"file    {__file__}")
-#print(f"cwd     {os.getcwd()}")
-#print()
+#-------------------------------------------------------------------------------
+# Examples
 
-hancho.include("c_lexer/c_lexer.hancho")
-hancho.include("regex/regex.hancho")
+hancho.include("c_lexer")
+hancho.include("c_parser")
+hancho.include("ini")
+hancho.include("json")
+hancho.include("regex")
+hancho.include("toml")

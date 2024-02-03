@@ -1,0 +1,29 @@
+#-------------------------------------------------------------------------------
+# C parser example (not finished)
+
+# Hmm, this file requires "c_lexer" - how should that be plumbed in?
+# It works because globals, but that seems like a bad idea.
+
+c_parser = c_library(
+  name = "c_parser.a",
+  srcs = [
+    "CContext.cpp",
+    "CNode.cpp",
+    "CScope.cpp"
+  ]
+)
+
+c_parser_benchmark = c_binary(
+  name = "c_parser_benchmark",
+  srcs = ["c_parser_benchmark.cpp"],
+  deps = [c_lexer, c_parser]
+)
+
+c_parser_test = c_binary(
+  name = "c_parser_test",
+  srcs = ["c_parser_test.cpp"],
+  deps = [c_lexer, c_parser]
+)
+
+# Broken?
+#test_rule(files_in = [c_parser_test], quiet = True)

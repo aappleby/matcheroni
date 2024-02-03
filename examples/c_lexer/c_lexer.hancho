@@ -1,10 +1,15 @@
+
+#-------------------------------------------------------------------------------
 # Matcheroni C lexer demo
+
+#pprint.pprint(dir(globals()))
 
 c_lexer = c_library(
   name = "c_lexer.a",
   srcs = ["CLexer.cpp", "CToken.cpp"],
 )
 
+"""
 c_lexer_benchmark = c_binary(
   name = "c_lexer_benchmark",
   srcs = ["c_lexer_benchmark.cpp"],
@@ -18,3 +23,8 @@ c_lexer_test = c_binary(
 )
 
 test_rule(files_in = c_lexer_test, quiet = True)
+"""
+
+#print(link_c_bin)
+
+#print(globals())
