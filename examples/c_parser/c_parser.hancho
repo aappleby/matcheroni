@@ -1,14 +1,18 @@
 #-------------------------------------------------------------------------------
 # C parser example (not finished)
 
+print(__file__)
+
 import os
+import hancho
 import rules
-import examples.c_lexer
+
+c_lexer = hancho.load_module("c_lexer", "examples/c_lexer/c_lexer.hancho")
 
 old_dir = os.getcwd()
 os.chdir(os.path.split(__file__)[0])
 
-c_parser = rules.c_library(
+c_parser_lib = rules.c_library(
   name = "c_parser.a",
   srcs = [
     "CContext.cpp",
@@ -20,13 +24,13 @@ c_parser = rules.c_library(
 c_parser_benchmark = rules.c_binary(
   name = "c_parser_benchmark",
   srcs = ["c_parser_benchmark.cpp"],
-  deps = [examples.c_lexer.c_lexer, c_parser]
+  deps = [c_lexer.c_lexer_lib, c_parser_lib]
 )
 
 c_parser_test = rules.c_binary(
   name = "c_parser_test",
   srcs = ["c_parser_test.cpp"],
-  deps = [examples.c_lexer.c_lexer, c_parser]
+  deps = [c_lexer.c_lexer_lib, c_parser_lib]
 )
 
 # Broken?

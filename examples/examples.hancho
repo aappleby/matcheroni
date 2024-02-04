@@ -1,0 +1,11 @@
+print(__file__)
+
+import hancho
+
+c_lexer  = hancho.load_module("c_lexer",  "examples/c_lexer/c_lexer.hancho")
+c_parser = hancho.load_module("c_parser", "examples/c_parser/c_parser.hancho")
+ini      = hancho.load_module("ini",      "examples/ini/ini.hancho")
+json     = hancho.load_module("json",     "examples/json/json.hancho")
+regex    = hancho.load_module("regex",    "examples/regex/regex.hancho")
+toml     = hancho.load_module("toml",     "examples/toml/toml.hancho")
+#import examples.toml

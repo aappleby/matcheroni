@@ -1,11 +1,15 @@
 #-------------------------------------------------------------------------------
 # Tutorial examples
 
-import rules
-import examples.c_lexer
-import examples.c_parser
+print(__file__)
 
 import os
+import hancho
+import rules
+
+c_lexer  = hancho.load_module("c_lexer", "examples/c_lexer/c_lexer.hancho")
+c_parser = hancho.load_module("c_parser", "examples/c_parser/c_parser.hancho")
+
 old_dir = os.getcwd()
 os.chdir(os.path.split(__file__)[0])
 
@@ -26,8 +30,7 @@ rules.test_rule(files_in = json_tut2b, quiet = True)
 tiny_c_parser = rules.c_binary(
   name = "tiny_c_parser",
   srcs = ["tiny_c_parser.cpp"],
-  deps = [examples.c_lexer.c_lexer, examples.c_parser.c_parser],
-  #deps = ["examples.c_lexer", "examples.c_parser"],
+  deps = [c_lexer.c_lexer_lib, c_parser.c_parser_lib],
 )
 
 os.chdir(old_dir)
