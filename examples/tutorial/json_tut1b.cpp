@@ -14,13 +14,29 @@ struct JsonMatcher {
   using exponent  = Seq<Atoms<'e', 'E'>, Opt<sign>, digits>;
   using number    = Seq<integer, Opt<fraction>, Opt<exponent>>;
 
+  // Matches a JSON string that can contain valid escape characters
+  using space     = Some<Atoms<' ', '\n', '\r', '\t'>>;
+  using hex       = Ranges<'0','9','a','f','A','F'>;
+  using escape    = Oneof<Charset<"\"\\/bfnrt">, Seq<Atom<'u'>, Rep<4, hex>>>;
+  using character = Oneof<
+    Seq<Not<Atom<'"'>>, Not<Atom<'\\'>>, Range<0x0020, 0x10FFFF>>,
+    Seq<Atom<'\\'>, escape>
+  >;
+  using string = Seq<Atom<'"'>, Any<character>, Atom<'"'>>;
+
+  // Matches the three reserved JSON keywords
+  using keyword = Oneof<Lit<"true">, Lit<"false">, Lit<"null">>;
+
+  // Matches the above items separated by whitespace
   static TextSpan match(TextMatchContext& ctx, TextSpan body) {
-    return number::match(ctx, body);
+    using item = Oneof<number, string, keyword>;
+    using pattern = Seq<item, Any<Seq<space, item>>>;
+    return pattern::match(ctx, body);
   }
 };
 
 int main(int argc, char** argv) {
-  const char* filename = argc < 2 ? "tutorial/json_tut1a.input" : argv[1];
+  const char* filename = argc < 2 ? "examples/tutorial/json_tut1b.input" : argv[1];
 
   std::string input = utils::read(filename);
   TextSpan text = utils::to_span(input);

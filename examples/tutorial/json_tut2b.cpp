@@ -2,8 +2,56 @@
 #include "matcheroni/Parseroni.hpp"
 #include "matcheroni/Utilities.hpp"
 
+#include <stdio.h>
+
 using namespace matcheroni;
 using namespace parseroni;
+
+// Our base node type is the same as TextParseNode, with the addition of a
+// sum() method.
+struct JsonNode : public NodeBase<JsonNode, char> {
+  TextSpan as_text_span() const { return span; }
+
+  virtual double sum() {
+    double result = 0;
+    for (auto n = child_head; n; n = n->node_next) {
+      result += n->sum();
+    }
+    return result;
+  }
+};
+
+// We'll specialize JsonNode for numerical values by overriding init() to also
+// convert the matched text to a double.
+struct NumberNode : public JsonNode {
+  void init() {
+    value = atof(span.begin);
+  }
+
+  virtual double sum() {
+    return value;
+  }
+
+  double value = 0;
+};
+
+// And our context provides atom_cmp() and sum(). NodeContext<> handles the
+// required checkpoint()/rewind() methods.
+struct JsonParseContext : public NodeContext<JsonNode> {
+  static int atom_cmp(char a, int b) {
+    return (unsigned char)a - b;
+  }
+
+  double sum() {
+    double result = 0;
+    for (auto n = top_head; n; n = n->node_next) {
+      result += n->sum();
+    }
+    return result;
+  }
+};
+
+//------------------------------------------------------------------------------
 
 struct JsonParser {
   // Matches any JSON number
@@ -34,13 +82,18 @@ struct JsonParser {
   using list = Seq<P, Any<Seq<Opt<ws>, Atom<','>, Opt<ws>, P>>>;
 
   // Matches any valid JSON value
-  static TextSpan match_value(TextParseContext& ctx, TextSpan body) {
+  static TextSpan match_value(JsonParseContext& ctx, TextSpan body) {
     return Oneof<
-      Capture<"number",  number,  TextParseNode>,
-      Capture<"string",  string,  TextParseNode>,
-      Capture<"array",   array,   TextParseNode>,
-      Capture<"object",  object,  TextParseNode>,
-      Capture<"keyword", keyword, TextParseNode>
+
+      // **********
+      // This Capture<> will now create NumberNodes
+      Capture<"number",  number,  NumberNode>,
+      // **********
+
+      Capture<"string",  string,  JsonNode>,
+      Capture<"array",   array,   JsonNode>,
+      Capture<"object",  object,  JsonNode>,
+      Capture<"keyword", keyword, JsonNode>
     >::match(ctx, body);
   }
   using value = Ref<match_value>;
@@ -58,11 +111,11 @@ struct JsonParser {
   // Matches a key:value pair where 'key' is a string and 'value' is a JSON value.
   using pair =
   Seq<
-    Capture<"key", string, TextParseNode>,
+    Capture<"key", string, JsonNode>,
     Opt<ws>,
     Atom<':'>,
     Opt<ws>,
-    Capture<"value", value, TextParseNode>
+    Capture<"value", value, JsonNode>
   >;
 
   // Matches a curly-brace-delimited list of key:value pairs.
@@ -70,25 +123,28 @@ struct JsonParser {
   Seq<
     Atom<'{'>,
     Opt<ws>,
-    Opt<list<Capture<"member", pair, TextParseNode>>>,
+    Opt<list<Capture<"member", pair, JsonNode>>>,
     Opt<ws>,
     Atom<'}'>
   >;
 
   // Matches any valid JSON document
-  static TextSpan match(TextParseContext& ctx, TextSpan body) {
+  static TextSpan match(JsonParseContext& ctx, TextSpan body) {
     return Seq<Opt<ws>, value, Opt<ws>>::match(ctx, body);
   }
 };
 
 int main(int argc, char** argv) {
-  const char* filename = argc < 2 ? "tutorial/json_tut2a.input" : argv[1];
+  const char* filename = argc < 2 ? "examples/tutorial/json_tut2b.input" : argv[1];
 
   std::string input = utils::read(filename);
   TextSpan text = utils::to_span(input);
 
-  TextParseContext ctx;
+  JsonParseContext ctx;
   TextSpan tail = JsonParser::match(ctx, text);
+
+  printf("Sum of number nodes: %f\n", ctx.sum());
+  printf("\n");
   utils::print_summary(ctx, text, tail, 50);
 
   return tail.is_valid() ? 0 : -1;

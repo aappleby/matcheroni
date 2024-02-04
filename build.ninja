@@ -4,26 +4,26 @@ target=RELEASE
 
 toolchain=x86_64-linux-gnu
 
-include config.ninja
-include config_${target}.ninja
-include rules.ninja
+include config/config.ninja
+include config/config_${target}.ninja
+include config/rules.ninja
 
 #-------------------------------------------------------------------------------
 # Tests
 
-#build obj/matcheroni/Matcheroni.hpp.iwyu : iwyu matcheroni/Matcheroni.hpp
-#build obj/matcheroni/Parseroni.hpp.iwyu  : iwyu matcheroni/Parseroni.hpp
-#build obj/matcheroni/Utilities.hpp.iwyu  : iwyu matcheroni/Utilities.hpp
+#build build/matcheroni/Matcheroni.hpp.iwyu : iwyu matcheroni/Matcheroni.hpp
+#build build/matcheroni/Parseroni.hpp.iwyu  : iwyu matcheroni/Parseroni.hpp
+#build build/matcheroni/Utilities.hpp.iwyu  : iwyu matcheroni/Utilities.hpp
 
-build obj/tests/matcheroni_test.o    : compile_cpp tests/matcheroni_test.cpp
-build bin/tests/matcheroni_test      : c_binary obj/tests/matcheroni_test.o
-build bin/tests/matcheroni_test_pass : run_test bin/tests/matcheroni_test
+build build/tests/matcheroni_test.o    : compile_cpp tests/matcheroni_test.cpp
+build build/tests/matcheroni_test      : c_binary build/tests/matcheroni_test.o
+build build/tests/matcheroni_test_pass : run_test build/tests/matcheroni_test
 
-build obj/tests/parseroni_test.o     : compile_cpp tests/parseroni_test.cpp
-build bin/tests/parseroni_test       : c_binary obj/tests/parseroni_test.o
-build bin/tests/parseroni_test_pass  : run_test bin/tests/parseroni_test
+build build/tests/parseroni_test.o     : compile_cpp tests/parseroni_test.cpp
+build build/tests/parseroni_test       : c_binary build/tests/parseroni_test.o
+build build/tests/parseroni_test_pass  : run_test build/tests/parseroni_test
 
-build obj/tests/scratch.cpp : compile_cpp tests/scratch.cpp
+build build/tests/scratch.cpp : compile_cpp tests/scratch.cpp
 
 #-------------------------------------------------------------------------------
 # Regex parser example
@@ -48,133 +48,133 @@ build obj/tests/scratch.cpp : compile_cpp tests/scratch.cpp
 # This SRELL define seems to break things
 #benchmark_defs = ${benchmark_defs} -DSRELL_NO_APIEXT
 
-build obj/examples/regex/regex_parser.o : compile_cpp examples/regex/regex_parser.cpp
+build build/examples/regex/regex_parser.o : compile_cpp examples/regex/regex_parser.cpp
   defines = ${defines} ${benchmark_defs}
 
-build obj/examples/regex/regex_benchmark.o : compile_cpp examples/regex/regex_benchmark.cpp
+build build/examples/regex/regex_benchmark.o : compile_cpp examples/regex/regex_benchmark.cpp
 
-build bin/examples/regex/regex_benchmark   : c_binary obj/examples/regex/regex_parser.o obj/examples/regex/regex_benchmark.o
+build build/examples/regex/regex_benchmark   : c_binary build/examples/regex/regex_parser.o build/examples/regex/regex_benchmark.o
   libraries = ${libraries} -lboost_system -lboost_regex
 
-build obj/examples/regex/regex_demo.o   : compile_cpp examples/regex/regex_demo.cpp
-build bin/examples/regex/regex_demo     : c_binary obj/examples/regex/regex_parser.o obj/examples/regex/regex_demo.o
+build build/examples/regex/regex_demo.o   : compile_cpp examples/regex/regex_demo.cpp
+build build/examples/regex/regex_demo     : c_binary build/examples/regex/regex_parser.o build/examples/regex/regex_demo.o
 
-build obj/examples/regex/regex_test.o    : compile_cpp examples/regex/regex_test.cpp
-build bin/examples/regex/regex_test      : c_binary obj/examples/regex/regex_parser.o obj/examples/regex/regex_test.o
-#build bin/examples/regex/regex_test_pass : run_test bin/examples/regex/regex_test
+build build/examples/regex/regex_test.o    : compile_cpp examples/regex/regex_test.cpp
+build build/examples/regex/regex_test      : c_binary build/examples/regex/regex_parser.o build/examples/regex/regex_test.o
+#build build/examples/regex/regex_test_pass : run_test build/examples/regex/regex_test
 
 #-------------------------------------------------------------------------------
 # INI parser example
 
-build obj/examples/ini/ini_parser.o : compile_cpp examples/ini/ini_parser.cpp
+build build/examples/ini/ini_parser.o : compile_cpp examples/ini/ini_parser.cpp
 
 #-------------------------------------------------------------------------------
 # TOML parser example
 
-build obj/examples/toml/toml_parser.o  : compile_cpp examples/toml/toml_parser.cpp
+build build/examples/toml/toml_parser.o  : compile_cpp examples/toml/toml_parser.cpp
 
-build obj/examples/toml/toml_test.o    : compile_cpp examples/toml/toml_test.cpp
-build bin/examples/toml/toml_test      : c_binary obj/examples/toml/toml_parser.o obj/examples/toml/toml_test.o
-#build bin/examples/toml/toml_test_pass : run_test bin/examples/toml/toml_test
+build build/examples/toml/toml_test.o    : compile_cpp examples/toml/toml_test.cpp
+build build/examples/toml/toml_test      : c_binary build/examples/toml/toml_parser.o build/examples/toml/toml_test.o
+#build build/examples/toml/toml_test_pass : run_test build/examples/toml/toml_test
 
 #-------------------------------------------------------------------------------
 # JSON parser example
 
-build obj/examples/json/json_matcher.o    : compile_cpp examples/json/json_matcher.cpp
-build obj/examples/json/json_parser.o     : compile_cpp examples/json/json_parser.cpp
+build build/examples/json/json_matcher.o    : compile_cpp examples/json/json_matcher.cpp
+build build/examples/json/json_parser.o     : compile_cpp examples/json/json_parser.cpp
 
-build obj/examples/json/json_conformance.o : compile_cpp examples/json/json_conformance.cpp
-build bin/examples/json/json_conformance   : c_binary obj/examples/json/json_matcher.o obj/examples/json/json_parser.o obj/examples/json/json_conformance.o
+build build/examples/json/json_conformance.o : compile_cpp examples/json/json_conformance.cpp
+build build/examples/json/json_conformance   : c_binary build/examples/json/json_matcher.o build/examples/json/json_parser.o build/examples/json/json_conformance.o
 
-build obj/examples/json/json_benchmark.o  : compile_cpp examples/json/json_benchmark.cpp
-build bin/examples/json/json_benchmark    : c_binary $
-  obj/examples/json/json_matcher.o $
-  obj/examples/json/json_parser.o $
-  obj/examples/json/json_benchmark.o
+build build/examples/json/json_benchmark.o  : compile_cpp examples/json/json_benchmark.cpp
+build build/examples/json/json_benchmark    : c_binary $
+  build/examples/json/json_matcher.o $
+  build/examples/json/json_parser.o $
+  build/examples/json/json_benchmark.o
 
-build obj/examples/json/json_demo.o       : compile_cpp examples/json/json_demo.cpp
-build bin/examples/json/json_demo         : c_binary obj/examples/json/json_parser.o obj/examples/json/json_demo.o
+build build/examples/json/json_demo.o       : compile_cpp examples/json/json_demo.cpp
+build build/examples/json/json_demo         : c_binary build/examples/json/json_parser.o build/examples/json/json_demo.o
 
-build obj/examples/json/json_test.o   : compile_cpp examples/json/json_test.cpp
-build bin/examples/json/json_test     : c_binary obj/examples/json/json_parser.o obj/examples/json/json_test.o
-#build bin/examples/json/json_test_pass : run_test bin/examples/json/json_test
+build build/examples/json/json_test.o   : compile_cpp examples/json/json_test.cpp
+build build/examples/json/json_test     : c_binary build/examples/json/json_parser.o build/examples/json/json_test.o
+#build build/examples/json/json_test_pass : run_test build/examples/json/json_test
 
 #-------------------------------------------------------------------------------
 # Tutorial examples
 
-build obj/tutorial/tiny_c_parser.o    : compile_cpp tutorial/tiny_c_parser.cpp
-build bin/tutorial/tiny_c_parser      : c_binary obj/tutorial/tiny_c_parser.o obj/examples/c_lexer.a obj/examples/c_parser.a
-#build bin/tutorial/tiny_c_parser_pass : run_test bin/tutorial/tiny_c_parser
+build build/examples/tutorial/tiny_c_parser.o    : compile_cpp examples/tutorial/tiny_c_parser.cpp
+build build/examples/tutorial/tiny_c_parser      : c_binary build/examples/tutorial/tiny_c_parser.o build/examples/c_lexer/c_lexer.a build/examples/c_parser/c_parser.a
+#build build/tutorial/tiny_c_parser_pass : run_test build/tutorial/tiny_c_parser
 #  args = tutorial/tiny_c_parser.input
 
-build obj/tutorial/json_tut0a.o    : compile_cpp tutorial/json_tut0a.cpp
-build bin/tutorial/json_tut0a      : c_binary obj/tutorial/json_tut0a.o
-#build bin/tutorial/json_tut0a_pass : run_test bin/tutorial/json_tut0a
+build build/examples/tutorial/json_tut0a.o    : compile_cpp examples/tutorial/json_tut0a.cpp
+build build/examples/tutorial/json_tut0a      : c_binary build/examples/tutorial/json_tut0a.o
+#build build/tutorial/json_tut0a_pass : run_test build/tutorial/json_tut0a
 #  args = tutorial/json_tut0a.input
 
-build obj/tutorial/json_tut1a.o    : compile_cpp tutorial/json_tut1a.cpp
-build bin/tutorial/json_tut1a      : c_binary obj/tutorial/json_tut1a.o
-#build bin/tutorial/json_tut1a_pass : run_test bin/tutorial/json_tut1a
+build build/examples/tutorial/json_tut1a.o    : compile_cpp examples/tutorial/json_tut1a.cpp
+build build/examples/tutorial/json_tut1a      : c_binary build/examples/tutorial/json_tut1a.o
+#build build/tutorial/json_tut1a_pass : run_test build/tutorial/json_tut1a
 #  args = tutorial/json_tut1a.input
 
-build obj/tutorial/json_tut1b.o    : compile_cpp tutorial/json_tut1b.cpp
-build bin/tutorial/json_tut1b      : c_binary obj/tutorial/json_tut1b.o
-#build bin/tutorial/json_tut1b_pass : run_test bin/tutorial/json_tut1b
+build build/examples/tutorial/json_tut1b.o    : compile_cpp examples/tutorial/json_tut1b.cpp
+build build/examples/tutorial/json_tut1b      : c_binary build/examples/tutorial/json_tut1b.o
+#build build/tutorial/json_tut1b_pass : run_test build/tutorial/json_tut1b
 #  args = tutorial/json_tut1b.input
 
-build obj/tutorial/json_tut1c.o    : compile_cpp tutorial/json_tut1c.cpp
-build bin/tutorial/json_tut1c      : c_binary obj/tutorial/json_tut1c.o
-#build bin/tutorial/json_tut1c_pass : run_test bin/tutorial/json_tut1c
+build build/examples/tutorial/json_tut1c.o    : compile_cpp examples/tutorial/json_tut1c.cpp
+build build/examples/tutorial/json_tut1c      : c_binary build/examples/tutorial/json_tut1c.o
+#build build/tutorial/json_tut1c_pass : run_test build/tutorial/json_tut1c
 #  args = tutorial/json_tut1c.input
 
-build obj/tutorial/json_tut2a.o    : compile_cpp tutorial/json_tut2a.cpp
-build bin/tutorial/json_tut2a      : c_binary obj/tutorial/json_tut2a.o
-#build bin/tutorial/json_tut2a_pass : run_test bin/tutorial/json_tut2a
+build build/examples/tutorial/json_tut2a.o    : compile_cpp examples/tutorial/json_tut2a.cpp
+build build/examples/tutorial/json_tut2a      : c_binary build/examples/tutorial/json_tut2a.o
+#build build/tutorial/json_tut2a_pass : run_test build/tutorial/json_tut2a
 #  args = tutorial/json_tut2a.input
 
-build obj/tutorial/json_tut2b.o    : compile_cpp tutorial/json_tut2b.cpp
-build bin/tutorial/json_tut2b      : c_binary obj/tutorial/json_tut2b.o
-#build bin/tutorial/json_tut2b_pass : run_test bin/tutorial/json_tut2b
+build build/examples/tutorial/json_tut2b.o    : compile_cpp examples/tutorial/json_tut2b.cpp
+build build/examples/tutorial/json_tut2b      : c_binary build/examples/tutorial/json_tut2b.o
+#build build/tutorial/json_tut2b_pass : run_test build/tutorial/json_tut2b
 #  args = tutorial/json_tut2b.input
 
 #-------------------------------------------------------------------------------
 # C lexer example (not finished)
 
-build obj/examples/c_lexer/CLexer.o : compile_cpp examples/c_lexer/CLexer.cpp
-build obj/examples/c_lexer/CToken.o : compile_cpp examples/c_lexer/CToken.cpp
-build obj/examples/c_lexer.a : c_library obj/examples/c_lexer/CLexer.o obj/examples/c_lexer/CToken.o
+build build/examples/c_lexer/CLexer.o : compile_cpp examples/c_lexer/CLexer.cpp
+build build/examples/c_lexer/CToken.o : compile_cpp examples/c_lexer/CToken.cpp
+build build/examples/c_lexer/c_lexer.a : c_library build/examples/c_lexer/CLexer.o build/examples/c_lexer/CToken.o
 
-build obj/examples/c_lexer/c_lexer_benchmark.o : compile_cpp examples/c_lexer/c_lexer_benchmark.cpp
-build bin/examples/c_lexer/c_lexer_benchmark : c_binary obj/examples/c_lexer/c_lexer_benchmark.o obj/examples/c_lexer.a
+build build/examples/c_lexer/c_lexer_benchmark.o : compile_cpp examples/c_lexer/c_lexer_benchmark.cpp
+build build/examples/c_lexer/c_lexer_benchmark : c_binary build/examples/c_lexer/c_lexer_benchmark.o build/examples/c_lexer/c_lexer.a
 
-build obj/examples/c_lexer/c_lexer_test.o    : compile_cpp examples/c_lexer/c_lexer_test.cpp
-build bin/examples/c_lexer/c_lexer_test      : c_binary obj/examples/c_lexer/c_lexer_test.o obj/examples/c_lexer.a
-#build bin/examples/c_lexer/c_lexer_test_pass : run_test bin/examples/c_lexer/c_lexer_test
+build build/examples/c_lexer/c_lexer_test.o    : compile_cpp examples/c_lexer/c_lexer_test.cpp
+build build/examples/c_lexer/c_lexer_test      : c_binary build/examples/c_lexer/c_lexer_test.o build/examples/c_lexer/c_lexer.a
+#build build/examples/c_lexer/c_lexer_test_pass : run_test build/examples/c_lexer/c_lexer_test
 
 #-------------------------------------------------------------------------------
 # C parser example (not finished)
 
-build obj/examples/c_parser/CNode.o    : compile_cpp examples/c_parser/CNode.cpp
-build obj/examples/c_parser/CContext.o : compile_cpp examples/c_parser/CContext.cpp
-build obj/examples/c_parser/CScope.o   : compile_cpp examples/c_parser/CScope.cpp
+build build/examples/c_parser/CNode.o    : compile_cpp examples/c_parser/CNode.cpp
+build build/examples/c_parser/CContext.o : compile_cpp examples/c_parser/CContext.cpp
+build build/examples/c_parser/CScope.o   : compile_cpp examples/c_parser/CScope.cpp
 
-build obj/examples/c_parser.a : c_library $
-  obj/examples/c_parser/CContext.o $
-  obj/examples/c_parser/CNode.o $
-  obj/examples/c_parser/CScope.o
+build build/examples/c_parser/c_parser.a : c_library $
+  build/examples/c_parser/CContext.o $
+  build/examples/c_parser/CNode.o $
+  build/examples/c_parser/CScope.o
 
-build obj/examples/c_parser/c_parser_benchmark.o : compile_cpp examples/c_parser/c_parser_benchmark.cpp
-build bin/examples/c_parser/c_parser_benchmark : c_binary $
-  obj/examples/c_parser/c_parser_benchmark.o $
-  obj/examples/c_lexer.a $
-  obj/examples/c_parser.a
+build build/examples/c_parser/c_parser_benchmark.o : compile_cpp examples/c_parser/c_parser_benchmark.cpp
+build build/examples/c_parser/c_parser_benchmark : c_binary $
+  build/examples/c_parser/c_parser_benchmark.o $
+  build/examples/c_lexer/c_lexer.a $
+  build/examples/c_parser/c_parser.a
 
-build obj/examples/c_parser/c_parser_test.o : compile_cpp examples/c_parser/c_parser_test.cpp
-build bin/examples/c_parser/c_parser_test : c_binary $
-  obj/examples/c_parser/c_parser_test.o $
-  obj/examples/c_lexer.a $
-  obj/examples/c_parser.a
+build build/examples/c_parser/c_parser_test.o : compile_cpp examples/c_parser/c_parser_test.cpp
+build build/examples/c_parser/c_parser_test : c_binary $
+  build/examples/c_parser/c_parser_test.o $
+  build/examples/c_lexer/c_lexer.a $
+  build/examples/c_parser/c_parser.a
 
-#build bin/examples/c_parser/c_parser_test_pass  : run_test bin/examples/c_parser/c_parser_test
+#build build/examples/c_parser/c_parser_test_pass  : run_test build/examples/c_parser/c_parser_test
 
 #-------------------------------------------------------------------------------

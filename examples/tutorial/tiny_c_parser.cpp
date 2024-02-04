@@ -9,7 +9,7 @@
 using namespace matcheroni;
 
 int main(int argc, char** argv) {
-  const char* filename = argc < 2 ? "tutorial/tiny_c_parser.input" : argv[1];
+  const char* filename = argc < 2 ? "examples/tutorial/tiny_c_parser.input" : argv[1];
 
   std::string input = utils::read(filename);
   auto text = utils::to_span(input);

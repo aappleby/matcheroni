@@ -289,7 +289,7 @@
         }
       ],
       "args": [
-        "tutorial/json_tut0a.input"
+        "examples/tutorial/json_tut0a.input"
       ],
     },
     {
@@ -307,7 +307,7 @@
         }
       ],
       "args": [
-        "tutorial/json_tut1a.input"
+        "examples/tutorial/json_tut1a.input"
       ],
     },
     {
@@ -325,7 +325,7 @@
         }
       ],
       "args": [
-        "tutorial/json_tut1b.input"
+        "examples/tutorial/json_tut1b.input"
       ],
     },
     {
@@ -343,7 +343,7 @@
         }
       ],
       "args": [
-        "tutorial/json_tut1c.input"
+        "examples/tutorial/json_tut1c.input"
       ],
     },
     {
@@ -361,7 +361,7 @@
         }
       ],
       "args": [
-        "tutorial/json_tut2a.input"
+        "examples/tutorial/json_tut2a.input"
       ],
     },
     {
@@ -379,7 +379,7 @@
         }
       ],
       "args": [
-        "tutorial/json_tut2b.input"
+        "examples/tutorial/json_tut2b.input"
       ],
     },
     //--------------------------------------------------------------------------
