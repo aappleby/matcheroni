@@ -17,7 +17,8 @@ rules.c_binary(
 rules.c_binary(
   name = "json_benchmark",
   srcs = ["json_benchmark.cpp"],
-  deps = [json_parser]
+  deps = [json_parser],
+  build_type = "release"
 )
 
 rules.c_binary(
@@ -26,7 +27,7 @@ rules.c_binary(
   deps = [json_parser],
 )
 
-rules.run_test(
+rules.c_test(
   name = "json_test",
   srcs = ["json_test.cpp"],
   deps = [json_parser],

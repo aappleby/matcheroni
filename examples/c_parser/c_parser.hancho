@@ -4,7 +4,7 @@
 import hancho
 import rules
 
-c_lexer = hancho.module("../c_lexer")
+c_lexer = hancho.load("../c_lexer")
 
 c_parser_lib = rules.c_library(
   name = "c_parser.a",
@@ -18,11 +18,12 @@ c_parser_lib = rules.c_library(
 rules.c_binary(
   name = "c_parser_benchmark",
   srcs = ["c_parser_benchmark.cpp"],
-  deps = [c_lexer.c_lexer_lib, c_parser_lib]
+  deps = [c_lexer.c_lexer_lib, c_parser_lib],
+  build_type = "release"
 )
 
 # Broken?
-#rules.run_test(
+#rules.c_test(
 #  name = "c_parser_test",
 #  srcs = ["c_parser_test.cpp"],
 #  deps = [c_lexer.c_lexer_lib, c_parser_lib],

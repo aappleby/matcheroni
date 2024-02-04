@@ -8,7 +8,7 @@ toml_lib = rules.c_library(
   srcs = ["toml_parser.cpp"]
 )
 
-rules.run_test(
+rules.c_test(
   name = "toml_test",
   srcs = ["toml_test.cpp"],
   deps = [toml_lib],

@@ -7,13 +7,13 @@ import rules
 #build obj/matcheroni/Parseroni.hpp.iwyu  : iwyu matcheroni/Parseroni.hpp
 #build obj/matcheroni/Utilities.hpp.iwyu  : iwyu matcheroni/Utilities.hpp
 
-rules.run_test(
+rules.c_test(
   name = "matcheroni_test",
   srcs = ["matcheroni_test.cpp"],
   quiet = True
 )
 
-rules.run_test(
+rules.c_test(
   name = "parseroni_test",
   srcs = ["parseroni_test.cpp"],
   quiet = True

@@ -1,6 +1,8 @@
 import argparse
 import hancho
 
+# FIXME add build_type to build directory
+
 #-------------------------------------------------------------------------------
 
 parser = argparse.ArgumentParser()
@@ -9,7 +11,6 @@ parser.add_argument('--verbose',  default=False, action='store_true', help='Prin
 parser.add_argument('--serial',   default=False, action='store_true', help='Do not parallelize commands')
 parser.add_argument('--dryrun',   default=False, action='store_true', help='Do not run commands')
 parser.add_argument('--debug',    default=False, action='store_true', help='Dump debugging information')
-parser.add_argument('--dotty',    default=False, action='store_true', help='Dump dependency graph as dotty')
 parser.add_argument('--release',  default=False, action='store_true', help='Release-mode optimized build')
 parser.add_argument('--force',    default=False, action='store_true', help='Force rebuild of everything')
 (flags, unrecognized) = parser.parse_known_args()
@@ -18,18 +19,14 @@ hancho.config.verbose = flags.verbose
 hancho.config.serial  = flags.serial
 hancho.config.dryrun  = flags.dryrun
 hancho.config.debug   = flags.debug
-hancho.config.dotty   = flags.dotty
 hancho.config.force   = flags.force
 
 #-------------------------------------------------------------------------------
 
 base_config = hancho.config.extend(
   name        = "base_config",
-  build_type  = "debug",
+  build_type  = "release" if flags.release else "debug",
 )
-
-if flags.release:
-  base_config.build_type = "release"
 
 #-------------------------------------------------------------------------------
 
@@ -69,30 +66,25 @@ test_rule = base_config.extend(
   args        = "",
 )
 
-def run_test(*, name, srcs, **kwargs):
-  test_bin = c_binary(name = name, srcs = srcs, **kwargs)
-  test_rule(files_in = [test_bin], **kwargs)
-
 #-------------------------------------------------------------------------------
 
 def compile_srcs(srcs, **kwargs):
   return [compile_cpp(files_in = [f], **kwargs) for f in srcs]
 
-#-------------------------------------------------------------------------------
-
 def c_binary(*, name, srcs, **kwargs):
   return link_c_bin(
     files_in  = compile_srcs(srcs, **kwargs),
     files_out = [name],
-    **kwargs
-  )
-
-#-------------------------------------------------------------------------------
+    **kwargs)
 
 def c_library(*, name, srcs, **kwargs):
   return link_c_lib(
     files_in  = compile_srcs(srcs, **kwargs),
     files_out = [name],
     **kwargs)
+
+def c_test(*, name, srcs, **kwargs):
+  test_bin = c_binary(name = name, srcs = srcs, **kwargs)
+  test_rule(files_in = [test_bin], **kwargs)
 
 #-------------------------------------------------------------------------------

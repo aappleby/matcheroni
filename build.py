@@ -2,13 +2,13 @@
 
 import hancho
 
-tests    = hancho.module("tests")
-c_lexer  = hancho.module("examples/c_lexer")
-c_parser = hancho.module("examples/c_parser")
-ini      = hancho.module("examples/ini")
-json     = hancho.module("examples/json")
-regex    = hancho.module("examples/regex")
-toml     = hancho.module("examples/toml")
-tutorial = hancho.module("tutorial")
+hancho.load("tests")
+hancho.load("examples/c_lexer")
+hancho.load("examples/c_parser")
+hancho.load("examples/ini")
+hancho.load("examples/json")
+hancho.load("examples/regex")
+hancho.load("examples/toml")
+hancho.load("tutorial")
 
 hancho.build()

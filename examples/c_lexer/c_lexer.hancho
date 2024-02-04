@@ -8,7 +8,7 @@ c_lexer_lib = rules.c_library(
   srcs = ["CLexer.cpp", "CToken.cpp"],
 )
 
-rules.run_test(
+rules.c_test(
   name = "c_lexer_test",
   srcs = ["c_lexer_test.cpp"],
   deps = [c_lexer_lib],
@@ -18,5 +18,6 @@ rules.run_test(
 rules.c_binary(
   name = "c_lexer_benchmark",
   srcs = ["c_lexer_benchmark.cpp"],
-  deps = [c_lexer_lib]
+  deps = [c_lexer_lib],
+  build_type = "release"
 )
