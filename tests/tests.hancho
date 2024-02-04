@@ -7,15 +7,14 @@ import rules
 #build obj/matcheroni/Parseroni.hpp.iwyu  : iwyu matcheroni/Parseroni.hpp
 #build obj/matcheroni/Utilities.hpp.iwyu  : iwyu matcheroni/Utilities.hpp
 
-matcheroni_test = rules.c_binary(
+rules.run_test(
   name = "matcheroni_test",
   srcs = ["matcheroni_test.cpp"],
+  quiet = True
 )
 
-parseroni_test = rules.c_binary(
+rules.run_test(
   name = "parseroni_test",
   srcs = ["parseroni_test.cpp"],
+  quiet = True
 )
-
-rules.test_rule(files_in = matcheroni_test, quiet = True)
-rules.test_rule(files_in = parseroni_test, quiet = True)

@@ -69,6 +69,10 @@ test_rule = base_config.extend(
   args        = "",
 )
 
+def run_test(*, name, srcs, **kwargs):
+  test_bin = c_binary(name = name, srcs = srcs, **kwargs)
+  test_rule(files_in = [test_bin], **kwargs)
+
 #-------------------------------------------------------------------------------
 
 def compile_srcs(srcs, **kwargs):

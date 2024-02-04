@@ -18,23 +18,22 @@ regex_parser = rules.c_library(
   srcs = ["regex_parser.cpp"],
 )
 
-regex_demo = rules.c_binary(
+rules.c_binary(
   name = "regex_demo",
   srcs = ["regex_demo.cpp"],
   deps = [regex_parser],
 )
 
-regex_benchmark = rules.c_binary(
+rules.c_binary(
   name = "regex_benchmark",
   srcs = ["regex_benchmark.cpp"],
   deps = [regex_parser],
   sys_libs = "-lboost_system -lboost_regex",
 )
 
-regex_test = rules.c_binary(
+rules.run_test(
   name = "regex_test",
   srcs = ["regex_test.cpp"],
   deps = [regex_parser],
+  quiet = True
 )
-
-rules.test_rule(files_in = regex_test, quiet = True)

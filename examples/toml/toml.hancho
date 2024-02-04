@@ -3,6 +3,14 @@
 
 import rules
 
-toml_test = rules.c_binary(name = "toml_test", srcs = ["toml_parser.cpp", "toml_test.cpp"])
+toml_lib = rules.c_library(
+  name = "toml_lib",
+  srcs = ["toml_parser.cpp"]
+)
 
-rules.test_rule(files_in = [toml_test], quiet = True)
+rules.run_test(
+  name = "toml_test",
+  srcs = ["toml_test.cpp"],
+  deps = [toml_lib],
+  quiet = True
+)

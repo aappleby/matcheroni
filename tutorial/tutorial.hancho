@@ -1,28 +1,20 @@
 #-------------------------------------------------------------------------------
 # Tutorial examples
 
-import os
 import hancho
 import rules
 
 c_lexer  = hancho.module("examples/c_lexer")
 c_parser = hancho.module("examples/c_parser")
 
-json_tut0a = rules.c_binary(name = "json_tut0a", srcs = ["json_tut0a.cpp"])
-json_tut1a = rules.c_binary(name = "json_tut1a", srcs = ["json_tut1a.cpp"])
-json_tut1b = rules.c_binary(name = "json_tut1b", srcs = ["json_tut1b.cpp"])
-json_tut1c = rules.c_binary(name = "json_tut1c", srcs = ["json_tut1c.cpp"])
-json_tut2a = rules.c_binary(name = "json_tut2a", srcs = ["json_tut2a.cpp"])
-json_tut2b = rules.c_binary(name = "json_tut2b", srcs = ["json_tut2b.cpp"])
+rules.run_test(name = "json_tut0a", srcs = ["json_tut0a.cpp"], quiet = True)
+rules.run_test(name = "json_tut1a", srcs = ["json_tut1a.cpp"], quiet = True)
+rules.run_test(name = "json_tut1b", srcs = ["json_tut1b.cpp"], quiet = True)
+rules.run_test(name = "json_tut1c", srcs = ["json_tut1c.cpp"], quiet = True)
+rules.run_test(name = "json_tut2a", srcs = ["json_tut2a.cpp"], quiet = True)
+rules.run_test(name = "json_tut2b", srcs = ["json_tut2b.cpp"], quiet = True)
 
-rules.test_rule(files_in = json_tut0a, quiet = True)
-rules.test_rule(files_in = json_tut1a, quiet = True)
-rules.test_rule(files_in = json_tut1b, quiet = True)
-rules.test_rule(files_in = json_tut1c, quiet = True)
-rules.test_rule(files_in = json_tut2a, quiet = True)
-rules.test_rule(files_in = json_tut2b, quiet = True)
-
-tiny_c_parser = rules.c_binary(
+rules.c_binary(
   name = "tiny_c_parser",
   srcs = ["tiny_c_parser.cpp"],
   deps = [c_lexer.c_lexer_lib, c_parser.c_parser_lib],

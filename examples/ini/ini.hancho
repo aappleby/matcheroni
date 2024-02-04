@@ -3,4 +3,7 @@
 
 import rules
 
-ini_parser = rules.c_library(name = "ini_parser", srcs = ["ini_parser.cpp"])
+ini_parser_lib = rules.c_library(
+  name = "ini_parser",
+  srcs = ["ini_parser.cpp"]
+)

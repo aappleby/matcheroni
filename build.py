@@ -12,8 +12,3 @@ toml     = hancho.module("examples/toml")
 tutorial = hancho.module("tutorial")
 
 hancho.build()
-
-
-import pprint
-
-pprint.pprint(hancho.hancho_modules)
