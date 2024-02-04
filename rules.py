@@ -1,5 +1,3 @@
-print(__file__)
-
 import argparse
 import hancho
 

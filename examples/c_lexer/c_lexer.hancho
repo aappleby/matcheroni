@@ -1,14 +1,7 @@
 #-------------------------------------------------------------------------------
 # Matcheroni C lexer demo
 
-print(__file__)
-
-import hancho
 import rules
-
-import os
-old_dir = os.getcwd()
-os.chdir(os.path.split(__file__)[0])
 
 c_lexer_lib = rules.c_library(
   name = "c_lexer.a",
@@ -28,5 +21,3 @@ c_lexer_test = rules.c_binary(
 )
 
 rules.test_rule(files_in = c_lexer_test, quiet = True)
-
-os.chdir(old_dir)

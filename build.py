@@ -1,14 +1,19 @@
 #!/usr/bin/python3
 
-print(__file__)
-
-import sys
-
 import hancho
-import rules
 
-tests    = hancho.load_module("tests",    "tests/tests.hancho")
-examples = hancho.load_module("examples", "examples/examples.hancho")
-tutorial = hancho.load_module("tutorial", "tutorial/tutorial.hancho")
+tests    = hancho.module("tests")
+c_lexer  = hancho.module("examples/c_lexer")
+c_parser = hancho.module("examples/c_parser")
+ini      = hancho.module("examples/ini")
+json     = hancho.module("examples/json")
+regex    = hancho.module("examples/regex")
+toml     = hancho.module("examples/toml")
+tutorial = hancho.module("tutorial")
 
 hancho.build()
+
+
+import pprint
+
+pprint.pprint(hancho.hancho_modules)

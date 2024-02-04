@@ -3,10 +3,6 @@
 
 import rules
 
-import os
-old_dir = os.getcwd()
-os.chdir(os.path.split(__file__)[0])
-
 # These are the various regex libraries that Matcheroni can be benchmarked
 # against. CTRE and SRELL require that you copy their header into matcheroni/.
 
@@ -42,5 +38,3 @@ regex_test = rules.c_binary(
 )
 
 rules.test_rule(files_in = regex_test, quiet = True)
-
-os.chdir(old_dir)
