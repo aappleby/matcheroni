@@ -28,7 +28,6 @@ rules.c_binary(
   name = "regex_benchmark",
   srcs = "regex_benchmark.cpp",
   deps = regex_parser,
-  build_type = "release",
   sys_libs = "-lboost_system -lboost_regex",
 )
 

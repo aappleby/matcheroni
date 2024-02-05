@@ -18,7 +18,6 @@ rules.c_binary(
   name = "json_benchmark",
   srcs = "json_benchmark.cpp",
   deps = json_parser,
-  build_type = "release"
 )
 
 rules.c_binary(

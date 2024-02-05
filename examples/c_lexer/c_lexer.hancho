@@ -19,5 +19,4 @@ rules.c_binary(
   name = "c_lexer_benchmark",
   srcs = "c_lexer_benchmark.cpp",
   deps = c_lexer_lib,
-  build_type = "release"
 )
