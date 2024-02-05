@@ -7,15 +7,15 @@ import rules
 c_lexer  = hancho.load("examples/c_lexer")
 c_parser = hancho.load("examples/c_parser")
 
-rules.c_test(name = "json_tut0a", srcs = ["json_tut0a.cpp"], quiet = True)
-rules.c_test(name = "json_tut1a", srcs = ["json_tut1a.cpp"], quiet = True)
-rules.c_test(name = "json_tut1b", srcs = ["json_tut1b.cpp"], quiet = True)
-rules.c_test(name = "json_tut1c", srcs = ["json_tut1c.cpp"], quiet = True)
-rules.c_test(name = "json_tut2a", srcs = ["json_tut2a.cpp"], quiet = True)
-rules.c_test(name = "json_tut2b", srcs = ["json_tut2b.cpp"], quiet = True)
+rules.c_test(name = "json_tut0a", srcs = "json_tut0a.cpp", quiet = True)
+rules.c_test(name = "json_tut1a", srcs = "json_tut1a.cpp", quiet = True)
+rules.c_test(name = "json_tut1b", srcs = "json_tut1b.cpp", quiet = True)
+rules.c_test(name = "json_tut1c", srcs = "json_tut1c.cpp", quiet = True)
+rules.c_test(name = "json_tut2a", srcs = "json_tut2a.cpp", quiet = True)
+rules.c_test(name = "json_tut2b", srcs = "json_tut2b.cpp", quiet = True)
 
 rules.c_binary(
   name = "tiny_c_parser",
-  srcs = ["tiny_c_parser.cpp"],
+  srcs = "tiny_c_parser.cpp",
   deps = [c_lexer.c_lexer_lib, c_parser.c_parser_lib],
 )

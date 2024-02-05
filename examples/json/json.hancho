@@ -10,26 +10,26 @@ json_parser = rules.c_library(
 
 rules.c_binary(
   name = "json_conformance",
-  srcs = ["json_conformance.cpp"],
-  deps = [json_parser]
+  srcs = "json_conformance.cpp",
+  deps = json_parser
 )
 
 rules.c_binary(
   name = "json_benchmark",
-  srcs = ["json_benchmark.cpp"],
-  deps = [json_parser],
+  srcs = "json_benchmark.cpp",
+  deps = json_parser,
   build_type = "release"
 )
 
 rules.c_binary(
   name = "json_demo",
-  srcs = ["json_demo.cpp"],
-  deps = [json_parser],
+  srcs = "json_demo.cpp",
+  deps = json_parser,
 )
 
 rules.c_test(
   name = "json_test",
-  srcs = ["json_test.cpp"],
-  deps = [json_parser],
+  srcs = "json_test.cpp",
+  deps = json_parser,
   quiet = True
 )

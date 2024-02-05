@@ -4,13 +4,13 @@
 import rules
 
 toml_lib = rules.c_library(
-  name = "toml_lib",
-  srcs = ["toml_parser.cpp"]
+  name = "toml_lib.a",
+  srcs = "toml_parser.cpp"
 )
 
 rules.c_test(
   name = "toml_test",
-  srcs = ["toml_test.cpp"],
-  deps = [toml_lib],
+  srcs = "toml_test.cpp",
+  deps = toml_lib,
   quiet = True
 )

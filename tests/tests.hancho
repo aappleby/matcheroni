@@ -9,12 +9,12 @@ import rules
 
 rules.c_test(
   name = "matcheroni_test",
-  srcs = ["matcheroni_test.cpp"],
+  srcs = "matcheroni_test.cpp",
   quiet = True
 )
 
 rules.c_test(
   name = "parseroni_test",
-  srcs = ["parseroni_test.cpp"],
+  srcs = "parseroni_test.cpp",
   quiet = True
 )

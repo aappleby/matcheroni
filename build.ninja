@@ -61,7 +61,7 @@ build build/examples/regex/regex_demo     : c_binary build/examples/regex/regex_
 
 build build/examples/regex/regex_test.o    : compile_cpp examples/regex/regex_test.cpp
 build build/examples/regex/regex_test      : c_binary build/examples/regex/regex_parser.o build/examples/regex/regex_test.o
-#build build/examples/regex/regex_test_pass : run_test build/examples/regex/regex_test
+build build/examples/regex/regex_test_pass : run_test build/examples/regex/regex_test
 
 #-------------------------------------------------------------------------------
 # INI parser example
@@ -75,7 +75,8 @@ build build/examples/toml/toml_parser.o  : compile_cpp examples/toml/toml_parser
 
 build build/examples/toml/toml_test.o    : compile_cpp examples/toml/toml_test.cpp
 build build/examples/toml/toml_test      : c_binary build/examples/toml/toml_parser.o build/examples/toml/toml_test.o
-#build build/examples/toml/toml_test_pass : run_test build/examples/toml/toml_test
+
+build build/examples/toml/toml_test_pass : run_test build/examples/toml/toml_test
 
 #-------------------------------------------------------------------------------
 # JSON parser example
@@ -97,45 +98,47 @@ build build/examples/json/json_demo         : c_binary build/examples/json/json_
 
 build build/examples/json/json_test.o   : compile_cpp examples/json/json_test.cpp
 build build/examples/json/json_test     : c_binary build/examples/json/json_parser.o build/examples/json/json_test.o
-#build build/examples/json/json_test_pass : run_test build/examples/json/json_test
+
+build build/examples/json/json_test_pass : run_test build/examples/json/json_test
 
 #-------------------------------------------------------------------------------
 # Tutorial examples
 
 build build/examples/tutorial/tiny_c_parser.o    : compile_cpp examples/tutorial/tiny_c_parser.cpp
 build build/examples/tutorial/tiny_c_parser      : c_binary build/examples/tutorial/tiny_c_parser.o build/examples/c_lexer/c_lexer.a build/examples/c_parser/c_parser.a
-#build build/tutorial/tiny_c_parser_pass : run_test build/tutorial/tiny_c_parser
-#  args = tutorial/tiny_c_parser.input
+
+build build/examples/tutorial/tiny_c_parser_pass : run_test build/examples/tutorial/tiny_c_parser
+  args = examples/tutorial/tiny_c_parser.input
 
 build build/examples/tutorial/json_tut0a.o    : compile_cpp examples/tutorial/json_tut0a.cpp
 build build/examples/tutorial/json_tut0a      : c_binary build/examples/tutorial/json_tut0a.o
-#build build/tutorial/json_tut0a_pass : run_test build/tutorial/json_tut0a
-#  args = tutorial/json_tut0a.input
+build build/examples/tutorial/json_tut0a_pass : run_test build/examples/tutorial/json_tut0a
+  args = examples/tutorial/json_tut0a.input
 
 build build/examples/tutorial/json_tut1a.o    : compile_cpp examples/tutorial/json_tut1a.cpp
 build build/examples/tutorial/json_tut1a      : c_binary build/examples/tutorial/json_tut1a.o
-#build build/tutorial/json_tut1a_pass : run_test build/tutorial/json_tut1a
-#  args = tutorial/json_tut1a.input
+build build/examples/tutorial/json_tut1a_pass : run_test build/examples/tutorial/json_tut1a
+  args = examples/tutorial/json_tut1a.input
 
 build build/examples/tutorial/json_tut1b.o    : compile_cpp examples/tutorial/json_tut1b.cpp
 build build/examples/tutorial/json_tut1b      : c_binary build/examples/tutorial/json_tut1b.o
-#build build/tutorial/json_tut1b_pass : run_test build/tutorial/json_tut1b
-#  args = tutorial/json_tut1b.input
+build build/examples/tutorial/json_tut1b_pass : run_test build/examples/tutorial/json_tut1b
+  args = examples/tutorial/json_tut1b.input
 
 build build/examples/tutorial/json_tut1c.o    : compile_cpp examples/tutorial/json_tut1c.cpp
 build build/examples/tutorial/json_tut1c      : c_binary build/examples/tutorial/json_tut1c.o
-#build build/tutorial/json_tut1c_pass : run_test build/tutorial/json_tut1c
-#  args = tutorial/json_tut1c.input
+build build/examples/tutorial/json_tut1c_pass : run_test build/examples/tutorial/json_tut1c
+  args = examples/tutorial/json_tut1c.input
 
 build build/examples/tutorial/json_tut2a.o    : compile_cpp examples/tutorial/json_tut2a.cpp
 build build/examples/tutorial/json_tut2a      : c_binary build/examples/tutorial/json_tut2a.o
-#build build/tutorial/json_tut2a_pass : run_test build/tutorial/json_tut2a
-#  args = tutorial/json_tut2a.input
+build build/examples/tutorial/json_tut2a_pass : run_test build/examples/tutorial/json_tut2a
+  args = examples/tutorial/json_tut2a.input
 
 build build/examples/tutorial/json_tut2b.o    : compile_cpp examples/tutorial/json_tut2b.cpp
 build build/examples/tutorial/json_tut2b      : c_binary build/examples/tutorial/json_tut2b.o
-#build build/tutorial/json_tut2b_pass : run_test build/tutorial/json_tut2b
-#  args = tutorial/json_tut2b.input
+build build/examples/tutorial/json_tut2b_pass : run_test build/examples/tutorial/json_tut2b
+  args = examples/tutorial/json_tut2b.input
 
 #-------------------------------------------------------------------------------
 # C lexer example (not finished)
@@ -149,7 +152,7 @@ build build/examples/c_lexer/c_lexer_benchmark : c_binary build/examples/c_lexer
 
 build build/examples/c_lexer/c_lexer_test.o    : compile_cpp examples/c_lexer/c_lexer_test.cpp
 build build/examples/c_lexer/c_lexer_test      : c_binary build/examples/c_lexer/c_lexer_test.o build/examples/c_lexer/c_lexer.a
-#build build/examples/c_lexer/c_lexer_test_pass : run_test build/examples/c_lexer/c_lexer_test
+build build/examples/c_lexer/c_lexer_test_pass : run_test build/examples/c_lexer/c_lexer_test
 
 #-------------------------------------------------------------------------------
 # C parser example (not finished)

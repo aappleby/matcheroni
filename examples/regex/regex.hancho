@@ -15,26 +15,26 @@ import rules
 
 regex_parser = rules.c_library(
   name = "regex_parser.a",
-  srcs = ["regex_parser.cpp"],
+  srcs = "regex_parser.cpp",
 )
 
 rules.c_binary(
   name = "regex_demo",
-  srcs = ["regex_demo.cpp"],
-  deps = [regex_parser],
+  srcs = "regex_demo.cpp",
+  deps = regex_parser,
 )
 
 rules.c_binary(
   name = "regex_benchmark",
-  srcs = ["regex_benchmark.cpp"],
-  deps = [regex_parser],
+  srcs = "regex_benchmark.cpp",
+  deps = regex_parser,
   build_type = "release",
   sys_libs = "-lboost_system -lboost_regex",
 )
 
 rules.c_test(
   name = "regex_test",
-  srcs = ["regex_test.cpp"],
-  deps = [regex_parser],
+  srcs = "regex_test.cpp",
+  deps = regex_parser,
   quiet = True
 )

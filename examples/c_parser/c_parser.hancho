@@ -17,7 +17,7 @@ c_parser_lib = rules.c_library(
 
 rules.c_binary(
   name = "c_parser_benchmark",
-  srcs = ["c_parser_benchmark.cpp"],
+  srcs = "c_parser_benchmark.cpp",
   deps = [c_lexer.c_lexer_lib, c_parser_lib],
   build_type = "release"
 )
