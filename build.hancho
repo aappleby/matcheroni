@@ -16,3 +16,4 @@ hancho.load("examples/toml")
 hancho.load("examples/tutorial")
 
 hancho.build()
+#hancho.dump()
