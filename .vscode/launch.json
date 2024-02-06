@@ -9,7 +9,7 @@
       "type": "python",
       "request": "launch",
       "preLaunchTask": "wipe_build",
-      "program": "${workspaceFolder}/build.py",
+      "program": "hancho.py",
       "args" : [
         "--debug",
         "--verbose",
