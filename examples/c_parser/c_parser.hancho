@@ -6,8 +6,6 @@ import glob
 
 rules   = hancho.load("config/rules.hancho")
 
-print(glob.glob("*.cpp"))
-
 c_lexer = hancho.load("../c_lexer")
 
 c_parser_lib = rules.c_library(
