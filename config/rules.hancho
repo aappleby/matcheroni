@@ -16,7 +16,8 @@ compile_cpp = base_rule.extend(
   warnings    = "-Wall -Werror -Wno-unused-variable -Wno-unused-local-typedefs -Wno-unused-but-set-variable",
   includes    = "-I.",
   files_out   = "{swap_ext(files_in[0], '.o')}",
-  depfile     = "{swap_ext(files_in[0], '.d')}",
+  # FIXME - why can't this be files_out[0]?
+  depfile     = "{build_dir}/{swap_ext(files_in[0], '.d')}",
 )
 
 link_c_lib = base_rule.extend(

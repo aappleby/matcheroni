@@ -2,10 +2,7 @@
 # C parser example (not finished)
 
 import hancho
-import glob
-
 rules   = hancho.load("config/rules.hancho")
-
 c_lexer = hancho.load("../c_lexer")
 
 c_parser_lib = rules.c_library(
