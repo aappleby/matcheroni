@@ -2,7 +2,7 @@
 # Tutorial examples
 
 import hancho
-import rules
+rules = hancho.load("config/rules.hancho")
 
 c_lexer  = hancho.load("examples/c_lexer")
 c_parser = hancho.load("examples/c_parser")

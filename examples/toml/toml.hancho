@@ -1,7 +1,8 @@
 #-------------------------------------------------------------------------------
 # TOML parser example
 
-import rules
+import hancho
+rules = hancho.load("config/rules.hancho")
 
 toml_lib = rules.c_library(
   name = "toml_lib.a",

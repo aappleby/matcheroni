@@ -1,7 +1,8 @@
 #-------------------------------------------------------------------------------
 # Matcheroni JSON parser example
 
-import rules
+import hancho
+rules = hancho.load("config/rules.hancho")
 
 json_parser = rules.c_library(
   name = "json_parser.a",

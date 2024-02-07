@@ -2,20 +2,18 @@ import hancho
 import sys
 import os
 
-sys.path.append(os.path.abspath("config"))
-#import rules
+#sys.path.append(os.path.abspath("config"))
 #rules.base_rule.build_type = "release"
 
-
-
-#hancho.load("tests")
-#hancho.load("examples/c_lexer")
+hancho.load("config/rules.hancho")
+hancho.load("tests")
+hancho.load("examples/c_lexer")
 hancho.load("examples/c_parser")
-#hancho.load("examples/ini")
-#hancho.load("examples/json")
-#hancho.load("examples/regex")
-#hancho.load("examples/toml")
-#hancho.load("examples/tutorial")
-#
-#hancho.build()
-##hancho.dump()
+hancho.load("examples/ini")
+hancho.load("examples/json")
+hancho.load("examples/regex")
+hancho.load("examples/toml")
+hancho.load("examples/tutorial")
+
+hancho.build()
+#hancho.dump()

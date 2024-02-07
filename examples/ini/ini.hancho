@@ -1,7 +1,8 @@
 #-------------------------------------------------------------------------------
 # INI parser example
 
-import rules
+import hancho
+rules = hancho.load("config/rules.hancho")
 
 ini_parser_lib = rules.c_library(
   name = "ini_parser.a",
