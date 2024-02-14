@@ -3,39 +3,39 @@ import hancho
 #-------------------------------------------------------------------------------
 
 base_rule = hancho.base_rule.extend(
-  build_type  = "debug",
-  build_dir   = "build/{build_type}",
-  toolchain   = "x86_64-linux-gnu",
+  build_type = "debug",
+  build_dir  = "build/{build_type}",
+  toolchain  = "x86_64-linux-gnu",
 )
 
 compile_cpp = base_rule.extend(
-  description = "Compiling {files_in[0]} -> {files_out[0]} ({build_type})",
-  command     = "{toolchain}-g++ {cpp_std} {gcc_opt} {warnings} {includes} {defines} -c {files_in[0]} -o {files_out[0]}",
-  cpp_std     = "-std=c++20",
-  gcc_opt     = "{'-O3' if build_type == 'release' else '-g -O0'} -MMD",
-  warnings    = "-Wall -Werror -Wno-unused-variable -Wno-unused-local-typedefs -Wno-unused-but-set-variable",
-  includes    = "-I.",
-  files_out   = "{swap_ext(files_in[0], '.o')}",
+  desc       = "Compiling {files_in[0]} -> {files_out[0]} ({build_type})",
+  command    = "{toolchain}-g++ {cpp_std} {gcc_opt} {warnings} {includes} {defines} -c {files_in[0]} -o {files_out[0]}",
+  cpp_std    = "-std=c++20",
+  gcc_opt    = "{'-O3' if build_type == 'release' else '-g -O0'} -MMD",
+  warnings   = "-Wall -Werror -Wno-unused-variable -Wno-unused-local-typedefs -Wno-unused-but-set-variable",
+  includes   = "-I.",
+  files_out  = "{swap_ext(files_in[0], '.o')}",
   # FIXME - why can't this be files_out[0]?
-  depfile     = "{build_dir}/{swap_ext(files_in[0], '.d')}",
+  depfile    = "{build_dir}/{swap_ext(files_in[0], '.d')}",
 )
 
 link_c_lib = base_rule.extend(
-  description = "Bundling {files_out[0]}",
-  command     = "ar rcs {files_out[0]} {join(files_in)}",
+  desc       = "Bundling {files_out[0]}",
+  command    = "ar rcs {files_out[0]} {join(files_in)}",
 )
 
 link_c_bin = base_rule.extend(
-  description = "Linking {files_out[0]}",
-  command     = "{toolchain}-g++ {ld_opt} {warnings} {join(files_in)} {join(deps)} {sys_libs} -o {files_out[0]}",
-  ld_opt      = "{'-O3' if build_type == 'release' else '-g -O0'}",
-  warnings    = "-Wall",
+  desc       = "Linking {files_out[0]}",
+  command    = "{toolchain}-g++ {ld_opt} {warnings} {join(files_in)} {join(deps)} {sys_libs} -o {files_out[0]}",
+  ld_opt     = "{'-O3' if build_type == 'release' else '-g -O0'}",
+  warnings   = "-Wall",
 )
 
 test_rule = base_rule.extend(
-  description = "Running test {files_in[0]}",
-  command     = "rm -f {files_out[0]} && {files_in[0]} {args} && touch {files_out[0]}",
-  files_out   = "{files_in[0]}_pass",
+  desc       = "Running test {files_in[0]}",
+  command    = "rm -f {files_out[0]} && {files_in[0]} {args} && touch {files_out[0]}",
+  files_out  = "{files_in[0]}_pass",
 )
 
 #-------------------------------------------------------------------------------
