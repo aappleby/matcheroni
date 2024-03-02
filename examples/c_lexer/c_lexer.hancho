@@ -10,10 +10,11 @@ c_lexer_lib = rules.c_library(
 )
 
 rules.c_test(
+
   name = "c_lexer_test",
   srcs = "c_lexer_test.cpp",
   deps = c_lexer_lib,
-  quiet = True
+  quiet = True,
 )
 
 rules.c_binary(

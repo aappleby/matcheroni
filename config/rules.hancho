@@ -2,62 +2,49 @@ import hancho
 
 #-------------------------------------------------------------------------------
 
-base_rule = hancho.base_rule.extend(
-  build_type = "debug",
-  build_dir  = "build/{build_type}",
-  toolchain  = "x86_64-linux-gnu",
-)
-
-compile_cpp = base_rule.extend(
-  desc       = "Compiling {files_in[0]} -> {files_out[0]} ({build_type})",
-  command    = "{toolchain}-g++ {cpp_std} {gcc_opt} {warnings} {includes} {defines} -c {files_in[0]} -o {files_out[0]}",
+compile_cpp = hancho.Rule(
+  desc       = "Compiling {files_in} -> {files_out} ({build_type})",
+  command    = "{toolchain}-g++ {cpp_std} {gcc_opt} {warnings} {includes} {defines} -c {files_in} -o {files_out}",
   cpp_std    = "-std=c++20",
   gcc_opt    = "{'-O3' if build_type == 'release' else '-g -O0'} -MMD",
   warnings   = "-Wall -Werror -Wno-unused-variable -Wno-unused-local-typedefs -Wno-unused-but-set-variable",
   includes   = "-I.",
-  files_out  = "{swap_ext(files_in[0], '.o')}",
+  files_out  = "{swap_ext(files_in, '.o')}",
   # FIXME - why can't this be files_out[0]?
-  depfile    = "{build_dir}/{swap_ext(files_in[0], '.d')}",
+  depfile    = "{swap_ext(files_in, '.d')}",
 )
 
-link_c_lib = base_rule.extend(
-  desc       = "Bundling {files_out[0]}",
-  command    = "ar rcs {files_out[0]} {join(files_in)}",
+link_c_lib = hancho.Rule(
+  desc       = "Bundling {files_out}",
+  command    = "ar rcs {files_out} {files_in}",
 )
 
-link_c_bin = base_rule.extend(
-  desc       = "Linking {files_out[0]}",
-  command    = "{toolchain}-g++ {ld_opt} {warnings} {join(files_in)} {join(deps)} {sys_libs} -o {files_out[0]}",
+link_c_bin = hancho.Rule(
+  desc       = "Linking {files_out}",
+  command    = "{toolchain}-g++ {ld_opt} {warnings} {files_in} {deps} {sys_libs} -o {files_out}",
   ld_opt     = "{'-O3' if build_type == 'release' else '-g -O0'}",
   warnings   = "-Wall",
 )
 
-test_rule = base_rule.extend(
-  desc       = "Running test {files_in[0]}",
-  command    = "rm -f {files_out[0]} && {files_in[0]} {args} && touch {files_out[0]}",
-  files_out  = "{files_in[0]}_pass",
+test_rule = hancho.Rule(
+  desc       = "Running test {files_in}",
+  command    = "rm -f {files_out} && {files_in} {args} && touch {files_out}",
+  files_out  = "{files_in}_pass",
 )
 
 #-------------------------------------------------------------------------------
 
-def compile_srcs(srcs, **kwargs):
-  return [compile_cpp(files_in = f, **kwargs) for f in hancho.flatten(srcs)]
+def compile_srcs(srcs):
+  return [compile_cpp(f) for f in hancho.flatten(srcs)]
 
 def c_binary(*, name, srcs, **kwargs):
-  return link_c_bin(
-    files_in  = compile_srcs(srcs, **kwargs),
-    files_out = name,
-    **kwargs)
+  return link_c_bin(compile_srcs(srcs), name, **kwargs)
 
-def c_library(*, name, srcs, **kwargs):
-  return link_c_lib(
-    files_in  = compile_srcs(srcs, **kwargs),
-    files_out = name,
-    **kwargs)
+def c_library(*, name, srcs):
+  return link_c_lib(compile_srcs(srcs), name)
 
 def c_test(*, name, srcs, **kwargs):
-  return test_rule(
-    files_in = c_binary(name = name, srcs = srcs, **kwargs),
-    **kwargs)
+  return test_rule(c_binary(name = name, srcs = srcs, **kwargs))
+
 
 #-------------------------------------------------------------------------------
