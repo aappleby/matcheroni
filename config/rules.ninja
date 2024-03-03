@@ -34,7 +34,7 @@ rule ems_js_binary
 ################################################################################
 
 rule run_test
-  command = ${in} ${args} && touch ${out}
+  command = ${in} ${args} > /dev/null && touch ${out}
 
 #include-what-you-use -Xiwyu --no_fwd_decls -std=c++20 -I. ${in}
 
