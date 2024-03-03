@@ -2,7 +2,7 @@
 
 #-------------------------------------------------------------------------------
 
-compile_cpp = hancho.Rule(
+compile_cpp = Rule(
   desc       = "Compiling {files_in} -> {files_out} ({build_type})",
   command    = "{toolchain}-g++ {cpp_std} {gcc_opt} {warnings} {includes} {defines} -c {files_in} -o {files_out}",
   cpp_std    = "-std=c++20",
@@ -13,19 +13,19 @@ compile_cpp = hancho.Rule(
   depfile    = "{swap_ext(files_out, '.d')}",
 )
 
-link_c_lib = hancho.Rule(
+link_c_lib = Rule(
   desc       = "Bundling {files_out}",
   command    = "ar rcs {files_out} {files_in}",
 )
 
-link_c_bin = hancho.Rule(
+link_c_bin = Rule(
   desc       = "Linking {files_out}",
   command    = "{toolchain}-g++ {ld_opt} {warnings} {files_in} {deps} {sys_libs} -o {files_out}",
   ld_opt     = "{'-O3' if build_type == 'release' else '-g -O0'}",
   warnings   = "-Wall",
 )
 
-test_rule = hancho.Rule(
+test_rule = Rule(
   desc       = "Running test {files_in}",
   command    = "rm -f {files_out} && {files_in} {args} && touch {files_out}",
   files_out  = "{files_in}_pass",
@@ -34,7 +34,7 @@ test_rule = hancho.Rule(
 #-------------------------------------------------------------------------------
 
 def compile_srcs(files_in, **kwargs):
-  return [compile_cpp(f, **kwargs) for f in hancho.flatten(files_in)]
+  return [compile_cpp(f, **kwargs) for f in flatten(files_in)]
 
 def c_binary(files_in, files_out, **kwargs):
   return link_c_bin(compile_srcs(files_in, **kwargs), files_out, **kwargs)

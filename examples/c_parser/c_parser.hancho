@@ -1,8 +1,8 @@
 #-------------------------------------------------------------------------------
 # C parser example (not finished)
 
-rules   = hancho.load("config/rules.hancho")
-c_lexer = hancho.load("../c_lexer/c_lexer.hancho")
+rules   = load("config/rules.hancho")
+c_lexer = load("../c_lexer/c_lexer.hancho")
 
 c_parser_lib = rules.c_library(
   ["CContext.cpp", "CNode.cpp", "CScope.cpp"],

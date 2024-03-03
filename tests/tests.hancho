@@ -1,7 +1,7 @@
 #-------------------------------------------------------------------------------
 # Tests
 
-rules = hancho.load("config/rules.hancho")
+rules = load("config/rules.hancho")
 
 #build obj/matcheroni/Matcheroni.hpp.iwyu : iwyu matcheroni/Matcheroni.hpp
 #build obj/matcheroni/Parseroni.hpp.iwyu  : iwyu matcheroni/Parseroni.hpp
