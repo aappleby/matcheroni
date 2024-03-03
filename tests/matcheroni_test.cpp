@@ -967,6 +967,7 @@ void test_charset() {
 //------------------------------------------------------------------------------
 
 int main(int argc, char** argv) {
+  printf("matcheroni_test begin\n");
   test_span();
   test_atom();
   test_notatom();
@@ -990,7 +991,7 @@ int main(int argc, char** argv) {
   test_charset();
 
   if (fail_count) printf("Failed %d tests!\n", fail_count);
-
+  printf("matcheroni_test end\n");
   return fail_count ? -1 : 0;
 }
 

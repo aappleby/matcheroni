@@ -1,4 +1,4 @@
-import hancho
+# matcheroni/config/rules.hancho
 
 #-------------------------------------------------------------------------------
 
@@ -10,8 +10,7 @@ compile_cpp = hancho.Rule(
   warnings   = "-Wall -Werror -Wno-unused-variable -Wno-unused-local-typedefs -Wno-unused-but-set-variable",
   includes   = "-I.",
   files_out  = "{swap_ext(files_in, '.o')}",
-  # FIXME - why can't this be files_out[0]?
-  depfile    = "{swap_ext(files_in, '.d')}",
+  depfile    = "{swap_ext(files_out, '.d')}",
 )
 
 link_c_lib = hancho.Rule(
@@ -34,17 +33,17 @@ test_rule = hancho.Rule(
 
 #-------------------------------------------------------------------------------
 
-def compile_srcs(srcs):
-  return [compile_cpp(f) for f in hancho.flatten(srcs)]
+def compile_srcs(files_in, **kwargs):
+  return [compile_cpp(f, **kwargs) for f in hancho.flatten(files_in)]
 
-def c_binary(*, name, srcs, **kwargs):
-  return link_c_bin(compile_srcs(srcs), name, **kwargs)
+def c_binary(files_in, files_out, **kwargs):
+  return link_c_bin(compile_srcs(files_in, **kwargs), files_out, **kwargs)
 
-def c_library(*, name, srcs):
-  return link_c_lib(compile_srcs(srcs), name)
+def c_library(files_in, files_out, **kwargs):
+  return link_c_lib(compile_srcs(files_in, **kwargs), files_out, **kwargs)
 
-def c_test(*, name, srcs, **kwargs):
-  return test_rule(c_binary(name = name, srcs = srcs, **kwargs))
+def c_test(files_in, files_out, **kwargs):
+  return test_rule(c_binary(files_in, files_out, **kwargs), **kwargs)
 
 
 #-------------------------------------------------------------------------------

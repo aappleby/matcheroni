@@ -1,17 +1,16 @@
 #-------------------------------------------------------------------------------
 # TOML parser example
 
-import hancho
 rules = hancho.load("config/rules.hancho")
 
 toml_lib = rules.c_library(
-  name = "toml_lib.a",
-  srcs = "toml_parser.cpp"
+  "toml_parser.cpp",
+  "toml_lib.a",
 )
 
 rules.c_test(
-  name = "toml_test",
-  srcs = "toml_test.cpp",
+  "toml_test.cpp",
+  "toml_test",
   deps = toml_lib,
   quiet = True
 )

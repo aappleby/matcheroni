@@ -1,4 +1,4 @@
-import hancho
+# matcheroni/build.hancho
 
 print("Building Matcheroni with Hancho")
 
@@ -10,10 +10,10 @@ hancho.config.set(
 
 
 hancho.load("examples/c_lexer/c_lexer.hancho")
-#hancho.load("examples/c_parser")
-#hancho.load("examples/ini")
-#hancho.load("examples/json")
-#hancho.load("examples/regex")
-#hancho.load("examples/toml")
-#hancho.load("examples/tutorial")
-#hancho.load("tests")
+hancho.load("examples/c_parser/c_parser.hancho")
+hancho.load("examples/ini/ini.hancho")
+hancho.load("examples/json/json.hancho")
+hancho.load("examples/regex/regex.hancho")
+hancho.load("examples/toml/toml.hancho")
+hancho.load("examples/tutorial/tutorial.hancho")
+hancho.load("tests/tests.hancho")

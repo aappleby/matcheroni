@@ -1,29 +1,24 @@
 #-------------------------------------------------------------------------------
 # C parser example (not finished)
 
-import hancho
 rules   = hancho.load("config/rules.hancho")
-c_lexer = hancho.load("../c_lexer")
+c_lexer = hancho.load("../c_lexer/c_lexer.hancho")
 
 c_parser_lib = rules.c_library(
-  name = "c_parser.a",
-  srcs = [
-    "CContext.cpp",
-    "CNode.cpp",
-    "CScope.cpp"
-  ]
+  ["CContext.cpp", "CNode.cpp", "CScope.cpp"],
+  "c_parser.a",
 )
 
 rules.c_binary(
-  name = "c_parser_benchmark",
-  srcs = "c_parser_benchmark.cpp",
+  "c_parser_benchmark.cpp",
+  "c_parser_benchmark",
   deps = [c_lexer.c_lexer_lib, c_parser_lib],
 )
 
 # Broken?
 #rules.c_test(
-#  name = "c_parser_test",
-#  srcs = ["c_parser_test.cpp"],
+#  "c_parser_test.cpp",
+#  "c_parser_test",
 #  deps = [c_lexer.c_lexer_lib, c_parser_lib],
 #  quiet = True
 #)

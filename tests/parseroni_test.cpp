@@ -273,12 +273,12 @@ void test_pathological() {
 //------------------------------------------------------------------------------
 
 int main(int argc, char** argv) {
-  //printf("parseroni_test begin\n");
+  printf("parseroni_test begin\n");
   test_basic();
   test_rewind();
   test_begin_end();
   test_pathological();
-  //printf("parseroni_test done\n");
+  printf("parseroni_test done\n");
   return 0;
 }
 

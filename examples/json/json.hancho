@@ -1,35 +1,34 @@
 #-------------------------------------------------------------------------------
 # Matcheroni JSON parser example
 
-import hancho
 rules = hancho.load("config/rules.hancho")
 
 json_parser = rules.c_library(
-  name = "json_parser.a",
-  srcs = ["json_matcher.cpp", "json_parser.cpp"]
+  ["json_matcher.cpp", "json_parser.cpp"],
+  "json_parser.a",
 )
 
 rules.c_binary(
-  name = "json_conformance",
-  srcs = "json_conformance.cpp",
+  "json_conformance.cpp",
+  "json_conformance",
   deps = json_parser
 )
 
 rules.c_binary(
-  name = "json_benchmark",
-  srcs = "json_benchmark.cpp",
+  "json_benchmark.cpp",
+  "json_benchmark",
   deps = json_parser,
 )
 
 rules.c_binary(
-  name = "json_demo",
-  srcs = "json_demo.cpp",
+  "json_demo.cpp",
+  "json_demo",
   deps = json_parser,
 )
 
 rules.c_test(
-  name = "json_test",
-  srcs = "json_test.cpp",
+  "json_test.cpp",
+  "json_test",
   deps = json_parser,
   quiet = True
 )

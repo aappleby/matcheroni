@@ -1,7 +1,6 @@
 #-------------------------------------------------------------------------------
 # Tests
 
-import hancho
 rules = hancho.load("config/rules.hancho")
 
 #build obj/matcheroni/Matcheroni.hpp.iwyu : iwyu matcheroni/Matcheroni.hpp
@@ -9,13 +8,13 @@ rules = hancho.load("config/rules.hancho")
 #build obj/matcheroni/Utilities.hpp.iwyu  : iwyu matcheroni/Utilities.hpp
 
 rules.c_test(
-  name = "matcheroni_test",
-  srcs = "matcheroni_test.cpp",
-  quiet = True
+  "matcheroni_test.cpp",
+  "matcheroni_test",
+  quiet = True,
 )
 
 rules.c_test(
-  name = "parseroni_test",
-  srcs = "parseroni_test.cpp",
-  quiet = True
+  "parseroni_test.cpp",
+  "parseroni_test",
+  quiet = True,
 )

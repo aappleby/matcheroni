@@ -1,7 +1,6 @@
 #-------------------------------------------------------------------------------
 # Matcheroni regex parsing example
 
-import hancho
 rules = hancho.load("config/rules.hancho")
 
 # These are the various regex libraries that Matcheroni can be benchmarked
@@ -15,26 +14,26 @@ rules = hancho.load("config/rules.hancho")
 #benchmark_defs = ${benchmark_defs} -DSRELL_NO_VMODE
 
 regex_parser = rules.c_library(
-  name = "regex_parser.a",
-  srcs = "regex_parser.cpp",
+  "regex_parser.cpp",
+  "regex_parser.a",
 )
 
 rules.c_binary(
-  name = "regex_demo",
-  srcs = "regex_demo.cpp",
+  "regex_demo.cpp",
+  "regex_demo",
   deps = regex_parser,
 )
 
 rules.c_binary(
-  name = "regex_benchmark",
-  srcs = "regex_benchmark.cpp",
+  "regex_benchmark.cpp",
+  "regex_benchmark",
   deps = regex_parser,
   sys_libs = "-lboost_system -lboost_regex",
 )
 
 rules.c_test(
-  name = "regex_test",
-  srcs = "regex_test.cpp",
+  "regex_test.cpp",
+  "regex_test",
   deps = regex_parser,
   quiet = True
 )
