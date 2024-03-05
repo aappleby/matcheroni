@@ -2,11 +2,10 @@
 
 print("Building Matcheroni with Hancho")
 
-config.set(
-  build_type = "debug",
-  build_dir  = "build/{build_type}",
-  toolchain  = "x86_64-linux-gnu",
-)
+if config.build_type is None: config.build_type = "debug"
+if config.toolchain is None:  config.toolchain  = "x86_64-linux-gnu"
+
+config.build_dir  = "build/{build_type}"
 
 load("examples/c_lexer/c_lexer.hancho")
 load("examples/c_parser/c_parser.hancho")
