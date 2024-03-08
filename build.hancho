@@ -3,7 +3,6 @@
 print("Building Matcheroni with Hancho")
 
 if config.build_type is None: config.build_type = "debug"
-if config.toolchain is None:  config.toolchain  = "x86_64-linux-gnu"
 
 config.build_dir  = "build/{build_type}"
 

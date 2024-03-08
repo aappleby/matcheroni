@@ -4,7 +4,7 @@
 
 compile_cpp = Rule(
   desc       = "Compiling {files_in} -> {files_out} ({build_type})",
-  command    = "{toolchain}-g++ {cpp_std} {gcc_opt} {warnings} {includes} {defines} -c {files_in} -o {files_out}",
+  command    = "g++ {cpp_std} {gcc_opt} {warnings} {includes} {defines} -c {files_in} -o {files_out}",
   cpp_std    = "-std=c++20",
   gcc_opt    = "{'-O3' if build_type == 'release' else '-g -O0'} -MMD",
   warnings   = "-Wall -Werror -Wno-unused-variable -Wno-unused-local-typedefs -Wno-unused-but-set-variable",
@@ -20,7 +20,7 @@ link_c_lib = Rule(
 
 link_c_bin = Rule(
   desc       = "Linking {files_out}",
-  command    = "{toolchain}-g++ {ld_opt} {warnings} {files_in} {deps} {sys_libs} -o {files_out}",
+  command    = "g++ {ld_opt} {warnings} {files_in} {deps} {sys_libs} -o {files_out}",
   ld_opt     = "{'-O3' if build_type == 'release' else '-g -O0'}",
   warnings   = "-Wall",
 )

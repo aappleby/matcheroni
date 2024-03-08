@@ -2,8 +2,6 @@ target=DEBUG
 #target=RELEASE
 #target=SIZE
 
-toolchain=x86_64-linux-gnu
-
 include config.ninja
 include config_${target}.ninja
 include rules.ninja
