@@ -1,4 +1,5 @@
 # matcheroni/build.hancho
+from hancho import *
 
 print("Building Matcheroni with Hancho")
 

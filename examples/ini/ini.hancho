@@ -1,5 +1,6 @@
 #-------------------------------------------------------------------------------
 # INI parser example
+from hancho import *
 
 rules = load("config/rules.hancho")
 

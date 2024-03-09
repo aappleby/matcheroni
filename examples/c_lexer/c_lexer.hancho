@@ -1,5 +1,6 @@
 #-------------------------------------------------------------------------------
 # Matcheroni C lexer demo
+from hancho import *
 
 rules = load("config/rules.hancho")
 

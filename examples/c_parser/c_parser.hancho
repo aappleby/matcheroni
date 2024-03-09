@@ -1,5 +1,6 @@
 #-------------------------------------------------------------------------------
 # C parser example (not finished)
+from hancho import *
 
 rules   = load("config/rules.hancho")
 c_lexer = load("../c_lexer/c_lexer.hancho")

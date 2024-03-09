@@ -1,4 +1,5 @@
 # matcheroni/config/rules.hancho
+from hancho import *
 
 #-------------------------------------------------------------------------------
 
