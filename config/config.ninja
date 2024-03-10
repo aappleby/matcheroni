@@ -14,8 +14,7 @@ ems_opts_ld = ${ems_opts_ld} -sEXPORTED_RUNTIME_METHODS=['FS','callMain']
 ems_opts_ld = ${ems_opts_ld} -s MODULARIZE=1
 ems_opts_ld = ${ems_opts_ld} -sNO_DISABLE_EXCEPTION_CATCHING
 ems_opts_ld = ${ems_opts_ld} -sTOTAL_STACK=32MB
-ems_opts_ld = ${ems_opts_ld} -sINITIAL_MEMORY=64MB
+ems_opts_ld = ${ems_opts_ld} -sINITIAL_MEMORY=256MB
 ems_opts_ld = ${ems_opts_ld} -sFORCE_FILESYSTEM
 
 ################################################################################
-
