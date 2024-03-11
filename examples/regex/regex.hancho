@@ -22,19 +22,19 @@ regex_parser = rules.c_library(
 rules.c_binary(
   "regex_demo.cpp",
   "regex_demo",
-  deps = regex_parser,
+  libs = regex_parser,
 )
 
 rules.c_binary(
   "regex_benchmark.cpp",
   "regex_benchmark",
-  deps = regex_parser,
+  libs = regex_parser,
   sys_libs = "-lboost_system -lboost_regex",
 )
 
 rules.c_test(
   "regex_test.cpp",
   "regex_test",
-  deps = regex_parser,
+  libs = regex_parser,
   quiet = True
 )

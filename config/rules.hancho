@@ -21,7 +21,7 @@ link_c_lib = Rule(
 
 link_c_bin = Rule(
   desc       = "Linking {files_out}",
-  command    = "g++ {ld_opt} {warnings} {files_in} {deps} {sys_libs} -o {files_out}",
+  command    = "g++ {ld_opt} {warnings} {files_in} {libs} {sys_libs} -o {files_out}",
   ld_opt     = "{'-O3' if build_type == 'release' else '-g -O0'}",
   warnings   = "-Wall",
 )

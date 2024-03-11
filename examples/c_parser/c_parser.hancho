@@ -13,13 +13,13 @@ c_parser_lib = rules.c_library(
 rules.c_binary(
   "c_parser_benchmark.cpp",
   "c_parser_benchmark",
-  deps = [c_lexer.c_lexer_lib, c_parser_lib],
+  libs = [c_lexer.c_lexer_lib, c_parser_lib],
 )
 
 # Broken?
 #rules.c_test(
 #  "c_parser_test.cpp",
 #  "c_parser_test",
-#  deps = [c_lexer.c_lexer_lib, c_parser_lib],
+#  libs = [c_lexer.c_lexer_lib, c_parser_lib],
 #  quiet = True
 #)

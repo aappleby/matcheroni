@@ -12,24 +12,24 @@ json_parser = rules.c_library(
 rules.c_binary(
   "json_conformance.cpp",
   "json_conformance",
-  deps = json_parser
+  libs = json_parser
 )
 
 rules.c_binary(
   "json_benchmark.cpp",
   "json_benchmark",
-  deps = json_parser,
+  libs = json_parser,
 )
 
 rules.c_binary(
   "json_demo.cpp",
   "json_demo",
-  deps = json_parser,
+  libs = json_parser,
 )
 
 rules.c_test(
   "json_test.cpp",
   "json_test",
-  deps = json_parser,
+  libs = json_parser,
   quiet = True
 )

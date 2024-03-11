@@ -12,12 +12,12 @@ c_lexer_lib = rules.c_library(
 rules.c_test(
   "c_lexer_test.cpp",
   "c_lexer_test",
-  deps = c_lexer_lib,
+  libs = c_lexer_lib,
   quiet = True,
 )
 
 rules.c_binary(
   "c_lexer_benchmark.cpp",
   "c_lexer_benchmark",
-  deps = c_lexer_lib,
+  libs = c_lexer_lib,
 )

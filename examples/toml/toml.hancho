@@ -12,6 +12,6 @@ toml_lib = rules.c_library(
 rules.c_test(
   "toml_test.cpp",
   "toml_test",
-  deps = toml_lib,
+  libs = toml_lib,
   quiet = True
 )

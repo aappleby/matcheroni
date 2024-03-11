@@ -16,5 +16,5 @@ rules.c_test("json_tut2b.cpp", "json_tut2b", quiet = True)
 rules.c_binary(
   "tiny_c_parser.cpp",
   "tiny_c_parser",
-  deps = [c_lexer.c_lexer_lib, c_parser.c_parser_lib],
+  libs = [c_lexer.c_lexer_lib, c_parser.c_parser_lib],
 )
