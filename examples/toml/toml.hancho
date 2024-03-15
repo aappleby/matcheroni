@@ -2,7 +2,7 @@
 # TOML parser example
 from hancho import *
 
-rules = load("config/rules.hancho")
+rules = load("../../config/rules.hancho")
 
 toml_lib = rules.c_library(
   "toml_parser.cpp",

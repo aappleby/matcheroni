@@ -2,9 +2,9 @@
 # Tutorial examples
 from hancho import *
 
-rules    = load("config/rules.hancho")
-c_lexer  = load("examples/c_lexer/c_lexer.hancho")
-c_parser = load("examples/c_parser/c_parser.hancho")
+rules    = load("../../config/rules.hancho")
+c_lexer  = load("../c_lexer/c_lexer.hancho")
+c_parser = load("../c_parser/c_parser.hancho")
 
 rules.c_test("json_tut0a.cpp", "json_tut0a", quiet = True)
 rules.c_test("json_tut1a.cpp", "json_tut1a", quiet = True)

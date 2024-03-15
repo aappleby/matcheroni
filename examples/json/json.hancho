@@ -2,7 +2,7 @@
 # Matcheroni JSON parser example
 from hancho import *
 
-rules = load("config/rules.hancho")
+rules = load("../../config/rules.hancho")
 
 json_parser = rules.c_library(
   ["json_matcher.cpp", "json_parser.cpp"],
