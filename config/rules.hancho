@@ -4,10 +4,10 @@ from hancho import *
 #-------------------------------------------------------------------------------
 
 compile_cpp = Rule(
-  desc       = "Compiling {files_in} -> {files_out} ({build_type})",
+  desc       = "Compiling {files_in} -> {files_out} ({build_tag})",
   command    = "g++ {cpp_std} {gcc_opt} {warnings} {includes} {defines} -c {files_in} -o {files_out}",
   cpp_std    = "-std=c++20",
-  gcc_opt    = "{'-O3' if build_type == 'release' else '-g -O0'} -MMD",
+  gcc_opt    = "{'-O3' if build_tag == 'release' else '-g -O0'} -MMD",
   warnings   = "-Wall -Werror -Wno-unused-variable -Wno-unused-local-typedefs -Wno-unused-but-set-variable",
   includes   = "-I.",
   files_out  = "{swap_ext(files_in, '.o')}",
@@ -22,7 +22,7 @@ link_c_lib = Rule(
 link_c_bin = Rule(
   desc       = "Linking {files_out}",
   command    = "g++ {ld_opt} {warnings} {files_in} {libs} {sys_libs} -o {files_out}",
-  ld_opt     = "{'-O3' if build_type == 'release' else '-g -O0'}",
+  ld_opt     = "{'-O3' if build_tag == 'release' else '-g -O0'}",
   warnings   = "-Wall",
 )
 

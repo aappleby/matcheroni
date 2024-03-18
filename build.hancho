@@ -3,10 +3,7 @@ from hancho import *
 
 print("Building Matcheroni with Hancho")
 
-#if config.build_type is None: config.build_type = "debug"
-config.build_type = "release"
-
-config.build_dir  = "build/{build_type}"
+config.build_tag = "release"
 
 load("examples/c_lexer/c_lexer.hancho")
 load("examples/c_parser/c_parser.hancho")
