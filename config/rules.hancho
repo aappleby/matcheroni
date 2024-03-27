@@ -3,48 +3,51 @@ from hancho import *
 
 #-------------------------------------------------------------------------------
 
-compile_cpp = Rule(
-  desc       = "Compiling {files_in} -> {files_out} ({build_tag})",
-  command    = "g++ {cpp_std} {gcc_opt} {warnings} {includes} {defines} -c {files_in} -o {files_out}",
-  cpp_std    = "-std=c++20",
-  gcc_opt    = "{'-O3' if build_tag == 'release' else '-g -O0'} -MMD",
-  warnings   = "-Wall -Werror -Wno-unused-variable -Wno-unused-local-typedefs -Wno-unused-but-set-variable",
-  includes   = "-I.",
-  files_out  = "{swap_ext(files_in, '.o')}",
-  depfile    = "{swap_ext(files_out, '.d')}",
+compile_cpp = build_config.rule(
+  desc        = "Compiling {rel_source_files} -> {rel_build_files} ({build_tag})",
+  command     = "g++ {cpp_std} {gcc_opt} {warnings} {includes} {defines} -c {rel_source_files} -o {rel_build_files}",
+  cpp_std     = "-std=c++20",
+  gcc_opt     = "{'-O3' if build_tag == 'release' else '-g -O0'} -MMD",
+  warnings    = "-Wall -Werror -Wno-unused-variable -Wno-unused-local-typedefs -Wno-unused-but-set-variable",
+  includes    = "-I.",
+  defines     = "",
+  build_files = "{swap_ext(source_files, '.o')}",
+  build_deps  = "{swap_ext(source_files, '.d')}",
 )
 
-link_c_lib = Rule(
-  desc       = "Bundling {files_out}",
-  command    = "ar rcs {files_out} {files_in}",
+link_c_lib = build_config.rule(
+  desc        = "Bundling {rel_build_files}",
+  command     = "ar rcs {rel_build_files} {rel_source_files}",
 )
 
-link_c_bin = Rule(
-  desc       = "Linking {files_out}",
-  command    = "g++ {ld_opt} {warnings} {files_in} {libs} {sys_libs} -o {files_out}",
-  ld_opt     = "{'-O3' if build_tag == 'release' else '-g -O0'}",
-  warnings   = "-Wall",
+link_c_bin = build_config.rule(
+  desc        = "Linking {rel_build_files}",
+  command     = "g++ {ld_opt} {warnings} {rel_source_files} {libs} {sys_libs} -o {rel_build_files}",
+  ld_opt      = "{'-O3' if build_tag == 'release' else '-g -O0'}",
+  libs        = "",
+  sys_libs    = "",
+  warnings    = "-Wall",
 )
 
-test_rule = Rule(
-  desc       = "Running test {files_in}",
-  command    = "rm -f {files_out} && {files_in} {args} && touch {files_out}",
-  files_out  = "{files_in}_pass",
+test_rule = build_config.rule(
+  desc        = "Running test {rel_source_files}",
+  command     = "rm -f {rel_build_files} && {rel_source_files} {args} && touch {rel_build_files}",
+  build_files = "{swap_ext(source_files, '.pass')}",
+  args        = "",
 )
 
 #-------------------------------------------------------------------------------
 
-def compile_srcs(files_in, **kwargs):
-  return [compile_cpp(f, **kwargs) for f in flatten(files_in)]
+def compile_srcs(source_files, **kwargs):
+  return [compile_cpp(f, **kwargs) for f in flatten(source_files)]
 
-def c_binary(files_in, files_out, **kwargs):
-  return link_c_bin(compile_srcs(files_in, **kwargs), files_out, **kwargs)
+def c_binary(source_files, build_files, **kwargs):
+  return link_c_bin(compile_srcs(source_files, **kwargs), build_files, **kwargs)
 
-def c_library(files_in, files_out, **kwargs):
-  return link_c_lib(compile_srcs(files_in, **kwargs), files_out, **kwargs)
+def c_library(source_files, build_files, **kwargs):
+  return link_c_lib(compile_srcs(source_files, **kwargs), build_files, **kwargs)
 
-def c_test(files_in, files_out, **kwargs):
-  return test_rule(c_binary(files_in, files_out, **kwargs), **kwargs)
-
+def c_test(source_files, build_files, **kwargs):
+  return test_rule(c_binary(source_files, build_files, **kwargs), **kwargs)
 
 #-------------------------------------------------------------------------------

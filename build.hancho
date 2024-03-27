@@ -3,13 +3,14 @@ from hancho import *
 
 print("Building Matcheroni with Hancho")
 
-config.build_tag = "release"
+build_config.build_tag = "debug"
+build_config.rules_path = Path("config").absolute()
 
-load("examples/c_lexer/c_lexer.hancho")
-load("examples/c_parser/c_parser.hancho")
-load("examples/ini/ini.hancho")
-load("examples/json/json.hancho")
-load("examples/regex/regex.hancho")
-load("examples/toml/toml.hancho")
-load("examples/tutorial/tutorial.hancho")
-load("tests/tests.hancho")
+load("examples/c_lexer/c_lexer.hancho", build_config)
+load("examples/c_parser/c_parser.hancho", build_config)
+load("examples/ini/ini.hancho", build_config)
+load("examples/json/json.hancho", build_config)
+load("examples/regex/regex.hancho", build_config)
+load("examples/toml/toml.hancho", build_config)
+load("examples/tutorial/tutorial.hancho", build_config)
+load("tests/tests.hancho", build_config)

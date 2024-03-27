@@ -2,7 +2,7 @@
 # Tutorial examples
 from hancho import *
 
-rules    = load("../../config/rules.hancho")
+rules = include("{rules_path}/rules.hancho", build_config)
 c_lexer  = load("../c_lexer/c_lexer.hancho")
 c_parser = load("../c_parser/c_parser.hancho")
 

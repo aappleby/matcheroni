@@ -6,7 +6,7 @@
     {
       "type": "shell",
       "label": "wipe_build",
-      "command": "rm -rf obj bin",
+      "command": "rm -rf obj bin gen build",
     },
     {
       "type": "shell",

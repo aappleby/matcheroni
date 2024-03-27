@@ -2,7 +2,8 @@
 # C parser example (not finished)
 from hancho import *
 
-rules   = load("../../config/rules.hancho")
+rules = include("{rules_path}/rules.hancho", build_config)
+
 c_lexer = load("../c_lexer/c_lexer.hancho")
 
 c_parser_lib = rules.c_library(
