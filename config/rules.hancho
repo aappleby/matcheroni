@@ -1,5 +1,4 @@
 # matcheroni/config/rules.hancho
-from hancho import *
 
 #-------------------------------------------------------------------------------
 
@@ -39,7 +38,7 @@ test_rule = build_config.rule(
 #-------------------------------------------------------------------------------
 
 def compile_srcs(source_files, **kwargs):
-  return [compile_cpp(f, **kwargs) for f in flatten(source_files)]
+  return [compile_cpp(f, **kwargs) for f in hancho.flatten(source_files)]
 
 def c_binary(source_files, build_files, **kwargs):
   return link_c_bin(compile_srcs(source_files, **kwargs), build_files, **kwargs)

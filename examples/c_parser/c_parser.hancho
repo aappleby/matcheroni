@@ -1,10 +1,9 @@
 #-------------------------------------------------------------------------------
 # C parser example (not finished)
-from hancho import *
 
-rules = include("{rules_path}/rules.hancho", build_config)
+rules = build_config.include("{repo_path}/config/rules.hancho")
 
-c_lexer = load("../c_lexer/c_lexer.hancho")
+c_lexer = build_config.load("../c_lexer/c_lexer.hancho")
 
 c_parser_lib = rules.c_library(
   ["CContext.cpp", "CNode.cpp", "CScope.cpp"],

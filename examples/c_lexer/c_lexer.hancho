@@ -1,8 +1,7 @@
 #-------------------------------------------------------------------------------
 # Matcheroni C lexer demo
-from hancho import *
 
-rules = include("{rules_path}/rules.hancho", build_config)
+rules = build_config.include("{repo_path}/config/rules.hancho")
 
 c_lexer_lib = rules.c_library(
   ["CLexer.cpp", "CToken.cpp"],

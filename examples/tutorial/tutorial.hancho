@@ -1,10 +1,10 @@
 #-------------------------------------------------------------------------------
 # Tutorial examples
-from hancho import *
 
-rules = include("{rules_path}/rules.hancho", build_config)
-c_lexer  = load("../c_lexer/c_lexer.hancho")
-c_parser = load("../c_parser/c_parser.hancho")
+rules = build_config.include("{repo_path}/config/rules.hancho")
+
+c_lexer  = build_config.load("../c_lexer/c_lexer.hancho")
+c_parser = build_config.load("../c_parser/c_parser.hancho")
 
 rules.c_test("json_tut0a.cpp", "json_tut0a", quiet = True)
 rules.c_test("json_tut1a.cpp", "json_tut1a", quiet = True)
