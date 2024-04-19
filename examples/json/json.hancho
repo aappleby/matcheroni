@@ -1,7 +1,7 @@
 #-------------------------------------------------------------------------------
 # Matcheroni JSON parser example
 
-rules = build_config.include("{repo_path}/config/rules.hancho")
+rules = hancho.load("{repo_path}/config/rules.hancho")
 
 json_parser = rules.c_library(
   ["json_matcher.cpp", "json_parser.cpp"],

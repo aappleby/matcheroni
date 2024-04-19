@@ -2,24 +2,24 @@
 
 #-------------------------------------------------------------------------------
 
-compile_cpp = build_config.rule(
+compile_cpp = hancho.command(
   desc        = "Compiling {rel_source_files} -> {rel_build_files} ({build_tag})",
   command     = "g++ {cpp_std} {gcc_opt} {warnings} {includes} {defines} -c {rel_source_files} -o {rel_build_files}",
   cpp_std     = "-std=c++20",
   gcc_opt     = "{'-O3' if build_tag == 'release' else '-g -O0'} -MMD",
   warnings    = "-Wall -Werror -Wno-unused-variable -Wno-unused-local-typedefs -Wno-unused-but-set-variable",
-  includes    = "-I.",
+  includes    = "-I{repo_path}",
   defines     = "",
   build_files = "{swap_ext(source_files, '.o')}",
   build_deps  = "{swap_ext(source_files, '.d')}",
 )
 
-link_c_lib = build_config.rule(
+link_c_lib = hancho.command(
   desc        = "Bundling {rel_build_files}",
   command     = "ar rcs {rel_build_files} {rel_source_files}",
 )
 
-link_c_bin = build_config.rule(
+link_c_bin = hancho.command(
   desc        = "Linking {rel_build_files}",
   command     = "g++ {ld_opt} {warnings} {rel_source_files} {libs} {sys_libs} -o {rel_build_files}",
   ld_opt      = "{'-O3' if build_tag == 'release' else '-g -O0'}",
@@ -28,7 +28,7 @@ link_c_bin = build_config.rule(
   warnings    = "-Wall",
 )
 
-test_rule = build_config.rule(
+run_c_test = hancho.command(
   desc        = "Running test {rel_source_files}",
   command     = "rm -f {rel_build_files} && {rel_source_files} {args} && touch {rel_build_files}",
   build_files = "{swap_ext(source_files, '.pass')}",
@@ -47,6 +47,6 @@ def c_library(source_files, build_files, **kwargs):
   return link_c_lib(compile_srcs(source_files, **kwargs), build_files, **kwargs)
 
 def c_test(source_files, build_files, **kwargs):
-  return test_rule(c_binary(source_files, build_files, **kwargs), **kwargs)
+  return run_c_test(c_binary(source_files, build_files, **kwargs), **kwargs)
 
 #-------------------------------------------------------------------------------

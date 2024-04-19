@@ -1,20 +1,17 @@
 #-------------------------------------------------------------------------------
 # Tutorial examples
 
-rules = build_config.include("{repo_path}/config/rules.hancho")
+rules = hancho.load("{repo_path}/config/rules.hancho")
 
-c_lexer  = build_config.load("../c_lexer/c_lexer.hancho")
-c_parser = build_config.load("../c_parser/c_parser.hancho")
-
-rules.c_test("json_tut0a.cpp", "json_tut0a", quiet = True)
-rules.c_test("json_tut1a.cpp", "json_tut1a", quiet = True)
-rules.c_test("json_tut1b.cpp", "json_tut1b", quiet = True)
-rules.c_test("json_tut1c.cpp", "json_tut1c", quiet = True)
-rules.c_test("json_tut2a.cpp", "json_tut2a", quiet = True)
-rules.c_test("json_tut2b.cpp", "json_tut2b", quiet = True)
+rules.c_test("json_tut0a.cpp", "json_tut0a", command_path="{repo_path}", quiet = True)
+rules.c_test("json_tut1a.cpp", "json_tut1a", command_path="{repo_path}", quiet = True)
+rules.c_test("json_tut1b.cpp", "json_tut1b", command_path="{repo_path}", quiet = True)
+rules.c_test("json_tut1c.cpp", "json_tut1c", command_path="{repo_path}", quiet = True)
+rules.c_test("json_tut2a.cpp", "json_tut2a", command_path="{repo_path}", quiet = True)
+rules.c_test("json_tut2b.cpp", "json_tut2b", command_path="{repo_path}", quiet = True)
 
 rules.c_binary(
   "tiny_c_parser.cpp",
   "tiny_c_parser",
-  libs = [c_lexer.c_lexer_lib, c_parser.c_parser_lib],
+  libs = [hancho.c_lexer_lib, hancho.c_parser_lib],
 )

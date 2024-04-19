@@ -1,7 +1,7 @@
 #-------------------------------------------------------------------------------
 # Matcheroni regex parsing example
 
-rules = build_config.include("{repo_path}/config/rules.hancho")
+rules = hancho.load("{repo_path}/config/rules.hancho")
 
 # These are the various regex libraries that Matcheroni can be benchmarked
 # against. CTRE and SRELL require that you copy their header into matcheroni/.
