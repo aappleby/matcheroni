@@ -1,16 +1,15 @@
 # matcheroni/build.hancho
 
-print("Building Matcheroni with Hancho")
-
 hancho.build_tag = "debug"
 
-c_lexer  = hancho.load("examples/c_lexer/c_lexer.hancho")
-c_parser = hancho.load("examples/c_parser/c_parser.hancho",
-                       c_lexer_lib = c_lexer.c_lexer_lib)
+hancho.rules    = hancho.load("config/rules.hancho")
+hancho.c_lexer  = hancho.load("examples/c_lexer/c_lexer.hancho")
+hancho.c_parser = hancho.load("examples/c_parser/c_parser.hancho")
 
-hancho.load("examples/ini/ini.hancho")
+hancho.rules.c_library("examples/ini/ini_parser.cpp", "examples/ini/ini_parser.a")
+
 hancho.load("examples/json/json.hancho")
 hancho.load("examples/regex/regex.hancho")
 hancho.load("examples/toml/toml.hancho")
 hancho.load("tests/tests.hancho")
-hancho.load("examples/tutorial/tutorial.hancho", c_lexer_lib=c_lexer.c_lexer_lib, c_parser_lib = c_parser.c_parser_lib)
+hancho.load("examples/tutorial/tutorial.hancho")

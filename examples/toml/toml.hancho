@@ -1,14 +1,12 @@
 #-------------------------------------------------------------------------------
 # TOML parser example
 
-rules = hancho.load("{repo_path}/config/rules.hancho")
-
-toml_lib = rules.c_library(
+toml_lib = hancho.rules.c_library(
   "toml_parser.cpp",
   "toml_lib.a",
 )
 
-rules.c_test(
+hancho.rules.c_test(
   "toml_test.cpp",
   "toml_test",
   libs = toml_lib,

@@ -1,22 +1,22 @@
 #-------------------------------------------------------------------------------
 # Matcheroni C lexer demo
 
-rules = hancho.load("{repo_path}/config/rules.hancho")
-
-c_lexer_lib = rules.c_library(
+c_lexer_lib = hancho.rules.c_library(
   ["CLexer.cpp", "CToken.cpp"],
   "c_lexer.a",
 )
 
-rules.c_test(
+hancho.rules.c_test(
   "c_lexer_test.cpp",
   "c_lexer_test",
   libs = c_lexer_lib,
   quiet = True,
 )
 
-rules.c_binary(
+hancho.rules.c_binary(
   "c_lexer_benchmark.cpp",
   "c_lexer_benchmark",
   libs = c_lexer_lib,
 )
+
+hancho.lib = c_lexer_lib

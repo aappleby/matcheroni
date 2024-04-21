@@ -1,6 +1,0 @@
-#-------------------------------------------------------------------------------
-# INI parser example
-
-rules = hancho.load("{repo_path}/config/rules.hancho")
-
-ini_parser_lib = rules.c_library("ini_parser.cpp", "ini_parser.a")

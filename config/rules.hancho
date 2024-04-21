@@ -37,16 +37,32 @@ run_c_test = hancho.command(
 
 #-------------------------------------------------------------------------------
 
-def compile_srcs(source_files, **kwargs):
-  return [compile_cpp(f, **kwargs) for f in hancho.flatten(source_files)]
+def compile_srcs(config, source_files):
+  objs = []
+  for file in hancho.flatten(source_files):
+    if isinstance(file, hancho.Task):
+      objs.append(file)
+    else:
+      objs.append(compile_cpp.task(config, source_files = file))
+  return objs
 
-def c_binary(source_files, build_files, **kwargs):
-  return link_c_bin(compile_srcs(source_files, **kwargs), build_files, **kwargs)
+def c_binary(config):
+  source_files = config.pop("source_files")
+  build_files  = config.pop("build_files")
+  objs = compile_srcs(config, source_files)
+  return link_c_bin.task(config, source_files = objs, build_files = build_files)
 
-def c_library(source_files, build_files, **kwargs):
-  return link_c_lib(compile_srcs(source_files, **kwargs), build_files, **kwargs)
+def c_library(config):
+  source_files = config.pop("source_files")
+  build_files  = config.pop("build_files")
+  objs = compile_srcs(config, source_files)
+  return link_c_lib.task(config, source_files = objs, build_files = build_files)
 
-def c_test(source_files, build_files, **kwargs):
-  return run_c_test(c_binary(source_files, build_files, **kwargs), **kwargs)
+def c_test(config):
+  return run_c_test.task(config, source_files = c_binary(config))
 
 #-------------------------------------------------------------------------------
+
+hancho.c_binary  = hancho.callback(c_binary)
+hancho.c_library = hancho.callback(c_library)
+hancho.c_test    = hancho.callback(c_test)
