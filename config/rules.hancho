@@ -43,23 +43,24 @@ def compile_srcs(config, source_files):
     if isinstance(file, hancho.Task):
       objs.append(file)
     else:
-      objs.append(compile_cpp.task(config, source_files = file))
+      objs.append(compile_cpp(file, config))
+      pass
   return objs
 
 def c_binary(config):
   source_files = config.pop("source_files")
   build_files  = config.pop("build_files")
   objs = compile_srcs(config, source_files)
-  return link_c_bin.task(config, source_files = objs, build_files = build_files)
+  return link_c_bin(objs, build_files, config)
 
 def c_library(config):
   source_files = config.pop("source_files")
   build_files  = config.pop("build_files")
   objs = compile_srcs(config, source_files)
-  return link_c_lib.task(config, source_files = objs, build_files = build_files)
+  return link_c_lib(objs, build_files, config)
 
 def c_test(config):
-  return run_c_test.task(config, source_files = c_binary(config))
+  return run_c_test(c_binary(config), config)
 
 #-------------------------------------------------------------------------------
 
