@@ -31,4 +31,4 @@ hancho.rules.c_test(
   quiet = True
 )
 
-hancho.lib = json_parser
+export.lib = json_parser

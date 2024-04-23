@@ -20,4 +20,4 @@ hancho.rules.c_binary(
 #  quiet = True
 #)
 
-hancho.lib = c_parser_lib
+export.lib = c_parser_lib

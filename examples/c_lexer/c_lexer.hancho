@@ -19,4 +19,4 @@ hancho.rules.c_binary(
   libs = c_lexer_lib,
 )
 
-hancho.lib = c_lexer_lib
+export.lib = c_lexer_lib

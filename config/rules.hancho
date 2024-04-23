@@ -64,6 +64,6 @@ def c_test(config):
 
 #-------------------------------------------------------------------------------
 
-hancho.c_binary  = hancho.callback(c_binary)
-hancho.c_library = hancho.callback(c_library)
-hancho.c_test    = hancho.callback(c_test)
+export.c_binary  = hancho.callback(c_binary)
+export.c_library = hancho.callback(c_library)
+export.c_test    = hancho.callback(c_test)
