@@ -1,15 +1,22 @@
 #-------------------------------------------------------------------------------
 # Tutorial examples
 
-hancho.rules.c_test("json_tut0a.cpp", "json_tut0a", command_path="{repo_path}", quiet = True)
-hancho.rules.c_test("json_tut1a.cpp", "json_tut1a", command_path="{repo_path}", quiet = True)
-hancho.rules.c_test("json_tut1b.cpp", "json_tut1b", command_path="{repo_path}", quiet = True)
-hancho.rules.c_test("json_tut1c.cpp", "json_tut1c", command_path="{repo_path}", quiet = True)
-hancho.rules.c_test("json_tut2a.cpp", "json_tut2a", command_path="{repo_path}", quiet = True)
-hancho.rules.c_test("json_tut2b.cpp", "json_tut2b", command_path="{repo_path}", quiet = True)
+rules  = imports.rules
+config = imports.config
 
-hancho.rules.c_binary(
-  "tiny_c_parser.cpp",
-  "tiny_c_parser",
-  libs = [hancho.c_lexer.lib, hancho.c_parser.lib],
+config.command_path = "{repo_path}"
+config.quiet = True
+
+rules.c_test(config, in_srcs = "json_tut0a.cpp", out_bin = "json_tut0a")
+rules.c_test(config, in_srcs = "json_tut1a.cpp", out_bin = "json_tut1a")
+rules.c_test(config, in_srcs = "json_tut1b.cpp", out_bin = "json_tut1b")
+rules.c_test(config, in_srcs = "json_tut1c.cpp", out_bin = "json_tut1c")
+rules.c_test(config, in_srcs = "json_tut2a.cpp", out_bin = "json_tut2a")
+rules.c_test(config, in_srcs = "json_tut2b.cpp", out_bin = "json_tut2b")
+
+rules.c_binary(
+  config,
+  in_srcs = "tiny_c_parser.cpp",
+  out_bin = "tiny_c_parser",
+  libs = [imports.c_lexer.lib, imports.c_parser.lib],
 )

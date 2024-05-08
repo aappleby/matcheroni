@@ -1,18 +1,22 @@
 #-------------------------------------------------------------------------------
 # Tests
 
+import hancho
+
 #build obj/matcheroni/Matcheroni.hpp.iwyu : iwyu matcheroni/Matcheroni.hpp
 #build obj/matcheroni/Parseroni.hpp.iwyu  : iwyu matcheroni/Parseroni.hpp
 #build obj/matcheroni/Utilities.hpp.iwyu  : iwyu matcheroni/Utilities.hpp
 
-hancho.rules.c_test(
-  "matcheroni_test.cpp",
-  "matcheroni_test",
+imports.rules.c_test(
+  imports.config,
+  in_srcs = "matcheroni_test.cpp",
+  out_bin = "matcheroni_test",
   quiet = True,
 )
 
-hancho.rules.c_test(
-  "parseroni_test.cpp",
-  "parseroni_test",
+imports.rules.c_test(
+  imports.config,
+  in_srcs = "parseroni_test.cpp",
+  out_bin = "parseroni_test",
   quiet = True,
 )

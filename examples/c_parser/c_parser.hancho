@@ -1,15 +1,21 @@
 #-------------------------------------------------------------------------------
 # C parser example (not finished)
 
-c_parser_lib = hancho.rules.c_library(
-  source_files = ["CContext.cpp", "CNode.cpp", "CScope.cpp"],
-  build_files = "c_parser.a",
+rules   = imports.rules
+config  = imports.config
+c_lexer = imports.c_lexer
+
+c_parser_lib = rules.c_library(
+  config,
+  in_srcs = ["CContext.cpp", "CNode.cpp", "CScope.cpp"],
+  out_lib = "c_parser.a",
 )
 
-hancho.rules.c_binary(
-  "c_parser_benchmark.cpp",
-  "c_parser_benchmark",
-  libs = [hancho.c_lexer.lib, c_parser_lib],
+rules.c_binary(
+  config,
+  in_srcs = "c_parser_benchmark.cpp",
+  out_bin = "c_parser_benchmark",
+  libs = [c_lexer.lib, c_parser_lib],
 )
 
 # Broken?
@@ -20,4 +26,4 @@ hancho.rules.c_binary(
 #  quiet = True
 #)
 
-export.lib = c_parser_lib
+exports.lib = c_parser_lib

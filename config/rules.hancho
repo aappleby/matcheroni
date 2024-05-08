@@ -1,69 +1,73 @@
 # matcheroni/config/rules.hancho
 
-#-------------------------------------------------------------------------------
-
-compile_cpp = hancho.command(
-  desc        = "Compiling {rel_source_files} -> {rel_build_files} ({build_tag})",
-  command     = "g++ {cpp_std} {gcc_opt} {warnings} {includes} {defines} -c {rel_source_files} -o {rel_build_files}",
-  cpp_std     = "-std=c++20",
-  gcc_opt     = "{'-O3' if build_tag == 'release' else '-g -O0'} -MMD",
-  warnings    = "-Wall -Werror -Wno-unused-variable -Wno-unused-local-typedefs -Wno-unused-but-set-variable",
-  includes    = "-I{repo_path}",
-  defines     = "",
-  build_files = "{swap_ext(source_files, '.o')}",
-  build_deps  = "{swap_ext(source_files, '.d')}",
-)
-
-link_c_lib = hancho.command(
-  desc        = "Bundling {rel_build_files}",
-  command     = "ar rcs {rel_build_files} {rel_source_files}",
-)
-
-link_c_bin = hancho.command(
-  desc        = "Linking {rel_build_files}",
-  command     = "g++ {ld_opt} {warnings} {rel_source_files} {libs} {sys_libs} -o {rel_build_files}",
-  ld_opt      = "{'-O3' if build_tag == 'release' else '-g -O0'}",
-  libs        = "",
-  sys_libs    = "",
-  warnings    = "-Wall",
-)
-
-run_c_test = hancho.command(
-  desc        = "Running test {rel_source_files}",
-  command     = "rm -f {rel_build_files} && {rel_source_files} {args} && touch {rel_build_files}",
-  build_files = "{swap_ext(source_files, '.pass')}",
-  args        = "",
-)
+import hancho
 
 #-------------------------------------------------------------------------------
 
-def compile_srcs(config, source_files):
-  objs = []
-  for file in hancho.flatten(source_files):
-    if isinstance(file, hancho.Task):
-      objs.append(file)
-    else:
-      objs.append(compile_cpp(file, config))
-      pass
-  return objs
+def link_c_lib(in_objs, out_lib, *args, **kwargs):
+  config  = hancho.Config(*args, **kwargs)
+  command = hancho.Config(
+    desc     = "Bundling {rel(out_lib)}",
+    command  = "ar rcs {rel(out_lib)} {rel(in_objs)}",
+  )
+  return command(config, in_objs = in_objs, out_lib = out_lib)
 
-def c_binary(config):
-  source_files = config.pop("source_files")
-  build_files  = config.pop("build_files")
-  objs = compile_srcs(config, source_files)
-  return link_c_bin(objs, build_files, config)
 
-def c_library(config):
-  source_files = config.pop("source_files")
-  build_files  = config.pop("build_files")
-  objs = compile_srcs(config, source_files)
-  return link_c_lib(objs, build_files, config)
-
-def c_test(config):
-  return run_c_test(c_binary(config), config)
+def link_c_bin(in_objs, out_bin, *args, **kwargs):
+  config  = hancho.Config(*args, **kwargs)
+  command = hancho.Config(
+    desc     = "Linking {rel(out_bin)}",
+    command  = "g++ {ld_opt} {warnings} {rel(in_objs)} {libs} {sys_libs} -o {rel(out_bin)}",
+    ld_opt   = "{'-O3' if build_tag == 'release' else '-g -O0'}",
+    libs     = "",
+    sys_libs = "",
+    warnings = "-Wall",
+  )
+  return command(config, in_objs = in_objs, out_bin = out_bin)
 
 #-------------------------------------------------------------------------------
 
-export.c_binary  = hancho.callback(c_binary)
-export.c_library = hancho.callback(c_library)
-export.c_test    = hancho.callback(c_test)
+def compile_srcs(*args, in_srcs, **kwargs):
+  config  = hancho.Config(*args, **kwargs)
+  command = hancho.Config(
+    desc     = "Compiling {rel(in_src)} -> {rel(out_obj)} ({build_tag})",
+    command  = "g++ {cpp_std} {gcc_opt} {warnings} {includes} {defines} -c {rel(in_src)} -o {rel(out_obj)}",
+    cpp_std  = "-std=c++20",
+    gcc_opt  = "{'-O3' if build_tag == 'release' else '-g -O0'} -MMD",
+    warnings = "-Wall -Werror -Wno-unused-variable -Wno-unused-local-typedefs -Wno-unused-but-set-variable",
+    includes = "-I{repo_path}",
+    defines  = "",
+    out_obj  = "{swap_ext(in_src, '.o')}",
+    dep_gcc  = "{swap_ext(in_src, '.d')}",
+  )
+  return [command(config, in_src = file) for file in hancho.flatten(in_srcs)]
+
+def c_binary(*args, in_srcs = [], in_objs = [], out_bin, **kwargs):
+  config = hancho.Config(*args, **kwargs)
+  objs = compile_srcs(config, in_srcs = in_srcs)
+  return link_c_bin(objs + in_objs, out_bin, config)
+
+def c_library(*args, in_srcs = [], in_objs = [], out_lib, **kwargs):
+  config = hancho.Config(*args, **kwargs)
+  objs = compile_srcs(config, in_srcs=in_srcs)
+  return link_c_lib(objs + in_objs, out_lib, config)
+
+def c_test(*args, in_srcs = [], in_objs = [], out_bin, **kwargs):
+  config = hancho.Config(*args, **kwargs)
+  objs = compile_srcs(config, in_srcs = in_srcs)
+  bin = link_c_bin(objs + in_objs, out_bin, config)
+  result = hancho.Task(
+    config,
+    desc     = "Running test {rel(in_test)}",
+    command  = "rm -f {rel(out_pass)} && {in_test} {args} && touch {rel(out_pass)}",
+    in_test  = bin,
+    out_pass = "{swap_ext(in_test, '.pass')}",
+    args     = ""
+  )
+  return result
+
+#-------------------------------------------------------------------------------
+
+exports.c_binary  = c_binary
+exports.c_library = c_library
+exports.c_test    = c_test

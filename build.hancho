@@ -1,15 +1,22 @@
 # matcheroni/build.hancho
 
-hancho.build_tag = "debug"
+import hancho
 
-hancho.rules    = hancho.load("config/rules.hancho")
-hancho.c_lexer  = hancho.load("examples/c_lexer/c_lexer.hancho")
-hancho.c_parser = hancho.load("examples/c_parser/c_parser.hancho")
+imports.config   = hancho.Config(build_tag = "debug")
+imports.rules    = hancho.load("config/rules.hancho", imports)
+imports.c_lexer  = hancho.load("examples/c_lexer/c_lexer.hancho", imports)
+imports.c_parser = hancho.load("examples/c_parser/c_parser.hancho", imports)
 
-hancho.rules.c_library("examples/ini/ini_parser.cpp", "examples/ini/ini_parser.a")
+exports.c_lexer  = imports.c_lexer
+exports.c_parser = imports.c_parser
+exports.json     = hancho.load("examples/json/json.hancho", imports)
+exports.regex    = hancho.load("examples/regex/regex.hancho", imports)
+exports.toml     = hancho.load("examples/toml/toml.hancho", imports)
+exports.tests    = hancho.load("tests/tests.hancho", imports)
+exports.tutorial = hancho.load("examples/tutorial/tutorial.hancho", imports)
 
-hancho.load("examples/json/json.hancho")
-hancho.load("examples/regex/regex.hancho")
-hancho.load("examples/toml/toml.hancho")
-hancho.load("tests/tests.hancho")
-hancho.load("examples/tutorial/tutorial.hancho")
+exports.ini = imports.rules.c_library(
+  imports.config,
+  in_srcs = "examples/ini/ini_parser.cpp",
+  out_lib = "examples/ini/ini_parser.a",
+)
