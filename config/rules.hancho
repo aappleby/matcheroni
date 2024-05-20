@@ -38,7 +38,7 @@ def compile_srcs(*args, in_srcs, **kwargs):
     includes = "-I{repo_path}",
     defines  = "",
     out_obj  = "{swap_ext(in_src, '.o')}",
-    dep_gcc  = "{swap_ext(in_src, '.d')}",
+    depfile  = "{swap_ext(in_src, '.d')}",
   )
   return [command(config, in_src = file) for file in hancho.flatten(in_srcs)]
 
@@ -59,10 +59,11 @@ def c_test(*args, in_srcs = [], in_objs = [], out_bin, **kwargs):
   result = hancho.Task(
     config,
     desc     = "Running test {rel(in_test)}",
-    command  = "rm -f {rel(out_pass)} && {in_test} {args} && touch {rel(out_pass)}",
+    command  = "{in_test} {args}",
     in_test  = bin,
-    out_pass = "{swap_ext(in_test, '.pass')}",
-    args     = ""
+    out_log  = "{in_test}.test",
+    args     = "",
+    is_test = True
   )
   return result
 
