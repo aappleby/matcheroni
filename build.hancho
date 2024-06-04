@@ -2,21 +2,18 @@
 
 import hancho
 
-imports.config   = hancho.Config(build_tag = "debug")
-imports.rules    = hancho.load("config/rules.hancho", imports)
-imports.c_lexer  = hancho.load("examples/c_lexer/c_lexer.hancho", imports)
-imports.c_parser = hancho.load("examples/c_parser/c_parser.hancho", imports)
-
-exports.c_lexer  = imports.c_lexer
-exports.c_parser = imports.c_parser
-exports.json     = hancho.load("examples/json/json.hancho", imports)
-exports.regex    = hancho.load("examples/regex/regex.hancho", imports)
-exports.toml     = hancho.load("examples/toml/toml.hancho", imports)
-exports.tests    = hancho.load("tests/tests.hancho", imports)
-exports.tutorial = hancho.load("examples/tutorial/tutorial.hancho", imports)
-
-exports.ini = imports.rules.c_library(
-  imports.config,
-  in_srcs = "examples/ini/ini_parser.cpp",
-  out_lib = "examples/ini/ini_parser.a",
-)
+exports.config   = hancho.Config(build_tag = "debug")
+exports.rules    = hancho.load("symlinks/hancho/rules.hancho", exports)
+exports.c_lexer  = hancho.load("examples/c_lexer/c_lexer.hancho", exports)
+#exports.c_parser = hancho.load("examples/c_parser/c_parser.hancho", exports)
+#exports.json     = hancho.load("examples/json/json.hancho", exports)
+#exports.regex    = hancho.load("examples/regex/regex.hancho", exports)
+#exports.toml     = hancho.load("examples/toml/toml.hancho", exports)
+#exports.tests    = hancho.load("tests/tests.hancho", exports)
+#exports.tutorial = hancho.load("examples/tutorial/tutorial.hancho", exports)
+#
+#exports.ini = exports.rules.c_library(
+#  exports.config,
+#  in_srcs = "examples/ini/ini_parser.cpp",
+#  out_lib = "examples/ini/ini_parser.a",
+#)
