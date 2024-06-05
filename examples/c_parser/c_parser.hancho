@@ -5,17 +5,19 @@ rules   = imports.rules
 config  = imports.config
 c_lexer = imports.c_lexer
 
-c_parser_lib = rules.c_library(
-  config,
+c_parser_lib = rules.cpp_lib(
+  name    = "c_parser_lib",
   in_srcs = ["CContext.cpp", "CNode.cpp", "CScope.cpp"],
   out_lib = "c_parser.a",
+  **config,
 )
 
-rules.c_binary(
-  config,
+rules.cpp_bin(
+  name    = "c_parser_benchmark",
   in_srcs = "c_parser_benchmark.cpp",
+  in_libs = [c_lexer.lib, c_parser_lib],
   out_bin = "c_parser_benchmark",
-  libs = [c_lexer.lib, c_parser_lib],
+  **config,
 )
 
 # Broken?
