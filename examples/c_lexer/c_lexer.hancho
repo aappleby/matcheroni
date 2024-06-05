@@ -12,11 +12,14 @@ c_lexer_lib = rules.cpp_lib(
 )
 
 rules.c_test(
+  name = "c_lexer_test",
   in_srcs = "c_lexer_test.cpp",
   in_libs = c_lexer_lib,
-  out_bin = "c_lexer_test",
+  out_bin = "{name}",
   quiet = True,
   **config,
+  #debug = True,
+  #trace = True
 )
 
 rules.cpp_bin(
