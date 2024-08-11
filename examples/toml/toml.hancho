@@ -1,21 +1,13 @@
 #-------------------------------------------------------------------------------
 # TOML parser example
 
-rules  = imports.rules
-config = imports.config
-
-toml_lib = rules.cpp_lib(
+toml_parser = imports.rules.cpp_lib(
   name    = "toml_parser",
   in_srcs = "toml_parser.cpp",
-  out_lib = "toml_lib.a",
-  **config,
 )
 
-rules.c_test(
+imports.rules.c_test(
   name    = "toml_test",
   in_srcs = "toml_test.cpp",
-  in_libs = toml_lib,
-  out_bin = "toml_test",
-  quiet = True,
-  **config,
+  in_libs = toml_parser,
 )

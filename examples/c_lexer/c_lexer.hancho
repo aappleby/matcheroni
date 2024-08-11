@@ -1,33 +1,21 @@
 #-------------------------------------------------------------------------------
 # Matcheroni C lexer demo
 
-rules  = imports.rules
-config = imports.config
-
-c_lexer_lib = rules.cpp_lib(
+c_lexer = imports.rules.cpp_lib(
   name    = "c_lexer",
   in_srcs = ["CLexer.cpp", "CToken.cpp"],
-  out_lib = "c_lexer.a",
-  **config,
 )
 
-rules.c_test(
+imports.rules.c_test(
   name = "c_lexer_test",
   in_srcs = "c_lexer_test.cpp",
-  in_libs = c_lexer_lib,
-  out_bin = "{name}",
-  quiet = True,
-  **config,
-  #debug = True,
-  #trace = True
+  in_libs = c_lexer,
 )
 
-rules.cpp_bin(
+imports.rules.cpp_bin(
   name    = "c_lexer_benchmark",
   in_srcs = "c_lexer_benchmark.cpp",
-  in_libs = c_lexer_lib,
-  out_bin = "c_lexer_benchmark",
-  **config,
+  in_libs = c_lexer,
 )
 
-exports.lib = c_lexer_lib
+exports.lib = c_lexer

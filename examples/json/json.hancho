@@ -1,47 +1,33 @@
 #-------------------------------------------------------------------------------
 # Matcheroni JSON parser example
 
-rules  = imports.rules
-config = imports.config
-
-json_parser = rules.cpp_lib(
+json_parser = imports.rules.cpp_lib(
   name = "json_parser",
   in_srcs = ["json_matcher.cpp", "json_parser.cpp"],
-  out_lib = "json_parser.a",
-  **config,
 )
 
-rules.cpp_bin(
+imports.rules.cpp_bin(
   name = "json_conformance",
   in_srcs = "json_conformance.cpp",
   in_libs = json_parser,
-  out_bin = "json_conformance",
-  **config,
 )
 
-rules.cpp_bin(
+imports.rules.cpp_bin(
   name = "json_benchmark",
   in_srcs = "json_benchmark.cpp",
   in_libs = json_parser,
-  out_bin = "json_benchmark",
-  **config,
 )
 
-rules.cpp_bin(
+imports.rules.cpp_bin(
   name = "json_demo",
   in_srcs = "json_demo.cpp",
   in_libs = json_parser,
-  out_bin = "json_demo",
-  **config,
 )
 
-rules.c_test(
+imports.rules.c_test(
   name = "json_test",
   in_srcs = "json_test.cpp",
   in_libs = json_parser,
-  out_bin = "json_test",
-  **config,
-  quiet = True
 )
 
 exports.lib = json_parser
