@@ -91,7 +91,6 @@ CToken next_lexeme(TextMatchContext& ctx, TextSpan body) {
   if (auto tail = match_splice(ctx, body)  ) return CToken(LEX_SPLICE, TextSpan(body.begin, tail.begin));
   if (auto tail = match_formfeed(ctx, body)) return CToken(LEX_FORMFEED, TextSpan(body.begin, tail.begin));
   if (auto tail = match_eof(ctx, body)     ) return CToken(LEX_EOF, TextSpan(body.begin, tail.begin));
-  if (auto tail = match_string(ctx, body)  ) return CToken(LEX_STRING, TextSpan(body.begin, tail.begin));
 
   return CToken(LEX_INVALID, body.fail());
 }
@@ -116,7 +115,11 @@ TextSpan match_space(TextMatchContext& ctx, TextSpan body) {
 }
 
 TextSpan match_newline(TextMatchContext& ctx, TextSpan body) {
-  using pattern = Seq<Opt<Atom<'\r'>>, Atom<'\n'>>;
+  using pattern =
+  Seq<
+    Opt<Atom<'\r'>>,
+    Atom<'\n'>
+  >;
   auto tail = pattern::match(ctx, body);
   return tail;
 }
@@ -149,7 +152,7 @@ TextSpan match_int(TextMatchContext& ctx, TextSpan body) {
   using long_long_suffix       = Oneof<Lit<"ll">, Lit<"LL">>;
   using bit_precise_int_suffix = Oneof<Lit<"wb">, Lit<"WB">>;
 
-  // This is begin little odd because we have to match in longest-suffix-first order
+  // This is a little odd because we have to match in longest-suffix-first order
   // to ensure we capture the entire suffix
   using integer_suffix = Oneof<
     Seq<unsigned_suffix,  long_long_suffix>,
@@ -367,7 +370,7 @@ TextSpan match_char(TextMatchContext& ctx, TextSpan body) {
   // The spec disallows empty character constants, but...
   //using character_constant = Seq< Opt<encoding_prefix>, Atom<'\''>, c_char_sequence, Atom<'\''> >;
 
-  // ...in GCC they're only begin warning.
+  // ...in GCC they're only a warning.
   using character_constant = Seq< Opt<encoding_prefix>, Atom<'\''>, Any<c_char>, Atom<'\''> >;
   // clang-format on
 
@@ -447,7 +450,7 @@ TextSpan match_string(TextMatchContext& ctx, TextSpan body) {
 // 6.4.6 Punctuators
 
 TextSpan match_punct(TextMatchContext& ctx, TextSpan body) {
-  // We're just gonna match these one punct at begin time
+  // We're just gonna match these one punct at a time
   using punctuator = Charset<"-,;:!?.()[]{}*/&#%^+<=>|~">;
   return punctuator::match(ctx, body);
 }
@@ -488,12 +491,12 @@ TextSpan match_comment(TextMatchContext& ctx, TextSpan body) {
 }
 
 //------------------------------------------------------------------------------
-// 5.1.1.2 : Lines ending in begin backslash and begin newline get spliced together
+// 5.1.1.2 : Lines ending in a backslash and a newline get spliced together
 // with the following line.
 
 TextSpan match_splice(TextMatchContext& ctx, TextSpan body) {
 
-  // According to GCC it's only begin warning to have whitespace between the
+  // According to GCC it's only a warning to have whitespace between the
   // backslash and the newline... and apparently \r\n is ok too?
 
   // clang-format off
