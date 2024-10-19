@@ -1,15 +1,20 @@
 #-------------------------------------------------------------------------------
 # C parser example (not finished)
 
-c_parser = imports.rules.cpp_lib(
+rules   = hancho.pop('rules')
+c_lexer = hancho.pop('c_lexer')
+
+lib = hancho(
+  rules.cpp_lib,
   name    = "c_parser",
   in_srcs = ["CContext.cpp", "CNode.cpp", "CScope.cpp"],
 )
 
-imports.rules.cpp_bin(
+hancho(
+  rules.cpp_bin,
   name    = "c_parser_benchmark",
   in_srcs = "c_parser_benchmark.cpp",
-  in_libs = [imports.c_lexer.lib, c_parser],
+  in_libs = [c_lexer.lib, lib],
 )
 
 # Broken?
@@ -18,5 +23,3 @@ imports.rules.cpp_bin(
 #  "c_parser_test",
 #  libs = [c_lexer.c_lexer_lib, c_parser_lib],
 #)
-
-exports.lib = c_parser

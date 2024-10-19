@@ -1,21 +1,19 @@
 # matcheroni/build.hancho
 
-import hancho
+hancho.build_tag = "debug"
+hancho.rules     = hancho.load("symlinks/hancho/rules.hancho")
+hancho.includes  = [".", "{repo_dir}"]
 
-hancho.Config.build_tag = "debug"
+c_lexer  = hancho.load("examples/c_lexer/c_lexer.hancho")
+c_parser = hancho.load("examples/c_parser/c_parser.hancho", c_lexer = c_lexer)
+json     = hancho.load("examples/json/json.hancho")
+#regex    = hancho.load("examples/regex/regex.hancho")
+#toml     = hancho.load("examples/toml/toml.hancho")
+#tests    = hancho.load("tests/tests.hancho")
+#tutorial = hancho.load("examples/tutorial/tutorial.hancho", c_lexer = c_lexer, c_parser = c_parser)
 
-rules = hancho.load("symlinks/hancho/rules.hancho", exports)
-rules.compile_cpp.includes = [".", "{repo_path}"]
-
-c_lexer  = hancho.load("examples/c_lexer/c_lexer.hancho", rules = rules)
-c_parser = hancho.load("examples/c_parser/c_parser.hancho", rules = rules, c_lexer = c_lexer)
-json     = hancho.load("examples/json/json.hancho", rules = rules)
-regex    = hancho.load("examples/regex/regex.hancho", rules = rules)
-toml     = hancho.load("examples/toml/toml.hancho", rules = rules)
-tests    = hancho.load("tests/tests.hancho", rules = rules)
-tutorial = hancho.load("examples/tutorial/tutorial.hancho", rules = rules, c_lexer = c_lexer, c_parser = c_parser)
-
-ini = rules.cpp_lib(
+ini = hancho(
+  hancho.rules.cpp_lib,
   name    = "ini_parser",
   in_srcs = "examples/ini/ini_parser.cpp",
 )
