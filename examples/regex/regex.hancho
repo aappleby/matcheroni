@@ -11,28 +11,32 @@
 #benchmark_defs = ${benchmark_defs} -DSRELL_NO_NAMEDCAPTURE
 #benchmark_defs = ${benchmark_defs} -DSRELL_NO_VMODE
 
-regex_parser = imports.rules.cpp_lib(
+rules = hancho.pop('rules')
+
+lib = hancho(
+  rules.cpp_lib,
   name = "regex_parser",
   in_srcs = "regex_parser.cpp",
 )
 
-imports.rules.cpp_bin(
+hancho(
+  rules.cpp_bin,
   name = "regex_demo",
   in_srcs = "regex_demo.cpp",
-  in_libs = regex_parser,
+  in_libs = lib,
 )
 
-imports.rules.cpp_bin(
+hancho(
+  rules.cpp_bin,
   name = "regex_benchmark",
   in_srcs = "regex_benchmark.cpp",
-  in_libs = regex_parser,
+  in_libs = lib,
   sys_libs = ["boost_system", "boost_regex"],
 )
 
-imports.rules.c_test(
+hancho(
+  rules.cpp_test,
   name = "regex_test",
   in_srcs = "regex_test.cpp",
-  libs = regex_parser,
+  in_libs = lib,
 )
-
-exports.lib = regex_parser

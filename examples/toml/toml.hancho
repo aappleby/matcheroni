@@ -1,13 +1,17 @@
 #-------------------------------------------------------------------------------
 # TOML parser example
 
-toml_parser = imports.rules.cpp_lib(
+rules = hancho.pop('rules')
+
+lib = hancho(
+  rules.cpp_lib,
   name    = "toml_parser",
   in_srcs = "toml_parser.cpp",
 )
 
-imports.rules.c_test(
+hancho(
+  rules.cpp_test,
   name    = "toml_test",
   in_srcs = "toml_test.cpp",
-  in_libs = toml_parser,
+  in_libs = lib,
 )

@@ -5,12 +5,17 @@
 #build obj/matcheroni/Parseroni.hpp.iwyu  : iwyu matcheroni/Parseroni.hpp
 #build obj/matcheroni/Utilities.hpp.iwyu  : iwyu matcheroni/Utilities.hpp
 
-imports.rules.c_test(
-  name    = "matcheroni_test",
-  in_srcs = "matcheroni_test.cpp",
-)
+rules = hancho.pop('rules')
 
-imports.rules.c_test(
+# Apparently I broke this...
+#hancho(
+#  rules.cpp_test,
+#  name    = "matcheroni_test",
+#  in_srcs = "matcheroni_test.cpp",
+#)
+
+hancho(
+  rules.cpp_test,
   name    = "parseroni_test",
   in_srcs = "parseroni_test.cpp",
 )

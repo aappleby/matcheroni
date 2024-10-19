@@ -1,22 +1,20 @@
 #-------------------------------------------------------------------------------
 # Tutorial examples
 
-import hancho
+rules = hancho.pop('rules')
 
-config = hancho.Config(
-  command_path = "{repo_path}",
-)
+test_config = hancho.Config(task_dir = "{repo_dir}")
 
-imports.rules.c_test(config, name = "json_tut0a", in_srcs = "json_tut0a.cpp")
-imports.rules.c_test(config, name = "json_tut1a", in_srcs = "json_tut1a.cpp")
-imports.rules.c_test(config, name = "json_tut1b", in_srcs = "json_tut1b.cpp")
-imports.rules.c_test(config, name = "json_tut1c", in_srcs = "json_tut1c.cpp")
-imports.rules.c_test(config, name = "json_tut2a", in_srcs = "json_tut2a.cpp")
-imports.rules.c_test(config, name = "json_tut2b", in_srcs = "json_tut2b.cpp")
+hancho(rules.cpp_test, name = "json_tut0a", in_srcs = "json_tut0a.cpp", test_config = test_config)
+hancho(rules.cpp_test, name = "json_tut1a", in_srcs = "json_tut1a.cpp", test_config = test_config)
+hancho(rules.cpp_test, name = "json_tut1b", in_srcs = "json_tut1b.cpp", test_config = test_config)
+hancho(rules.cpp_test, name = "json_tut1c", in_srcs = "json_tut1c.cpp", test_config = test_config)
+hancho(rules.cpp_test, name = "json_tut2a", in_srcs = "json_tut2a.cpp", test_config = test_config)
+hancho(rules.cpp_test, name = "json_tut2b", in_srcs = "json_tut2b.cpp", test_config = test_config)
 
-imports.rules.cpp_bin(
-  config,
+hancho(
+  rules.cpp_bin,
   name    = "tiny_c_parser",
   in_srcs = "tiny_c_parser.cpp",
-  in_libs = [imports.c_lexer.lib, imports.c_parser.lib],
+  in_libs = [hancho.c_lexer.lib, hancho.c_parser.lib],
 )
