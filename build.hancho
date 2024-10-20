@@ -4,12 +4,13 @@ hancho.build_tag = "debug"
 hancho.rules     = hancho.load("symlinks/hancho/rules.hancho")
 hancho.includes  = [".", "{repo_dir}"]
 
-c_lexer  = hancho.load("examples/c_lexer/c_lexer.hancho")
-c_parser = hancho.load("examples/c_parser/c_parser.hancho", c_lexer = c_lexer)
 json     = hancho.load("examples/json/json.hancho")
 regex    = hancho.load("examples/regex/regex.hancho")
 toml     = hancho.load("examples/toml/toml.hancho")
 tests    = hancho.load("tests/tests.hancho")
+
+c_lexer  = hancho.load("examples/c_lexer/c_lexer.hancho")
+c_parser = hancho.load("examples/c_parser/c_parser.hancho", c_lexer = c_lexer)
 tutorial = hancho.load("examples/tutorial/tutorial.hancho", c_lexer = c_lexer, c_parser = c_parser)
 
 ini = hancho(
