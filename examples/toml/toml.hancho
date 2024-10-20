@@ -5,13 +5,13 @@ rules = hancho.pop('rules')
 
 lib = hancho(
   rules.cpp_lib,
-  name    = "toml_parser",
   in_srcs = "toml_parser.cpp",
+  out_lib = "toml_parser.a",
 )
 
 hancho(
   rules.cpp_test,
-  name    = "toml_test",
   in_srcs = "toml_test.cpp",
   in_libs = lib,
+  out_bin = "toml_test",
 )

@@ -15,28 +15,28 @@ rules = hancho.pop('rules')
 
 lib = hancho(
   rules.cpp_lib,
-  name = "regex_parser",
   in_srcs = "regex_parser.cpp",
+  out_lib = "regex_parser.a",
 )
 
 hancho(
   rules.cpp_bin,
-  name = "regex_demo",
   in_srcs = "regex_demo.cpp",
   in_libs = lib,
+  out_bin = "regex_demo",
 )
 
 hancho(
   rules.cpp_bin,
-  name = "regex_benchmark",
   in_srcs = "regex_benchmark.cpp",
   in_libs = lib,
+  out_bin = "regex_benchmark",
   sys_libs = ["boost_system", "boost_regex"],
 )
 
 hancho(
   rules.cpp_test,
-  name = "regex_test",
   in_srcs = "regex_test.cpp",
   in_libs = lib,
+  out_bin = "regex_test",
 )

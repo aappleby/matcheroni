@@ -5,20 +5,20 @@ rules = hancho.pop('rules')
 
 lib = hancho(
   rules.cpp_lib,
-  name    = "c_lexer.a",
   in_srcs = ["CLexer.cpp", "CToken.cpp"],
+  out_lib = "c_lexer.a",
 )
 
 hancho(
   rules.cpp_test,
-  name = "c_lexer_test",
   in_srcs = "c_lexer_test.cpp",
   in_libs = lib,
+  out_bin = "c_lexer_test",
 )
 
 hancho(
   rules.cpp_bin,
-  name    = "c_lexer_benchmark",
   in_srcs = "c_lexer_benchmark.cpp",
   in_libs = lib,
+  out_bin = "c_lexer_benchmark",
 )

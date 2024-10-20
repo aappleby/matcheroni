@@ -6,15 +6,15 @@ c_lexer = hancho.pop('c_lexer')
 
 lib = hancho(
   rules.cpp_lib,
-  name    = "c_parser",
   in_srcs = ["CContext.cpp", "CNode.cpp", "CScope.cpp"],
+  out_lib = "c_parser.a",
 )
 
 hancho(
   rules.cpp_bin,
-  name    = "c_parser_benchmark",
   in_srcs = "c_parser_benchmark.cpp",
   in_libs = [c_lexer.lib, lib],
+  out_bin = "c_parser_benchmark",
 )
 
 # Broken?

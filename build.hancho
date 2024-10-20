@@ -15,6 +15,6 @@ tutorial = hancho.load("examples/tutorial/tutorial.hancho", c_lexer = c_lexer, c
 
 ini = hancho(
   hancho.rules.cpp_lib,
-  name    = "ini_parser",
   in_srcs = "examples/ini/ini_parser.cpp",
+  out_lib = "ini_parser.a",
 )

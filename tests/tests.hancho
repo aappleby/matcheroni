@@ -5,17 +5,17 @@
 #build obj/matcheroni/Parseroni.hpp.iwyu  : iwyu matcheroni/Parseroni.hpp
 #build obj/matcheroni/Utilities.hpp.iwyu  : iwyu matcheroni/Utilities.hpp
 
-rules = hancho.pop('rules')
+rules = hancho.rules
 
 # Apparently I broke this...
 #hancho(
 #  rules.cpp_test,
-#  name    = "matcheroni_test",
 #  in_srcs = "matcheroni_test.cpp",
+#  out_bin = "matcheroni_test",
 #)
 
 hancho(
   rules.cpp_test,
-  name    = "parseroni_test",
   in_srcs = "parseroni_test.cpp",
+  out_bin = "parseroni_test",
 )
