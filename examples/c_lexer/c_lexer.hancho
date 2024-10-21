@@ -1,16 +1,19 @@
 #-------------------------------------------------------------------------------
 # Matcheroni C lexer demo
 
-rules = hancho.pop('rules')
+rules  = hancho.rules
+config = hancho.cpp_config
 
 lib = hancho(
   rules.cpp_lib,
+  config,
   in_srcs = ["CLexer.cpp", "CToken.cpp"],
   out_lib = "c_lexer.a",
 )
 
 hancho(
   rules.cpp_test,
+  config,
   in_srcs = "c_lexer_test.cpp",
   in_libs = lib,
   out_bin = "c_lexer_test",
@@ -18,6 +21,7 @@ hancho(
 
 hancho(
   rules.cpp_bin,
+  config,
   in_srcs = "c_lexer_benchmark.cpp",
   in_libs = lib,
   out_bin = "c_lexer_benchmark",

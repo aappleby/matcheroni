@@ -11,16 +11,18 @@
 #benchmark_defs = ${benchmark_defs} -DSRELL_NO_NAMEDCAPTURE
 #benchmark_defs = ${benchmark_defs} -DSRELL_NO_VMODE
 
-rules = hancho.pop('rules')
+rules  = hancho.rules
 
 lib = hancho(
   rules.cpp_lib,
+  hancho.cpp_config,
   in_srcs = "regex_parser.cpp",
   out_lib = "regex_parser.a",
 )
 
 hancho(
   rules.cpp_bin,
+  hancho.cpp_config,
   in_srcs = "regex_demo.cpp",
   in_libs = lib,
   out_bin = "regex_demo",
@@ -28,6 +30,7 @@ hancho(
 
 hancho(
   rules.cpp_bin,
+  hancho.cpp_config,
   in_srcs = "regex_benchmark.cpp",
   in_libs = lib,
   out_bin = "regex_benchmark",
@@ -36,6 +39,7 @@ hancho(
 
 hancho(
   rules.cpp_test,
+  hancho.cpp_config,
   in_srcs = "regex_test.cpp",
   in_libs = lib,
   out_bin = "regex_test",

@@ -1,17 +1,20 @@
 #-------------------------------------------------------------------------------
 # C parser example (not finished)
 
-rules   = hancho.pop('rules')
-c_lexer = hancho.pop('c_lexer')
+rules   = hancho.rules
+config  = hancho.cpp_config
+c_lexer = hancho.c_lexer
 
 lib = hancho(
   rules.cpp_lib,
+  config,
   in_srcs = ["CContext.cpp", "CNode.cpp", "CScope.cpp"],
   out_lib = "c_parser.a",
 )
 
 hancho(
   rules.cpp_bin,
+  config,
   in_srcs = "c_parser_benchmark.cpp",
   in_libs = [c_lexer.lib, lib],
   out_bin = "c_parser_benchmark",

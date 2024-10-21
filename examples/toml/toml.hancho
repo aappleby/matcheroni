@@ -1,16 +1,18 @@
 #-------------------------------------------------------------------------------
 # TOML parser example
 
-rules = hancho.pop('rules')
+rules = hancho.rules
 
 lib = hancho(
   rules.cpp_lib,
+  hancho.cpp_config,
   in_srcs = "toml_parser.cpp",
   out_lib = "toml_parser.a",
 )
 
 hancho(
   rules.cpp_test,
+  hancho.cpp_config,
   in_srcs = "toml_test.cpp",
   in_libs = lib,
   out_bin = "toml_test",

@@ -16,6 +16,7 @@ rules = hancho.rules
 
 hancho(
   rules.cpp_test,
+  hancho.cpp_config,
   in_srcs = "parseroni_test.cpp",
   out_bin = "parseroni_test",
 )
