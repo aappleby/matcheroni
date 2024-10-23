@@ -1,17 +1,15 @@
 #-------------------------------------------------------------------------------
 # Matcheroni JSON parser example
 
-rules  = hancho.rules
-
 lib = hancho(
-  rules.cpp_lib,
+  hancho.base_rules.cpp_lib,
   hancho.cpp_config,
   in_srcs  = ["json_matcher.cpp", "json_parser.cpp"],
   out_lib  = "json_parser.a",
 )
 
 hancho(
-  rules.cpp_bin,
+  hancho.base_rules.cpp_bin,
   hancho.cpp_config,
   in_srcs = "json_conformance.cpp",
   in_libs = lib,
@@ -19,7 +17,7 @@ hancho(
 )
 
 hancho(
-  rules.cpp_bin,
+  hancho.base_rules.cpp_bin,
   hancho.cpp_config,
   in_srcs = "json_benchmark.cpp",
   in_libs = lib,
@@ -27,7 +25,7 @@ hancho(
 )
 
 hancho(
-  rules.cpp_bin,
+  hancho.base_rules.cpp_bin,
   hancho.cpp_config,
   in_srcs = "json_demo.cpp",
   in_libs = lib,
@@ -35,7 +33,7 @@ hancho(
 )
 
 hancho(
-  rules.cpp_test,
+  hancho.base_rules.cpp_test,
   hancho.cpp_config,
   in_srcs = "json_test.cpp",
   in_libs = lib,

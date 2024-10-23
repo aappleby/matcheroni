@@ -1,10 +1,11 @@
 # matcheroni/build.hancho
 
-hancho.build_tag  = "debug"
-hancho.rules      = hancho.load("symlinks/hancho/rules.hancho")
+if 'base_rules' not in hancho:
+    hancho.base_rules = hancho.load("symlinks/hancho/base_rules.hancho")
+
 hancho.cpp_config = hancho.Config(
-  includes = "{repo_dir}",
-  test_dir = "{repo_dir}",
+    includes = "{repo_dir}",
+    test_dir = "{repo_dir}",
 )
 
 hancho.c_lexer  = hancho.load("examples/c_lexer/c_lexer.hancho")
@@ -17,8 +18,8 @@ tests    = hancho.load("tests/tests.hancho")
 tutorial = hancho.load("examples/tutorial/tutorial.hancho")
 
 ini = hancho(
-  hancho.rules.cpp_lib,
-  hancho.cpp_config,
-  in_srcs = "examples/ini/ini_parser.cpp",
-  out_lib = "ini_parser.a",
+    hancho.base_rules.cpp_lib,
+    hancho.cpp_config,
+    in_srcs = "examples/ini/ini_parser.cpp",
+    out_lib = "ini_parser.a",
 )

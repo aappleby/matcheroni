@@ -5,8 +5,6 @@
 #build obj/matcheroni/Parseroni.hpp.iwyu  : iwyu matcheroni/Parseroni.hpp
 #build obj/matcheroni/Utilities.hpp.iwyu  : iwyu matcheroni/Utilities.hpp
 
-rules = hancho.rules
-
 # Apparently I broke this...
 #hancho(
 #  rules.cpp_test,
@@ -15,7 +13,7 @@ rules = hancho.rules
 #)
 
 hancho(
-  rules.cpp_test,
+  hancho.base_rules.cpp_test,
   hancho.cpp_config,
   in_srcs = "parseroni_test.cpp",
   out_bin = "parseroni_test",
