@@ -13,8 +13,8 @@
 #)
 
 hancho(
-  hancho.base_rules.cpp_test,
-  hancho.cpp_config,
-  in_srcs = "parseroni_test.cpp",
-  out_bin = "parseroni_test",
+    hancho.base_rules.cpp_test,
+    hancho.cpp_config,
+    in_srcs = "parseroni_test.cpp",
+    out_bin = "parseroni_test",
 )

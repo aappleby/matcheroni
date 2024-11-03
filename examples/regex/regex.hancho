@@ -13,33 +13,33 @@
 
 
 lib = hancho(
-  hancho.base_rules.cpp_lib,
-  hancho.cpp_config,
-  in_srcs = "regex_parser.cpp",
-  out_lib = "regex_parser.a",
+    hancho.base_rules.cpp_lib,
+    hancho.cpp_config,
+    in_srcs = "regex_parser.cpp",
+    out_lib = "regex_parser.a",
 )
 
 hancho(
-  hancho.base_rules.cpp_bin,
-  hancho.cpp_config,
-  in_srcs = "regex_demo.cpp",
-  in_libs = lib,
-  out_bin = "regex_demo",
+    hancho.base_rules.cpp_bin,
+    hancho.cpp_config,
+    in_srcs = "regex_demo.cpp",
+    in_libs = lib,
+    out_bin = "regex_demo",
 )
 
 hancho(
-  hancho.base_rules.cpp_bin,
-  hancho.cpp_config,
-  in_srcs = "regex_benchmark.cpp",
-  in_libs = lib,
-  out_bin = "regex_benchmark",
-  sys_libs = ["boost_system", "boost_regex"],
+    hancho.base_rules.cpp_bin,
+    hancho.cpp_config,
+    in_srcs = "regex_benchmark.cpp",
+    in_libs = lib,
+    out_bin = "regex_benchmark",
+    sys_libs = ["-lboost_system", "-lboost_regex"],
 )
 
 hancho(
-  hancho.base_rules.cpp_test,
-  hancho.cpp_config,
-  in_srcs = "regex_test.cpp",
-  in_libs = lib,
-  out_bin = "regex_test",
+    hancho.base_rules.cpp_test,
+    hancho.cpp_config,
+    in_srcs = "regex_test.cpp",
+    in_libs = lib,
+    out_bin = "regex_test",
 )

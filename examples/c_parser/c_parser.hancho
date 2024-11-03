@@ -2,23 +2,23 @@
 # C parser example (not finished)
 
 lib = hancho(
-  hancho.base_rules.cpp_lib,
-  hancho.cpp_config,
-  in_srcs = ["CContext.cpp", "CNode.cpp", "CScope.cpp"],
-  out_lib = "c_parser.a",
+    hancho.base_rules.cpp_lib,
+    hancho.cpp_config,
+    in_srcs = ["CContext.cpp", "CNode.cpp", "CScope.cpp"],
+    out_lib = "c_parser.a",
 )
 
 hancho(
-  hancho.base_rules.cpp_bin,
-  hancho.cpp_config,
-  in_srcs = "c_parser_benchmark.cpp",
-  in_libs = [hancho.c_lexer.lib, lib],
-  out_bin = "c_parser_benchmark",
+    hancho.base_rules.cpp_bin,
+    hancho.cpp_config,
+    in_srcs = "c_parser_benchmark.cpp",
+    in_libs = [hancho.c_lexer.lib, lib],
+    out_bin = "c_parser_benchmark",
 )
 
 # Broken?
 #rules.c_test(
-#  "c_parser_test.cpp",
-#  "c_parser_test",
-#  libs = [c_lexer.c_lexer_lib, c_parser_lib],
+#    "c_parser_test.cpp",
+#    "c_parser_test",
+#    libs = [c_lexer.c_lexer_lib, c_parser_lib],
 #)

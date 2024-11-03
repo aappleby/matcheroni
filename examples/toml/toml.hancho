@@ -2,16 +2,16 @@
 # TOML parser example
 
 lib = hancho(
-  hancho.base_rules.cpp_lib,
-  hancho.cpp_config,
-  in_srcs = "toml_parser.cpp",
-  out_lib = "toml_parser.a",
+    hancho.base_rules.cpp_lib,
+    hancho.cpp_config,
+    in_srcs = "toml_parser.cpp",
+    out_lib = "toml_parser.a",
 )
 
 hancho(
-  hancho.base_rules.cpp_test,
-  hancho.cpp_config,
-  in_srcs = "toml_test.cpp",
-  in_libs = lib,
-  out_bin = "toml_test",
+    hancho.base_rules.cpp_test,
+    hancho.cpp_config,
+    in_srcs = "toml_test.cpp",
+    in_libs = lib,
+    out_bin = "toml_test",
 )
