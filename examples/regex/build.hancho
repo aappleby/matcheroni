@@ -1,0 +1,9 @@
+#-------------------------------------------------------------------------------
+# Matcheroni regex parsing example
+
+lib = hancho(
+    hancho.base_rules.cpp_lib,
+    in_srcs = "regex_parser.cpp",
+    out_lib = "regex_parser.a",
+)
+

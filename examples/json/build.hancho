@@ -1,0 +1,7 @@
+base_rules = hancho.repo("{hancho_dir}/base_rules.hancho")
+
+lib = hancho(
+    base_rules.cpp_lib,
+    in_srcs  = ["json_matcher.cpp", "json_parser.cpp"],
+    out_lib  = "json_parser.a",
+)

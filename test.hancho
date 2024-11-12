@@ -1,0 +1,31 @@
+# matcheroni/build.hancho
+
+hancho.config.includes = "{repo_dir}"
+hancho.config.test_dir = "{repo_dir}"
+
+hancho.base_rules = hancho.repo("{hancho_dir}//base_rules.hancho")
+
+hancho.c_lexer  = hancho.load("examples/c_lexer/c_lexer.hancho")
+hancho.c_parser = hancho.load("examples/c_parser/c_parser.hancho")
+
+json     = hancho.load("examples/json/json.hancho")
+regex    = hancho.load("examples/regex/regex.hancho")
+toml     = hancho.load("examples/toml/toml.hancho")
+tutorial = hancho.load("examples/tutorial/tutorial.hancho")
+
+#build obj/matcheroni/Matcheroni.hpp.iwyu : iwyu matcheroni/Matcheroni.hpp
+#build obj/matcheroni/Parseroni.hpp.iwyu  : iwyu matcheroni/Parseroni.hpp
+#build obj/matcheroni/Utilities.hpp.iwyu  : iwyu matcheroni/Utilities.hpp
+
+# Apparently I broke this...
+#hancho(
+#  rules.cpp_test,
+#  in_srcs = "matcheroni_test.cpp",
+#  out_bin = "matcheroni_test",
+#)
+
+hancho(
+    hancho.base_rules.cpp_test,
+    in_srcs = "tests/parseroni_test.cpp",
+    out_bin = "tests/parseroni_test",
+)

@@ -1,0 +1,8 @@
+toml = hancho.load("{repo_dir}/examples/toml/build.hancho")
+
+hancho(
+    hancho.base_rules.cpp_test,
+    in_srcs = "toml_test.cpp",
+    in_libs = toml.lib,
+    out_bin = "toml_test",
+)

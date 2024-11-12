@@ -1,0 +1,8 @@
+# -------------------------------------------------------------------------------
+# C parser example (not finished)
+
+lib = hancho(
+    hancho.base_rules.cpp_lib,
+    in_srcs=["CContext.cpp", "CNode.cpp", "CScope.cpp"],
+    out_lib="c_parser.a",
+)

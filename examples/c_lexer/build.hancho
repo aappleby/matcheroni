@@ -1,0 +1,8 @@
+#-------------------------------------------------------------------------------
+# Matcheroni C lexer demo
+
+lib = hancho(
+    hancho.base_rules.cpp_lib,
+    in_srcs = ["CLexer.cpp", "CToken.cpp"],
+    out_lib = "c_lexer.a",
+)

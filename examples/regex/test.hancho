@@ -1,5 +1,3 @@
-#-------------------------------------------------------------------------------
-# Matcheroni regex parsing example
 
 # These are the various regex libraries that Matcheroni can be benchmarked
 # against. CTRE and SRELL require that you copy their header into matcheroni/.
@@ -11,35 +9,26 @@
 #benchmark_defs = ${benchmark_defs} -DSRELL_NO_NAMEDCAPTURE
 #benchmark_defs = ${benchmark_defs} -DSRELL_NO_VMODE
 
-
-lib = hancho(
-    hancho.base_rules.cpp_lib,
-    hancho.cpp_config,
-    in_srcs = "regex_parser.cpp",
-    out_lib = "regex_parser.a",
-)
+regex = hancho.load("{repo_dir}/examples/regex/build.hancho")
 
 hancho(
     hancho.base_rules.cpp_bin,
-    hancho.cpp_config,
     in_srcs = "regex_demo.cpp",
-    in_libs = lib,
+    in_libs = regex.lib,
     out_bin = "regex_demo",
 )
 
 hancho(
     hancho.base_rules.cpp_bin,
-    hancho.cpp_config,
     in_srcs = "regex_benchmark.cpp",
-    in_libs = lib,
+    in_libs = regex.lib,
     out_bin = "regex_benchmark",
     sys_libs = ["-lboost_system", "-lboost_regex"],
 )
 
 hancho(
     hancho.base_rules.cpp_test,
-    hancho.cpp_config,
     in_srcs = "regex_test.cpp",
-    in_libs = lib,
+    in_libs = regex.lib,
     out_bin = "regex_test",
 )

@@ -1,0 +1,29 @@
+json = hancho.load("build.hancho")
+
+hancho(
+    hancho.base_rules.cpp_bin,
+    in_srcs = "json_conformance.cpp",
+    in_libs = json.lib,
+    out_bin = "json_conformance",
+)
+
+hancho(
+    hancho.base_rules.cpp_bin,
+    in_srcs = "json_benchmark.cpp",
+    in_libs = json.lib,
+    out_bin = "json_benchmark",
+)
+
+hancho(
+    hancho.base_rules.cpp_bin,
+    in_srcs = "json_demo.cpp",
+    in_libs = json.lib,
+    out_bin = "json_demo",
+)
+
+hancho(
+    hancho.base_rules.cpp_test,
+    in_srcs = "json_test.cpp",
+    in_libs = json.lib,
+    out_bin = "json_test",
+)

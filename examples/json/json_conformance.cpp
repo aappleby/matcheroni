@@ -21,7 +21,7 @@ using namespace matcheroni;
 //------------------------------------------------------------------------------
 
 int main(int argc, char** argv) {
-  auto base_path = "conformance";
+  auto base_path = "data/conformance";
 
   std::vector<std::string> tests_good;
   std::vector<std::string> tests_bad;
@@ -84,11 +84,11 @@ int main(int argc, char** argv) {
   time = 0;
   for (auto path : tests_bad) {
     // We are a recursive descent parser, these blow our call stack
-    if (path == "conformance/n_structure_open_array_object.json") {
+    if (path == "data/conformance/n_structure_open_array_object.json") {
       skipped++;
       continue;
     }
-    if (path == "conformance/n_structure_100000_opening_arrays.json") {
+    if (path == "data/conformance/n_structure_100000_opening_arrays.json") {
       skipped++;
       continue;
     }

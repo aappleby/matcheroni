@@ -1,0 +1,15 @@
+c_lexer = hancho.load("build.hancho")
+
+hancho(
+    hancho.base_rules.cpp_test,
+    in_srcs = "c_lexer_test.cpp",
+    in_libs = c_lexer.lib,
+    out_bin = "c_lexer_test",
+)
+
+hancho(
+    hancho.base_rules.cpp_bin,
+    in_srcs = "c_lexer_benchmark.cpp",
+    in_libs = c_lexer.lib,
+    out_bin = "c_lexer_benchmark",
+)
