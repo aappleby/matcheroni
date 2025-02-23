@@ -1,7 +1,7 @@
 # matcheroni/build.hancho
 
-hancho.config.includes = "{repo_dir}"
-hancho.config.test_dir = "{repo_dir}"
+hancho.context.includes = "{repo_dir}"
+hancho.context.test_dir = "{repo_dir}"
 
 hancho.base_rules = hancho.repo("{hancho_dir}//base_rules.hancho")
 
