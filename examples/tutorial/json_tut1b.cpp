@@ -36,7 +36,7 @@ struct JsonMatcher {
 };
 
 int main(int argc, char** argv) {
-  const char* filename = argc < 2 ? "examples/tutorial/json_tut1b.input" : argv[1];
+  const char* filename = argc < 2 ? "json_tut1b.input" : argv[1];
 
   std::string input = utils::read(filename);
   TextSpan text = utils::to_span(input);

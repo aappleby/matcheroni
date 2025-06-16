@@ -5,13 +5,14 @@ hancho.context.test_dir = "{repo_dir}"
 
 hancho.base_rules = hancho.repo("{hancho_dir}//base_rules.hancho")
 
-hancho.c_lexer  = hancho.load("examples/c_lexer/c_lexer.hancho")
-hancho.c_parser = hancho.load("examples/c_parser/c_parser.hancho")
+hancho.c_lexer  = hancho.load("examples/c_lexer/build.hancho")
+hancho.c_parser = hancho.load("examples/c_parser/build.hancho")
 
-json     = hancho.load("examples/json/json.hancho")
-regex    = hancho.load("examples/regex/regex.hancho")
-toml     = hancho.load("examples/toml/toml.hancho")
-tutorial = hancho.load("examples/tutorial/tutorial.hancho")
+json     = hancho.load("examples/json/build.hancho")
+regex    = hancho.load("examples/regex/build.hancho")
+toml     = hancho.load("examples/toml/build.hancho")
+
+tutorial = hancho.load("examples/tutorial/test.hancho")
 
 #build obj/matcheroni/Matcheroni.hpp.iwyu : iwyu matcheroni/Matcheroni.hpp
 #build obj/matcheroni/Parseroni.hpp.iwyu  : iwyu matcheroni/Parseroni.hpp

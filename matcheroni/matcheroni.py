@@ -1,4 +1,5 @@
-  #!/usr/bin/python3
+#!/usr/bin/python3
+# pylint: disable=bad-indentation
 
 from functools import cache
 import doctest
@@ -637,6 +638,9 @@ def KeyVal(key, pattern):
 
   return match
 
+#---------------------------------------------------------------------------------------------------
+
+@cache
 def Railway(railway):
   """
   Matches a complex pattern represented as a "railway diagram" of simpler patterns connected in a
