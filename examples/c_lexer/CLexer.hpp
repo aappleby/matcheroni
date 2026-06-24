@@ -5,7 +5,7 @@
 
 #include <vector>
 #include <string>
-#include "examples/c_lexer/CToken.hpp"
+#include "CToken.hpp"
 #include "matcheroni/Matcheroni.hpp"
 
 //------------------------------------------------------------------------------

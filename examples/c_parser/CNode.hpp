@@ -8,7 +8,7 @@
 #include <string>
 
 #include "matcheroni/Parseroni.hpp"
-#include "examples/c_lexer/CToken.hpp"
+#include "../c_lexer/CToken.hpp"
 
 typedef matcheroni::Span<CToken> TokenSpan;
 

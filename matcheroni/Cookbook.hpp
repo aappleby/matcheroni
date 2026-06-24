@@ -1,5 +1,5 @@
 #pragma once
-#include "matcheroni/Matcheroni.hpp"
+#include "Matcheroni.hpp"
 
 namespace matcheroni {
 namespace cookbook {

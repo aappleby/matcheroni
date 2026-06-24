@@ -1,0 +1,55 @@
+# -------------------------------------------------------------------------------
+# examples/tutorial/build.hancho
+
+import hancho
+
+tools = hancho.load("{hancho_dir}/tools/tools_base.hancho")
+
+c_lexer = hancho.load("../c_lexer/build.hancho")
+c_parser = hancho.load("../c_parser/build.hancho")
+
+hancho.config.task_cwd = "{script_dir}"
+
+
+hancho.task(
+    tools.cpp_test,
+    in_srcs="json_tut0a.cpp",
+    out_bin="json_tut0a",
+)
+
+hancho.task(
+    tools.cpp_test,
+    in_srcs="json_tut1a.cpp",
+    out_bin="json_tut1a",
+)
+
+hancho.task(
+    tools.cpp_test,
+    in_srcs="json_tut1b.cpp",
+    out_bin="json_tut1b",
+)
+
+hancho.task(
+    tools.cpp_test,
+    in_srcs="json_tut1c.cpp",
+    out_bin="json_tut1c",
+)
+
+hancho.task(
+    tools.cpp_test,
+    in_srcs="json_tut2a.cpp",
+    out_bin="json_tut2a",
+)
+
+hancho.task(
+    tools.cpp_test,
+    in_srcs="json_tut2b.cpp",
+    out_bin="json_tut2b",
+)
+
+hancho.task(
+    tools.cpp_bin,
+    in_srcs="tiny_c_parser.cpp",
+    in_libs=[c_lexer.c_lexer_lib, c_parser.c_parser_lib],
+    out_bin="tiny_c_parser",
+)

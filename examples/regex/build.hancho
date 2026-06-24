@@ -1,9 +1,45 @@
-#-------------------------------------------------------------------------------
-# Matcheroni regex parsing example
+# --------------------------------------------------------------------------------------------------
+# examples/regex/build.hancho
 
-lib = hancho(
-    hancho.base_rules.cpp_lib,
-    in_srcs = "regex_parser.cpp",
-    out_lib = "regex_parser.a",
+import hancho
+
+tools = hancho.load("{hancho_dir}/tools/tools_base.hancho")
+
+regex_parser_lib = hancho.task(
+    tools.cpp_lib,
+    in_srcs  = "regex_parser.cpp",
+    out_lib  = "regex_parser.a",
 )
 
+# These are the various regex libraries that Matcheroni can be benchmarked
+# against. CTRE and SRELL require that you copy their header into matcheroni/.
+
+# These defines are required to reduce the compiled size of the SRELL library used in the benchmark.
+#benchmark_defs = ${benchmark_defs} -DSRELL_NO_UNICODE_ICASE
+#benchmark_defs = ${benchmark_defs} -DSRELL_NO_UNICODE_PROPERTY
+#benchmark_defs = ${benchmark_defs} -DSRELL_NO_UNICODE_DATA
+#benchmark_defs = ${benchmark_defs} -DSRELL_NO_NAMEDCAPTURE
+#benchmark_defs = ${benchmark_defs} -DSRELL_NO_VMODE
+
+hancho.task(
+    tools.cpp_bin,
+    in_srcs = "regex_demo.cpp",
+    in_libs = regex_parser_lib,
+    out_bin = "regex_demo",
+)
+
+hancho.task(
+    tools.cpp_bin,
+    in_srcs = "regex_benchmark.cpp",
+    in_libs = regex_parser_lib,
+    out_bin = "regex_benchmark",
+    #sys_libs = ["-lboost_system", "-lboost_regex"],
+)
+
+hancho.task(
+    tools.cpp_test,
+    in_srcs = "regex_test.cpp",
+    in_libs = regex_parser_lib,
+    out_bin = "regex_test",
+    task_cwd = "{repo_dir}/examples/regex",
+)

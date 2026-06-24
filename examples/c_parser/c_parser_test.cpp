@@ -5,12 +5,11 @@
 #include <stdio.h>
 #include <assert.h>
 
+#include "../c_lexer/CLexer.hpp"
+#include "c_parse_nodes.hpp"
+#include "CContext.hpp"
+#include "CNode.hpp"
 #include "matcheroni/Utilities.hpp"
-
-#include "examples/c_lexer/CLexer.hpp"
-#include "examples/c_parser/CContext.hpp"
-#include "examples/c_parser/CNode.hpp"
-#include "examples/c_parser/c_parse_nodes.hpp"
 
 using namespace matcheroni;
 

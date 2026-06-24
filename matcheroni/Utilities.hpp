@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: MIT License
 
 #pragma once
-#include "matcheroni/Matcheroni.hpp"  // for Span
+#include "Matcheroni.hpp"  // for Span
 
-#include "matcheroni/dump.hpp"
+#include "dump.hpp"
 
 #include <stdint.h>
 #include <stdio.h>

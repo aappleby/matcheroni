@@ -1,6 +1,6 @@
 #pragma once
 
-#include "matcheroni/Matcheroni.hpp"
+#include "Matcheroni.hpp"
 
 #include <new>      // for implicit align_val_t
 #include <stdint.h> // for uint64_t

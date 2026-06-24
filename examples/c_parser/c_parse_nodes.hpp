@@ -6,12 +6,11 @@
 #include "matcheroni/Matcheroni.hpp"
 #include "matcheroni/Parseroni.hpp"
 #include "matcheroni/Utilities.hpp"
-
-#include "examples/c_parser/c_constants.hpp"
-#include "examples/c_lexer/CToken.hpp"
-#include "examples/c_parser/CNode.hpp"
-#include "examples/c_parser/CContext.hpp"
-#include "examples/SST.hpp"
+#include "../c_lexer/CToken.hpp"
+#include "../SST.hpp"
+#include "c_constants.hpp"
+#include "CContext.hpp"
+#include "CNode.hpp"
 
 using namespace matcheroni;
 using namespace parseroni;

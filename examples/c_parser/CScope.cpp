@@ -1,11 +1,11 @@
 // SPDX-FileCopyrightText:  2023 Austin Appleby <aappleby@gmail.com>
 // SPDX-License-Identifier: MIT License
 
-#include "examples/c_parser/CScope.hpp"
+#include "CScope.hpp"
 
-#include "examples/c_parser/c_constants.hpp"
-#include "examples/c_parser/CContext.hpp"
-#include "examples/c_lexer/CToken.hpp"
+#include "c_constants.hpp"
+#include "CContext.hpp"
+#include "../c_lexer/CToken.hpp"
 
 #include <string_view>
 

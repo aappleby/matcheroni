@@ -4,7 +4,7 @@
 #pragma once
 #include <stdint.h>
 
-#include "examples/c_parser/c_constants.hpp"
+#include "../c_parser/c_constants.hpp"
 #include "matcheroni/Matcheroni.hpp"
 #include "matcheroni/Utilities.hpp"
 

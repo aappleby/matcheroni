@@ -3,7 +3,7 @@
 
 #include "matcheroni/Utilities.hpp"
 
-#include "examples/c_lexer/CLexer.hpp"
+#include "CLexer.hpp"
 
 using namespace matcheroni;
 

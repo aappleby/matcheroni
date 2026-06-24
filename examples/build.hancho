@@ -1,0 +1,13 @@
+# --------------------------------------------------------------------------------------------------
+# examples/build.hancho
+
+import hancho
+
+hancho.load("c_lexer/build.hancho")
+hancho.load("c_parser/build.hancho")
+hancho.load("ini/build.hancho")
+hancho.load("json/build.hancho")
+hancho.load("regex/build.hancho")
+hancho.load("toml/build.hancho")
+hancho.load("tutorial/build.hancho")
+

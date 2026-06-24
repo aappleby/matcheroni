@@ -6,7 +6,12 @@ using namespace matcheroni;
 int main(int argc, char** argv) {
   const char* filename = argc < 2 ? "json_tut0a.input" : argv[1];
 
+  printf("filename %s\n", filename);
+
   std::string input = utils::read(filename);
+
+  printf("input %s\n", input.c_str());
+
   TextSpan text = utils::to_span(input);
 
   using pattern = Seq< Lit<"Hello">, Atom<' '>, Lit<"World"> >;

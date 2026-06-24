@@ -1,9 +1,9 @@
 // SPDX-FileCopyrightText:  2023 Austin Appleby <aappleby@gmail.com>
 // SPDX-License-Identifier: MIT License
 
-#include "examples/c_parser/CContext.hpp"
+#include "CContext.hpp"
 
-#include "examples/c_parser/c_parse_nodes.hpp"
+#include "c_parse_nodes.hpp"
 
 using namespace matcheroni;
 

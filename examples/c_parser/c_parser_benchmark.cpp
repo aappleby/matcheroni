@@ -5,9 +5,9 @@
 
 #include "matcheroni/Utilities.hpp"
 
-#include "examples/c_lexer/CLexer.hpp"
-#include "examples/c_parser/CContext.hpp"
-#include "examples/c_parser/CNode.hpp"
+#include "../c_lexer/CLexer.hpp"
+#include "CContext.hpp"
+#include "CNode.hpp"
 
 using namespace matcheroni;
 

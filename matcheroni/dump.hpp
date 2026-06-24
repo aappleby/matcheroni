@@ -7,7 +7,7 @@
 #include <typeinfo>
 #include <ctype.h>
 
-#include "matcheroni/Matcheroni.hpp"  // for Span
+#include "Matcheroni.hpp"  // for Span
 
 namespace matcheroni {
 namespace utils {

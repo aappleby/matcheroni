@@ -1,9 +1,9 @@
 // SPDX-FileCopyrightText:  2023 Austin Appleby <aappleby@gmail.com>
 // SPDX-License-Identifier: MIT License
 
-#include "examples/c_lexer/CLexer.hpp"
-#include "examples/c_parser/CContext.hpp"
-#include "examples/c_parser/CNode.hpp"
+#include "../c_lexer/CLexer.hpp"
+#include "../c_parser/CContext.hpp"
+#include "../c_parser/CNode.hpp"
 #include "matcheroni/Utilities.hpp"
 
 using namespace matcheroni;
